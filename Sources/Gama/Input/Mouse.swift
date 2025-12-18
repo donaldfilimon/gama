@@ -1,7 +1,10 @@
 import Foundation
+#if canImport(WinSDK)
 import WinSDK
+#endif
 
 /// Mouse input handling utilities
+#if canImport(WinSDK)
 public struct Mouse {
     /// Get current cursor position in screen coordinates
     public static func getPosition() -> Point {
@@ -64,3 +67,4 @@ public struct Mouse {
         return Rectangle(rect)
     }
 }
+#endif

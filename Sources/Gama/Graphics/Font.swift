@@ -1,7 +1,10 @@
 import Foundation
+#if canImport(WinSDK)
 import WinSDK
+#endif
 
 /// Font weight constants
+#if canImport(WinSDK)
 public enum FontWeight: Int32 {
     case thin = 100
     case extraLight = 200
@@ -104,3 +107,4 @@ public class FontHandleWrapper: Handle<HFONT> {
         super.init(hFont, cleanup: cleanup)
     }
 }
+#endif

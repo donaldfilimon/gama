@@ -1,7 +1,10 @@
 import Foundation
+#if canImport(WinSDK)
 import WinSDK
+#endif
 
 /// Pen styles
+#if canImport(WinSDK)
 public enum PenStyle: Int32 {
     case solid = 0
     case dash = 1
@@ -85,3 +88,4 @@ public class PenHandleWrapper: Handle<HPEN> {
         super.init(hPen, cleanup: cleanup)
     }
 }
+#endif

@@ -1,7 +1,10 @@
 import Foundation
+#if canImport(WinSDK)
 import WinSDK
+#endif
 
 /// Brush styles
+#if canImport(WinSDK)
 public enum BrushStyle: UInt32 {
     case solid = 0
     case null = 1
@@ -96,3 +99,4 @@ public class BrushHandleWrapper: Handle<HBRUSH> {
         super.init(hBrush, cleanup: cleanup)
     }
 }
+#endif

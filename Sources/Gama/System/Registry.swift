@@ -1,7 +1,10 @@
 import Foundation
+#if canImport(WinSDK)
 import WinSDK
+#endif
 
 /// Registry key access
+#if canImport(WinSDK)
 public class RegistryKey {
     private var hKey: HKEY?
     
@@ -133,3 +136,4 @@ public class RegistryKey {
         close()
     }
 }
+#endif

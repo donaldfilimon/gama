@@ -28,6 +28,11 @@ let package = Package(
             dependencies: ["Gama"],
             path: "Sources/Gama",
             sources: ["Gama.swift"]
+        ),
+        .testTarget(
+            name: "GamaTests",
+            dependencies: ["Gama"],
+            path: "Tests/GamaTests"
         )
     ]
 )

@@ -1,7 +1,10 @@
 import Foundation
+#if canImport(WinSDK)
 import WinSDK
+#endif
 
 /// Bitmap wrapper for GDI bitmap objects
+#if canImport(WinSDK)
 public class Bitmap {
     private let handle: BitmapHandleWrapper
     private let width: Int32
@@ -93,3 +96,4 @@ public class BitmapHandleWrapper: Handle<HBITMAP> {
         super.init(hBitmap, cleanup: cleanup)
     }
 }
+#endif

@@ -1,7 +1,10 @@
 import Foundation
+#if canImport(WinSDK)
 import WinSDK
+#endif
 
 /// System information utilities
+#if canImport(WinSDK)
 public struct SystemInfo {
     /// Get Windows version information
     public static func getWindowsVersion() -> (major: DWORD, minor: DWORD, build: DWORD) {
@@ -59,3 +62,4 @@ public struct SystemInfo {
         return String(windowsUTF16: buffer.withUnsafeBufferPointer { $0.baseAddress }) ?? ""
     }
 }
+#endif

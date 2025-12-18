@@ -1,28 +1,36 @@
 import Foundation
-import WinSDK
 
-/// Dialog box wrapper (basic implementation)
-public class Dialog {
-    private let template: DLGTEMPLATE
-    private var controls: [Control] = []
-    
+/// Protocol for dialog implementations
+public protocol DialogProtocol {
+    /// Show modal dialog
+    func showModal(owner: Window?) -> Int32
+}
+
+/// Cross-platform dialog box wrapper
+public class Dialog: DialogProtocol {
+    private let platformDialog: any DialogProtocol
+
     public init() {
-        // Initialize empty dialog template
-        var template = DLGTEMPLATE()
-        template.style = DWORD(DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU)
-        template.dwExtendedStyle = 0
-        template.cdit = 0
-        template.x = 0
-        template.y = 0
-        template.cx = 200
-        template.cy = 100
-        self.template = template
+        #if canImport(WinSDK)
+        self.platformDialog = WindowsDialog()
+        #else
+        self.platformDialog = StubDialog()
+        #endif
     }
-    
+
     /// Show modal dialog (placeholder - full implementation requires dialog resource)
     public func showModal(owner: Window?) -> Int32 {
-        // This is a placeholder - full dialog implementation requires
-        // dialog resource templates or manual creation
+        return platformDialog.showModal(owner: owner)
+    }
+}
+
+/// Stub dialog implementation for platforms without native dialog support
+private class StubDialog: DialogProtocol {
+    public init() {}
+
+    /// Show modal dialog (stub implementation)
+    public func showModal(owner: Window?) -> Int32 {
+        print("Dialog.showModal() - stub implementation")
         return -1
     }
 }

@@ -1,7 +1,10 @@
 import Foundation
+#if canImport(WinSDK)
 import WinSDK
+#endif
 
 /// Device context wrapper for GDI device contexts
+#if canImport(WinSDK)
 public class DeviceContext {
     private let handle: DeviceContextHandle
     private let isWindowDC: Bool
@@ -177,3 +180,4 @@ public class DeviceContext {
         ) != 0
     }
 }
+#endif

@@ -1,7 +1,10 @@
 import Foundation
+#if canImport(WinSDK)
 import WinSDK
+#endif
 
 /// Window message constants
+#if canImport(WinSDK)
 public enum WindowMessage: UINT {
     case null = 0x0000
     case create = 0x0001
@@ -412,3 +415,4 @@ public enum WindowMessage: UINT {
         }
     }
 }
+#endif

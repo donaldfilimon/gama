@@ -1,7 +1,10 @@
 import Foundation
+#if canImport(WinSDK)
 import WinSDK
+#endif
 
 /// Keyboard input handling utilities
+#if canImport(WinSDK)
 public struct Keyboard {
     /// Check if a key is currently pressed
     public static func isKeyDown(_ virtualKey: VirtualKey) -> Bool {
@@ -91,3 +94,4 @@ public struct Keyboard {
         return (GetKeyState(Int32(VirtualKey.capsLock.rawValue)) & 0x01) != 0
     }
 }
+#endif

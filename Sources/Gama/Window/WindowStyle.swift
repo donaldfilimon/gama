@@ -1,7 +1,10 @@
 import Foundation
+#if canImport(WinSDK)
 import WinSDK
+#endif
 
 /// Window style options builder
+#if canImport(WinSDK)
 public struct WindowStyleOptions: OptionSet {
     public let rawValue: DWORD
     
@@ -43,3 +46,4 @@ public struct WindowStyleOptions: OptionSet {
 }
 
 // Extended window styles are now defined in WindowFactory.swift
+#endif

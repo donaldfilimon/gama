@@ -1,7 +1,10 @@
 import Foundation
+#if canImport(WinSDK)
 import WinSDK
+#endif
 
 /// Mouse button types
+#if canImport(WinSDK)
 public enum MouseButton {
     case left
     case right
@@ -233,3 +236,4 @@ public enum VirtualKey: UInt16 {
     case pa1 = 0xFD
     case oemClear = 0xFE
 }
+#endif

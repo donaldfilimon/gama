@@ -1,7 +1,10 @@
 import Foundation
+#if canImport(WinSDK)
 import WinSDK
+#endif
 
 /// Window class registration wrapper
+#if canImport(WinSDK)
 public class WindowClass {
     private var className: String
     private var windowProc: WNDPROC?
@@ -111,3 +114,4 @@ public struct ClassStyleOptions: OptionSet {
     
     public static let `default`: ClassStyleOptions = [.vredraw, .hredraw]
 }
+#endif
