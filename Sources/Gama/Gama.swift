@@ -1,4 +1,5 @@
 import Foundation
+#if canImport(WinSDK)
 import WinSDK
 
 /// GameApp: Main entry point for the Windows-based game application
@@ -70,3 +71,12 @@ private class AppDelegate: WindowDelegate {
         // Window will be destroyed
     }
 }
+#else
+/// GameApp: Cross-platform stub (Windows-only implementation available)
+@main
+struct GameApp {
+    static func main() {
+        print("Gama framework requires Windows platform. WinSDK not available on this platform.")
+    }
+}
+#endif

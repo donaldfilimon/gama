@@ -1,7 +1,8 @@
 import Foundation
+#if canImport(WinSDK)
 import WinSDK
 
-/// Window style constants
+/// Window style constants (Windows-only)
 public enum WindowStyle: DWORD {
     case overlapped = 0x00000000
     case popup = 0x80000000
@@ -33,7 +34,7 @@ public enum WindowStyle: DWORD {
         WS_POPUP | WS_BORDER | WS_SYSMENU
 }
 
-/// Extended window style constants
+/// Extended window style constants (Windows-only)
 public enum ExtendedWindowStyle: DWORD {
     case dlgmodalframe = 0x00000001
     case noparentnotify = 0x00000004
@@ -65,7 +66,7 @@ public enum ExtendedWindowStyle: DWORD {
     case noactivate = 0x08000000
 }
 
-/// Window class style constants
+/// Window class style constants (Windows-only)
 public enum ClassStyle: UINT {
     case vredraw = 0x0001
     case hredraw = 0x0002
@@ -100,7 +101,7 @@ public enum ClassStyle: UINT {
     }
 }
 
-/// Cursor resource IDs
+/// Cursor resource IDs (Windows-only)
 public enum CursorID: Int32 {
     case arrow = 32512
     case ibeam = 32513
@@ -120,7 +121,7 @@ public enum CursorID: Int32 {
     case help = 32651
 }
 
-/// Background brush constants
+/// Background brush constants (Windows-only)
 public enum BackgroundBrush: Int32 {
     case scrollbar = 0
     case desktop = 1
@@ -153,7 +154,7 @@ public enum BackgroundBrush: Int32 {
     }
 }
 
-/// Show window constants
+/// Show window constants (Windows-only)
 public enum ShowWindowCommand: Int32 {
     case hide = 0
     case showNormal = 1
@@ -186,7 +187,7 @@ public enum ShowWindowCommand: Int32 {
     }
 }
 
-/// Message box type flags
+/// Message box type flags (Windows-only)
 public enum MessageBoxType: UINT {
     case ok = 0x00000000
     case okCancel = 0x00000001
@@ -233,7 +234,7 @@ public enum MessageBoxType: UINT {
     }
 }
 
-/// Message box result
+/// Message box result (Windows-only)
 public enum MessageBoxResult: Int32 {
     case ok = 1
     case cancel = 2
@@ -260,3 +261,15 @@ public enum MessageBoxResult: Int32 {
         }
     }
 }
+#endif
+#else
+// Stub implementations for non-Windows platforms
+public typealias WindowStyle = UInt32
+public typealias ExtendedWindowStyle = UInt32
+public typealias ClassStyle = UInt32
+public typealias CursorID = Int32
+public typealias BackgroundBrush = Int32
+public typealias ShowWindowCommand = Int32
+public typealias MessageBoxType = UInt32
+public typealias MessageBoxResult = Int32
+#endif
