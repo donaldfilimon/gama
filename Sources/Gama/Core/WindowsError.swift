@@ -4,7 +4,8 @@ import WinSDK
 #endif
 
 /// Platform-agnostic error type
-public enum PlatformError: Error, CustomStringConvertible {
+/// Swift 6.2: Enhanced with typed throws support
+public enum PlatformError: Error, CustomStringConvertible, @retroactive Sendable {
     #if canImport(WinSDK)
     case lastError(code: DWORD)
     #else

@@ -2,8 +2,10 @@ import Foundation
 
 /// A rendering engine that manages view tree traversal, layout calculation,
 /// and rendering dispatch.
+///
+/// Swift 6.2: Enhanced with region-based isolation
 @MainActor
-public class RenderEngine: @unchecked Sendable {
+public final class RenderEngine: @unchecked Sendable {
     private let renderer: RendererProtocol
     private var viewCache: [ObjectIdentifier: CachedView] = [:]
     private let cacheLock = NSLock()

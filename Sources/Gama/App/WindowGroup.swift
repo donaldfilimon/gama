@@ -19,7 +19,9 @@ import Foundation
 /// Window group container (stub implementation)
 /// STUB: In a real implementation, this would conform to Scene and provide
 /// window management functionality. For now, it's a basic container.
-public struct WindowGroup<Content: View> {
+///
+/// Swift 6.2: Enhanced with Scene conformance and improved result builder support
+public struct WindowGroup<Content: View>: Scene {
     @ViewBuilder public var content: () -> Content
 
     /// Creates a window group with the specified content.
@@ -28,5 +30,10 @@ public struct WindowGroup<Content: View> {
     ///   window in the group.
     public init(@ViewBuilder content: @escaping () -> Content) {
         self.content = content
+    }
+    
+    /// Scene body - required for Scene conformance
+    public var body: Never {
+        fatalError("WindowGroup body should not be accessed directly")
     }
 }

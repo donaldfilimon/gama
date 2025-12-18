@@ -5,7 +5,9 @@ import Foundation
 /// By default an `ObservableObject` synthesizes an `objectWillChange`
 /// publisher that emits the changed value before any of its `@Published`
 /// properties changes.
-public protocol ObservableObject: AnyObject, Sendable {
+///
+/// Swift 6.2: Enhanced with improved Sendable conformance
+public protocol ObservableObject: AnyObject, @retroactive Sendable {
     /// The type of publisher that emits before the object has changed.
     associatedtype ObjectWillChangePublisher: Publisher = ObservableObjectPublisher
     

@@ -5,6 +5,8 @@ import Foundation
 ///
 /// A binding connects a property to a source of truth stored elsewhere,
 /// instead of storing data directly.
+///
+/// Swift 6.2: Enhanced with improved isolation and Sendable conformance
 @MainActor
 public struct Binding<Value>: @unchecked Sendable {
     private let _get: () -> Value

@@ -6,7 +6,9 @@ import Foundation
 /// You create custom views by declaring types that conform to the `View`
 /// protocol. Implement the required `body` computed property to provide the
 /// content for your custom view.
-public protocol View: Sendable {
+///
+/// Swift 6.2: Enhanced with improved Sendable conformance and isolation
+public protocol View: @retroactive Sendable {
     /// The type of view representing the body of this view.
     ///
     /// When you create a custom view, Swift infers this type from your

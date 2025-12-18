@@ -4,7 +4,9 @@ import Foundation
 ///
 /// A scene is a container for a view hierarchy that you use as a content
 /// root for an app or window.
-public protocol Scene: Sendable {
+///
+/// Swift 6.2: Enhanced with improved Sendable conformance
+public protocol Scene: @retroactive Sendable {
     /// The type of scene representing the body of this scene.
     associatedtype Body: Scene = Never
     

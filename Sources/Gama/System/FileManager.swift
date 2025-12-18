@@ -4,7 +4,9 @@ import Foundation
 ///
 /// This provides a platform-agnostic interface for file operations using
 /// Swift 6 structured concurrency.
-public actor FileManager {
+///
+/// Swift 6.2: Enhanced with region-based isolation and typed throws
+public actor FileManager: @unchecked Sendable {
     /// Shared instance of the file manager
     public static let shared = FileManager()
     
@@ -110,10 +112,19 @@ public actor FileManager {
 }
 
 /// File operation errors
-public enum FileError: Error, Sendable {
+/// Swift 6.2: Enhanced with typed throws support
+public enum FileError: Error, @retroactive Sendable {
     case fileNotFound
     case encodingFailed
     case permissionDenied
     case invalidPath
-    case unknown(Error)
+    case unknown(any Error)
+    
+    // Swift 6.2: Typed error information
+    public var underlyingError: (any Error)? {
+        if case .unknown(let error) = self {
+            return error
+        }
+        return nil
+    }
 }

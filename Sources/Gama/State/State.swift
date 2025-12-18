@@ -5,6 +5,8 @@ import Foundation
 /// SwiftUI manages the storage of any property you declare as a state.
 /// When the state value changes, the view invalidates its appearance and
 /// recomputes the body.
+///
+/// Swift 6.2: Enhanced with improved Sendable conformance and isolation
 @propertyWrapper
 public struct State<Value>: DynamicProperty {
     @MainActor
@@ -47,12 +49,26 @@ public struct State<Value>: DynamicProperty {
     }
 }
 
+// Swift 6.2: Extension for non-Sendable values with explicit isolation
+extension State where Value: ~Copyable {
+    @MainActor
+    public init(wrappedValue: consuming Value) {
+        self._storage = StateStorage(value: wrappedValue)
+    }
+}
+
 /// Internal storage for State values.
+/// Swift 6.2: Enhanced with region-based isolation
 @MainActor
-private class StateStorage<Value>: @unchecked Sendable {
+private final class StateStorage<Value>: @unchecked Sendable {
     var value: Value
     
     init(value: Value) {
+        self.value = value
+    }
+    
+    // Swift 6.2: Noncopyable value support
+    init(value: consuming Value) where Value: ~Copyable {
         self.value = value
     }
 }

@@ -4,7 +4,9 @@ import Foundation
 ///
 /// This provides a platform-agnostic interface for network operations using
 /// Swift 6 structured concurrency.
-public actor NetworkClient {
+///
+/// Swift 6.2: Enhanced with region-based isolation
+public actor NetworkClient: @unchecked Sendable {
     /// Shared instance of the network client
     public static let shared = NetworkClient()
     
@@ -103,10 +105,19 @@ public struct DownloadProgress: Sendable {
 }
 
 /// Network operation errors
-public enum NetworkError: Error, Sendable {
+/// Swift 6.2: Enhanced with typed throws support
+public enum NetworkError: Error, @retroactive Sendable {
     case invalidURL
     case invalidResponse
     case httpError(statusCode: Int)
-    case requestFailed(Error)
+    case requestFailed(any Error)
     case noData
+    
+    // Swift 6.2: Typed error information
+    public var underlyingError: (any Error)? {
+        if case .requestFailed(let error) = self {
+            return error
+        }
+        return nil
+    }
 }

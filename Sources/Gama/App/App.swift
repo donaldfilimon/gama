@@ -15,7 +15,9 @@ import Foundation
 ///     }
 /// }
 /// ```
-public protocol App {
+///
+/// Swift 6.2: Enhanced with improved concurrency support
+public protocol App: @retroactive Sendable {
     /// The type of scene representing the content of the app.
     associatedtype Body: Scene
     

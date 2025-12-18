@@ -125,13 +125,49 @@ public struct PlatformCapabilities {
 }
 
 /// Platform-specific error handling
-public func ensurePlatformSupport(for feature: String, supported: Bool) throws {
+/// Swift 6.2: Enhanced with typed throws support
+public func ensurePlatformSupport(for feature: String, supported: Bool) throws(PlatformError) {
     guard supported else {
         throw PlatformError.operationFailed(reason: "Feature '\(feature)' not supported on platform '\(currentPlatform)'")
     }
 }
 
 /// Assert that the current platform supports a feature
+/// Swift 6.2: Enhanced with better error messages
 public func assertPlatformSupport(_ condition: Bool, _ message: String) {
     assert(condition, "Platform support assertion failed: \(message) (Platform: \(currentPlatform))")
+}
+
+/// Swift 6.2: Type-safe platform feature checking
+@inlinable
+public func hasPlatformFeature(_ feature: PlatformCapabilities.Feature) -> Bool {
+    switch feature {
+    case .windowing:
+        return PlatformCapabilities.current.windowing
+    case .graphics:
+        return PlatformCapabilities.current.graphics
+    case .controls:
+        return PlatformCapabilities.current.controls
+    case .input:
+        return PlatformCapabilities.current.input
+    case .dialogs:
+        return PlatformCapabilities.current.dialogs
+    case .timers:
+        return PlatformCapabilities.current.timers
+    case .systemInfo:
+        return PlatformCapabilities.current.systemInfo
+    }
+}
+
+/// Swift 6.2: Platform feature enumeration
+extension PlatformCapabilities {
+    public enum Feature: Sendable {
+        case windowing
+        case graphics
+        case controls
+        case input
+        case dialogs
+        case timers
+        case systemInfo
+    }
 }

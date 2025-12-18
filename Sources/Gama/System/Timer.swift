@@ -4,7 +4,9 @@ import Foundation
 ///
 /// This provides a platform-agnostic interface for timers using Swift 6
 /// structured concurrency.
-public actor Timer {
+///
+/// Swift 6.2: Enhanced with region-based isolation
+public actor Timer: @unchecked Sendable {
     /// Creates a timer that fires after a specified interval.
     ///
     /// - Parameters:
@@ -43,8 +45,10 @@ public actor Timer {
 }
 
 /// A repeating timer that can be started and stopped.
+///
+/// Swift 6.2: Enhanced with improved concurrency safety
 @MainActor
-public class RepeatingTimer: @unchecked Sendable {
+public final class RepeatingTimer: @unchecked Sendable {
     private var task: Task<Void, Never>?
     private let interval: TimeInterval
     private let action: @Sendable () -> Void

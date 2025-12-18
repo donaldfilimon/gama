@@ -16,7 +16,9 @@ import Foundation
 ///     }
 /// }
 /// ```
-public protocol ViewModifier: Sendable {
+///
+/// Swift 6.2: Enhanced with improved Sendable conformance
+public protocol ViewModifier: @retroactive Sendable {
     /// The type of view representing the body.
     associatedtype Body: View
     

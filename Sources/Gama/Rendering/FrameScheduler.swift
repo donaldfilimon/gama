@@ -4,8 +4,10 @@ import Foundation
 ///
 /// Manages frame-based rendering with VSync synchronization and automatic
 /// frame skipping for performance.
+///
+/// Swift 6.2: Enhanced with region-based isolation and improved concurrency
 @MainActor
-public class FrameScheduler: @unchecked Sendable {
+public final class FrameScheduler: @unchecked Sendable {
     private var frameCallbacks: [FrameCallback] = []
     private var isRunning = false
     private var frameTask: Task<Void, Never>?

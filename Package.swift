@@ -3,36 +3,69 @@ import PackageDescription
 
 let package = Package(
     name: "gama",
-    platforms: [
-        .macOS(.v12),
-        .iOS(.v15),
-        .tvOS(.v15),
-        .watchOS(.v8)
-    ],
     products: [
         .library(name: "Gama", targets: ["Gama"]),
         .executable(name: "gama-demo", targets: ["GamaDemo"])
     ],
     dependencies: [
-        // Future dependencies for platform-specific bindings
+        // Swift 6.2 macro support (when available)
     ],
     targets: [
         .target(
             name: "Gama",
             dependencies: [],
             path: "Sources/Gama",
-            exclude: ["Gama.swift"]
+            exclude: ["Gama.swift", "PLATFORM_SUPPORT.md"],
+            swiftSettings: [
+                .enableUpcomingFeature("BareSlashRegexLiterals"),
+                .enableUpcomingFeature("ConciseMagicFile"),
+                .enableUpcomingFeature("ForwardTrailingClosures"),
+                .enableUpcomingFeature("ImplicitOpenExistentials"),
+                .enableUpcomingFeature("StrictConcurrency"),
+                .enableUpcomingFeature("RegionBasedIsolation"),
+                .enableExperimentalFeature("VariadicGenerics"),
+                .enableExperimentalFeature("NonescapableTypes"),
+                .enableExperimentalFeature("NoncopyableGenerics"),
+                .enableExperimentalFeature("GlobalConcurrency"),
+                .enableExperimentalFeature("TypedThrows")
+            ]
         ),
         .executableTarget(
             name: "GamaDemo",
             dependencies: ["Gama"],
             path: "Sources/Gama",
-            sources: ["Gama.swift"]
+            sources: ["Gama.swift"],
+            swiftSettings: [
+                .enableUpcomingFeature("BareSlashRegexLiterals"),
+                .enableUpcomingFeature("ConciseMagicFile"),
+                .enableUpcomingFeature("ForwardTrailingClosures"),
+                .enableUpcomingFeature("ImplicitOpenExistentials"),
+                .enableUpcomingFeature("StrictConcurrency"),
+                .enableUpcomingFeature("RegionBasedIsolation"),
+                .enableExperimentalFeature("VariadicGenerics"),
+                .enableExperimentalFeature("NonescapableTypes"),
+                .enableExperimentalFeature("NoncopyableGenerics"),
+                .enableExperimentalFeature("GlobalConcurrency"),
+                .enableExperimentalFeature("TypedThrows")
+            ]
         ),
         .testTarget(
             name: "GamaTests",
             dependencies: ["Gama"],
-            path: "Tests/GamaTests"
+            path: "Tests/GamaTests",
+            swiftSettings: [
+                .enableUpcomingFeature("BareSlashRegexLiterals"),
+                .enableUpcomingFeature("ConciseMagicFile"),
+                .enableUpcomingFeature("ForwardTrailingClosures"),
+                .enableUpcomingFeature("ImplicitOpenExistentials"),
+                .enableUpcomingFeature("StrictConcurrency"),
+                .enableUpcomingFeature("RegionBasedIsolation"),
+                .enableExperimentalFeature("VariadicGenerics"),
+                .enableExperimentalFeature("NonescapableTypes"),
+                .enableExperimentalFeature("NoncopyableGenerics"),
+                .enableExperimentalFeature("GlobalConcurrency"),
+                .enableExperimentalFeature("TypedThrows")
+            ]
         )
     ]
 )

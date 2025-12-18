@@ -38,6 +38,13 @@ public struct ViewBuilder {
         content
     }
     
+    // Swift 6.2: Using variadic generics for better performance and type inference
+    #if swift(>=6.0)
+    /// Builds a view from variadic content using Swift 6.2 variadic generics
+    public static func buildBlock<each Content: View>(_ content: repeat each Content) -> TupleView<(repeat each Content)> {
+        TupleView((repeat each content))
+    }
+    #else
     /// Builds a view from two child views.
     public static func buildBlock<C0: View, C1: View>(
         _ c0: C0, _ c1: C1
@@ -100,6 +107,7 @@ public struct ViewBuilder {
     ) -> TupleView<(C0, C1, C2, C3, C4, C5, C6, C7, C8, C9)> {
         TupleView((c0, c1, c2, c3, c4, c5, c6, c7, c8, c9))
     }
+    #endif
     
     /// Provides support for "if" statements in multi-statement closures.
     public static func buildIf<Content: View>(_ content: Content?) -> Content? {
@@ -132,6 +140,7 @@ public struct ViewBuilder {
 }
 
 /// A view that represents a tuple of views.
+/// Swift 6.2: Enhanced with variadic generics support
 public struct TupleView<T>: View {
     public typealias Body = Never
     
@@ -140,6 +149,13 @@ public struct TupleView<T>: View {
     public init(_ value: T) {
         self.value = value
     }
+    
+    #if swift(>=6.0)
+    /// Swift 6.2: Variadic tuple initializer
+    public init<each Content: View>(_ content: repeat each Content) where T == (repeat each Content) {
+        self.value = (repeat each content)
+    }
+    #endif
 }
 
 /// A view type that conditionally shows one of two views.

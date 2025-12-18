@@ -5,7 +5,9 @@ import Foundation
 ///
 /// This is a simplified publisher protocol similar to Combine's Publisher,
 /// designed for use in the view system without external dependencies.
-public protocol Publisher {
+///
+/// Swift 6.2: Enhanced with improved Sendable conformance
+public protocol Publisher: @retroactive Sendable {
     /// The kind of values published by this publisher.
     associatedtype Output
     
