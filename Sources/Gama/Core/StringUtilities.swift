@@ -1,8 +1,11 @@
 import Foundation
+#if canImport(WinSDK)
 import WinSDK
+#endif
 
 /// Enhanced string conversion utilities for Windows API
 extension String {
+    #if canImport(WinSDK)
     /// Convert String to LPCWSTR (Windows UTF-16 string pointer)
     /// Note: The pointer is only valid during the closure execution
     /// For longer-lived strings, use withWindowsUTF16Buffer
@@ -71,18 +74,17 @@ extension String {
             return baseAddress
         }
     }
-}
-
-/// Helper to allocate Windows UTF-16 string buffer
-internal func allocateWindowsString(_ string: String) -> UnsafeMutablePointer<WCHAR> {
-    let utf16 = string.toWindowsUTF16()
-    let buffer = UnsafeMutablePointer<WCHAR>.allocate(capacity: utf16.count + 1)
-    buffer.initialize(from: utf16, count: utf16.count)
-    buffer[utf16.count] = 0
-    return buffer
-}
-
-/// Helper to deallocate Windows UTF-16 string buffer
-internal func deallocateWindowsString(_ ptr: UnsafeMutablePointer<WCHAR>) {
-    ptr.deallocate()
+    #else
+    /// Cross-platform UTF-16 conversion (stub for non-Windows platforms)
+    public func toWindowsUTF16() -> [UInt16] {
+        return Array(self.utf16)
+    }
+    
+    /// Cross-platform UTF-16 conversion with null terminator (stub for non-Windows platforms)
+    public func toWindowsUTF16NullTerminated() -> [UInt16] {
+        var utf16 = Array(self.utf16)
+        utf16.append(0)
+        return utf16
+    }
+    #endif
 }

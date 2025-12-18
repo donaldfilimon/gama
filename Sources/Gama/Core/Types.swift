@@ -61,6 +61,7 @@ public struct Size {
         self.height = height
     }
     
+    #if canImport(WinSDK)
     public init(_ size: SIZE) {
         self.width = size.cx
         self.height = size.cy
@@ -69,6 +70,7 @@ public struct Size {
     public var win32Size: SIZE {
         return SIZE(cx: width, cy: height)
     }
+    #endif
 }
 
 /// Rectangle structure
@@ -92,6 +94,7 @@ public struct Rectangle {
         self.bottom = y + height
     }
     
+    #if canImport(WinSDK)
     public init(_ rect: RECT) {
         self.left = rect.left
         self.top = rect.top
@@ -107,6 +110,7 @@ public struct Rectangle {
         rect.bottom = bottom
         return rect
     }
+    #endif
     
     public var width: Int32 {
         return right - left
@@ -137,6 +141,7 @@ public struct Color {
         self.blue = blue
     }
     
+    #if canImport(WinSDK)
     public init(_ rgb: DWORD) {
         self.red = UInt8(rgb & 0x000000FF)
         self.green = UInt8((rgb & 0x0000FF00) >> 8)
@@ -146,6 +151,17 @@ public struct Color {
     public var rgb: DWORD {
         return DWORD(red) | (DWORD(green) << 8) | (DWORD(blue) << 16)
     }
+    
+    /// Create COLORREF (Windows color reference)
+    public var colorRef: COLORREF {
+        return COLORREF(rgb)
+    }
+    #else
+    /// Get RGB value as UInt32
+    public var rgbValue: UInt32 {
+        return UInt32(red) | (UInt32(green) << 8) | (UInt32(blue) << 16)
+    }
+    #endif
     
     // Common colors
     public static let black = Color(red: 0, green: 0, blue: 0)

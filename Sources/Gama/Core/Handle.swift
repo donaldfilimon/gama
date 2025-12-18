@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(WinSDK)
 import WinSDK
+#endif
 
 /// Generic handle wrapper with automatic cleanup (RAII pattern)
 public class Handle<T> {
@@ -37,6 +39,7 @@ public class Handle<T> {
     }
 }
 
+#if canImport(WinSDK)
 /// Specialized handle wrapper for HWND
 public class WindowHandle: Handle<HWND> {
     public init(_ hwnd: HWND?) {
@@ -71,3 +74,23 @@ public class ModuleHandle: Handle<HMODULE> {
         }
     }
 }
+#else
+/// Cross-platform handle wrappers (stubs for non-Windows platforms)
+public class WindowHandle: Handle<UnsafeMutableRawPointer?> {
+    public init(_ hwnd: UnsafeMutableRawPointer?) {
+        super.init(hwnd) { _ in }
+    }
+}
+
+public class DeviceContextHandle: Handle<UnsafeMutableRawPointer?> {
+    public init(_ hdc: UnsafeMutableRawPointer?, autoRelease: Bool = false) {
+        super.init(hdc) { _ in }
+    }
+}
+
+public class ModuleHandle: Handle<UnsafeMutableRawPointer?> {
+    public init(_ hModule: UnsafeMutableRawPointer?, freeLibrary: Bool = false) {
+        super.init(hModule) { _ in }
+    }
+}
+#endif
