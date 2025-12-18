@@ -1,6 +1,9 @@
 import Foundation
+#if canImport(WinSDK)
 import WinSDK
+#endif
 
+#if canImport(WinSDK)
 /// Swift-friendly type aliases for Windows types
 public typealias WindowsHandle = HANDLE
 public typealias WindowHandle = HWND
@@ -12,6 +15,19 @@ public typealias BrushHandle = HBRUSH
 public typealias PenHandle = HPEN
 public typealias FontHandle = HFONT
 public typealias BitmapHandle = HBITMAP
+#else
+/// Cross-platform handle types (opaque on non-Windows platforms)
+public typealias WindowsHandle = UnsafeMutableRawPointer?
+public typealias WindowHandle = UnsafeMutableRawPointer?
+public typealias DeviceContext = UnsafeMutableRawPointer?
+public typealias ModuleHandle = UnsafeMutableRawPointer?
+public typealias IconHandle = UnsafeMutableRawPointer?
+public typealias CursorHandle = UnsafeMutableRawPointer?
+public typealias BrushHandle = UnsafeMutableRawPointer?
+public typealias PenHandle = UnsafeMutableRawPointer?
+public typealias FontHandle = UnsafeMutableRawPointer?
+public typealias BitmapHandle = UnsafeMutableRawPointer?
+#endif
 
 /// Point structure
 public struct Point {
@@ -23,6 +39,7 @@ public struct Point {
         self.y = y
     }
     
+    #if canImport(WinSDK)
     public init(_ point: POINT) {
         self.x = point.x
         self.y = point.y
@@ -31,6 +48,7 @@ public struct Point {
     public var win32Point: POINT {
         return POINT(x: x, y: y)
     }
+    #endif
 }
 
 /// Size structure
