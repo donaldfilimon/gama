@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Shapes without an explicit fill or stroke get a default fill based on the
 /// foreground color.
-public protocol Shape: View, Sendable {
+public protocol Shape: Sendable {
     /// Returns the path of this shape as a path in a rectangular coordinate
     /// space.
     ///

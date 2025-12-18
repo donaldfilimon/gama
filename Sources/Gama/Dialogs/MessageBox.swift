@@ -1,7 +1,10 @@
 import Foundation
+#if canImport(WinSDK)
 import WinSDK
+#endif
 
 /// Message box wrapper
+#if canImport(WinSDK)
 public struct MessageBox {
     /// Show a message box
     public static func show(
@@ -61,3 +64,4 @@ public struct MessageBox {
         return result == .yes
     }
 }
+#endif

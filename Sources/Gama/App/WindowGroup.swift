@@ -16,9 +16,12 @@ import Foundation
 ///     }
 /// }
 /// ```
-public struct WindowGroup<Content: View>: Scene {
+/// Window group container (stub implementation)
+/// STUB: In a real implementation, this would conform to Scene and provide
+/// window management functionality. For now, it's a basic container.
+public struct WindowGroup<Content: View> {
     @ViewBuilder public var content: () -> Content
-    
+
     /// Creates a window group with the specified content.
     ///
     /// - Parameter content: A view builder that creates the content for each
