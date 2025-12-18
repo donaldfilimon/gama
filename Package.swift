@@ -7,38 +7,27 @@ let package = Package(
         .macOS(.v12),
         .iOS(.v15),
         .tvOS(.v15),
-        .watchOS(.v8),
-        .linux,
-        .android  // When Swift supports it
+        .watchOS(.v8)
     ],
     products: [
-        .library(name: "Gama", targets: ["Gama"])
+        .library(name: "Gama", targets: ["Gama"]),
+        .executable(name: "gama-demo", targets: ["GamaDemo"])
     ],
     dependencies: [
-        // Linux: GTK4 Swift bindings
-        .package(url: "https://github.com/stackotter/swift-cross-ui", from: "0.0.0"), // Placeholder - actual GTK bindings
+        // Future dependencies for platform-specific bindings
     ],
     targets: [
-        .executableTarget(
+        .target(
             name: "Gama",
-            dependencies: []
-        ),
-        .target(
-            name: "GamaLinux",
-            dependencies: [
-                // .product(name: "Gtk4", package: "swiftgtk4") // When available
-            ],
-            swiftSettings: [.define("PLATFORM_LINUX")]
-        ),
-        .target(
-            name: "GamaApple",
             dependencies: [],
-            swiftSettings: [.define("PLATFORM_APPLE")]
+            path: "Sources/Gama",
+            exclude: ["Gama.swift"]
         ),
-        .target(
-            name: "GamaAndroid",
-            dependencies: [],
-            swiftSettings: [.define("PLATFORM_ANDROID")]
+        .executableTarget(
+            name: "GamaDemo",
+            dependencies: ["Gama"],
+            path: "Sources/Gama",
+            sources: ["Gama.swift"]
         )
     ]
 )
