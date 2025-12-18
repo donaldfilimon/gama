@@ -1,54 +1,68 @@
 import Foundation
-#if canImport(WinSDK)
-import WinSDK
 
-/// GameApp: Main entry point for the Windows-based game application
-/// Now using the comprehensive WinSDK wrapper
+/// GameApp: Cross-platform main entry point
+/// Uses the platform abstraction layer for windowing
 @main
 struct GameApp {
     private static var mainWindow: Window?
     private static var appDelegate: AppDelegate?
-    
+
     /// Main entry point
-    /// - Initializes Windows components using the wrapper
+    /// - Initializes platform components using the wrapper
     /// - Creates and shows the main window
     /// - Runs the message loop
     static func main() {
         do {
+            try ensurePlatformSupport(for: "windowing", supported: hasWindowingSupport)
+
             // Create delegate
             let delegate = AppDelegate()
             appDelegate = delegate
-            
-            // Create window class
-            let windowClass = WindowClass(name: "GameWindow")
-            
-            // Register window class with default settings
+
+            #if os(Windows)
+            // Windows-specific initialization
+            let windowClass = WindowsWindowClass(name: "GameWindow")
             try windowClass.register { hwnd, uMsg, wParam, lParam in
-                Window.windowProc(hwnd: hwnd, uMsg: uMsg, wParam: wParam, lParam: lParam)
+                WindowsWindow.windowProc(hwnd: hwnd, uMsg: uMsg, wParam: wParam, lParam: lParam)
             }
-            
-            // Create window using the wrapper
+            #elseif os(macOS) || os(iOS) || os(tvOS)
+            // Apple platforms initialization (stub)
+            #elseif os(Linux)
+            // Linux initialization (stub)
+            #elseif os(Android)
+            // Android initialization (stub)
+            #endif
+
+            // Create window using the platform abstraction
             let window = try Window(
-                className: "GameWindow",
                 title: "Game Window",
-                style: .overlappedWindow,
                 size: Size(width: 800, height: 600)
             )
-            
+
             // Set delegate
-            window.delegate = delegate
-            
+            window.setDelegate(delegate)
+
             // Store reference
             mainWindow = window
-            
+
             // Show window
             window.show()
             window.update()
-            
+
             // Run message loop
-            let messageLoop = MessageLoop()
+            #if os(Windows)
+            let messageLoop = WindowsMessageLoop()
             _ = messageLoop.run()
-            
+            #elseif os(macOS) || os(iOS) || os(tvOS)
+            // Apple message loop (stub)
+            #elseif os(Linux)
+            // Linux message loop (stub)
+            #elseif os(Android)
+            // Android message loop (stub)
+            #else
+            print("Message loop not implemented for platform: \(currentPlatform)")
+            #endif
+
         } catch {
             print("Error: \(error)")
         }
@@ -57,26 +71,22 @@ struct GameApp {
 
 /// App delegate implementing WindowDelegate
 private class AppDelegate: WindowDelegate {
-    func windowWillClose(_ window: Window) -> Bool {
+    func windowWillClose(_ window: WindowProtocol) -> Bool {
         // Show confirmation dialog before closing
-        let result = MessageBox.confirm(title: "Game", message: "Really quit?", owner: window)
+        #if canImport(WinSDK)
+        let result = MessageBox.confirm(title: "Game", message: "Really quit?", owner: window as? WindowsWindow)
         return result
+        #else
+        // Cross-platform dialog (stub)
+        return true
+        #endif
     }
-    
-    func windowDidClose(_ window: Window) {
+
+    func windowDidClose(_ window: WindowProtocol) {
         // Window closed
     }
-    
-    func windowWillDestroy(_ window: Window) {
+
+    func windowWillDestroy(_ window: WindowProtocol) {
         // Window will be destroyed
     }
 }
-#else
-/// GameApp: Cross-platform stub (Windows-only implementation available)
-@main
-struct GameApp {
-    static func main() {
-        print("Gama framework requires Windows platform. WinSDK not available on this platform.")
-    }
-}
-#endif
