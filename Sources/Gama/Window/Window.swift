@@ -2,7 +2,7 @@ import Foundation
 
 /// Platform-agnostic Window class that uses platform-specific implementations
 public class Window: WindowProtocol {
-    private let platformWindow: WindowProtocol
+    internal let platformWindow: WindowProtocol
 
     public init(platformWindow: WindowProtocol) {
         self.platformWindow = platformWindow
@@ -115,4 +115,11 @@ public class Window: WindowProtocol {
     public func getDelegate() -> WindowDelegate? {
         platformWindow.getDelegate()
     }
+    
+    #if canImport(WinSDK)
+    /// Access Windows-specific handle (Windows only)
+    public var hwnd: HWND? {
+        return (platformWindow as? WindowsWindow)?.hwnd
+    }
+    #endif
 }

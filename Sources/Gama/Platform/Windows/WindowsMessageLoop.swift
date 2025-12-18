@@ -5,7 +5,7 @@ import WinSDK
 
 /// Windows-specific window message loop manager
 #if canImport(WinSDK)
-public class WindowsMessageLoop {
+public class WindowsMessageLoop: MessageLoopProtocol {
     private var isRunning = false
 
     public init() {}

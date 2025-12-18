@@ -1,74 +1,68 @@
 import Foundation
+#if canImport(WinSDK)
 import WinSDK
+#endif
 
-/// Window message loop manager
-public class MessageLoop {
-    private var isRunning = false
+/// Protocol for platform-specific message loop implementations
+public protocol MessageLoopProtocol {
+    func run() -> Int32
+    func peekAndProcess() -> Bool
+    func processPendingMessages()
+    func quit(exitCode: Int32)
+    var running: Bool { get }
+}
+
+/// Cross-platform window message loop manager
+/// Uses platform-specific implementations via factory pattern
+public class MessageLoop: MessageLoopProtocol {
+    private let platformLoop: MessageLoopProtocol
     
-    public init() {}
+    public init() {
+        #if os(Windows)
+        self.platformLoop = WindowsMessageLoop()
+        #elseif os(macOS) || os(iOS) || os(tvOS)
+        // Apple message loop (stub - to be implemented)
+        fatalError("MessageLoop not yet implemented for Apple platforms")
+        #elseif os(Linux)
+        // Linux message loop (stub - to be implemented)
+        fatalError("MessageLoop not yet implemented for Linux")
+        #elseif os(Android)
+        // Android message loop (stub - to be implemented)
+        fatalError("MessageLoop not yet implemented for Android")
+        #else
+        fatalError("MessageLoop not supported on platform: \(currentPlatform)")
+        #endif
+    }
     
     /// Run the message loop (blocks until quit)
     public func run() -> Int32 {
-        isRunning = true
-        
-        var msg = MSG()
-        var result: Int32 = 0
-        
-        while GetMessageW(&msg, nil, 0, 0) != 0 {
-            TranslateMessage(&msg)
-            DispatchMessageW(&msg)
-        }
-        
-        result = msg.wParam.lowPart
-        isRunning = false
-        return result
+        return platformLoop.run()
     }
     
     /// Peek and process messages without blocking
     /// Returns true if a message was processed
     public func peekAndProcess() -> Bool {
-        var msg = MSG()
-        guard PeekMessageW(&msg, nil, 0, 0, UINT(PM_REMOVE)) != 0 else {
-            return false
-        }
-        
-        TranslateMessage(&msg)
-        DispatchMessageW(&msg)
-        
-        if msg.message == UINT(WM_QUIT) {
-            isRunning = false
-        }
-        
-        return true
+        return platformLoop.peekAndProcess()
     }
     
     /// Process pending messages (non-blocking)
     public func processPendingMessages() {
-        var msg = MSG()
-        while PeekMessageW(&msg, nil, 0, 0, UINT(PM_REMOVE)) != 0 {
-            TranslateMessage(&msg)
-            DispatchMessageW(&msg)
-            
-            if msg.message == UINT(WM_QUIT) {
-                isRunning = false
-                break
-            }
-        }
+        platformLoop.processPendingMessages()
     }
     
     /// Post a quit message to the message queue
     public func quit(exitCode: Int32 = 0) {
-        PostQuitMessage(exitCode)
-        isRunning = false
+        platformLoop.quit(exitCode: exitCode)
     }
     
     /// Check if the message loop is currently running
     public var running: Bool {
-        return isRunning
+        return platformLoop.running
     }
 }
 
-/// Message peek options
+#if canImport(WinSDK)
+/// Message peek options (Windows-specific)
 public enum PeekMessageOptions: UINT {
     case remove = 0x0001
     case noRemove = 0x0000
@@ -82,3 +76,4 @@ public enum PeekMessageOptions: UINT {
         }
     }
 }
+#endif

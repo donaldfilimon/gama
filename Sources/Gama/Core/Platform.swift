@@ -1,91 +1,107 @@
 import Foundation
 
 /// Platform detection utilities
+/// Centralized platform detection to reduce code duplication
+private struct PlatformInfo {
+    let name: String
+    let isWindows: Bool
+    let isApple: Bool
+    let isLinux: Bool
+    let isAndroid: Bool
+}
+
 #if os(Windows)
-public let currentPlatform = "Windows"
-public let isWindows = true
-public let isApple = false
-public let isLinux = false
-public let isAndroid = false
+private let platformInfo = PlatformInfo(
+    name: "Windows",
+    isWindows: true,
+    isApple: false,
+    isLinux: false,
+    isAndroid: false
+)
 #elseif os(macOS)
-public let currentPlatform = "macOS"
-public let isWindows = false
-public let isApple = true
-public let isLinux = false
-public let isAndroid = false
+private let platformInfo = PlatformInfo(
+    name: "macOS",
+    isWindows: false,
+    isApple: true,
+    isLinux: false,
+    isAndroid: false
+)
 #elseif os(iOS)
-public let currentPlatform = "iOS"
-public let isWindows = false
-public let isApple = true
-public let isLinux = false
-public let isAndroid = false
+private let platformInfo = PlatformInfo(
+    name: "iOS",
+    isWindows: false,
+    isApple: true,
+    isLinux: false,
+    isAndroid: false
+)
 #elseif os(tvOS)
-public let currentPlatform = "tvOS"
-public let isWindows = false
-public let isApple = true
-public let isLinux = false
-public let isAndroid = false
+private let platformInfo = PlatformInfo(
+    name: "tvOS",
+    isWindows: false,
+    isApple: true,
+    isLinux: false,
+    isAndroid: false
+)
 #elseif os(watchOS)
-public let currentPlatform = "watchOS"
-public let isWindows = false
-public let isApple = true
-public let isLinux = false
-public let isAndroid = false
+private let platformInfo = PlatformInfo(
+    name: "watchOS",
+    isWindows: false,
+    isApple: true,
+    isLinux: false,
+    isAndroid: false
+)
 #elseif os(Linux)
-public let currentPlatform = "Linux"
-public let isWindows = false
-public let isApple = false
-public let isLinux = true
-public let isAndroid = false
+private let platformInfo = PlatformInfo(
+    name: "Linux",
+    isWindows: false,
+    isApple: false,
+    isLinux: true,
+    isAndroid: false
+)
 #elseif os(Android)
-public let currentPlatform = "Android"
-public let isWindows = false
-public let isApple = false
-public let isLinux = false
-public let isAndroid = true
+private let platformInfo = PlatformInfo(
+    name: "Android",
+    isWindows: false,
+    isApple: false,
+    isLinux: false,
+    isAndroid: true
+)
 #else
-public let currentPlatform = "Unknown"
-public let isWindows = false
-public let isApple = false
-public let isLinux = false
-public let isAndroid = false
+private let platformInfo = PlatformInfo(
+    name: "Unknown",
+    isWindows: false,
+    isApple: false,
+    isLinux: false,
+    isAndroid: false
+)
 #endif
 
-/// Check if the current platform supports windows
-public let hasWindowingSupport: Bool = {
+public let currentPlatform = platformInfo.name
+public let isWindows = platformInfo.isWindows
+public let isApple = platformInfo.isApple
+public let isLinux = platformInfo.isLinux
+public let isAndroid = platformInfo.isAndroid
+
+/// Supported platforms for common features
+private let supportedPlatforms: Bool = {
     #if os(Windows) || os(macOS) || os(iOS) || os(tvOS) || os(Linux) || os(Android)
     return true
     #else
     return false
     #endif
 }()
+
+/// Check if the current platform supports windows
+public let hasWindowingSupport: Bool = supportedPlatforms
 
 /// Check if the current platform supports graphics
-public let hasGraphicsSupport: Bool = {
-    #if os(Windows) || os(macOS) || os(iOS) || os(tvOS) || os(Linux) || os(Android)
-    return true
-    #else
-    return false
-    #endif
-}()
+public let hasGraphicsSupport: Bool = supportedPlatforms
 
 /// Check if the current platform supports controls/widgets
-public let hasControlSupport: Bool = {
-    #if os(Windows) || os(macOS) || os(iOS) || os(tvOS) || os(Linux) || os(Android)
-    return true
-    #else
-    return false
-    #endif
-}()
+public let hasControlSupport: Bool = supportedPlatforms
 
 /// Check if the current platform supports input handling
-public let hasInputSupport: Bool = {
-    #if os(Windows) || os(macOS) || os(iOS) || os(tvOS) || os(Linux) || os(Android)
-    return true
-    #else
-    return false
-    #endif
-}()
+public let hasInputSupport: Bool = supportedPlatforms
 
 /// Platform-specific capabilities
 public struct PlatformCapabilities {

@@ -1,5 +1,25 @@
 import Foundation
 
+/// Platform initialization helper
+private func initializePlatform() throws {
+    #if os(Windows)
+    // Windows-specific initialization
+    let windowClass = WindowsWindowClass(name: "GameWindow")
+    try windowClass.register { hwnd, uMsg, wParam, lParam in
+        WindowsWindow.windowProc(hwnd: hwnd, uMsg: uMsg, wParam: wParam, lParam: lParam)
+    }
+    #elseif os(macOS) || os(iOS) || os(tvOS)
+    // Apple platforms initialization (stub)
+    // TODO: Implement Apple platform initialization
+    #elseif os(Linux)
+    // Linux initialization (stub)
+    // TODO: Implement Linux platform initialization
+    #elseif os(Android)
+    // Android initialization (stub)
+    // TODO: Implement Android platform initialization
+    #endif
+}
+
 /// GameApp: Cross-platform main entry point
 /// Uses the platform abstraction layer for windowing
 @main
@@ -15,23 +35,12 @@ struct GameApp {
         do {
             try ensurePlatformSupport(for: "windowing", supported: hasWindowingSupport)
 
+            // Initialize platform-specific components
+            try initializePlatform()
+
             // Create delegate
             let delegate = AppDelegate()
             appDelegate = delegate
-
-            #if os(Windows)
-            // Windows-specific initialization
-            let windowClass = WindowsWindowClass(name: "GameWindow")
-            try windowClass.register { hwnd, uMsg, wParam, lParam in
-                WindowsWindow.windowProc(hwnd: hwnd, uMsg: uMsg, wParam: wParam, lParam: lParam)
-            }
-            #elseif os(macOS) || os(iOS) || os(tvOS)
-            // Apple platforms initialization (stub)
-            #elseif os(Linux)
-            // Linux initialization (stub)
-            #elseif os(Android)
-            // Android initialization (stub)
-            #endif
 
             // Create window using the platform abstraction
             let window = try Window(
@@ -49,19 +58,9 @@ struct GameApp {
             window.show()
             window.update()
 
-            // Run message loop
-            #if os(Windows)
-            let messageLoop = WindowsMessageLoop()
+            // Run message loop using platform abstraction
+            let messageLoop = MessageLoop()
             _ = messageLoop.run()
-            #elseif os(macOS) || os(iOS) || os(tvOS)
-            // Apple message loop (stub)
-            #elseif os(Linux)
-            // Linux message loop (stub)
-            #elseif os(Android)
-            // Android message loop (stub)
-            #else
-            print("Message loop not implemented for platform: \(currentPlatform)")
-            #endif
 
         } catch {
             print("Error: \(error)")
@@ -74,12 +73,12 @@ private class AppDelegate: WindowDelegate {
     func windowWillClose(_ window: WindowProtocol) -> Bool {
         // Show confirmation dialog before closing
         #if canImport(WinSDK)
-        let result = MessageBox.confirm(title: "Game", message: "Really quit?", owner: window as? WindowsWindow)
-        return result
-        #else
-        // Cross-platform dialog (stub)
-        return true
+        if let windowsWindow = window as? WindowsWindow {
+            return MessageBox.confirm(title: "Game", message: "Really quit?", owner: windowsWindow)
+        }
         #endif
+        // Cross-platform dialog (stub - always allow close on other platforms)
+        return true
     }
 
     func windowDidClose(_ window: WindowProtocol) {
