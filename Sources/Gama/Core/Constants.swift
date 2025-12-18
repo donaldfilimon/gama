@@ -262,14 +262,3 @@ public enum MessageBoxResult: Int32 {
     }
 }
 #endif
-#else
-// Stub implementations for non-Windows platforms
-public typealias WindowStyle = UInt32
-public typealias ExtendedWindowStyle = UInt32
-public typealias ClassStyle = UInt32
-public typealias CursorID = Int32
-public typealias BackgroundBrush = Int32
-public typealias ShowWindowCommand = Int32
-public typealias MessageBoxType = UInt32
-public typealias MessageBoxResult = Int32
-#endif
