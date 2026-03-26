@@ -1,186 +1,92 @@
 # Gama
 
-A comprehensive **multi-platform GUI framework** for Swift, supporting Windows, macOS, iOS, Linux, and Android.
+A modular **GPU graphics API** for Swift 6+, inspired by WebGPU. Provides a protocol-based abstraction layer with pluggable backends for cross-platform GPU rendering.
 
-## 🚀 Features
-
-- **Cross-platform**: Unified API across Windows, macOS, iOS, Linux, and Android
-- **Native performance**: Direct platform API integration (WinSDK, AppKit, UIKit, GTK, Android SDK)
-- **Swift-friendly**: Modern Swift interfaces with type safety and memory management
-- **RAII design**: Automatic resource cleanup using Swift's `defer` and ARC
-- **Comprehensive**: Windows, graphics, controls, input, dialogs, and system utilities
-- **Extensible**: Platform abstraction layer allows easy addition of new platforms
-
-## 📋 Platform Support Matrix
-
-| Feature | Windows | macOS | iOS/iPadOS | Linux | Android |
-|---------|---------|-------|------------|-------|---------|
-| **Windows** | ✅ Full | ✅ AppKit | ✅ UIKit | 🚧 GTK | 🚧 JNI |
-| **Graphics** | ✅ GDI+ | ✅ Core Graphics | ✅ Core Graphics | 🚧 Cairo | 🚧 Canvas |
-| **Controls** | ✅ Win32 | ✅ AppKit | ✅ UIKit | 🚧 GTK | 🚧 Views |
-| **Input** | ✅ Win32 | ✅ NSEvent | ✅ UIEvent | 🚧 GDK | 🚧 MotionEvent |
-| **Dialogs** | ✅ Win32 | ✅ NSAlert | ✅ UIAlert | 🚧 GTK | 🚧 AlertDialog |
-| **System** | ✅ Win32 | ✅ NSProcessInfo | ✅ UIDevice | 🚧 POSIX | 🚧 System |
-| **Timers** | ✅ Win32 | 🚧 Foundation | 🚧 Foundation | 🚧 GLib | 🚧 Handler |
-| **Build** | ✅ MSVC | ✅ Xcode | ✅ Xcode | ✅ GCC/Clang | 🚧 NDK |
-
-✅ = Fully implemented | 🚧 = Stub implementation ready for enhancement
-
-## 🏗️ Architecture
-
-Gama uses a **platform abstraction layer**:
+## Architecture
 
 ```
-┌─────────────────┐
-│   Public API    │  ← Window, WindowProtocol, WindowFactory
-│   (Unified)     │
-├─────────────────┤
-│ Platform Layer  │  ← WindowsWindow, AppleWindow, LinuxWindow, AndroidWindow
-│ (Platform-specific)|
-├─────────────────┤
-│  Core Types     │  ← Point, Size, Rectangle, Color (cross-platform)
-│  (Shared)       │
-└─────────────────┘
+GamaCore          Protocol layer (GPUDevice, GPUBuffer, GPUTexture, GPURenderPipeline, ...)
+  |
+  +-- GamaMetal   Metal backend (macOS/iOS) — fully implemented
+  +-- GamaVulkan  Vulkan backend — stubs for future implementation
+  +-- GamaDX12    DirectX 12 backend — stubs for future implementation
+  |
+GamaMath          simd-based 3D math (Vec2/3/4, Mat4, Quaternion, Transform, Camera, Ray, AABB)
+GamaScene         Scene graph (Node, Mesh, Material, SceneCamera, Primitives)
+GamaUI            SwiftUI-inspired declarative UI (View, VStack/HStack/ZStack, layout engine)
+GamaMacros        Swift macros (@GPUBufferLayout, @ShaderBinding, @RenderPass)
+GamaDemo          CLI demo with GPU info, triangle, headless render, and interactive window
 ```
 
-## 📦 Installation
+## Requirements
 
-### Swift Package Manager
+- Swift 6.2+ (swift-tools-version: 6.2)
+- macOS 15+ or iOS 18+ (for Metal backend)
+- Xcode 16+
 
-Add to your `Package.swift`:
-
-```swift
-dependencies: [
-    .package(url: "https://github.com/yourorg/gama", from: "1.0.0")
-]
-```
-
-## 🚀 Quick Start
-
-### Basic Window Creation
-
-```swift
-import Gama
-
-// Works on all platforms!
-let window = try Window(
-    title: "My App",
-    size: Size(width: 800, height: 600)
-)
-
-window.show()
-```
-
-### Platform-Specific Code
-
-```swift
-import Gama
-
-// Platform detection
-if isWindows {
-    // Windows-specific code
-} else if isApple {
-    // macOS/iOS code
-} else if isLinux {
-    // Linux code
-}
-
-// Safe platform checks
-try ensurePlatformSupport(for: "graphics", supported: hasGraphicsSupport)
-```
-
-### Event Handling
-
-```swift
-class MyDelegate: WindowDelegate {
-    func windowWillClose(_ window: WindowProtocol) -> Bool {
-        // Return false to prevent closing
-        return false
-    }
-
-    func windowDidResize(_ window: WindowProtocol, size: Size) {
-        print("Window resized to: \(size.width) x \(size.height)")
-    }
-}
-
-let window = try Window(title: "Events Demo")
-window.setDelegate(MyDelegate())
-```
-
-## 🎨 Graphics
-
-```swift
-// Cross-platform graphics (when implemented)
-let graphics = try AppleGraphics(width: 800, height: 600)
-graphics.setFillColor(.blue)
-graphics.fillRectangle(Rectangle(left: 0, top: 0, right: 400, height: 300))
-```
-
-## 🎛️ Controls
-
-```swift
-// Platform-specific controls
-#if os(macOS)
-let button = AppleButton(title: "Click Me")
-button.setAction(self, action: #selector(buttonClicked))
-#endif
-```
-
-## 🔧 Development
-
-### Building
+## Build & Test
 
 ```bash
-# Windows
-swift build
-
-# macOS/iOS
-swift build -Xswiftc "-target" -Xswiftc "x86_64-apple-macos12"
-
-# Linux
-swift build
+swift build                          # Debug build
+swift build -c release               # Release build
+swift test                           # Run all tests
+swift test --filter GamaCoreTests    # Run a specific test target
 ```
 
-### Testing
+## Demo Commands
 
 ```bash
-swift test
+swift run GamaDemo info              # Print GPU adapter info
+swift run GamaDemo triangle          # Create triangle vertex buffer
+swift run GamaDemo render            # Headless render-to-texture
+swift run GamaDemo ui                # Interactive window with animated triangle
 ```
 
-### Examples
+The `ui` command opens a Metal-backed window with an animated rotating triangle. Controls: arrow keys to rotate, mouse drag to orbit, ESC to quit.
 
-See `Examples/` directory for platform-specific demos:
+## Modules
 
-- `MultiPlatformDemo` - Basic window and event demonstration
+| Module | Description | Dependencies |
+|--------|-------------|--------------|
+| **GamaCore** | GPU abstraction protocols and descriptor types | None |
+| **GamaMetal** | Metal backend implementing all GamaCore protocols | GamaCore |
+| **GamaVulkan** | Vulkan backend (stub) | GamaCore |
+| **GamaDX12** | DirectX 12 backend (stub) | GamaCore |
+| **GamaMath** | simd-based 3D math types | None |
+| **GamaScene** | Scene graph with mesh/material/camera | GamaCore |
+| **GamaUI** | Declarative UI framework with layout engine | None |
+| **GamaMacros** | Swift compiler macros for GPU resources | swift-syntax |
 
-## 📚 Documentation
+## GPU Pipeline Example
 
-- [Platform Support Guide](Sources/Gama/PLATFORM_SUPPORT.md)
-- [API Reference](docs/api/)
-- [Migration Guide](docs/migration.md)
+```swift
+import GamaCore
+import GamaMetal
 
-## 🤝 Contributing
+let adapter = try MetalBackend.shared.requestDefaultAdapter()
+let device = try adapter.requestDevice()
+let queue = try device.createQueue()
 
-1. **Platform Implementation**: Add support for new platforms by implementing the platform protocols
-2. **Feature Enhancement**: Extend existing platform implementations
-3. **Testing**: Add cross-platform tests
-4. **Documentation**: Update platform support matrix and guides
+let shader = try device.createShaderModule(source: mslSource)
+let pipeline = try device.createRenderPipeline(descriptor: pipelineDesc)
 
-### Adding a New Platform
+let cmdBuffer = try queue.createCommandBuffer()
+let encoder = try cmdBuffer.makeRenderCommandEncoder(descriptor: renderPassDesc)
+encoder.setRenderPipeline(pipeline)
+encoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
+encoder.draw(vertexCount: 3)
+encoder.endEncoding()
+cmdBuffer.commit()
+```
 
-1. Create `Platform/NewPlatform/` directory
-2. Implement `WindowProtocol` with `NewPlatformWindow`
-3. Add platform detection in `Core/Platform.swift`
-4. Update `WindowFactory` to instantiate your implementation
-5. Add to build system and documentation
+## Adding a Backend
 
-## 📄 License
+1. Create a new module (e.g., `Sources/GamaVulkan/`)
+2. Implement all `GamaCore` protocols (`GPUDevice`, `GPUBuffer`, `GPUTexture`, etc.)
+3. Add a backend factory (like `MetalBackend.shared`)
+4. Add enum conversions (like `MetalConversions.swift`)
+5. Gate files with `#if canImport(...)` guards
+
+## License
 
 See [LICENSE.md](LICENSE.md) for details.
-
-## 🙏 Acknowledgments
-
-- Windows implementation based on WinSDK
-- Apple implementation uses AppKit/UIKit and Core Graphics
-- Linux implementation designed for GTK4 and Cairo
-- Android implementation designed for JNI bridge
