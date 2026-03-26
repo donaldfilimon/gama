@@ -52,8 +52,7 @@ struct Triangle: ParsableCommand {
         buffer.didModifyRange(0..<vertexDataSize)
         print("Vertex data uploaded: 3 vertices, 2 floats each")
 
-        // Suppress unused variable warnings
-        _ = queue
+        _ = queue // Suppress unused variable warning
 
         print()
         print("Triangle setup complete!")

@@ -193,50 +193,71 @@ extension Mesh {
             indices.append(contentsOf: [br, tr, tl])
         }
 
-        // Top cap
-        let topCenter = UInt32(positions.count)
-        positions.append(SIMD3<Float>(0, halfH, 0))
-        normals.append(SIMD3<Float>(0, 1, 0))
-        uvs.append(SIMD2<Float>(0.5, 0.5))
+        // Top cap (normal pointing up, CCW winding)
+        appendCap(
+            y: halfH, normal: SIMD3<Float>(0, 1, 0), flipWinding: false,
+            radius: radius, segments: segs,
+            positions: &positions, normals: &normals, uvs: &uvs, indices: &indices
+        )
 
-        for i in 0..<segs {
-            let angle0 = 2.0 * Float.pi * Float(i) / Float(segs)
-            let angle1 = 2.0 * Float.pi * Float(i + 1) / Float(segs)
-            let idx = UInt32(positions.count)
-
-            positions.append(SIMD3<Float>(cos(angle0) * radius, halfH, sin(angle0) * radius))
-            normals.append(SIMD3<Float>(0, 1, 0))
-            uvs.append(SIMD2<Float>(cos(angle0) * 0.5 + 0.5, sin(angle0) * 0.5 + 0.5))
-
-            positions.append(SIMD3<Float>(cos(angle1) * radius, halfH, sin(angle1) * radius))
-            normals.append(SIMD3<Float>(0, 1, 0))
-            uvs.append(SIMD2<Float>(cos(angle1) * 0.5 + 0.5, sin(angle1) * 0.5 + 0.5))
-
-            indices.append(contentsOf: [topCenter, idx, idx + 1])
-        }
-
-        // Bottom cap
-        let bottomCenter = UInt32(positions.count)
-        positions.append(SIMD3<Float>(0, -halfH, 0))
-        normals.append(SIMD3<Float>(0, -1, 0))
-        uvs.append(SIMD2<Float>(0.5, 0.5))
-
-        for i in 0..<segs {
-            let angle0 = 2.0 * Float.pi * Float(i) / Float(segs)
-            let angle1 = 2.0 * Float.pi * Float(i + 1) / Float(segs)
-            let idx = UInt32(positions.count)
-
-            positions.append(SIMD3<Float>(cos(angle0) * radius, -halfH, sin(angle0) * radius))
-            normals.append(SIMD3<Float>(0, -1, 0))
-            uvs.append(SIMD2<Float>(cos(angle0) * 0.5 + 0.5, sin(angle0) * 0.5 + 0.5))
-
-            positions.append(SIMD3<Float>(cos(angle1) * radius, -halfH, sin(angle1) * radius))
-            normals.append(SIMD3<Float>(0, -1, 0))
-            uvs.append(SIMD2<Float>(cos(angle1) * 0.5 + 0.5, sin(angle1) * 0.5 + 0.5))
-
-            indices.append(contentsOf: [bottomCenter, idx + 1, idx])
-        }
+        // Bottom cap (normal pointing down, CW winding)
+        appendCap(
+            y: -halfH, normal: SIMD3<Float>(0, -1, 0), flipWinding: true,
+            radius: radius, segments: segs,
+            positions: &positions, normals: &normals, uvs: &uvs, indices: &indices
+        )
 
         return Mesh(positions: positions, normals: normals, uvs: uvs, indices: indices)
+    }
+
+    // MARK: - Cap Helper
+
+    /// Appends a circular cap at the given Y height.
+    ///
+    /// - Parameters:
+    ///   - y: The Y coordinate of the cap plane.
+    ///   - normal: The face normal for all cap vertices.
+    ///   - flipWinding: When `true`, reverses triangle winding order.
+    ///   - radius: The cap radius.
+    ///   - segments: The number of radial divisions.
+    ///   - positions: Vertex position buffer (mutated).
+    ///   - normals: Vertex normal buffer (mutated).
+    ///   - uvs: Texture coordinate buffer (mutated).
+    ///   - indices: Index buffer (mutated).
+    private static func appendCap(
+        y: Float,
+        normal: SIMD3<Float>,
+        flipWinding: Bool,
+        radius: Float,
+        segments: Int,
+        positions: inout [SIMD3<Float>],
+        normals: inout [SIMD3<Float>],
+        uvs: inout [SIMD2<Float>],
+        indices: inout [UInt32]
+    ) {
+        let center = UInt32(positions.count)
+        positions.append(SIMD3<Float>(0, y, 0))
+        normals.append(normal)
+        uvs.append(SIMD2<Float>(0.5, 0.5))
+
+        for i in 0..<segments {
+            let angle0 = 2.0 * Float.pi * Float(i) / Float(segments)
+            let angle1 = 2.0 * Float.pi * Float(i + 1) / Float(segments)
+            let idx = UInt32(positions.count)
+
+            positions.append(SIMD3<Float>(cos(angle0) * radius, y, sin(angle0) * radius))
+            normals.append(normal)
+            uvs.append(SIMD2<Float>(cos(angle0) * 0.5 + 0.5, sin(angle0) * 0.5 + 0.5))
+
+            positions.append(SIMD3<Float>(cos(angle1) * radius, y, sin(angle1) * radius))
+            normals.append(normal)
+            uvs.append(SIMD2<Float>(cos(angle1) * 0.5 + 0.5, sin(angle1) * 0.5 + 0.5))
+
+            if flipWinding {
+                indices.append(contentsOf: [center, idx + 1, idx])
+            } else {
+                indices.append(contentsOf: [center, idx, idx + 1])
+            }
+        }
     }
 }

@@ -45,22 +45,15 @@ public final class MetalQueue: GPUQueue, @unchecked Sendable {
 
     /// Wait until the most recently submitted command buffer has completed execution.
     ///
-    /// Uses an async continuation with `addCompletedHandler` so the calling
-    /// task suspends without blocking a thread.
+    /// Uses Metal's async `completed()` API which suspends until the GPU
+    /// finishes processing the command buffer.
     public func waitUntilCompleted() async throws {
         guard let buffer = lastSubmittedBuffer else { return }
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            buffer.addCompletedHandler { completedBuffer in
-                if let error = completedBuffer.error {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume()
-                }
-            }
+        await buffer.completed()
+        if let error = buffer.error {
+            throw error
         }
     }
 }
-
-// NOTE: MetalCommandBuffer is defined in MetalCommandBuffer.swift
 
 #endif

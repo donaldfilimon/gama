@@ -5,8 +5,8 @@ import simd
 
 /// A node in the scene graph with a local transform and optional children.
 ///
-/// Each node stores a `localTransform` and computes its `worldTransform` by
-/// walking up through its parent chain.
+/// Each node stores a `localTransform` and computes its `worldTransform`
+/// by composing the parent's world matrix via ``traverse(parentMatrix:visitor:)``.
 public final class Node: Sendable {
     // MARK: - Properties
 
@@ -18,10 +18,6 @@ public final class Node: Sendable {
 
     /// The child nodes attached to this node.
     public let children: [Node]
-
-    /// Weak back-reference to the parent, set during init of the parent.
-    /// Not public — used internally for world-transform computation.
-    private let _parent: Node?
 
     // MARK: - Initializers
 
@@ -38,35 +34,15 @@ public final class Node: Sendable {
     ) {
         self.name = name
         self.localTransform = transform
-        // Re-create children with parent set to self
-        // Since Node is a reference type, we rebuild with parent links.
-        self._parent = nil
-        self.children = children.map { child in
-            Node(_reparenting: child, parent: nil)
-        }
-        // Now fix up parent references by rebuilding the tree rooted at self.
-        // Actually, since we need `self` to be fully initialized first, we use a
-        // two-phase approach: store children as-is, compute worldTransform by
-        // walking the tree differently.
-        // Simpler approach: just store children directly and use an explicit
-        // `worldTransform(parentMatrix:)` method.
-    }
-
-    /// Internal initializer used during reparenting.
-    private init(_reparenting source: Node, parent: Node?) {
-        self.name = source.name
-        self.localTransform = source.localTransform
-        self._parent = parent
-        self.children = source.children.map { child in
-            Node(_reparenting: child, parent: nil)
-        }
+        self.children = children
     }
 
     // MARK: - World Transform
 
-    /// Computes the world transform by composing all ancestor transforms.
+    /// Computes the world transform assuming this node is a root (no parent).
     ///
-    /// Walks from this node up to the root, accumulating local matrices.
+    /// For nodes within a hierarchy, use ``traverse(parentMatrix:visitor:)``
+    /// to propagate parent matrices down the tree.
     public var worldTransform: simd_float4x4 {
         worldTransform(parentMatrix: simd_float4x4(1))
     }

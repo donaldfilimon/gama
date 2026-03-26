@@ -1,8 +1,5 @@
-// Device.swift — Device, Adapter protocols for GamaCore
-//
-// Pipeline protocols and descriptors are in RenderPipeline.swift and
-// ComputePipeline.swift. Other resource protocols (GPUBuffer, GPUTexture,
-// GPUSampler, GPUShaderModule, GPUCommandBuffer) are in their own files.
+// Device.swift — Device and Adapter protocols for GamaCore
+// Part of GamaCore
 
 // MARK: - Adapter
 

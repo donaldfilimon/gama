@@ -7,9 +7,6 @@
 ///
 /// A color attachment binds a texture as a render target and specifies
 /// how the GPU should handle its contents at the start and end of the pass.
-///
-/// - Note: ``GPUTexture``, ``LoadAction``, ``StoreAction``, and ``ClearColor``
-///   are defined in other GamaCore source files.
 public struct GPUColorAttachment: Sendable {
     /// The texture to use as the color render target.
     public var texture: any GPUTexture

@@ -59,6 +59,15 @@ public struct Quaternion: Sendable, Equatable {
             return .identity
         }
 
+        if dot <= -1.0 + 1e-6 {
+            // Vectors are anti-parallel; pick an arbitrary perpendicular axis.
+            var perp = simd_cross(f, simd_float3(1, 0, 0))
+            if simd_length_squared(perp) < 1e-6 {
+                perp = simd_cross(f, simd_float3(0, 1, 0))
+            }
+            return fromAxisAngle(axis: Vec3(simd_normalize(perp)), angle: .pi)
+        }
+
         let axis = simd_normalize(simd_cross(f, t))
         let angle = acos(simd_clamp(dot, -1, 1))
         return fromAxisAngle(axis: Vec3(axis), angle: angle)

@@ -64,20 +64,13 @@ struct BindGroupLayoutEntryTests {
 
 @Suite("GPUBindGroupEntry Tests")
 struct BindGroupEntryTests {
-    @Test("Sampler entry case stores binding and index")
-    func samplerCaseBinding() {
-        // Verify enum case pattern matching works correctly
-        let entries: [GPUBindGroupEntry] = []
-        #expect(entries.isEmpty)
-    }
-
     @Test("GPUBindingType all cases are distinct")
     func bindingTypeDistinct() {
         let types: [GPUBindingType] = [
             .uniformBuffer, .storageBuffer, .sampler, .texture, .storageTexture,
         ]
-        // All five cases exist and are distinct (equality check via switch)
         #expect(types.count == 5)
+        // Verify each case is uniquely identifiable via pattern matching
         for t in types {
             switch t {
             case .uniformBuffer: #expect(t == .uniformBuffer)

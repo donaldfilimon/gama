@@ -118,8 +118,8 @@ struct Render: AsyncParsableCommand {
             )
         }
 
-        let cx = (64 * 128 + 64) * 4
-        print("Center pixel: R=\(pixels[cx]) G=\(pixels[cx + 1]) B=\(pixels[cx + 2]) A=\(pixels[cx + 3])")
+        let centerIndex = (64 * 128 + 64) * 4
+        print("Center pixel: R=\(pixels[centerIndex]) G=\(pixels[centerIndex + 1]) B=\(pixels[centerIndex + 2]) A=\(pixels[centerIndex + 3])")
         print()
         print("Render complete!")
         #else

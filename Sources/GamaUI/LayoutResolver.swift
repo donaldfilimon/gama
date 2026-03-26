@@ -1,8 +1,6 @@
 // LayoutResolver.swift — Resolves layout behavior and children from View types
 // Part of GamaUI
 
-import Foundation
-
 // MARK: - Layout Behavior
 
 /// Describes how a view participates in layout.
@@ -59,7 +57,6 @@ internal enum LayoutResolver {
         case let zstack as any _ZStackProtocol:
             return .zStack(alignment: zstack._alignment)
         case let padded as PaddedView:
-            _ = padded
             return .padded(insets: padded.insets)
         case let framed as FramedView:
             return .framed(width: framed.width, height: framed.height, alignment: framed.alignment)

@@ -21,10 +21,6 @@ struct ShaderStageTests {
         #expect(ShaderStage.vertex.rawValue == 1 << 0)
         #expect(ShaderStage.fragment.rawValue == 1 << 1)
         #expect(ShaderStage.compute.rawValue == 1 << 2)
-        // All distinct
-        #expect(ShaderStage.vertex.rawValue != ShaderStage.fragment.rawValue)
-        #expect(ShaderStage.fragment.rawValue != ShaderStage.compute.rawValue)
-        #expect(ShaderStage.vertex.rawValue != ShaderStage.compute.rawValue)
     }
 
     @Test("ShaderStage combinations contain expected stages")

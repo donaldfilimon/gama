@@ -169,10 +169,10 @@ struct GPUErrorTests {
     @Test("GPUError associated values")
     func associatedValues() {
         let error = GPUError.bufferAllocationFailed(size: 2048)
-        if case .bufferAllocationFailed(let size) = error {
-            #expect(size == 2048)
-        } else {
-            #expect(Bool(false), "Expected bufferAllocationFailed")
+        guard case .bufferAllocationFailed(let size) = error else {
+            Issue.record("Expected bufferAllocationFailed")
+            return
         }
+        #expect(size == 2048)
     }
 }

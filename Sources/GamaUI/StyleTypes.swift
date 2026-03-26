@@ -1,8 +1,6 @@
 // StyleTypes.swift — Color, Font, EdgeInsets, and Alignment types
 // Part of GamaUI
 
-import Foundation
-
 // MARK: - Color
 
 /// An RGBA color value.

@@ -1,8 +1,6 @@
 // ViewModifier.swift — ViewModifier protocol and built-in modifiers
 // Part of GamaUI
 
-import Foundation
-
 // MARK: - ViewModifier Protocol
 
 /// A modifier that transforms a view's appearance or layout.

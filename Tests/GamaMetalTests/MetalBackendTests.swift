@@ -9,14 +9,8 @@ import GamaCore
 
 @Suite("MetalBackend Tests")
 struct MetalBackendTests {
-    @Test("Request default adapter succeeds")
+    @Test("Request default adapter returns valid info")
     func requestDefaultAdapter() throws {
-        let adapter = try MetalBackend.shared.requestDefaultAdapter()
-        #expect(adapter.info.name.isEmpty == false)
-    }
-
-    @Test("Adapter info has non-empty name")
-    func adapterInfoName() throws {
         let adapter = try MetalBackend.shared.requestDefaultAdapter()
         let info = adapter.info
         #expect(!info.name.isEmpty)

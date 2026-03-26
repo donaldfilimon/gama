@@ -16,8 +16,6 @@ public enum TextureDimension: Sendable {
 // MARK: - Texture Descriptor
 
 /// Describes the properties of a GPU texture to be created.
-///
-/// Types referenced from `Types.swift`: ``PixelFormat``, ``TextureUsage``.
 public struct GPUTextureDescriptor: Sendable {
     /// The width of the texture in texels.
     public var width: UInt32

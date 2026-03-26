@@ -39,8 +39,6 @@ public enum SamplerMipFilter: Sendable {
 // MARK: - Sampler Descriptor
 
 /// Describes the properties of a GPU sampler to be created.
-///
-/// `CompareFunction` is defined in `Types.swift`.
 public struct GPUSamplerDescriptor: Sendable {
     /// The minification filter.
     public var minFilter: SamplerMinMagFilter

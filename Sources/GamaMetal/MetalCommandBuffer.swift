@@ -41,11 +41,11 @@ public final class MetalCommandBuffer: GPUCommandBuffer, @unchecked Sendable {
 
         // Color attachments
         for (index, colorAttachment) in descriptor.colorAttachments.enumerated() {
-            guard let metalTexture = colorAttachment.texture as? MetalTexture else {
+            guard let mtlTexture = metalTexture(from: colorAttachment.texture) else {
                 throw GPUError.commandEncodingFailed
             }
             let mtlAttachment = mtlRPDesc.colorAttachments[index]!
-            mtlAttachment.texture = metalTexture.mtlTexture
+            mtlAttachment.texture = mtlTexture
             mtlAttachment.loadAction = colorAttachment.loadAction.mtlLoadAction
             mtlAttachment.storeAction = colorAttachment.storeAction.mtlStoreAction
             mtlAttachment.clearColor = MTLClearColor(
@@ -58,15 +58,15 @@ public final class MetalCommandBuffer: GPUCommandBuffer, @unchecked Sendable {
 
         // Depth/stencil attachment
         if let depthStencil = descriptor.depthStencilAttachment {
-            guard let metalTexture = depthStencil.texture as? MetalTexture else {
+            guard let mtlTexture = metalTexture(from: depthStencil.texture) else {
                 throw GPUError.commandEncodingFailed
             }
-            mtlRPDesc.depthAttachment.texture = metalTexture.mtlTexture
+            mtlRPDesc.depthAttachment.texture = mtlTexture
             mtlRPDesc.depthAttachment.loadAction = depthStencil.depthLoadAction.mtlLoadAction
             mtlRPDesc.depthAttachment.storeAction = depthStencil.depthStoreAction.mtlStoreAction
             mtlRPDesc.depthAttachment.clearDepth = Double(depthStencil.clearDepth)
 
-            mtlRPDesc.stencilAttachment.texture = metalTexture.mtlTexture
+            mtlRPDesc.stencilAttachment.texture = mtlTexture
             mtlRPDesc.stencilAttachment.loadAction = depthStencil.stencilLoadAction.mtlLoadAction
             mtlRPDesc.stencilAttachment.storeAction = depthStencil.stencilStoreAction.mtlStoreAction
             mtlRPDesc.stencilAttachment.clearStencil = depthStencil.clearStencil
@@ -102,21 +102,32 @@ public final class MetalCommandBuffer: GPUCommandBuffer, @unchecked Sendable {
         mtlCommandBuffer.commit()
     }
 
+    // MARK: - Helpers
+
+    /// Extracts the underlying `MTLTexture` from a `GPUTexture`.
+    ///
+    /// Handles both ``MetalTexture`` (device-created textures) and
+    /// ``MetalDrawableTexture`` (surface drawable textures).
+    private func metalTexture(from texture: any GPUTexture) -> MTLTexture? {
+        if let metalTexture = texture as? MetalTexture {
+            return metalTexture.mtlTexture
+        }
+        if let drawableTexture = texture as? MetalDrawableTexture {
+            return drawableTexture.mtlTexture
+        }
+        return nil
+    }
+
     /// Asynchronously waits until all commands in this buffer have finished executing.
     ///
-    /// Uses `addCompletedHandler` with a checked continuation so the caller can
-    /// `await` GPU completion without blocking a thread.
+    /// Uses Metal's async `completed()` API which suspends until the GPU
+    /// finishes processing this command buffer.
     ///
     /// - Throws: ``GPUError/commandEncodingFailed`` if the GPU reports an error.
     public func waitUntilCompleted() async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            mtlCommandBuffer.addCompletedHandler { buffer in
-                if let error = buffer.error {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume()
-                }
-            }
+        await mtlCommandBuffer.completed()
+        if let error = mtlCommandBuffer.error {
+            throw error
         }
     }
 }

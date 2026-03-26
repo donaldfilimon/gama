@@ -1,4 +1,5 @@
 // Queue.swift — Command queue protocol for GamaCore
+// Part of GamaCore
 
 /// A GPU command queue that creates and submits command buffers.
 public protocol GPUQueue: AnyObject, Sendable {

@@ -40,9 +40,12 @@ public struct Mat4: Sendable, Equatable {
     /// Creates a translation matrix.
     @inlinable
     public static func translation(_ t: Vec3) -> Mat4 {
-        var m = simd_float4x4(1)
-        m.columns.3 = simd_float4(t.storage, 1)
-        return Mat4(m)
+        Mat4(columns:
+            Vec4(1, 0, 0, 0),
+            Vec4(0, 1, 0, 0),
+            Vec4(0, 0, 1, 0),
+            Vec4(t, 1)
+        )
     }
 
     /// Creates a uniform or non-uniform scale matrix.

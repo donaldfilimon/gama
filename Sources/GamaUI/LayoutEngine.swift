@@ -35,9 +35,6 @@ public enum LayoutEngine {
     /// Default spacing between stack children when none is specified.
     public static let defaultSpacing: Double = 8
 
-    /// Default leaf view size for views without intrinsic sizing.
-    public static let defaultLeafSize = CGSize(width: 10, height: 10)
-
     /// Computes the layout tree for a view within the proposed size.
     ///
     /// - Parameters:
@@ -55,12 +52,7 @@ public enum LayoutEngine {
         let children = view.childProvider()
 
         switch behavior {
-        case .leaf:
-            return LayoutNode(
-                frame: CGRect(origin: .zero, size: proposedSize)
-            )
-
-        case .spacer:
+        case .leaf, .spacer:
             return LayoutNode(
                 frame: CGRect(origin: .zero, size: proposedSize)
             )
@@ -314,11 +306,7 @@ public enum LayoutEngine {
         children: [AnyView],
         proposedSize: CGSize
     ) -> LayoutNode {
-        var childNodes: [LayoutNode] = []
-        for child in children {
-            let node = layoutAnyView(child, proposedSize: proposedSize)
-            childNodes.append(node)
-        }
+        let childNodes = children.map { layoutAnyView($0, proposedSize: proposedSize) }
         return LayoutNode(
             frame: CGRect(origin: .zero, size: proposedSize),
             children: childNodes

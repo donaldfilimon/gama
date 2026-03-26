@@ -1,4 +1,5 @@
 // Errors.swift — GPU error types for GamaCore
+// Part of GamaCore
 
 /// Errors that can occur during GPU operations.
 public enum GPUError: Error, Sendable {

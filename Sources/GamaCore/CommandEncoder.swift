@@ -10,9 +10,6 @@
 /// calls and state changes, then call ``endEncoding()`` to finalize.
 ///
 /// Concrete implementations are provided by backend modules (e.g., GamaMetal).
-///
-/// - Note: ``GPURenderPipeline``, ``GPUBuffer``, ``GPUBindGroup``, and
-///   ``IndexFormat`` are defined in other GamaCore source files.
 public protocol GPURenderCommandEncoder: AnyObject, Sendable {
     /// Sets the render pipeline state for subsequent draw calls.
     ///
@@ -160,9 +157,6 @@ extension GPURenderCommandEncoder {
 /// and resources, dispatch threadgroups, then call ``endEncoding()``.
 ///
 /// Concrete implementations are provided by backend modules (e.g., GamaMetal).
-///
-/// - Note: ``GPUComputePipeline``, ``GPUBuffer``, ``GPUBindGroup``, and
-///   ``Extent3D`` are defined in other GamaCore source files.
 public protocol GPUComputeCommandEncoder: AnyObject, Sendable {
     /// Sets the compute pipeline state for subsequent dispatches.
     ///

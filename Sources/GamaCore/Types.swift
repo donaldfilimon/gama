@@ -1,4 +1,5 @@
 // Types.swift — Shared enums and value types for GamaCore
+// Part of GamaCore
 
 /// Pixel format for textures and render targets.
 public enum PixelFormat: Sendable {

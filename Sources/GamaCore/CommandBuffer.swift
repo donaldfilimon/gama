@@ -10,10 +10,6 @@
 /// then call ``commit()`` to submit the buffer for execution.
 ///
 /// Concrete implementations are provided by backend modules (e.g., GamaMetal).
-///
-/// - Note: ``GPURenderCommandEncoder`` and ``GPUComputeCommandEncoder`` are
-///   defined in `CommandEncoder.swift`. ``GPURenderPassDescriptor`` is defined
-///   in `RenderPassDescriptor.swift`.
 public protocol GPUCommandBuffer: AnyObject, Sendable {
     /// An optional debug label for identifying this command buffer.
     var label: String? { get }

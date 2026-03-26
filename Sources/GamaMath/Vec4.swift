@@ -33,13 +33,13 @@ public struct Vec4: Sendable, Equatable, Hashable {
     /// Creates a Vec4 from a Vec3 and a w component.
     @inlinable
     public init(_ xyz: Vec3, _ w: Float) {
-        storage = simd_float4(xyz.storage.x, xyz.storage.y, xyz.storage.z, w)
+        storage = simd_float4(xyz.storage, w)
     }
 
     /// Creates a Vec4 from a Vec2 and z, w components.
     @inlinable
     public init(_ xy: Vec2, _ z: Float, _ w: Float) {
-        storage = simd_float4(xy.storage.x, xy.storage.y, z, w)
+        storage = simd_float4(lowHalf: xy.storage, highHalf: simd_float2(z, w))
     }
 
     // MARK: - Static Constants

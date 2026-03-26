@@ -9,8 +9,6 @@ public struct GPUBufferDescriptor: Sendable {
     public var size: Int
 
     /// A bitmask specifying the intended usage of the buffer.
-    ///
-    /// `BufferUsage` is defined in `Types.swift`.
     public var usage: BufferUsage
 
     /// An optional label for debugging purposes.

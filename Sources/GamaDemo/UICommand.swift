@@ -1,4 +1,3 @@
-
 // UICommand.swift — Interactive GPU window subcommand for GamaDemo
 // Part of GamaDemo
 

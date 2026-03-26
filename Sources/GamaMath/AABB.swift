@@ -33,7 +33,7 @@ public struct AABB: Sendable, Equatable {
 
     /// The center point of the bounding box.
     @inlinable public var center: Vec3 {
-        Vec3(simd_mix(min.storage, max.storage, simd_float3(repeating: 0.5)))
+        (min + max) * 0.5
     }
 
     /// The size (extents) of the bounding box along each axis.
