@@ -11,7 +11,7 @@ import GamaMetal
 struct GamaDemo: ParsableCommand {
     static let configuration = CommandConfiguration(
         abstract: "Gama GPU Graphics API Demo",
-        subcommands: [Info.self, Triangle.self, UI.self],
+        subcommands: [Info.self, Triangle.self, UI.self, Render.self],
         defaultSubcommand: Info.self
     )
 }

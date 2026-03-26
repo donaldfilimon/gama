@@ -1,3 +1,4 @@
+
 // UICommand.swift — Interactive GPU window subcommand for GamaDemo
 // Part of GamaDemo
 
@@ -8,17 +9,19 @@ import Metal
 import AppKit
 import QuartzCore
 import GamaMetal
+import simd
 #endif
 
 struct UI: @preconcurrency ParsableCommand {
     static let configuration = CommandConfiguration(
-        abstract: "Open a window and render a colored triangle using the full Gama pipeline"
+        abstract: "Open a window and render an animated colored triangle using the full Gama pipeline"
     )
 
     @MainActor
     func run() throws {
         print("Gama GPU Graphics API — Interactive UI Demo")
         print("============================================")
+        print("Controls: Arrow keys to rotate, ESC to quit, click+drag to rotate")
 
         #if canImport(Metal) && canImport(AppKit)
         let app = NSApplication.shared
@@ -41,7 +44,7 @@ struct UI: @preconcurrency ParsableCommand {
 @MainActor
 private class GamaDemoAppDelegate: NSObject, NSApplicationDelegate {
     private var window: NSWindow!
-    private var metalView: NSView!
+    private var metalView: InteractiveMetalView!
     nonisolated(unsafe) private var metalLayer: CAMetalLayer!
     private var renderer: GamaTriangleRenderer!
     private var renderTimer: Timer?
@@ -57,8 +60,8 @@ private class GamaDemoAppDelegate: NSObject, NSApplicationDelegate {
         window.title = "Gama — Triangle Demo"
         window.center()
 
-        // Set up a layer-backed view with a CAMetalLayer
-        metalView = NSView(frame: contentRect)
+        // Set up an interactive layer-backed view with a CAMetalLayer
+        metalView = InteractiveMetalView(frame: contentRect)
         metalView.wantsLayer = true
 
         metalLayer = CAMetalLayer()
@@ -78,6 +81,7 @@ private class GamaDemoAppDelegate: NSObject, NSApplicationDelegate {
 
         do {
             renderer = try GamaTriangleRenderer(metalLayer: metalLayer)
+            metalView.renderer = renderer
         } catch {
             print("Error: Failed to initialize renderer: \(error)")
             NSApp.terminate(nil)
@@ -102,9 +106,10 @@ private class GamaDemoAppDelegate: NSObject, NSApplicationDelegate {
         }
 
         window.makeKeyAndOrderFront(nil)
+        window.makeFirstResponder(metalView)
         NSApp.activate(ignoringOtherApps: true)
 
-        print("Window opened. Close the window to exit.")
+        print("Window opened. Close the window or press ESC to exit.")
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -116,11 +121,60 @@ private class GamaDemoAppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-// MARK: - Renderer
+// MARK: - Interactive View
+
+@MainActor
+private class InteractiveMetalView: NSView {
+    weak var renderer: GamaTriangleRenderer?
+    private var lastDragPoint: NSPoint?
+
+    override var acceptsFirstResponder: Bool { true }
+
+    override func keyDown(with event: NSEvent) {
+        switch event.keyCode {
+        case 53: // ESC
+            NSApp.terminate(nil)
+        case 123: // Left arrow
+            renderer?.angleOffsetY -= 0.05
+        case 124: // Right arrow
+            renderer?.angleOffsetY += 0.05
+        case 125: // Down arrow
+            renderer?.angleOffsetX -= 0.05
+        case 126: // Up arrow
+            renderer?.angleOffsetX += 0.05
+        default:
+            break
+        }
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        lastDragPoint = event.locationInWindow
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard let last = lastDragPoint else { return }
+        let current = event.locationInWindow
+        let dx = Float(current.x - last.x) * 0.01
+        let dy = Float(current.y - last.y) * 0.01
+        renderer?.angleOffsetY += dx
+        renderer?.angleOffsetX += dy
+        lastDragPoint = current
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        lastDragPoint = nil
+    }
+}
+
+// MARK: - Shader
 
 private let shaderSource = """
 #include <metal_stdlib>
 using namespace metal;
+
+struct Uniforms {
+    float4x4 modelMatrix;
+};
 
 struct VertexOut {
     float4 position [[position]];
@@ -129,9 +183,11 @@ struct VertexOut {
 
 vertex VertexOut vertex_main(uint vid [[vertex_id]],
                              constant packed_float2 *positions [[buffer(0)]],
-                             constant packed_float4 *colors    [[buffer(1)]]) {
+                             constant packed_float4 *colors    [[buffer(1)]],
+                             constant Uniforms &uniforms       [[buffer(2)]]) {
     VertexOut out;
-    out.position = float4(positions[vid], 0.0, 1.0);
+    float4 pos = float4(positions[vid], 0.0, 1.0);
+    out.position = uniforms.modelMatrix * pos;
     out.color = colors[vid];
     return out;
 }
@@ -146,6 +202,8 @@ private func presentDrawable(_ commandBuffer: MTLCommandBuffer, _ drawable: CAMe
     commandBuffer.present(drawable)
 }
 
+// MARK: - Renderer
+
 @MainActor
 private class GamaTriangleRenderer {
     let device: any GPUDevice
@@ -153,12 +211,23 @@ private class GamaTriangleRenderer {
     let pipeline: any GPURenderPipeline
     let positionBuffer: any GPUBuffer
     let colorBuffer: any GPUBuffer
+    let uniformBuffer: any GPUBuffer
     let metalLayer: CAMetalLayer
+
+    // Animation state
+    var time: Float = 0
+    var rotationSpeed: Float = 1.0
+    var angleOffsetX: Float = 0
+    var angleOffsetY: Float = 0
+
+    // FPS tracking
+    private var frameCount: Int = 0
+    private var lastFPSTime: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()
 
     init(metalLayer: CAMetalLayer) throws {
         self.metalLayer = metalLayer
 
-        // 1. Adapter → Device → Queue (all via Gama API)
+        // 1. Adapter -> Device -> Queue (all via Gama API)
         let adapter = try MetalBackend.shared.requestDefaultAdapter()
         device = try adapter.requestDevice()
         queue = try device.createQueue()
@@ -191,7 +260,6 @@ private class GamaTriangleRenderer {
         pipeline = try device.createRenderPipeline(descriptor: pipelineDescriptor)
 
         // 4. Create vertex data buffers via Gama API
-        //    Triangle: top (red), bottom-left (green), bottom-right (blue)
         let positions: [Float] = [
              0.0,  0.5,    // top center
             -0.5, -0.5,    // bottom left
@@ -209,6 +277,10 @@ private class GamaTriangleRenderer {
         positionBuffer = try device.createBuffer(size: posSize, usage: .vertex)
         colorBuffer = try device.createBuffer(size: colSize, usage: .vertex)
 
+        // 5. Create uniform buffer for model matrix (before closures that capture self)
+        let uniformSize = MemoryLayout<simd_float4x4>.stride
+        uniformBuffer = try device.createBuffer(size: uniformSize, usage: .uniform)
+
         positions.withUnsafeBufferPointer { ptr in
             positionBuffer.contents().copyMemory(from: ptr.baseAddress!, byteCount: posSize)
         }
@@ -224,6 +296,53 @@ private class GamaTriangleRenderer {
 
     func render() {
         guard let drawable = metalLayer.nextDrawable() else { return }
+
+        // Update animation time
+        time += 1.0 / 60.0
+
+        // Build rotation matrix: auto-rotation around Z + manual offsets around X and Y
+        let autoAngle = time * rotationSpeed
+        let cosZ = cos(autoAngle)
+        let sinZ = sin(autoAngle)
+        let rotZ = simd_float4x4(columns: (
+            SIMD4<Float>(cosZ, sinZ, 0, 0),
+            SIMD4<Float>(-sinZ, cosZ, 0, 0),
+            SIMD4<Float>(0, 0, 1, 0),
+            SIMD4<Float>(0, 0, 0, 1)
+        ))
+
+        let cosX = cos(angleOffsetX)
+        let sinX = sin(angleOffsetX)
+        let rotX = simd_float4x4(columns: (
+            SIMD4<Float>(1, 0, 0, 0),
+            SIMD4<Float>(0, cosX, sinX, 0),
+            SIMD4<Float>(0, -sinX, cosX, 0),
+            SIMD4<Float>(0, 0, 0, 1)
+        ))
+
+        let cosY = cos(angleOffsetY)
+        let sinY = sin(angleOffsetY)
+        let rotY = simd_float4x4(columns: (
+            SIMD4<Float>(cosY, 0, -sinY, 0),
+            SIMD4<Float>(0, 1, 0, 0),
+            SIMD4<Float>(sinY, 0, cosY, 0),
+            SIMD4<Float>(0, 0, 0, 1)
+        ))
+
+        var modelMatrix = rotY * rotX * rotZ
+        let uniformSize = MemoryLayout<simd_float4x4>.stride
+        uniformBuffer.contents().copyMemory(from: &modelMatrix, byteCount: uniformSize)
+        uniformBuffer.didModifyRange(0..<uniformSize)
+
+        // FPS tracking
+        frameCount += 1
+        if frameCount % 60 == 0 {
+            let now = CFAbsoluteTimeGetCurrent()
+            let elapsed = now - lastFPSTime
+            let fps = 60.0 / elapsed
+            print(String(format: "FPS: %.1f", fps))
+            lastFPSTime = now
+        }
 
         // Wrap the drawable's texture in a Gama MetalTexture
         let drawableDescriptor = GPUTextureDescriptor(
@@ -257,6 +376,7 @@ private class GamaTriangleRenderer {
             encoder.setRenderPipeline(pipeline)
             encoder.setVertexBuffer(positionBuffer, offset: 0, index: 0)
             encoder.setVertexBuffer(colorBuffer, offset: 0, index: 1)
+            encoder.setVertexBuffer(uniformBuffer, offset: 0, index: 2)
             encoder.draw(vertexCount: 3)
             encoder.endEncoding()
 

@@ -66,6 +66,11 @@ public protocol GPURenderCommandEncoder: AnyObject, Sendable {
     ///   - height: The height of the scissor rectangle in pixels.
     func setScissorRect(x: Int, y: Int, width: Int, height: Int)
 
+    /// Sets the depth-stencil state for subsequent draw calls.
+    ///
+    /// - Parameter state: A compiled depth-stencil state object.
+    func setDepthStencilState(_ state: any GPUDepthStencilStateObject)
+
     /// Draws non-indexed primitives.
     ///
     /// - Parameters:

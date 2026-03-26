@@ -77,6 +77,10 @@ public final class DX12RenderCommandEncoder: GPURenderCommandEncoder, @unchecked
         fatalError("DirectX 12 backend not yet implemented")
     }
 
+    public func setDepthStencilState(_ state: any GPUDepthStencilStateObject) {
+        fatalError("DirectX 12 backend not yet implemented")
+    }
+
     public func draw(
         vertexCount: Int,
         instanceCount: Int,

@@ -101,6 +101,12 @@ public final class MetalRenderCommandEncoder: GPURenderCommandEncoder, @unchecke
         mtlEncoder.setScissorRect(rect)
     }
 
+    /// Sets the depth-stencil state.
+    public func setDepthStencilState(_ state: any GPUDepthStencilStateObject) {
+        guard let metalState = state as? MetalDepthStencilState else { return }
+        mtlEncoder.setDepthStencilState(metalState.mtlDepthStencilState)
+    }
+
     // MARK: Draw Calls
 
     /// Draws non-indexed primitives.

@@ -77,6 +77,10 @@ public final class VulkanRenderCommandEncoder: GPURenderCommandEncoder, @uncheck
         fatalError("Vulkan backend not yet implemented")
     }
 
+    public func setDepthStencilState(_ state: any GPUDepthStencilStateObject) {
+        fatalError("Vulkan backend not yet implemented")
+    }
+
     public func draw(
         vertexCount: Int,
         instanceCount: Int,
