@@ -145,13 +145,15 @@ public enum LayoutEngine {
             heightPerFixed = availableHeight / Double(children.count)
         }
 
-        // Compute child sizes
+        // Compute child sizes (store full nodes to avoid re-layout)
+        var measuredNodes: [LayoutNode?] = Array(repeating: nil, count: children.count)
         var childSizes: [CGSize] = Array(repeating: .zero, count: children.count)
         var totalFixedHeight: Double = 0
 
         for index in fixedIndices {
             let childProposed = CGSize(width: proposedSize.width, height: heightPerFixed)
             let childNode = layoutAnyView(children[index], proposedSize: childProposed)
+            measuredNodes[index] = childNode
             childSizes[index] = childNode.frame.size
             totalFixedHeight += childNode.frame.size.height
         }
@@ -173,7 +175,7 @@ public enum LayoutEngine {
             )
         }
 
-        // Position children
+        // Position children (reuse measured nodes from first pass)
         var childNodes: [LayoutNode] = []
         var yOffset: Double = 0
 
@@ -186,8 +188,7 @@ public enum LayoutEngine {
                     frame: CGRect(x: 0, y: yOffset, width: size.width, height: size.height)
                 )
             } else {
-                let proposed = CGSize(width: proposedSize.width, height: size.height)
-                var node = layoutAnyView(child, proposedSize: proposed)
+                var node = measuredNodes[index]!
                 node.frame.origin = CGPoint(x: 0, y: yOffset)
                 childNode = node
             }
@@ -240,13 +241,15 @@ public enum LayoutEngine {
             widthPerFixed = availableWidth / Double(children.count)
         }
 
-        // Compute child sizes
+        // Compute child sizes (store full nodes to avoid re-layout)
+        var measuredNodes: [LayoutNode?] = Array(repeating: nil, count: children.count)
         var childSizes: [CGSize] = Array(repeating: .zero, count: children.count)
         var totalFixedWidth: Double = 0
 
         for index in fixedIndices {
             let childProposed = CGSize(width: widthPerFixed, height: proposedSize.height)
             let childNode = layoutAnyView(children[index], proposedSize: childProposed)
+            measuredNodes[index] = childNode
             childSizes[index] = childNode.frame.size
             totalFixedWidth += childNode.frame.size.width
         }
@@ -268,7 +271,7 @@ public enum LayoutEngine {
             )
         }
 
-        // Position children
+        // Position children (reuse measured nodes from first pass)
         var childNodes: [LayoutNode] = []
         var xOffset: Double = 0
 
@@ -281,8 +284,7 @@ public enum LayoutEngine {
                     frame: CGRect(x: xOffset, y: 0, width: size.width, height: size.height)
                 )
             } else {
-                let proposed = CGSize(width: size.width, height: proposedSize.height)
-                var node = layoutAnyView(child, proposedSize: proposed)
+                var node = measuredNodes[index]!
                 node.frame.origin = CGPoint(x: xOffset, y: 0)
                 childNode = node
             }

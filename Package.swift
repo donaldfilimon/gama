@@ -70,7 +70,7 @@ let package = Package(
         // MARK: - Scene Graph
         .target(
             name: "GamaScene",
-            dependencies: ["GamaCore"],
+            dependencies: ["GamaCore", "GamaMath"],
             swiftSettings: sharedSwiftSettings
         ),
 
@@ -101,6 +101,7 @@ let package = Package(
             dependencies: [
                 "GamaCore",
                 "GamaMetal",
+                "GamaMath",
                 "GamaMacroDeclarations",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
@@ -129,7 +130,7 @@ let package = Package(
         ),
         .testTarget(
             name: "GamaSceneTests",
-            dependencies: ["GamaScene"],
+            dependencies: ["GamaScene", "GamaMath"],
             swiftSettings: sharedSwiftSettings
         ),
         .testTarget(

@@ -3,6 +3,7 @@
 
 import Testing
 import simd
+import GamaMath
 @testable import GamaScene
 
 // MARK: - Transform Tests
@@ -12,31 +13,31 @@ struct TransformTests {
     @Test("Identity transform produces identity matrix")
     func identityMatrix() {
         let t = Transform.identity
-        let m = t.matrix
-        let identity = simd_float4x4(1)
+        let m = t.modelMatrix
+        let identity = Mat4.identity
         for col in 0..<4 {
             for row in 0..<4 {
-                #expect(abs(m[col][row] - identity[col][row]) < 1e-6)
+                #expect(abs(m.storage[col][row] - identity.storage[col][row]) < 1e-6)
             }
         }
     }
 
     @Test("Translation-only transform")
     func translationOnly() {
-        let t = Transform(position: SIMD3<Float>(3, 4, 5))
-        let m = t.matrix
-        #expect(abs(m.columns.3.x - 3) < 1e-6)
-        #expect(abs(m.columns.3.y - 4) < 1e-6)
-        #expect(abs(m.columns.3.z - 5) < 1e-6)
+        let t = Transform(position: Vec3(3, 4, 5))
+        let m = t.modelMatrix
+        #expect(abs(m.storage.columns.3.x - 3) < 1e-6)
+        #expect(abs(m.storage.columns.3.y - 4) < 1e-6)
+        #expect(abs(m.storage.columns.3.z - 5) < 1e-6)
     }
 
     @Test("Scale-only transform")
     func scaleOnly() {
-        let t = Transform(scale: SIMD3<Float>(2, 3, 4))
-        let m = t.matrix
-        #expect(abs(m.columns.0.x - 2) < 1e-6)
-        #expect(abs(m.columns.1.y - 3) < 1e-6)
-        #expect(abs(m.columns.2.z - 4) < 1e-6)
+        let t = Transform(scale: Vec3(2, 3, 4))
+        let m = t.modelMatrix
+        #expect(abs(m.storage.columns.0.x - 2) < 1e-6)
+        #expect(abs(m.storage.columns.1.y - 3) < 1e-6)
+        #expect(abs(m.storage.columns.2.z - 4) < 1e-6)
     }
 }
 
@@ -60,14 +61,14 @@ struct NodeTests {
 
     @Test("World transform propagates parent translation")
     func worldTransformPropagation() {
-        let childTransform = Transform(position: SIMD3<Float>(1, 0, 0))
+        let childTransform = Transform(position: Vec3(1, 0, 0))
         let child = Node(name: "Child", transform: childTransform)
 
-        let parentTransform = Transform(position: SIMD3<Float>(0, 5, 0))
+        let parentTransform = Transform(position: Vec3(0, 5, 0))
         let parent = Node(name: "Parent", transform: parentTransform, children: [child])
 
         // Traverse and check the child's world position
-        var childWorld: simd_float4x4?
+        var childWorld: Mat4?
         parent.traverse { node, world in
             if node.name == "Child" {
                 childWorld = world
@@ -77,9 +78,9 @@ struct NodeTests {
         #expect(childWorld != nil)
         if let w = childWorld {
             // Child should be at (1, 5, 0) in world space
-            #expect(abs(w.columns.3.x - 1) < 1e-5)
-            #expect(abs(w.columns.3.y - 5) < 1e-5)
-            #expect(abs(w.columns.3.z - 0) < 1e-5)
+            #expect(abs(w.storage.columns.3.x - 1) < 1e-5)
+            #expect(abs(w.storage.columns.3.y - 5) < 1e-5)
+            #expect(abs(w.storage.columns.3.z - 0) < 1e-5)
         }
     }
 
@@ -87,20 +88,20 @@ struct NodeTests {
     func nestedHierarchy() {
         let grandchild = Node(
             name: "GC",
-            transform: Transform(position: SIMD3<Float>(0, 0, 1))
+            transform: Transform(position: Vec3(0, 0, 1))
         )
         let child = Node(
             name: "C",
-            transform: Transform(position: SIMD3<Float>(0, 1, 0)),
+            transform: Transform(position: Vec3(0, 1, 0)),
             children: [grandchild]
         )
         let root = Node(
             name: "R",
-            transform: Transform(position: SIMD3<Float>(1, 0, 0)),
+            transform: Transform(position: Vec3(1, 0, 0)),
             children: [child]
         )
 
-        var gcWorld: simd_float4x4?
+        var gcWorld: Mat4?
         root.traverse { node, world in
             if node.name == "GC" {
                 gcWorld = world
@@ -109,9 +110,9 @@ struct NodeTests {
 
         #expect(gcWorld != nil)
         if let w = gcWorld {
-            #expect(abs(w.columns.3.x - 1) < 1e-5)
-            #expect(abs(w.columns.3.y - 1) < 1e-5)
-            #expect(abs(w.columns.3.z - 1) < 1e-5)
+            #expect(abs(w.storage.columns.3.x - 1) < 1e-5)
+            #expect(abs(w.storage.columns.3.y - 1) < 1e-5)
+            #expect(abs(w.storage.columns.3.z - 1) < 1e-5)
         }
     }
 }
@@ -222,11 +223,11 @@ struct SceneCameraTests {
     @Test("Default camera has identity matrices")
     func defaultCamera() {
         let cam = SceneCamera()
-        let identity = simd_float4x4(1)
+        let identity = Mat4.identity
         for col in 0..<4 {
             for row in 0..<4 {
-                #expect(abs(cam.projectionMatrix[col][row] - identity[col][row]) < 1e-6)
-                #expect(abs(cam.viewMatrix[col][row] - identity[col][row]) < 1e-6)
+                #expect(abs(cam.projectionMatrix.storage[col][row] - identity.storage[col][row]) < 1e-6)
+                #expect(abs(cam.viewMatrix.storage[col][row] - identity.storage[col][row]) < 1e-6)
             }
         }
     }
@@ -240,9 +241,29 @@ struct SceneCameraTests {
             far: 100
         )
         // Should not be identity
-        #expect(cam.projectionMatrix[0][0] != 1.0)
-        // Last row should be (0, 0, -1, 0) for perspective
-        #expect(abs(cam.projectionMatrix[2][3] - (-1)) < 1e-6)
+        #expect(cam.projectionMatrix.storage[0][0] != 1.0)
+        // For Metal-style perspective, column 2 row 3 should be -1
+        #expect(abs(cam.projectionMatrix.storage[2][3] - (-1)) < 1e-6)
+    }
+
+    @Test("Perspective camera uses Metal [0,1] depth range")
+    func perspectiveMetalDepth() {
+        let cam = SceneCamera.perspective(
+            fovY: Float.pi / 4,
+            aspectRatio: 1.0,
+            near: 0.1,
+            far: 100
+        )
+        // In Metal-style perspective, z maps to [0,1] not [-1,1].
+        // Column 2, row 2 should be far/(near-far) which is negative
+        // Column 3, row 2 should be (far*near)/(near-far) which is also negative
+        let z22 = cam.projectionMatrix.storage[2][2]
+        let z32 = cam.projectionMatrix.storage[3][2]
+        // For Metal [0,1]: z22 = far/(near-far), z32 = near*far/(near-far)
+        let expectedZ22: Float = 100.0 / (0.1 - 100.0)
+        let expectedZ32: Float = (0.1 * 100.0) / (0.1 - 100.0)
+        #expect(abs(z22 - expectedZ22) < 1e-4)
+        #expect(abs(z32 - expectedZ32) < 1e-4)
     }
 
     @Test("Orthographic camera preserves parallel projection")
@@ -252,8 +273,8 @@ struct SceneCameraTests {
             bottom: -1, top: 1,
             near: 0.1, far: 10
         )
-        // Last row should be (0, 0, 0, 1) for orthographic
-        #expect(abs(cam.projectionMatrix[3][3] - 1) < 1e-6)
+        // Last column, last row should be 1 for orthographic
+        #expect(abs(cam.projectionMatrix.storage[3][3] - 1) < 1e-6)
     }
 }
 

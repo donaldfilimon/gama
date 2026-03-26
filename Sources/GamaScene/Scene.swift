@@ -2,6 +2,7 @@
 // Part of GamaScene
 
 import GamaCore
+import GamaMath
 
 /// A complete scene containing a node hierarchy, camera, and background color.
 ///

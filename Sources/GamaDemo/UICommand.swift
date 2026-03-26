@@ -8,6 +8,7 @@ import Metal
 import AppKit
 import QuartzCore
 import GamaMetal
+import GamaMath
 import simd
 #endif
 
@@ -219,6 +220,12 @@ private class GamaTriangleRenderer {
     var angleOffsetX: Float = 0
     var angleOffsetY: Float = 0
 
+    // Frame timing
+    private var lastFrameTime: CFAbsoluteTime = CACurrentMediaTime()
+
+    // Cached layout stride
+    private static let uniformStride = MemoryLayout<simd_float4x4>.stride
+
     // FPS tracking
     private var frameCount: Int = 0
     private var lastFPSTime: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()
@@ -277,8 +284,7 @@ private class GamaTriangleRenderer {
         colorBuffer = try device.createBuffer(size: colSize, usage: .vertex)
 
         // 5. Create uniform buffer for model matrix (before closures that capture self)
-        let uniformSize = MemoryLayout<simd_float4x4>.stride
-        uniformBuffer = try device.createBuffer(size: uniformSize, usage: .uniform)
+        uniformBuffer = try device.createBuffer(size: Self.uniformStride, usage: .uniform)
 
         positions.withUnsafeBufferPointer { ptr in
             positionBuffer.contents().copyMemory(from: ptr.baseAddress!, byteCount: posSize)
@@ -296,42 +302,21 @@ private class GamaTriangleRenderer {
     func render() {
         guard let drawable = metalLayer.nextDrawable() else { return }
 
-        // Update animation time
-        time += 1.0 / 60.0
+        // Update animation time using actual elapsed time
+        let now = CACurrentMediaTime()
+        let dt = Float(now - lastFrameTime)
+        lastFrameTime = now
+        time += dt
 
         // Build rotation matrix: auto-rotation around Z + manual offsets around X and Y
         let autoAngle = time * rotationSpeed
-        let cosZ = cos(autoAngle)
-        let sinZ = sin(autoAngle)
-        let rotZ = simd_float4x4(columns: (
-            SIMD4<Float>(cosZ, sinZ, 0, 0),
-            SIMD4<Float>(-sinZ, cosZ, 0, 0),
-            SIMD4<Float>(0, 0, 1, 0),
-            SIMD4<Float>(0, 0, 0, 1)
-        ))
+        let rotZ = Mat4.rotationZ(autoAngle)
+        let rotX = Mat4.rotationX(angleOffsetX)
+        let rotY = Mat4.rotationY(angleOffsetY)
+        var modelMatrix = (rotY * rotX * rotZ).storage
 
-        let cosX = cos(angleOffsetX)
-        let sinX = sin(angleOffsetX)
-        let rotX = simd_float4x4(columns: (
-            SIMD4<Float>(1, 0, 0, 0),
-            SIMD4<Float>(0, cosX, sinX, 0),
-            SIMD4<Float>(0, -sinX, cosX, 0),
-            SIMD4<Float>(0, 0, 0, 1)
-        ))
-
-        let cosY = cos(angleOffsetY)
-        let sinY = sin(angleOffsetY)
-        let rotY = simd_float4x4(columns: (
-            SIMD4<Float>(cosY, 0, -sinY, 0),
-            SIMD4<Float>(0, 1, 0, 0),
-            SIMD4<Float>(sinY, 0, cosY, 0),
-            SIMD4<Float>(0, 0, 0, 1)
-        ))
-
-        var modelMatrix = rotY * rotX * rotZ
-        let uniformSize = MemoryLayout<simd_float4x4>.stride
-        uniformBuffer.contents().copyMemory(from: &modelMatrix, byteCount: uniformSize)
-        uniformBuffer.didModifyRange(0..<uniformSize)
+        uniformBuffer.contents().copyMemory(from: &modelMatrix, byteCount: Self.uniformStride)
+        uniformBuffer.didModifyRange(0..<Self.uniformStride)
 
         // FPS tracking
         frameCount += 1

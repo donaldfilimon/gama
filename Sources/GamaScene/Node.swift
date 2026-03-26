@@ -1,7 +1,7 @@
 // Node.swift — Scene-graph tree node with parent-child relationships
 // Part of GamaScene
 
-import simd
+import GamaMath
 
 /// A node in the scene graph with a local transform and optional children.
 ///
@@ -43,16 +43,16 @@ public final class Node: Sendable {
     ///
     /// For nodes within a hierarchy, use ``traverse(parentMatrix:visitor:)``
     /// to propagate parent matrices down the tree.
-    public var worldTransform: simd_float4x4 {
-        worldTransform(parentMatrix: simd_float4x4(1))
+    public var worldTransform: Mat4 {
+        worldTransform(parentMatrix: .identity)
     }
 
     /// Computes the world transform given a parent's world matrix.
     ///
     /// - Parameter parentMatrix: The accumulated transform from ancestors.
     /// - Returns: The composed world matrix for this node.
-    public func worldTransform(parentMatrix: simd_float4x4) -> simd_float4x4 {
-        parentMatrix * localTransform.matrix
+    public func worldTransform(parentMatrix: Mat4) -> Mat4 {
+        parentMatrix * localTransform.modelMatrix
     }
 
     // MARK: - Traversal
@@ -64,8 +64,8 @@ public final class Node: Sendable {
     ///   - parentMatrix: The world matrix of this node's parent.
     ///   - visitor: A closure receiving the node and its world matrix.
     public func traverse(
-        parentMatrix: simd_float4x4 = simd_float4x4(1),
-        visitor: (Node, simd_float4x4) -> Void
+        parentMatrix: Mat4 = .identity,
+        visitor: (Node, Mat4) -> Void
     ) {
         let world = worldTransform(parentMatrix: parentMatrix)
         visitor(self, world)
