@@ -137,6 +137,16 @@ let package = Package(
             dependencies: ["GamaUI"],
             swiftSettings: sharedSwiftSettings
         ),
+        .testTarget(
+            name: "GamaVulkanTests",
+            dependencies: ["GamaVulkan", "GamaCore"],
+            swiftSettings: sharedSwiftSettings
+        ),
+        .testTarget(
+            name: "GamaDX12Tests",
+            dependencies: ["GamaDX12", "GamaCore"],
+            swiftSettings: sharedSwiftSettings
+        ),
     ],
     swiftLanguageModes: [.v6]
 )

@@ -18,7 +18,7 @@ swift-tools-version 6.2. Minimum platforms: macOS 15, iOS 18.
 ```bash
 swift build                          # Debug build
 swift build -c release               # Release build
-swift test                           # Run all tests (167 tests)
+swift test                           # Run all tests (166 tests)
 swift test --filter GamaCoreTests    # Run core tests only
 swift test --filter GamaMetalTests   # Run Metal backend tests only
 swift test --filter GamaMathTests    # Run math tests only
