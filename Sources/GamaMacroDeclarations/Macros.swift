@@ -1,4 +1,5 @@
 // Macros.swift — Public macro declarations for Gama
+// Part of GamaMacroDeclarations
 
 /// Generates GPU buffer layout metadata from a struct's stored properties.
 ///

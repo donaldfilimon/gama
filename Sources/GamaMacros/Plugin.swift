@@ -1,4 +1,5 @@
 // Plugin.swift — GamaMacros compiler plugin entry point
+// Part of GamaMacros
 
 import SwiftCompilerPlugin
 import SwiftSyntaxMacros
