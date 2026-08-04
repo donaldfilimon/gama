@@ -2,6 +2,17 @@ import Foundation
 
 /// Pure address-bar → navigable URL helpers (no UI / FoundationModels).
 public enum AddressResolver: Sendable {
+    /// Schemes a resolved address may carry into the web view. Anything else
+    /// (`file:`, `javascript:`, custom schemes — especially from model
+    /// output) is rejected rather than loaded.
+    private static let allowedSchemes: Set<String> = ["http", "https", "about"]
+
+    /// True when `text` is a full URL whose scheme is on the allowlist.
+    private static func isAllowedFullURL(_ text: String) -> Bool {
+        guard let colon = text.firstIndex(of: ":") else { return false }
+        return allowedSchemes.contains(text[..<colon].lowercased())
+    }
+
     /// Fast path before CoreAI: home aliases, full URLs, bare domains / localhost.
     public static func heuristicURL(for text: String) -> String? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -12,7 +23,7 @@ public enum AddressResolver: Sendable {
             return "about:home"
         }
         if trimmed.contains("://") {
-            return trimmed
+            return isAllowedFullURL(trimmed) ? trimmed : nil
         }
         if looksLikeHostOrIP(trimmed) {
             return "https://\(trimmed)"
@@ -29,7 +40,9 @@ public enum AddressResolver: Sendable {
         if trimmed.lowercased() == "about:home" || trimmed.lowercased() == "gama:home" {
             return "about:home"
         }
-        if trimmed.contains("://") { return trimmed }
+        if trimmed.contains("://") {
+            return isAllowedFullURL(trimmed) ? trimmed : nil
+        }
         if looksLikeHostOrIP(trimmed) {
             return "https://\(trimmed)"
         }
