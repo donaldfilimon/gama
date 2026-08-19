@@ -7,7 +7,7 @@
 
 ## Learned Workspace Facts
 
-- `/Users/donaldfilimon/Projects/Gama` is a SwiftPM macOS package (Swift 6.4 / C++23 `.cxx2b`, Cxx interop): executable `Gama` under `Sources/Gama/`, Qt bridge target `CGamaQt` under `Sources/CGamaQt/` — distinct from `~/Public/Gama/`.
+- `~/dev/active/Gama` (moved from `~/Projects/Gama` on 2026-08-09) is a SwiftPM macOS package (Swift 6.4 / C++23 `.cxx2b`, Cxx interop): executable `Gama` under `Sources/Gama/`, Qt bridge target `CGamaQt` under `Sources/CGamaQt/` — distinct from the divergent `~/Public/Gama/` copy, archived to `~/Archive/2026-08-04-cleanup/Gama-divergent-copy/`.
 - `CGamaQt` layout: public `include/GamaQt.hpp` for Swift; implementations in `detail/*.hpp`; minimal `.cpp` stub that includes detail headers for SPM.
 - Homebrew Qt defaults to `/opt/homebrew` (override with `QT_PREFIX`); package links QtCore/Gui/Widgets/Network frameworks plus JavaScriptCore; platform floor is macOS v27 (Liquid Glass + FoundationModels smart search).
 - Avoid `QStringLiteral` with raw string literals (breaks `qMakeStringPrivate`); use `QString::fromUtf8(R"(...)")` or equivalent at that boundary.
