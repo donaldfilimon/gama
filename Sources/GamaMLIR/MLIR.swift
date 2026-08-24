@@ -83,4 +83,3 @@ public func renderAttrs(_ attrs: [(String, MLIRAttr)]) -> String {
     let body = attrs.map { "\($0.0) = \($0.1.rendered)" }.joined(separator: ", ")
     return " {\(body)}"
 }
-

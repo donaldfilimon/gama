@@ -80,4 +80,3 @@ public struct LaidOutNode: Sendable {
         for c in children { c.collectInteractive(into: &out) }
     }
 }
-

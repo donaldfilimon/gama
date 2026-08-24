@@ -42,4 +42,3 @@ public macro Reactive() =
 @freestanding(expression)
 public macro rgb(_ hex: String) -> Color =
     #externalMacro(module: "GamaMacrosImpl", type: "RGBMacro")
-
