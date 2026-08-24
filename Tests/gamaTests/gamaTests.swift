@@ -290,20 +290,21 @@ final class SignalTests: XCTestCase {
     func testReentrantSetDoesNotReenterObservers() {
         let s = Signal(0)
         nonisolated(unsafe) var hits = 0
-        s.observe {
+        let token = s.observe {
             hits += 1
             if s.get() == 1 { s.set(2) }  // re-entrant set inside observer
         }
         s.set(1)
         XCTAssertEqual(hits, 1)  // inner set coalesced into the outer pass
         XCTAssertEqual(s.get(), 2)
+        s.cancel(token)
     }
 
     func testObserverAddedDuringNotifyDefersToNextChange() {
         let s = Signal(0)
         nonisolated(unsafe) var lateHits = 0
         nonisolated(unsafe) var added = false
-        s.observe {
+        let token = s.observe {
             if !added {
                 added = true
                 s.observe { lateHits += 1 }
@@ -313,6 +314,7 @@ final class SignalTests: XCTestCase {
         XCTAssertEqual(lateHits, 0)  // not called in the pass that added it
         s.set(2)
         XCTAssertEqual(lateHits, 1)
+        s.cancel(token)
     }
 
     func testSetIfChangedSkipsRedundantNotifies() {
