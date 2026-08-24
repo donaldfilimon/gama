@@ -1,0 +1,33 @@
+plugins {
+    id("com.android.application")
+}
+
+android {
+    namespace = "com.gama.example"
+    compileSdk = 37
+    ndkVersion = "30.0.15729638"
+
+    defaultConfig {
+        applicationId = "com.gama.example"
+        minSdk = 28
+        targetSdk = 37
+        versionCode = 1
+        versionName = "1.0"
+        ndk { abiFilters += setOf("x86_64", "arm64-v8a") }
+        externalNativeBuild {
+            cmake {
+                arguments += "-DGAMA_ROOT=${rootProject.projectDir.parentFile.parentFile.absolutePath}"
+                cppFlags += "-std=c++23"
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
+
+    sourceSets["main"].jniLibs.srcDir("src/main/jniLibs")
+}

@@ -1,0 +1,19 @@
+import GamaCore
+import GamaEmbed
+
+private struct AndroidDemo: App {
+    private let taps = Signal(0)
+    init() {}
+    var content: some View {
+        VStack {
+            Text("Gama Android").bold()
+            Text("Tapped \(taps.get())")
+            Button("Tap") { taps.update { $0 += 1 } }
+        }
+    }
+}
+
+@_cdecl("gama_android_demo_v1_create")
+public func gama_android_demo_v1_create() -> UnsafeMutableRawPointer {
+    GamaEmbed.makeContext(app: AndroidDemo())
+}
