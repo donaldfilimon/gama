@@ -1,7 +1,11 @@
 # gama v1 TUI + Embedded-clean core
 
 Date: 2026-08-20  
-Status: accepted (v1 implemented; GUI/macros/MLIR remain Proposed)  
+Status: historical v1 baseline (superseded by `docs/Capabilities.md`)
+
+> This document records the narrower August 20 TUI design and its evidence at
+> that time. Its Current/Proposed table is historical, not the status of the
+> expanded framework on the current branch.
 Repo: `/Users/donaldfilimon/gama`
 
 ## Goal
