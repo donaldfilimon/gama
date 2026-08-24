@@ -24,5 +24,5 @@ rm -rf "$OUT"
   --fallback-bundle-version 1.0.0 \
   --warnings-as-errors
 test -f "$OUT/data/documentation/gamacore.json"
-rg -q 'Current|Blocked|Proven' "$ROOT/docs/Capabilities.md"
+grep -q -E 'Current|Blocked|Proven' "$ROOT/docs/Capabilities.md"
 echo "OK — DocC archive, package metadata, and claim-honest documentation"

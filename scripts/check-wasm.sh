@@ -12,7 +12,7 @@ SCRATCH="$SCRATCH_ROOT/gama-wasm-swiftpm"
   -Xlinker --export=gama_web_v1_key \
   -Xlinker --export=gama_web_v1_pointer \
   -Xlinker --export=gama_web_v1_resize
-rg -q 'gama_web_v1_(frame|key|pointer|resize)' "$ROOT/WebHost/gama.js"
+grep -q -E 'gama_web_v1_(frame|key|pointer|resize)' "$ROOT/WebHost/gama.js"
 artifact="$(find "$SCRATCH" -type f -name 'gama-web-demo.wasm' -print -quit)"
 [[ -n "$artifact" ]] || { echo "error: executable WASM artifact not produced" >&2; exit 1; }
 node "$ROOT/scripts/wasm-runtime-smoke.mjs" "$artifact"

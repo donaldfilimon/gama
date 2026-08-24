@@ -116,7 +116,7 @@ jobs:
       - run: ./scripts/ci-install-swift-sdk.sh
       - uses: android-actions/setup-android@v3
       - name: Install pinned Android NDK
-        run: sdkmanager 'ndk;30.0.15729638' 'platforms;android-37' 'build-tools;36.0.0' 'cmake;3.22.1'
+        run: sdkmanager 'ndk;30.0.15729638' 'platforms;android-36' 'build-tools;36.0.0' 'cmake;3.22.1'
       - uses: gradle/actions/setup-gradle@v5
         with:
           gradle-version: '9.5.0'
@@ -168,7 +168,7 @@ jobs:
           Invoke-WebRequest -Uri $env:GAMA_SWIFT_64_WINDOWS_URL -OutFile $installer
           $actual = (Get-FileHash -Algorithm SHA256 $installer).Hash.ToLowerInvariant()
           if ($actual -ne $env:GAMA_SWIFT_64_WINDOWS_SHA256) { throw 'Swift installer checksum mismatch.' }
-          $process = Start-Process -FilePath $installer -ArgumentList '/quiet' -Wait -PassThru
+          $process = Start-Process -FilePath $installer -ArgumentList '/install', '/quiet', '/norestart' -Wait -PassThru
           if ($process.ExitCode -ne 0) { throw "Swift installer failed with $($process.ExitCode)." }
           $roots = @(
             (Join-Path $env:LOCALAPPDATA 'Programs\Swift'),
@@ -177,6 +177,8 @@ jobs:
           $swift = $roots | ForEach-Object { Get-ChildItem $_ -Filter swift.exe -Recurse } | Select-Object -First 1
           if (-not $swift) { throw 'Installed swift.exe not found.' }
           $swift.DirectoryName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Configure the Visual C++ build environment
+        uses: ilammy/msvc-dev-cmd@v1
       - name: Verify and test native console implementation
         shell: pwsh
         run: |

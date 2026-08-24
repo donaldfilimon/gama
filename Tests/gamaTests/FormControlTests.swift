@@ -18,6 +18,18 @@ private struct FormApp: App {
 
 @Suite("Form controls and identity")
 struct FormControlTests {
+    @Test("progress rounds midpoint values away from zero")
+    func progressRounding() {
+        let rendered = ProgressView(value: 1, total: 8, label: "Load")
+            .render(in: BuildContext())
+
+        guard case .text(let text, _) = rendered else {
+            Issue.record("ProgressView did not render text")
+            return
+        }
+        #expect(text == "Load [███░░░░░░░░░░░░░░░░░] 13%")
+    }
+
     @Test("focused text input edits and toggle activates")
     func editingAndToggle() {
         var host = FrameHost(app: FormApp())

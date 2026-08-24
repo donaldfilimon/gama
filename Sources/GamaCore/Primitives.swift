@@ -266,9 +266,9 @@ public struct ProgressView: View {
 
     public func render(in context: BuildContext) -> RenderNode {
         let fraction = total > 0 ? min(1, max(0, value / total)) : 0
-        let filled = Int((fraction * 20).rounded())
+        let filled = Int(fraction * 20 + 0.5)
         let bar = String(repeating: "█", count: filled) + String(repeating: "░", count: 20 - filled)
-        let percent = Int((fraction * 100).rounded())
+        let percent = Int(fraction * 100 + 0.5)
         return .text("\(label.map { "\($0) " } ?? "")[\(bar)] \(percent)%", style: context.inheritedStyle)
     }
 }

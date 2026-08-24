@@ -4,13 +4,13 @@ plugins {
 
 android {
     namespace = "com.gama.example"
-    compileSdk = 37
+    compileSdk = 36
     ndkVersion = "30.0.15729638"
 
     defaultConfig {
         applicationId = "com.gama.example"
         minSdk = 28
-        targetSdk = 37
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
         ndk { abiFilters += setOf("x86_64", "arm64-v8a") }
