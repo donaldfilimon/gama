@@ -16,7 +16,8 @@ concurrency:
 jobs:
   macos-swift-64:
     name: macOS / Apple Swift 6.4
-    runs-on: macos-26
+    # Preview image whose default toolchain is Xcode 27 / Apple Swift 6.4.
+    runs-on: xcode-27
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4

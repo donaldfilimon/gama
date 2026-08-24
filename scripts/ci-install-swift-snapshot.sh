@@ -11,7 +11,8 @@ printf '%s  %s\n' "$GAMA_SWIFT_64_SHA256" "$archive" | sha256sum --check --stric
 mkdir -p "$install_root"
 tar -xzf "$archive" --strip-components=1 -C "$install_root"
 
-swift_bin="$(find "$install_root" -type f -path '*/usr/bin/swift' -print -quit)"
+# Snapshot archives expose `swift` as a symlink to swift-driver.
+swift_bin="$(find "$install_root" -path '*/usr/bin/swift' -print -quit)"
 test -n "$swift_bin"
 swift_dir="$(dirname "$swift_bin")"
 echo "$swift_dir" >> "${GITHUB_PATH:?GITHUB_PATH is required}"
