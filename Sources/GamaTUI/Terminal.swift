@@ -495,7 +495,7 @@ public struct Terminal {
         switch Int32(record.EventType) {
         case KEY_EVENT:
             let k = record.Event.KeyEvent
-            guard k.bKeyDown else { return nil }
+            guard k.bKeyDown.boolValue else { return nil }
             return translate(key: k)
 
         case MOUSE_EVENT:
