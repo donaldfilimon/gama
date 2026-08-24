@@ -16,16 +16,22 @@ apk="$PROJECT/app/build/outputs/apk/debug/app-debug.apk"
 test -f "$apk"
 adb install -r "$apk" >/dev/null
 adb shell am force-stop com.gama.example
+adb logcat -c
 adb shell am start -W -n com.gama.example/.MainActivity >/dev/null
 
 for _ in $(seq 1 20); do
-  adb shell uiautomator dump /sdcard/gama-window.xml >/dev/null 2>&1 || true
+  # A wedged accessibility service can otherwise make one dump consume minutes.
+  timeout 5s adb shell uiautomator dump /sdcard/gama-window.xml >/dev/null 2>&1 || true
   if adb exec-out cat /sdcard/gama-window.xml 2>/dev/null | grep -q 'GAMA_OK 40 12 CHANGED'; then
+    echo "OK — Android emulator JNI input mutated and rendered a decoded frame"
+    exit 0
+  fi
+  if adb logcat -d -s GamaAcceptance:I '*:S' | grep -q 'GAMA_OK 40 12 CHANGED'; then
     echo "OK — Android emulator JNI input mutated and rendered a decoded frame"
     exit 0
   fi
   sleep 1
 done
-adb logcat -d -t 200 '*:E' >&2 || true
+adb logcat -d -t 400 >&2 || true
 echo "error: Android UI never exposed the GAMA_OK runtime assertion" >&2
 exit 1

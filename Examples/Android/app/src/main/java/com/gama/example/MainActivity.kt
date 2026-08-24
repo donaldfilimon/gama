@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.os.Bundle
+import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 
@@ -40,6 +41,8 @@ class MainActivity : Activity() {
             check(!before.contentEquals(after)) { "pointer action did not mutate the rendered frame" }
             check(frame.commands.filterIsInstance<DrawListDecoder.Text>().any { it.value == "Tapped 1" })
             contentDescription = "GAMA_OK ${frame.columns} ${frame.rows} CHANGED"
+            importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
+            Log.i("GamaAcceptance", contentDescription.toString())
         }
 
         override fun onDraw(canvas: Canvas) {
