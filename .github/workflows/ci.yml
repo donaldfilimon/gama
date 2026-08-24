@@ -176,7 +176,16 @@ jobs:
           ) | Where-Object { Test-Path $_ }
           $swift = $roots | ForEach-Object { Get-ChildItem $_ -Filter swift.exe -Recurse } | Select-Object -First 1
           if (-not $swift) { throw 'Installed swift.exe not found.' }
+          $sdk = $roots | ForEach-Object { Get-ChildItem $_ -Directory -Filter Windows.sdk -Recurse } | Select-Object -First 1
+          if (-not $sdk) { throw 'Installed Windows.sdk not found.' }
+          $runtimeBin = $roots | ForEach-Object {
+            Get-ChildItem $_ -Directory -Filter bin -Recurse |
+              Where-Object { $_.FullName -match '\\Runtimes\\[^\\]+\\usr\\bin$' }
+          } | Select-Object -First 1
+          if (-not $runtimeBin) { throw 'Installed Swift runtime bin directory not found.' }
           $swift.DirectoryName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          $runtimeBin.FullName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "SDKROOT=$($sdk.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Configure the Visual C++ build environment
         uses: ilammy/msvc-dev-cmd@v1
       - name: Verify and test native console implementation
