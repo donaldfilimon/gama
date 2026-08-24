@@ -8,6 +8,10 @@ var output = GetStdHandle(STD_OUTPUT_HANDLE)
 var originalInput: DWORD = 0
 var originalOutput: DWORD = 0
 if !GetConsoleMode(input, &originalInput) || !GetConsoleMode(output, &originalOutput) {
+    // CI hosts may attach a console while redirecting this process's standard
+    // handles to pipes. Detach before allocating the private console whose
+    // mode transitions this executable verifies.
+    _ = FreeConsole()
     guard AllocConsole() else { fatalError("AllocConsole failed") }
     allocated = true
     input = GetStdHandle(STD_INPUT_HANDLE)

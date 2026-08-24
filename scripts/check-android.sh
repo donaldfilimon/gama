@@ -23,7 +23,7 @@ rm -rf "$jni"
 mkdir -p "$jni"
 cp "$product" "$jni/"
 
-runtime="$(find -L "$HOME/Library/org.swift.swiftpm/swift-sdks" "$HOME/.swiftpm/swift-sdks" \
+runtime="$(find -L "$HOME/Library/org.swift.swiftpm/swift-sdks" "$HOME/.config/swiftpm/swift-sdks" "$HOME/.swiftpm/swift-sdks" \
   -type f -path '*/swift-x86_64/android/libswiftCore.so' -print -quit 2>/dev/null || true)"
 [[ -n "$runtime" ]] || { echo "error: x86_64 Android Swift runtime was not found" >&2; exit 1; }
 runtime="$(dirname "$runtime")"
@@ -56,7 +56,7 @@ arm_jni="$ROOT/Examples/Android/app/src/main/jniLibs/arm64-v8a"
 rm -rf "$arm_jni"
 mkdir -p "$arm_jni"
 cp "$arm_product" "$arm_jni/"
-arm_runtime="$(find -L "$HOME/Library/org.swift.swiftpm/swift-sdks" "$HOME/.swiftpm/swift-sdks" \
+arm_runtime="$(find -L "$HOME/Library/org.swift.swiftpm/swift-sdks" "$HOME/.config/swiftpm/swift-sdks" "$HOME/.swiftpm/swift-sdks" \
   -type f -path '*/swift-aarch64/android/libswiftCore.so' -print -quit 2>/dev/null || true)"
 [[ -n "$arm_runtime" ]] || { echo "error: aarch64 Android Swift runtime was not found" >&2; exit 1; }
 arm_runtime="$(dirname "$arm_runtime")"
