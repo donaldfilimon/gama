@@ -71,6 +71,11 @@ jobs:
       - name: C ABI consumer compile, link, and run
         run: ./scripts/check-c-abi.sh
       - name: Address Sanitizer
+        # Swift 6.4's Linux XCTest runner retains its suite metadata through
+        # process exit; keep ASan's memory-safety checks without treating that
+        # framework-owned process-lifetime state as a Gama leak.
+        env:
+          ASAN_OPTIONS: detect_leaks=0
         run: swift test --sanitize address
       - name: Thread Sanitizer
         run: swift test --sanitize thread
