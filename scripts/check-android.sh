@@ -3,16 +3,20 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SDK="${GAMA_ANDROID_SDK_ID:-swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a_android}"
 SWIFT="${GAMA_SWIFT_64:-/Users/donaldfilimon/Library/Developer/Toolchains/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a.xctoolchain/usr/bin/swift}"
+SCRATCH_ROOT="${GAMA_SCRATCH_ROOT:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}}"
+EMBED_SCRATCH="$SCRATCH_ROOT/gama-android-swiftpm"
+EMULATOR_SCRATCH="$SCRATCH_ROOT/gama-android-emulator-swiftpm"
+DEVICE_SCRATCH="$SCRATCH_ROOT/gama-android-device-swiftpm"
 ANDROID_NDK_HOME="${ANDROID_NDK_HOME:-${ANDROID_NDK_ROOT:-}}"
 [[ -n "$ANDROID_NDK_HOME" ]] || { echo "error: ANDROID_NDK_HOME is required" >&2; exit 1; }
 export ANDROID_NDK_HOME
 "$SWIFT" --version | grep -q 'Swift version 6.4'
 "$SWIFT" sdk list | grep -Fxq "$SDK" || { echo "error: missing Android SDK $SDK" >&2; exit 1; }
-"$SWIFT" build --package-path "$ROOT" --scratch-path /private/tmp/gama-android-swiftpm --swift-sdk "$SDK" --triple aarch64-unknown-linux-android28 --product GamaEmbed
-"$SWIFT" build -c release --package-path "$ROOT" --scratch-path /private/tmp/gama-android-emulator-swiftpm --swift-sdk "$SDK" --triple x86_64-unknown-linux-android28 --product GamaAndroidDemo
-"$SWIFT" build -c release --package-path "$ROOT" --scratch-path /private/tmp/gama-android-device-swiftpm --swift-sdk "$SDK" --triple aarch64-unknown-linux-android28 --product GamaAndroidDemo
+"$SWIFT" build --package-path "$ROOT" --scratch-path "$EMBED_SCRATCH" --swift-sdk "$SDK" --triple aarch64-unknown-linux-android28 --product GamaEmbed
+"$SWIFT" build -c release --package-path "$ROOT" --scratch-path "$EMULATOR_SCRATCH" --swift-sdk "$SDK" --triple x86_64-unknown-linux-android28 --product GamaAndroidDemo
+"$SWIFT" build -c release --package-path "$ROOT" --scratch-path "$DEVICE_SCRATCH" --swift-sdk "$SDK" --triple aarch64-unknown-linux-android28 --product GamaAndroidDemo
 
-product="$(find /private/tmp/gama-android-emulator-swiftpm -type f -name 'libGamaAndroidDemo.so' -print -quit)"
+product="$(find "$EMULATOR_SCRATCH" -type f -name 'libGamaAndroidDemo.so' -print -quit)"
 [[ -n "$product" ]] || { echo "error: Android demo shared library was not produced" >&2; exit 1; }
 jni="$ROOT/Examples/Android/app/src/main/jniLibs/x86_64"
 rm -rf "$jni"
@@ -46,7 +50,7 @@ done
 test -f "$jni/libswiftCore.so"
 cp "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$host_tag/sysroot/usr/lib/x86_64-linux-android/libc++_shared.so" "$jni/"
 
-arm_product="$(find /private/tmp/gama-android-device-swiftpm -type f -name 'libGamaAndroidDemo.so' -print -quit)"
+arm_product="$(find "$DEVICE_SCRATCH" -type f -name 'libGamaAndroidDemo.so' -print -quit)"
 [[ -n "$arm_product" ]] || { echo "error: arm64 Android demo shared library was not produced" >&2; exit 1; }
 arm_jni="$ROOT/Examples/Android/app/src/main/jniLibs/arm64-v8a"
 rm -rf "$arm_jni"

@@ -2,7 +2,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SCRATCH="${GAMA_C_ABI_SCRATCH_PATH:-/private/tmp/gama-c-abi-swiftpm}"
+SCRATCH_ROOT="${GAMA_SCRATCH_ROOT:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}}"
+SCRATCH="${GAMA_C_ABI_SCRATCH_PATH:-$SCRATCH_ROOT/gama-c-abi-swiftpm}"
 OUT="${TMPDIR:-/tmp}/gama-c-consumer.o"
 EXE="${TMPDIR:-/tmp}/gama-c-consumer"
 if [[ -n "${GAMA_SWIFT_64:-}" ]]; then
