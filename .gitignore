@@ -7,3 +7,8 @@ DerivedData/
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
 .netrc
 CLAUDE.local.md
+Examples/Android/.gradle/
+Examples/Android/app/.cxx/
+Examples/Android/app/build/
+Examples/Android/app/src/main/jniLibs/
+Examples/Android/local.properties

@@ -1,336 +1,310 @@
-public struct LayoutBox: Equatable, Sendable {
-    public var node: ViewNode
-    public var rect: Rect
-    public var children: [LayoutBox]
-    public init(node: ViewNode, rect: Rect, children: [LayoutBox]) {
-        self.node = node
-        self.rect = rect
-        self.children = children
-    }
-    public var size: Size { rect.size }
-}
+//  Layout.swift — GamaCore
+//  Two-pass layout: `measure` answers sizeThatFits(proposal); `layout`
+//  assigns absolute frames producing a LaidOutNode tree. Integer cell
+//  space; GUI backends scale cells to a font/point grid, the MLIR path
+//  carries frames as op attributes.
 
-public enum Layout {
-    public static func layout(_ root: ViewNode, in proposed: Size) -> LayoutBox {
-        place(root, origin: Point(x: 0, y: 0), proposed: proposed.clampedNonNegative)
-    }
+public enum LayoutEngine {
+    // MARK: Measure
 
-    static func measure(_ node: ViewNode, proposed: Size) -> Size {
-        let p = proposed.clampedNonNegative
+    public static func measure(_ node: RenderNode, proposal: ProposedSize) -> Size {
         switch node {
         case .empty:
             return .zero
-        case .text(let string, _):
-            return Size(width: DisplayWidth.of(string), height: 1)
-        case .button(let label, _):
-            return Size(width: DisplayWidth.of("[ " + label + " ]"), height: 1)
-        case .textField(let text, let placeholder, _):
-            let content = text.isEmpty ? placeholder : text
-            let w = max(8, DisplayWidth.of(content))
-            return Size(width: max(w, p.width), height: 1)
-        case .checkbox(let label, let checked, _):
-            let prefix = checked ? "[x] " : "[ ] "
-            return Size(width: DisplayWidth.of(prefix + label), height: 1)
-        case .progress:
-            return Size(width: max(3, p.width), height: 1)
-        case .divider(.horizontal):
-            return Size(width: p.width, height: 1)
-        case .divider(.vertical):
-            return Size(width: 1, height: p.height)
+
+        case .text(let s, _):
+            return TextLayout.size(of: s, width: proposal.width)
+
         case .spacer(let minLength):
-            return Size(width: minLength, height: 0)
+            return Size(width: minLength, height: minLength)
+
+        case .divider:
+            return Size(width: 1, height: 1)  // axis-resolved by the stack
+
         case .padding(let insets, let child):
-            let inner = Size(
-                width: max(0, p.width - insets.leading - insets.trailing),
-                height: max(0, p.height - insets.top - insets.bottom)
+            let inner = ProposedSize(
+                width: proposal.width.map { max(0, $0 - insets.horizontal) },
+                height: proposal.height.map { max(0, $0 - insets.vertical) }
             )
-            let cs = measure(child, proposed: inner)
-            return Size(
-                width: cs.width + insets.leading + insets.trailing,
-                height: cs.height + insets.top + insets.bottom
+            let c = measure(child, proposal: inner)
+            return Size(width: c.width + insets.horizontal, height: c.height + insets.vertical)
+
+        case .border(_, _, let title, let child):
+            let inner = ProposedSize(
+                width: proposal.width.map { max(0, $0 - 2) },
+                height: proposal.height.map { max(0, $0 - 2) }
             )
-        case .frame(let minW, let maxW, let minH, let maxH, let child):
-            var s = measure(child, proposed: p)
-            if let minW { s.width = max(s.width, minW) }
-            if let maxW { s.width = min(s.width, maxW) }
-            if let minH { s.height = max(s.height, minH) }
-            if let maxH { s.height = min(s.height, maxH) }
-            return Size(width: max(0, s.width), height: max(0, s.height))
-        case .stack(let axis, _, let spacing, let children):
-            return measureStack(axis: axis, spacing: spacing, children: children, proposed: p)
-        case .overlay(let children):
-            var w = 0
-            var h = 0
-            for child in children {
-                let s = measure(child, proposed: p)
-                w = max(w, s.width)
-                h = max(h, s.height)
+            let c = measure(child, proposal: inner)
+            let titleWidth = title.map { TextLayout.displayWidth(of: $0) + 4 } ?? 0
+            return Size(width: max(c.width + 2, titleWidth), height: c.height + 2)
+
+        case .background(_, let child), .styled(_, let child),
+            .interactive(_, _, let child):
+            return measure(child, proposal: proposal)
+
+        case .frame(let w, let h, _, let child):
+            let inner = ProposedSize(width: w ?? proposal.width, height: h ?? proposal.height)
+            let c = measure(child, proposal: inner)
+            return Size(width: w ?? c.width, height: h ?? c.height)
+
+        case .flexFrame(let minW, let maxW, let minH, let maxH, _, let child):
+            let c = measure(child, proposal: proposal)
+            var width = c.width
+            var height = c.height
+            if let maxW { width = maxW == .max ? (proposal.width ?? c.width) : min(width, maxW) }
+            if let minW { width = max(width, minW) }
+            if let maxH { height = maxH == .max ? (proposal.height ?? c.height) : min(height, maxH) }
+            if let minH { height = max(height, minH) }
+            return Size(width: width, height: height)
+
+        case .overlay(_, let children):
+            var s = Size.zero
+            for c in children {
+                let m = measure(c, proposal: proposal)
+                s.width = max(s.width, m.width)
+                s.height = max(s.height, m.height)
             }
-            return Size(width: min(p.width, w), height: min(p.height, h))
-        case .list(_, _, let children):
-            return measureStack(axis: .vertical, spacing: 0, children: children, proposed: p)
+            return s
+
+        case .stack(let axis, let spacing, _, let children):
+            return measureStack(axis: axis, spacing: spacing, children: children, proposal: proposal)
         }
     }
 
-    static func measureStack(
-        axis: Axis,
-        spacing: Int,
-        children: [ViewNode],
-        proposed: Size
+    private static func measureStack(
+        axis: Axis, spacing: Int, children: [RenderNode], proposal: ProposedSize
     ) -> Size {
-        let unbounded = Int.max / 4
-        var along = 0
-        var cross = 0
-        var gaps = 0
-        for (i, child) in children.enumerated() {
-            if case .spacer = child { continue }
-            let childProposed: Size
-            switch axis {
-            case .vertical:
-                childProposed = Size(width: proposed.width, height: unbounded)
-            case .horizontal:
-                childProposed = Size(width: unbounded, height: proposed.height)
-            }
-            let s = measure(child, proposed: childProposed)
-            switch axis {
-            case .vertical:
-                along += s.height
-                cross = max(cross, s.width)
-            case .horizontal:
-                along += s.width
-                cross = max(cross, s.height)
-            }
-            if i > 0 { gaps += 1 }
-        }
-        let space = max(0, spacing) * max(0, children.count - 1)
-        // Recount gaps only between all children (including spacers) as spec: spacing between adjacent children.
-        let gapCount = max(0, children.count - 1)
-        along += max(0, spacing) * gapCount
-        _ = space
-        switch axis {
-        case .vertical:
-            return Size(width: min(proposed.width, cross), height: along)
-        case .horizontal:
-            return Size(width: along, height: min(proposed.height, cross))
-        }
-    }
+        guard !children.isEmpty else { return .zero }
+        let totalSpacing = spacing * (children.count - 1)
+        var mainUsed = 0
+        var crossMax = 0
+        var flexWeight = 0
 
-    static func place(_ node: ViewNode, origin: Point, proposed: Size) -> LayoutBox {
-        let p = proposed.clampedNonNegative
-        switch node {
-        case .empty:
-            return LayoutBox(node: node, rect: Rect(origin: origin, size: .zero), children: [])
-        case .text, .button, .checkbox:
-            let s = measure(node, proposed: p)
-            return LayoutBox(node: node, rect: Rect(origin: origin, size: s), children: [])
-        case .textField:
-            let s = measure(node, proposed: p)
-            return LayoutBox(node: node, rect: Rect(origin: origin, size: s), children: [])
-        case .progress:
-            let s = Size(width: max(3, p.width), height: 1)
-            return LayoutBox(node: node, rect: Rect(origin: origin, size: s), children: [])
-        case .divider(.horizontal):
-            let s = Size(width: p.width, height: 1)
-            return LayoutBox(node: node, rect: Rect(origin: origin, size: s), children: [])
-        case .divider(.vertical):
-            let s = Size(width: 1, height: p.height)
-            return LayoutBox(node: node, rect: Rect(origin: origin, size: s), children: [])
-        case .spacer(let minLength):
-            let s: Size
-            // Standalone spacer: minLength along x, 0 height. Stacks override via placeStack.
-            s = Size(width: minLength, height: 0)
-            return LayoutBox(node: node, rect: Rect(origin: origin, size: s), children: [])
-        case .padding(let insets, let child):
-            let innerProposed = Size(
-                width: max(0, p.width - insets.leading - insets.trailing),
-                height: max(0, p.height - insets.top - insets.bottom)
-            )
-            let childBox = place(
-                child,
-                origin: Point(x: origin.x + insets.leading, y: origin.y + insets.top),
-                proposed: innerProposed
-            )
-            let size = Size(
-                width: childBox.size.width + insets.leading + insets.trailing,
-                height: childBox.size.height + insets.top + insets.bottom
-            )
-            return LayoutBox(
-                node: node,
-                rect: Rect(origin: origin, size: size),
-                children: [childBox]
-            )
-        case .frame(let minW, let maxW, let minH, let maxH, let child):
-            var childProposed = p
-            if let maxW { childProposed.width = min(childProposed.width, maxW) }
-            if let maxH { childProposed.height = min(childProposed.height, maxH) }
-            let childBox = place(child, origin: origin, proposed: childProposed)
-            var size = childBox.size
-            if let minW { size.width = max(size.width, minW) }
-            if let maxW { size.width = min(size.width, maxW) }
-            if let minH { size.height = max(size.height, minH) }
-            if let maxH { size.height = min(size.height, maxH) }
-            size = size.clampedNonNegative
-            return LayoutBox(
-                node: node,
-                rect: Rect(origin: origin, size: size),
-                children: [childBox]
-            )
-        case .stack(let axis, let alignment, let spacing, let children):
-            return placeStack(
-                node: node,
-                axis: axis,
-                alignment: alignment,
-                spacing: spacing,
-                children: children,
-                origin: origin,
-                proposed: p,
-                clipList: false
-            )
-        case .overlay(let children):
-            let size = measure(node, proposed: p)
-            let placed = children.map { place($0, origin: origin, proposed: size) }
-            return LayoutBox(
-                node: node,
-                rect: Rect(origin: origin, size: size),
-                children: placed
-            )
-        case .list(_, _, let children):
-            return placeStack(
-                node: node,
-                axis: .vertical,
-                alignment: .leading,
-                spacing: 0,
-                children: children,
-                origin: origin,
-                proposed: p,
-                clipList: true
-            )
-        }
-    }
-
-    static func placeStack(
-        node: ViewNode,
-        axis: Axis,
-        alignment: Alignment,
-        spacing: Int,
-        children: [ViewNode],
-        origin: Point,
-        proposed: Size,
-        clipList: Bool
-    ) -> LayoutBox {
-        let gap = max(0, spacing)
-        var nonSpacerAlong = 0
-        var spacerCount = 0
-        var measured: [Size] = []
-        measured.reserveCapacity(children.count)
-        let unbounded = Int.max / 4
         for child in children {
-            if case .spacer = child {
-                spacerCount += 1
-                measured.append(.zero)
+            if case .divider = child {
+                mainUsed += 1
                 continue
             }
-            let childProposed: Size
-            switch axis {
-            case .vertical:
-                childProposed = Size(width: proposed.width, height: unbounded)
-            case .horizontal:
-                childProposed = Size(width: unbounded, height: proposed.height)
+            if case .flexible(let w) = child.flexPriority {
+                flexWeight += w
+                mainUsed += flexMinimum(of: child, axis: axis)
+                continue
             }
-            let s = measure(child, proposed: childProposed)
-            measured.append(s)
-            switch axis {
-            case .vertical: nonSpacerAlong += s.height
-            case .horizontal: nonSpacerAlong += s.width
-            }
-        }
-        let gapTotal = gap * max(0, children.count - 1)
-        let proposedAlong = axis == .vertical ? proposed.height : proposed.width
-        let leftover = proposedAlong - nonSpacerAlong - gapTotal
-        let spacerShare: Int
-        if spacerCount > 0 {
-            spacerShare = leftover > 0 ? leftover / spacerCount : 0
-        } else {
-            spacerShare = 0
+            let m = measure(child, proposal: openProposal(proposal, along: axis))
+            mainUsed += (axis == .horizontal ? m.width : m.height)
+            crossMax = max(crossMax, axis == .horizontal ? m.height : m.width)
         }
 
-        var cursor = axis == .vertical ? origin.y : origin.x
-        var boxes: [LayoutBox] = []
-        var maxCross = 0
-        for (i, child) in children.enumerated() {
-            if clipList, axis == .vertical, cursor >= origin.y + proposed.height {
-                break
-            }
-            let childSize: Size
-            if case .spacer(let minLength) = child {
-                let along = max(minLength, spacerShare)
-                childSize = axis == .vertical
-                    ? Size(width: 0, height: along)
-                    : Size(width: along, height: 0)
-            } else {
-                childSize = measured[i]
-            }
-            if clipList, axis == .vertical {
-                let remaining = origin.y + proposed.height - cursor
-                if remaining <= 0 { break }
-                if childSize.height > remaining { break }
-            }
-            let cross: Int
-            let containerCross = axis == .vertical ? proposed.width : proposed.height
-            let childCross = axis == .vertical ? childSize.width : childSize.height
-            switch alignment {
-            case .leading: cross = 0
-            case .trailing: cross = max(0, containerCross - childCross)
-            case .center: cross = max(0, (containerCross - childCross) / 2)
-            }
-            let childOrigin: Point
-            let childProposed: Size
-            switch axis {
-            case .vertical:
-                childOrigin = Point(x: origin.x + cross, y: cursor)
-                childProposed = Size(width: proposed.width, height: childSize.height)
-                maxCross = max(maxCross, childSize.width)
-            case .horizontal:
-                childOrigin = Point(x: cursor, y: origin.y + cross)
-                childProposed = Size(width: childSize.width, height: proposed.height)
-                maxCross = max(maxCross, childSize.height)
-            }
-            let box: LayoutBox
-            if case .spacer = child {
-                box = LayoutBox(
-                    node: child,
-                    rect: Rect(origin: childOrigin, size: childSize),
-                    children: []
-                )
-            } else {
-                box = place(child, origin: childOrigin, proposed: childProposed)
-            }
-            boxes.append(box)
-            switch axis {
-            case .vertical:
-                cursor += box.rect.size.height + gap
-            case .horizontal:
-                cursor += box.rect.size.width + gap
-            }
-        }
-        let usedAlong: Int
-        if boxes.isEmpty {
-            usedAlong = 0
+        let mainProposal = axis == .horizontal ? proposal.width : proposal.height
+        let main: Int
+        if flexWeight > 0, let available = mainProposal {
+            main = max(available, mainUsed + totalSpacing)
         } else {
-            switch axis {
-            case .vertical:
-                usedAlong = boxes.last!.rect.maxY - origin.y
-            case .horizontal:
-                usedAlong = boxes.last!.rect.maxX - origin.x
+            main = mainUsed + totalSpacing
+        }
+        if crossMax == 0 { crossMax = 1 }
+        return axis == .horizontal
+            ? Size(width: main, height: crossMax)
+            : Size(width: crossMax, height: main)
+    }
+
+    /// Main-axis floor a flexible child may never shrink below.
+    private static func flexMinimum(of node: RenderNode, axis: Axis) -> Int {
+        switch node {
+        case .spacer(let minLength):
+            return minLength
+        case .flexFrame(let minW, _, let minH, _, _, _):
+            return (axis == .horizontal ? minW : minH) ?? 0
+        case .padding(let e, let c):
+            return flexMinimum(of: c, axis: axis)
+                + (axis == .horizontal ? e.horizontal : e.vertical)
+        case .border(_, _, _, let c):
+            return flexMinimum(of: c, axis: axis) + 2
+        case .background(_, let c), .styled(_, let c), .interactive(_, _, let c):
+            return flexMinimum(of: c, axis: axis)
+        default:
+            return 0
+        }
+    }
+
+    /// Keep the cross-axis constraint, open the main axis.
+    private static func openProposal(_ p: ProposedSize, along axis: Axis) -> ProposedSize {
+        axis == .horizontal
+            ? ProposedSize(width: nil, height: p.height)
+            : ProposedSize(width: p.width, height: nil)
+    }
+
+    // MARK: Place
+
+    public static func layout(_ node: RenderNode, in bounds: Rect) -> LaidOutNode {
+        switch node {
+        case .empty, .text, .spacer, .divider:
+            return LaidOutNode(node: node, frame: bounds)
+
+        case .padding(let insets, let child):
+            let inner = layout(child, in: bounds.inset(by: insets))
+            return LaidOutNode(node: node, frame: bounds, children: [inner])
+
+        case .border(_, _, _, let child):
+            let inner = layout(child, in: bounds.inset(by: EdgeInsets(all: 1)))
+            return LaidOutNode(node: node, frame: bounds, children: [inner])
+
+        case .background(_, let child), .styled(_, let child),
+            .interactive(_, _, let child):
+            let inner = layout(child, in: bounds)
+            return LaidOutNode(node: node, frame: bounds, children: [inner])
+
+        case .frame(_, _, let alignment, let child):
+            let ownSize = measure(
+                node,
+                proposal: ProposedSize(width: bounds.size.width, height: bounds.size.height)
+            ).clamped(to: bounds.size)
+            let ownBounds = align(size: ownSize, in: bounds, alignment: alignment)
+            let m = measure(
+                child,
+                proposal: ProposedSize(width: ownBounds.size.width, height: ownBounds.size.height)
+            ).clamped(to: ownBounds.size)
+            let rect = align(size: m, in: ownBounds, alignment: alignment)
+            return LaidOutNode(node: node, frame: ownBounds, children: [layout(child, in: rect)])
+
+        case .flexFrame(_, _, _, _, let alignment, let child):
+            let m = measure(
+                child,
+                proposal: ProposedSize(width: bounds.size.width, height: bounds.size.height)
+            ).clamped(to: bounds.size)
+            let rect = align(size: m, in: bounds, alignment: alignment)
+            return LaidOutNode(node: node, frame: bounds, children: [layout(child, in: rect)])
+
+        case .overlay(let alignment, let children):
+            let laid = children.map { c -> LaidOutNode in
+                let m = measure(
+                    c,
+                    proposal: ProposedSize(width: bounds.size.width, height: bounds.size.height)
+                ).clamped(to: bounds.size)
+                return layout(c, in: align(size: m, in: bounds, alignment: alignment))
+            }
+            return LaidOutNode(node: node, frame: bounds, children: laid)
+
+        case .stack(let axis, let spacing, let alignment, let children):
+            return layoutStack(
+                node: node, axis: axis, spacing: spacing,
+                alignment: alignment, children: children, bounds: bounds
+            )
+        }
+    }
+
+    private static func layoutStack(
+        node: RenderNode, axis: Axis, spacing: Int, alignment: Alignment,
+        children: [RenderNode], bounds: Rect
+    ) -> LaidOutNode {
+        guard !children.isEmpty else { return LaidOutNode(node: node, frame: bounds) }
+
+        let mainAvailable = axis == .horizontal ? bounds.size.width : bounds.size.height
+        let crossAvailable = axis == .horizontal ? bounds.size.height : bounds.size.width
+        let totalSpacing = spacing * (children.count - 1)
+
+        // 1. Measure fixed children; record flexible minima and weights.
+        var sizes = [Size](repeating: .zero, count: children.count)
+        var mins = [Int](repeating: 0, count: children.count)
+        var flexTotal = 0
+        var fixedMain = 0
+        let crossProposal =
+            axis == .horizontal
+            ? ProposedSize(width: nil, height: crossAvailable)
+            : ProposedSize(width: crossAvailable, height: nil)
+
+        for (i, child) in children.enumerated() {
+            if case .divider = child {
+                // Axis-resolved: 1 on main, fill on cross.
+                sizes[i] =
+                    axis == .horizontal
+                    ? Size(width: 1, height: crossAvailable)
+                    : Size(width: crossAvailable, height: 1)
+                fixedMain += 1
+                continue
+            }
+            if case .flexible(let w) = child.flexPriority {
+                flexTotal += w
+                mins[i] = flexMinimum(of: child, axis: axis)
+                fixedMain += mins[i]
+            } else {
+                let m = measure(child, proposal: crossProposal)
+                sizes[i] = m
+                fixedMain += (axis == .horizontal ? m.width : m.height)
             }
         }
-        let size: Size
-        switch axis {
-        case .vertical:
-            size = Size(width: min(proposed.width, max(maxCross, boxes.map { $0.size.width }.max() ?? 0)), height: usedAlong)
-        case .horizontal:
-            size = Size(width: usedAlong, height: min(proposed.height, max(maxCross, boxes.map { $0.size.height }.max() ?? 0)))
+
+        // 2. Distribute leftover above minima to flexibles, weighted; the
+        //    integer remainder spreads across the earliest flex items.
+        if flexTotal > 0 {
+            var remaining = max(0, mainAvailable - fixedMain - totalSpacing)
+            var weightLeft = flexTotal
+            for (i, child) in children.enumerated() {
+                if case .divider = child { continue }
+                guard case .flexible(let w) = child.flexPriority else { continue }
+                let share = weightLeft > 0 ? (remaining * w + weightLeft - 1) / weightLeft : 0
+                let granted = min(share, remaining)
+                remaining -= granted
+                weightLeft -= w
+                let mainLen = mins[i] + granted
+                sizes[i] =
+                    axis == .horizontal
+                    ? Size(width: mainLen, height: crossAvailable)
+                    : Size(width: crossAvailable, height: mainLen)
+            }
         }
-        return LayoutBox(node: node, rect: Rect(origin: origin, size: size), children: boxes)
+
+        // 3. Place along main axis, align on cross axis.
+        var cursor = axis == .horizontal ? bounds.minX : bounds.minY
+        var laid: [LaidOutNode] = []
+        laid.reserveCapacity(children.count)
+
+        for (i, child) in children.enumerated() {
+            let s = sizes[i]
+            let mainLen = axis == .horizontal ? s.width : s.height
+            let crossLen = axis == .horizontal ? s.height : s.width
+
+            let crossOffset: Int
+            switch axis {
+            case .horizontal:
+                switch alignment.vertical {
+                case .top: crossOffset = 0
+                case .center: crossOffset = max(0, (crossAvailable - crossLen) / 2)
+                case .bottom: crossOffset = max(0, crossAvailable - crossLen)
+                }
+            case .vertical:
+                switch alignment.horizontal {
+                case .leading: crossOffset = 0
+                case .center: crossOffset = max(0, (crossAvailable - crossLen) / 2)
+                case .trailing: crossOffset = max(0, crossAvailable - crossLen)
+                }
+            }
+
+            let rect =
+                axis == .horizontal
+                ? Rect(x: cursor, y: bounds.minY + crossOffset, width: mainLen, height: crossLen)
+                : Rect(x: bounds.minX + crossOffset, y: cursor, width: crossLen, height: mainLen)
+
+            laid.append(layout(child, in: rect))
+            cursor += mainLen + spacing
+        }
+
+        return LaidOutNode(node: node, frame: bounds, children: laid)
+    }
+
+    private static func align(size: Size, in bounds: Rect, alignment: Alignment) -> Rect {
+        let x: Int
+        switch alignment.horizontal {
+        case .leading: x = bounds.minX
+        case .center: x = bounds.minX + max(0, (bounds.size.width - size.width) / 2)
+        case .trailing: x = bounds.maxX - size.width
+        }
+        let y: Int
+        switch alignment.vertical {
+        case .top: y = bounds.minY
+        case .center: y = bounds.minY + max(0, (bounds.size.height - size.height) / 2)
+        case .bottom: y = bounds.maxY - size.height
+        }
+        return Rect(x: x, y: y, width: size.width, height: size.height)
     }
 }
