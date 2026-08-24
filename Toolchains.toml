@@ -1,0 +1,49 @@
+schema = 1
+
+[apple]
+channel = "XcodeDefault"
+swift = "6.4"
+swiftlang = "6.4.0.30.4"
+clang = "2100.3.30.1"
+command = "/usr/bin/xcrun --toolchain default swift"
+
+[non_apple]
+selector = "6.4.x-snapshot-2026-08-14"
+version = "Apple Swift version 6.4-dev"
+swift_revision = "424cae54c1a10da"
+llvm_revision = "a157c5eb1c32510"
+swiftc_sha256 = "f977959cab6c9fe5996134849e223658b936208ba9ea8331aedf39f83740b815"
+toolchain_url = "https://download.swift.org/swift-6.4.x-branch/xcode/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a-osx.pkg"
+toolchain_sha256 = "29f9f4d0eb80662360db8d21900519af753973165f240ddb8dd5974b6f499dff"
+status = "pinned-installed"
+policy = "compiler and Swift SDK revisions must match exactly"
+
+[non_apple.linux_x86_64]
+url = "https://download.swift.org/swift-6.4.x-branch/ubuntu2404/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a-ubuntu24.04.tar.gz"
+sha256 = "dae1f550c6e9132322a3c35b5fa16c925e591879a681733ea9b652534b9c8902"
+
+[non_apple.windows_x86_64]
+url = "https://download.swift.org/swift-6.4.x-branch/windows10/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a-windows10.exe"
+sha256 = "17d5eba8dfdc9e99bf13c0f26169022be2f816b19e66d883a596d3512cfb0a04"
+
+[sdk.static_linux]
+id = "swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a_static-linux-0.1.0"
+sha256 = "60964bf3ed1b25b9a002e2b5bb3fa7ed4f7b686a57816c5ddfa3784eeb0823d5"
+url = "https://download.swift.org/swift-6.4.x-branch/static-sdk/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a_static-linux-0.1.0.artifactbundle.tar.gz"
+
+[sdk.wasm]
+id = "swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a_wasm"
+embedded_id = "swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a_wasm-embedded"
+sha256 = "11fabfac6804222569d330fbbb5fa34eef736abda46790e723ac73b256fd1c7a"
+url = "https://download.swift.org/swift-6.4.x-branch/wasm-sdk/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a_wasm.artifactbundle.tar.gz"
+
+[sdk.android]
+id = "swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a_android"
+sha256 = "0f0fc710504b1221397b32c4dff6a6360caf385e336c1d96380811459a87cb9b"
+url = "https://download.swift.org/swift-6.4.x-branch/android-sdk/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a_android.artifactbundle.tar.gz"
+ndk = "r30-rc2"
+ndk_revision = "30.0.15729638"
+
+[swift_syntax]
+tag = "swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a"
+revision = "050f1a346fbbac0ca2cfb15a95274f7bd1cf0ccf"

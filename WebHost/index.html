@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gama</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #0c0c0f; }
+  #gama {
+    height: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+    overflow: hidden;
+    font: 14px/1.25 ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    color: #e6e6e6;
+    outline: none;
+    cursor: default;
+    -webkit-user-select: none; user-select: none;
+  }
+  .gama-row { margin: 0; font: inherit; white-space: pre; }
+</style>
+</head>
+<body>
+<div id="gama" tabindex="0" role="application" aria-live="polite" aria-label="Gama application"></div>
+<script type="module" src="./gama.js"></script>
+</body>
+</html>

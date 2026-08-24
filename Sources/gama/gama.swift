@@ -1,23 +1,13 @@
-import ArgumentParser
+import GamaCore
 
-@main
-struct gama: ParsableCommand {
-    static let configuration = CommandConfiguration(
-        commandName: "gama",
-        abstract: "gama TUI framework",
-        version: "0.1.0",
-        subcommands: [Demo.self]
-    )
-}
-
-struct Demo: ParsableCommand {
-    static let configuration = CommandConfiguration(
-        commandName: "demo",
-        abstract: "Run the gama widget showcase"
-    )
-
-    func run() throws {
-        var app = DemoApp()
-        try app.run()
-    }
+/// Returns and prints the original Gama package greeting.
+///
+/// This compatibility API remains available for clients of the initial
+/// scaffold. New applications should build a `GamaCore.App` and choose a
+/// renderer product such as `GamaTUI` or `GamaAppleUI`.
+@available(*, deprecated, message: "Build a GamaCore.App and select a renderer backend")
+public func hello() -> String {
+    let message = "Hello, world!"
+    print(message)
+    return message
 }
