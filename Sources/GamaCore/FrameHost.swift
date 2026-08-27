@@ -24,10 +24,18 @@ private final class HostActionStore: @unchecked Sendable {
     func invokeKey(_ key: Key, for id: NodeID) -> Bool { keyHandlers[id]?(key) ?? false }
 }
 
-/// Noncopyable: the host owns live reference state (action tables, the
-/// dirty signal, subscriptions); a copy would silently share all of it.
-/// Single ownership is now a compile-time guarantee.
-public struct FrameHost<A: App>: ~Copyable {
+/// The backend-independent heart of a running app. Each host owns focus,
+/// the per-frame action and key-handler registries, model subscriptions,
+/// the dirty flag, and frame production — one implementation of interaction
+/// semantics shared by every backend. Poll-style renderers wrap it in
+/// `AppRuntime`; retained-mode hosts (AppKit/UIKit, DOM, C embed) call
+/// `pump(size:)` and `handle(_:)` from their own event sources. Out-of-band
+/// changes reach it only through `subscriptions` or an explicit
+/// `invalidate()`; there is no process-global registry to go around it.
+public struct FrameHost<A: App> {
+    /// The application value whose `content` is rebuilt on every pump.
+    /// Replacing or mutating it does not mark the host dirty by itself —
+    /// call `invalidate()` to schedule a rebuild.
     public var app: A
 
     /// Every interactive node — the pointer hit-test set.
@@ -52,6 +60,9 @@ public struct FrameHost<A: App>: ~Copyable {
     /// Last size applied by `pump(size:)` or a `.resize` event.
     public private(set) var lastSize: Size = .zero
 
+    /// Creates a host born dirty — the first `needsFrame` check is true —
+    /// whose `SubscriptionContext` funnels every observed signal change
+    /// into that same dirty flag.
     public init(app: A) {
         self.app = app
         let dirty = Signal(true)
@@ -62,7 +73,10 @@ public struct FrameHost<A: App>: ~Copyable {
     /// True when state changed since the last `pump`.
     public var needsFrame: Bool { dirty.get() }
 
-    public func invalidate() { dirty.set(true) }
+    /// Marks the host dirty so the next `needsFrame` check requests a
+    /// frame — the explicit out-of-band path for changes no observed
+    /// signal carries.
+    public mutating func invalidate() { dirty.set(true) }
 
     /// Observe a model signal for this host. Duplicate connections are
     /// coalesced and all observers can be cancelled as one host-owned lifetime.
@@ -70,6 +84,9 @@ public struct FrameHost<A: App>: ~Copyable {
         subscriptions.observe(signal)
     }
 
+    /// Detaches every model observation registered through `observe(_:)`.
+    /// The context itself stays usable — later `observe` calls re-attach —
+    /// so a backend can tear down and rebuild its model wiring.
     public func cancelSubscriptions() { subscriptions.cancelAll() }
 
     /// Build + lay out one frame at `size`, reconciling focus.
@@ -140,6 +157,14 @@ public struct FrameHost<A: App>: ~Copyable {
         }
     }
 
+    /// Routes one input event through the shared interaction policy:
+    /// Ctrl-C/Ctrl-Q set `wantsQuit`; Tab and Shift-Tab cycle focus in tab
+    /// order; arrow keys move focus spatially; Enter or Space activates the
+    /// focused node; a pointer press hit-tests the topmost interactive node
+    /// (focusing it only when focusable) and invokes its action; a resize
+    /// just marks the host dirty; any other key is offered to the focused
+    /// node's key handler. Whenever an event changes state, the dirty flag
+    /// is set so the next `pump` re-renders.
     public mutating func handle(_ event: InputEvent) {
         switch event {
         case .key(.ctrl("c")), .key(.ctrl("q")):

@@ -1,6 +1,10 @@
 //  TextLayout.swift — GamaCore
 //  Foundation-free terminal-column measurement and greedy word wrapping.
 
+/// Terminal-column text metrics and greedy word wrapping with no
+/// Foundation or ICU dependency: a built-in zero-width / East-Asian-wide
+/// classification drives measurement, so every backend that shares
+/// GamaCore measures text the same way.
 public enum TextLayout {
     /// Display cells occupied by an extended grapheme cluster. Combining
     /// marks and joiners are zero width; East Asian wide characters and emoji
@@ -17,6 +21,8 @@ public enum TextLayout {
         return emojiPresentation && width > 0 ? 2 : width
     }
 
+    /// Total display columns for `string`: the sum of every character's
+    /// `cellWidth(of:)`, saturating at `Int.max` rather than overflowing.
     public static func displayWidth(of string: String) -> Int {
         string.reduce(into: 0) { result, character in
             let (sum, overflow) = result.addingReportingOverflow(cellWidth(of: character))

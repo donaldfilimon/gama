@@ -21,8 +21,13 @@
 
 import GamaCore
 
+/// The typed failure for every throwing GamaTUI operation — raw-mode entry
+/// and exit, writes, and event polling all `throws(TerminalError)`, so a
+/// terminal failure never surfaces as an untyped error.
 public struct TerminalError: Error, Sendable {
+    /// Human-readable description of the failing system or console call.
     public let message: String
+    /// Creates an error carrying `message`.
     public init(_ message: String) { self.message = message }
 }
 
@@ -32,21 +37,33 @@ public struct TerminalError: Error, Sendable {
 public struct RawModeSession: ~Copyable {
     private var terminal: Terminal
 
+    /// Consumes `terminal`, switches it into raw mode, and ties its
+    /// restoration to this session's lifetime. Throws when raw mode cannot
+    /// be entered (for example, when stdin is not a tty).
     public init(terminal: consuming Terminal) throws(TerminalError) {
         var t = terminal
         try t.enterRawMode()
         self.terminal = t
     }
 
+    /// Runs `body` with mutable access to the owned terminal — the escape
+    /// hatch for operations the session does not wrap itself.
     public mutating func withTerminal<T>(_ body: (inout Terminal) -> T) -> T {
         body(&terminal)
     }
 
+    /// The current terminal size in character cells.
     public func size() -> Size { terminal.size() }
+    /// Writes `string` — typically `CellBuffer`'s ANSI diff stream — to the
+    /// raw terminal.
     public mutating func write(_ string: String) throws(TerminalError) { try terminal.write(string) }
+    /// Waits up to `timeoutMillis` for one decoded `InputEvent`; `nil` on
+    /// timeout.
     public mutating func nextEvent(timeoutMillis: Int) throws(TerminalError) -> InputEvent? {
         try terminal.nextEvent(timeoutMillis: timeoutMillis)
     }
+    /// Restores the terminal deliberately, surfacing any restoration
+    /// failure that `deinit`'s best-effort cleanup would swallow.
     public mutating func close() throws(TerminalError) { try terminal.exitRawModeChecked() }
 
     deinit {
@@ -59,6 +76,12 @@ public struct RawModeSession: ~Copyable {
 
 // MARK: - POSIX implementation
 
+/// POSIX terminal backend (macOS/Linux/BSD): termios raw mode on standard
+/// input/output with byte-wise input decoding. Incoming bytes are buffered
+/// and decoded incrementally — CSI and SS3 escape sequences, SGR mouse
+/// reports, control characters, and multi-byte UTF-8 text all become
+/// `InputEvent`s. Output is plain ANSI, so `CellBuffer`'s diff stream is
+/// written verbatim.
 public struct Terminal {
     private let inputFD: Int32
     private let outputFD: Int32
@@ -69,6 +92,7 @@ public struct Terminal {
     /// one per nextEvent call.
     private var readBuffer = [UInt8](repeating: 0, count: 64)
 
+    /// Creates a terminal bound to standard input and standard output.
     public init() {
         inputFD = STDIN_FILENO
         outputFD = STDOUT_FILENO
@@ -81,6 +105,12 @@ public struct Terminal {
 
     // MARK: Raw mode
 
+    /// Switches the tty into raw mode (no echo, no line buffering, no
+    /// signal keys), then enters the alternate screen, hides the cursor,
+    /// clears, and enables SGR mouse reporting. The pre-raw termios state
+    /// is saved for restoration. Throws when stdin is not a tty or the
+    /// mode cannot be applied; a failed screen setup restores the terminal
+    /// before rethrowing.
     public mutating func enterRawMode() throws(TerminalError) {
         guard tcgetattr(inputFD, &originalTermios) == 0 else {
             throw TerminalError("tcgetattr failed — stdin is not a tty")
@@ -109,10 +139,17 @@ public struct Terminal {
         }
     }
 
+    /// Best-effort restoration — `exitRawModeChecked()` with the failure
+    /// swallowed, safe to call from cleanup paths such as `deinit`.
     public mutating func exitRawMode() {
         try? exitRawModeChecked()
     }
 
+    /// Leaves the alternate screen, disables mouse reporting, re-shows the
+    /// cursor, and restores the saved termios with `TCSANOW` so cleanup
+    /// cannot block on a stalled output queue. A no-op when not in raw
+    /// mode; throws the first failure encountered after attempting every
+    /// restoration step.
     public mutating func exitRawModeChecked() throws(TerminalError) {
         guard isRaw else { return }
         var firstError: TerminalError?
@@ -129,6 +166,8 @@ public struct Terminal {
 
     // MARK: Size
 
+    /// The window size in character cells via `TIOCGWINSZ`, falling back
+    /// to 80×24 when the query fails or reports a degenerate size.
     public func size() -> Size {
         var ws = winsize()
         if ioctl(outputFD, UInt(TIOCGWINSZ), &ws) == 0, ws.ws_col > 0, ws.ws_row > 0 {
@@ -139,6 +178,8 @@ public struct Terminal {
 
     // MARK: Output
 
+    /// Writes the UTF-8 bytes of `s`, resuming after `EINTR` and short
+    /// writes until fully flushed.
     public func write(_ s: String) throws(TerminalError) {
         let bytes = Array(s.utf8)
         var off = 0
@@ -334,6 +375,8 @@ public struct Terminal {
 
 // MARK: - Windows Console implementation
 
+/// Pure translation from Windows console input records to `InputEvent`s,
+/// kept free of console handles so it can be exercised in isolation.
 enum WindowsInputTranslator {
     static func key(virtualKey: UInt16, scalar: UInt16, controlState: UInt32) -> InputEvent? {
         let shift = controlState & 0x0010 != 0
@@ -376,6 +419,11 @@ enum WindowsInputTranslator {
     }
 }
 
+/// Windows Console backend: output goes through the console with virtual
+/// terminal processing enabled, so `CellBuffer`'s ANSI diff stream is
+/// written verbatim; input arrives as structured records via
+/// `ReadConsoleInputW`, so no ANSI input parsing is needed. Presents the
+/// same public surface as the POSIX implementation.
 public struct Terminal {
     private var hIn: HANDLE = INVALID_HANDLE_VALUE
     private var hOut: HANDLE = INVALID_HANDLE_VALUE
@@ -395,10 +443,18 @@ public struct Terminal {
     private static let ENABLE_PROCESSED_OUTPUT: DWORD = 0x0001
     private static let ENABLE_VIRTUAL_TERMINAL_PROCESSING: DWORD = 0x0004
 
+    /// Creates a terminal; the console handles are acquired lazily in
+    /// `enterRawMode()`.
     public init() {}
 
     // MARK: Raw mode
 
+    /// Acquires the standard console handles, enables virtual terminal
+    /// processing on output, switches input to raw key/mouse/resize events
+    /// (no line buffering or echo), selects the UTF-8 output code page, and
+    /// enters the alternate screen with the cursor hidden. The prior modes
+    /// and code page are saved for restoration. Throws when no console is
+    /// attached or a mode cannot be set, undoing any partial setup first.
     public mutating func enterRawMode() throws(TerminalError) {
         hIn = GetStdHandle(STD_INPUT_HANDLE)
         hOut = GetStdHandle(STD_OUTPUT_HANDLE)
@@ -443,10 +499,15 @@ public struct Terminal {
         }
     }
 
+    /// Best-effort restoration — `exitRawModeChecked()` with the failure
+    /// swallowed, safe to call from cleanup paths.
     public mutating func exitRawMode() {
         try? exitRawModeChecked()
     }
 
+    /// Leaves the alternate screen, re-shows the cursor, and restores the
+    /// saved console modes and output code page. A no-op when not in raw
+    /// mode; attempts every restoration step and throws if any failed.
     public mutating func exitRawModeChecked() throws(TerminalError) {
         guard isRaw else { return }
         var failed = false
@@ -460,6 +521,8 @@ public struct Terminal {
 
     // MARK: Size
 
+    /// The visible console window size in character cells, falling back to
+    /// 80×24 when the query fails or reports a degenerate size.
     public func size() -> Size {
         var info = CONSOLE_SCREEN_BUFFER_INFO()
         if GetConsoleScreenBufferInfo(hOut, &info) {
@@ -472,6 +535,8 @@ public struct Terminal {
 
     // MARK: Output
 
+    /// Writes the UTF-8 bytes of `s` to the console, resuming after short
+    /// writes until fully flushed.
     public func write(_ s: String) throws(TerminalError) {
         let bytes = Array(s.utf8)
         var written: DWORD = 0
@@ -493,6 +558,11 @@ public struct Terminal {
 
     // MARK: Input
 
+    /// Waits up to `timeoutMillis` for one console input record and
+    /// translates it — key-down records to key events, mouse button
+    /// records to pointer events, buffer-size changes to `.resize`.
+    /// Returns `nil` on timeout or for records with no `InputEvent`
+    /// mapping.
     public mutating func nextEvent(timeoutMillis: Int) throws(TerminalError) -> InputEvent? {
         let wait = WaitForSingleObject(hIn, DWORD(max(0, timeoutMillis)))
         if wait == WAIT_TIMEOUT { return nil }
