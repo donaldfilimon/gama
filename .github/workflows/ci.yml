@@ -76,12 +76,12 @@ jobs:
       - name: C ABI consumer compile, link, and run
         run: ./scripts/check-c-abi.sh
       - name: Address Sanitizer
-        # detect_leaks=1 re-enabled 2026-08-27: leak detection was originally
-        # disabled for the XCTest runner's process-lifetime metadata; the
-        # suite is Swift Testing only now, and this branch's hosted Linux run
-        # is the proof the new runner is leak-clean (tasks/todo.md ASan item).
+        # LeakSanitizer remains disabled: PR #24's hosted Linux job proved that
+        # the Swift Testing process still reports process-lifetime leaks. ASan
+        # stays required; re-enable leak detection only after the ledgered
+        # runner/framework leak is root-caused and a hosted trial is green.
         env:
-          ASAN_OPTIONS: detect_leaks=1
+          ASAN_OPTIONS: detect_leaks=0
         run: swift test --sanitize address
       - name: Thread Sanitizer
         run: swift test --sanitize thread
