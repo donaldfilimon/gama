@@ -55,6 +55,16 @@ and the `@Reactive` doc comment states the lifetime rule.
    the component sits, which is the `@State` guarantee the macro's
    documentation advertises.
 
+   It also settles a second axis the workaround cannot. Every surface built
+   from one scene declaration captures the same content closure
+   (`makeRender` in `Sources/GamaCore/Scene.swift`), so a component instance
+   stored on the app — or an app-level `Signal` — is *one* instance behind
+   every open window of a `WindowGroup`. That is correct for deliberately
+   shared model state (`SceneTests.swift` pins that case) and wrong for
+   state each window should own. A store owned by `FrameHost` is per-surface
+   by construction, so per-window state falls out of the same design rather
+   than needing a second mechanism.
+
 ## Open questions for option 3
 
 - Identity stability: `BuildContext.id` is structural (`child(n)` paths).

@@ -44,8 +44,17 @@ public macro Component() =
 ///         }
 ///     }
 ///
-/// App-level ``GamaCore/Signal`` values captured by the closure have the
-/// same lifetime and work equally well.
+/// That shape is exact for a singleton ``GamaCore/Window``, which owns one
+/// surface. It is *sharing*, not per-surface storage: every surface built
+/// from a scene declaration captures the same closure, so a stored instance
+/// — like an app-level ``GamaCore/Signal`` — is one instance behind every
+/// open window of a ``GamaCore/WindowGroup``, and its `@Reactive` signals
+/// are shared state rather than per-window state. Store state on the app
+/// when the windows are meant to share a model (`Signal` still requires its
+/// readers to be one host at a time, never concurrent hosts). State that
+/// each window must own independently has no framework-provided storage
+/// today; the identity-keyed-view-state draft under
+/// `docs/superpowers/specs/drafts/` is where that gap is tracked.
 @attached(peer, names: prefixed(`_`))
 @attached(accessor, names: named(init), named(get), named(set))
 public macro Reactive() =
