@@ -41,7 +41,9 @@ public struct PluginCommand: Sendable {
 
 /// A command as surfaced by ``PluginRuntime/commands``: the contribution
 /// plus its owning plugin, already bound to that plugin's context so a
-/// presentation surface only calls ``perform()``.
+/// presentation surface only calls ``perform()``. A value cached by a menu
+/// or palette becomes inert when its plugin is uninstalled or its runtime is
+/// destroyed.
 public struct RegisteredPluginCommand: Sendable {
     /// The plugin that contributed this command.
     public let plugin: PluginID
@@ -61,7 +63,7 @@ public struct RegisteredPluginCommand: Sendable {
     }
 
     /// Dispatches the command with the owning plugin's context, on the
-    /// caller's (the host's) executor.
+    /// caller's (the host's) executor. Does nothing after revocation.
     public func perform() {
         run()
     }
