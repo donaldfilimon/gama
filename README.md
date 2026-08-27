@@ -32,7 +32,7 @@ struct CounterApp: App {
 
 | Product | Responsibility |
 | --- | --- |
-| `Gama` | Compatibility umbrella; deprecated `hello()` |
+| `Gama` | Compatibility umbrella (`@_exported import GamaCore`) |
 | `GamaCore` | Views, identity, state, layout, events, and `FrameHost` |
 | `GamaMacros` | Optional `@Component`, `@Reactive`, and `#rgb` sugar |
 | `GamaDraw` | Cell buffer, painter, draw list, and versioned binary codec |
@@ -91,9 +91,7 @@ swiftly run swift run gama-demo
 ## Compatibility
 
 Supported Apple deployment floors are macOS 14, iOS 17, tvOS 17, and visionOS
-1. `Gama.hello()` preserves the initial scaffold's exact print-and-return
-behavior for one compatibility cycle but is deprecated in favor of an `App`
-and explicit renderer.
+1. Import `Gama` or `GamaCore` and build an `App` with an explicit renderer.
 
 The DrawList ABI is little-endian, starts with `GAMA`, and is versioned as `1`.
 The C declarations and ownership rules live in

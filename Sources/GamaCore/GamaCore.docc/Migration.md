@@ -5,9 +5,8 @@ framework.
 
 ## Greeting compatibility
 
-`Gama.hello()` remains available for one compatibility cycle and preserves the
-exact return value and print side effect: `Hello, world!`. It is deprecated.
-New applications import `GamaCore`, optionally `GamaMacros`, and one explicit
+The scaffold `hello()` API has been retired. Import `Gama` (which re-exports
+`GamaCore`) or `GamaCore` directly, optionally `GamaMacros`, and one explicit
 backend product.
 
 ## Earlier TUI applications
