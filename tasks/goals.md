@@ -256,3 +256,19 @@ status: in_progress
   .network, scope subsumption, discovery, persistence, and shell
   teardown of contributed windows on uninstall. Hosted proof is the
   six-job matrix on the PR; merge only when green.
+- Packaging & distribution V1 (2026-08-27): sub-project 4 approved
+  (docs/superpowers/specs/2026-08-27-packaging-design.md) and implemented on
+  feat/packaging-v1. Locally proven with real exit codes: bundle-web.sh
+  (pinned-SDK wasm build, site assembled to /private/tmp/gama-dist/web,
+  headless-Chrome smoke against the assembled directory), gama-apple-demo
+  --smoke (offscreen NSApplication, 36 draw commands, exit 0), and
+  bundle-macos.sh ("Gama Demo.app" staged outside the iCloud tree from the
+  gama-apple-demo manifest, plutil lint, ad-hoc deep-strict codesign verify,
+  smoke launch). release-macos.sh (Developer ID + notarytool + stapler) is
+  implemented with hard credential gating; the gate's fail-closed refusal is
+  locally proven and the credentialed path is deliberately unclaimed until a
+  run with GAMA_CODESIGN_IDENTITY/GAMA_NOTARY_PROFILE passes. CI now stages
+  and uploads both artifacts (macos-app, wasm-site); hosted proof rides on
+  the packaging PR's six-job matrix and must be recorded only when green.
+  Manifests in Distribution/ carry identity only, parsed by the fail-closed
+  scripts/lib/manifest.sh reader.
