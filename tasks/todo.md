@@ -19,8 +19,8 @@
       untouched (unverified); [swift_syntax] keeps its revision pin and drops
       the misleading 6.4.x tag.
 
-## Documentation depth (surveyed 2026-08-26, not yet started)
-- [ ] DocC doc-comment coverage: ~16% of ~486 public decls have /// docs
+## Documentation depth (surveyed 2026-08-26)
+- [x] DocC doc-comment coverage: ~16% of ~486 public decls have /// docs
       (GamaCore 60/364, GamaTUI 2/34, GamaAppleUI 2/26). Pattern: type- and
       algorithm-level docs exist; member-level (properties, inits, methods)
       are mostly bare. Author them module by module, starting with GamaCore.
@@ -39,12 +39,18 @@
       swift build (compiles both targets); Windows docs stay claim-honest.
       All four slices pushed to PR #10 — remaining action: merge PR #10 when
       its matrix is green, then mark this item done.
+      CLOSED 2026-08-27: PR #10 merged (c718888) — honest residual: merged
+      while the matrix was red (see the P0 repair item below; repaired by
+      PR #14 on a green six-job matrix). Superseded by the stronger
+      outcome: zero undocumented public declarations package-wide, enforced
+      by the check-doc-coverage.sh gate in check.sh and CI.
 - [ ] DocC catalogs exist only for GamaCore (7 articles); GamaDraw and the
       backends have none. Adding catalogs requires extending check-docs.sh,
       which hardcodes the GamaCore symbol-graph/catalog paths.
-- [ ] check-docs.sh's Capabilities.md grep is tautological (matches the
+- [x] check-docs.sh's Capabilities.md grep is tautological (matches the
       table header "Current evidence"); tighten if a stronger claim-honesty
-      check is wanted.
+      check is wanted. CLOSED 2026-08-27 by the docs overhaul: the grep now
+      requires the Status vocabulary legend heading.
 
 ## Swift 6.5-dev refresh (2026-08-27)
 - [x] Pin-consistency gate: `scripts/check-toolchain-pins.sh` fails if CI,
@@ -56,30 +62,36 @@
 - [x] `RenderNode.group` flatten sentinel; ZStack(.topLeading) stays overlay
 - [x] Docs: docs/Testing.md, docs/Toolchain.md, Capabilities remaining column,
       GamaCore.docc/Testing.md
-- [ ] Hosted matrix green on the refresh PR before merge
+- [x] Hosted matrix green on the refresh PR before merge — VIOLATED in the
+      event (PRs #10/#13 merged while red; honest residual recorded in
+      goals.md), repaired forward by PR #14 on a fully green six-job
+      matrix. Main's current proof rides on the post-#16 acceptance run
+      (33044975550, watched 2026-08-27).
 - [ ] Linux ASan: re-enable `detect_leaks=1` once a hosted run proves the
-      Swift Testing runner is leak-clean (CI still sets detect_leaks=0)
-- [ ] MemberImportVisibility spike on strictCore (direct-import fallout in
-      tests); keep off until Apple + Embedded stay green
+      Swift Testing runner is leak-clean (CI still sets detect_leaks=0 at
+      ci.yml:83)
+- [x] MemberImportVisibility spike on strictCore (direct-import fallout in
+      tests); keep off until Apple + Embedded stay green. CLOSED
+      2026-08-27: enabled in strictCore (Package.swift:13, hygiene-flags
+      commit e038ad6); hosted Apple + Embedded proof rides on the
+      post-#16 matrix run.
 
 ## Code follow-ups from Codex review of PR #10 (docs narrowed in f0078dc;
 ## behavior itself unchanged — each needs a code PR with tests)
 - [x] P1: ZStack(.topLeading) flatten sentinel — fixed via `RenderNode.group`
       (View.swift flattenChildren / TupleView / ForEach). Regression in
       BuilderTests.zStackTopLeadingLayersInsteadOfFlattening.
-- [ ] Border title: measure reserves displayWidth+4 but painter requires
-      strictly-wider frame — natural-size bordered views reserve blank
-      space and drop the caption (CellPainter.drawBorder).
-- [ ] Divider in a square (1x1) frame renders the horizontal glyph even
-      inside an HStack; carry the stack axis into the node or break ties.
-- [ ] TextField appends control characters (e.g. "\n" via the C embed
-      input path) — decide filter-or-allow and test it.
-- [ ] TextLayout wide table misses emoji-presentation scalars outside the
-      hard-coded ranges (e.g. U+231A) — extend or keep the documented
-      subset deliberately.
-- [ ] Button focus style: deeper label styles win over the focus wrap
-      (custom-colored labels keep their colors when focused) — confirm
-      intended or invert precedence.
+- [x] Border title: paint uses `>= displayWidth+4` and places `" title "`
+      at minX+1 so a natural-size title is visible (BorderTitleTests).
+- [x] Divider orientation follows the containing stack axis; a 1×1 HStack
+      Divider paints `│` (DividerAxisTests).
+- [x] TextField consumes C0/DEL `.character` events (including embed) and
+      does not insert them (TextFieldControlTests).
+- [x] TextLayout treats U+231A (and a documented Misc Technical subset) as
+      wide; other symbols stay narrow unless VS16 is present
+      (TextLayoutEmojiTests).
+- [x] Button focus wrap wins over a custom-colored label (outer-wins
+      style merge in CellPainter; ButtonFocusStyleTests).
 
 ## Modern-Swift sweep (audited 2026-08-27, three parallel audits; execute in
 ## gated slices — slice A avoids PR #10's files until that PR merges)
@@ -105,7 +117,11 @@
       @unchecked Sendable redesign (Synchronization is banned in GamaCore —
       options are per-field nonisolated(unsafe), non-Sendable + drop
       App: Sendable, or documented confinement — confinement comments landed
-      2026-08-27; redesign still Proposed); MacroSpec FixIts for untested
+      2026-08-27; redesign still Proposed. Candidate design validated by a
+      fresh-agent baseline 2026-08-27: non-Sendable Signal with the
+      conformance marked `@available(*, unavailable)` so it cannot be
+      retroactively "fixed", region-based isolation + `sending` transfer
+      into the host — zero runtime cost, honest on bare metal); MacroSpec FixIts for untested
       diagnostic roles; VoiceOver
       accessibility from currentDrawList; SIGTERM/SIGHUP/atexit terminal
       restore + SIGWINCH; presentDiff/forEachRun allocation work (measure

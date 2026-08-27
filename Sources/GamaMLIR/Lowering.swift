@@ -73,10 +73,12 @@ public enum GamaLowering {
                 "\"gama.spacer\"()\(renderAttrs([("min", .i64(minLength))] + frameAttrs)) : () -> ()"
             )
 
-        case .divider(let style):
-            b.line(
-                "\"gama.divider\"()\(renderAttrs([("fg", .color(style.foreground))] + frameAttrs)) : () -> ()"
-            )
+        case .divider(let style, let axis):
+            var attrs: [(String, MLIRAttr)] = [("fg", .color(style.foreground))]
+            if let axis {
+                attrs.append(("axis", .str(axis == .horizontal ? "h" : "v")))
+            }
+            b.line("\"gama.divider\"()\(renderAttrs(attrs + frameAttrs)) : () -> ()")
 
         case .stack(let axis, let spacing, let alignment, let children):
             let attrs: [(String, MLIRAttr)] =

@@ -14,7 +14,28 @@ test -f "$PROJECT/app/src/main/jniLibs/x86_64/libGamaAndroidDemo.so"
 )
 apk="$PROJECT/app/build/outputs/apk/debug/app-debug.apk"
 test -f "$apk"
-adb install -r "$apk" >/dev/null
+
+# Hosted emulators occasionally report a completed boot and then drop the
+# first package-manager transport with `Broken pipe`/exit 224. Keep this gate
+# strict about the eventual install while recovering the device connection in
+# a bounded way instead of turning a transient adb failure into a false product
+# regression.
+installed=false
+for attempt in 1 2 3; do
+  if timeout 90s adb install -r "$apk"; then
+    installed=true
+    break
+  fi
+  echo "warning: adb install attempt $attempt failed; reconnecting device" >&2
+  adb reconnect >/dev/null 2>&1 || true
+  timeout 30s adb wait-for-device || true
+  sleep 5
+done
+if [[ "$installed" != true ]]; then
+  echo "error: Android APK install failed after 3 attempts" >&2
+  exit 1
+fi
+
 adb shell am force-stop com.gama.example
 adb logcat -c
 adb shell am start -W -n com.gama.example/.MainActivity >/dev/null
