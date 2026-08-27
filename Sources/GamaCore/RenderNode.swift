@@ -64,8 +64,9 @@ public indirect enum RenderNode: Hashable, Sendable {
     /// main axis; absorbs leftover space with weight 1.
     case spacer(minLength: Int)
     /// Axis-resolved rule: 1 cell on the enclosing stack's main axis,
-    /// full length on the cross axis. Backends pick the glyph by aspect.
-    case divider(style: TextStyle)
+    /// full length on the cross axis. `axis` is the containing stack
+    /// (horizontal stack → vertical bar). `nil` falls back to aspect.
+    case divider(style: TextStyle, axis: Axis? = nil)
     /// Insets the child by the given edges; the child lays out in the
     /// carved-down bounds (`Rect.inset(by:)`).
     case padding(EdgeInsets, child: RenderNode)
@@ -157,4 +158,3 @@ public struct InteractiveRegion: Hashable, Sendable {
         self.isFocusable = isFocusable
     }
 }
-

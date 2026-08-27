@@ -102,6 +102,9 @@ status: in_progress
 - Swiftly-run convention (Donald, 2026-08-27): agents run the codebase
   with `unset TOOLCHAINS` then `swiftly run swift <build|run|test|…>`.
   Recorded in AGENTS.md, CLAUDE.md, README.md, docs/Toolchain.md.
+- Codex P1s (2026-08-27): natural-size border titles paint; HStack 1×1
+  Divider is vertical; TextField drops C0/DEL; U+231A is two cells; focus
+  wrap wins over custom label colors. Umbrella stays in_progress.
 - Sub-projects 2-4 Proposed: drafts written and committed under
   docs/superpowers/specs/drafts/ (plugin runtime + capability model; app
   shell/windowing/lifecycle; packaging & distribution). Each is DRAFT ONLY —

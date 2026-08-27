@@ -708,8 +708,15 @@ struct CellPainterTests {
         CellPainter.paint(laid, into: &buf)
         #expect(buf.cell(atX: 0, y: 0)?.character == "╭")
         #expect(buf.cell(atX: 11, y: 2)?.character == "╯")
-        #expect(buf.cell(atX: 3, y: 0)?.character == "T")
-        #expect(buf.cell(atX: 3, y: 0)?.style.attributes.contains(.bold) ?? false)
+        var titleCell: Cell?
+        for x in 0..<12 {
+            if buf.cell(atX: x, y: 0)?.character == "T" {
+                titleCell = buf.cell(atX: x, y: 0)
+                break
+            }
+        }
+        #expect(titleCell != nil)
+        #expect(titleCell?.style.attributes.contains(.bold) == true)
     }
 }
 

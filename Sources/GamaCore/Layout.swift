@@ -308,7 +308,16 @@ public enum LayoutEngine {
                 ? Rect(x: cursor, y: bounds.minY + crossOffset, width: mainLen, height: crossLen)
                 : Rect(x: bounds.minX + crossOffset, y: cursor, width: crossLen, height: mainLen)
 
-            laid.append(layout(child, in: rect))
+            if case .divider(let style, _) = child {
+                laid.append(
+                    LaidOutNode(
+                        node: .divider(style: style, axis: axis),
+                        frame: rect
+                    )
+                )
+            } else {
+                laid.append(layout(child, in: rect))
+            }
             cursor += mainLen + spacing
         }
 
