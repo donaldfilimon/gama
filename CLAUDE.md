@@ -7,9 +7,10 @@ operational detail (commands, architecture map, environment traps) that agents
 need to be productive.
 
 This is the canonical checkout of `donaldfilimon/gama` — the Gama Framework
-umbrella (retained UI core, macros, drawing, TUI/Apple/WASM/Embed/MLIR
-backends). The Qt adapter was removed on 2026-08-26; `~/dev/active/gama-qt`
-is an unrelated Qt browser app that shares only the name.
+umbrella (retained UI core, plugins, macros, drawing,
+TUI/Apple/WASM/Embed/MLIR backends, and platform capability services). The Qt
+adapter was removed on 2026-08-26; `~/dev/active/gama-qt` is an unrelated Qt
+browser app that shares only the name.
 
 ## Toolchain — this repo overrides the machine-wide Swift rule
 
@@ -102,7 +103,9 @@ acceptance binary).
 Tests are Swift Testing only. The single test target is `GamaTests` at
 `Tests/gamaTests`. `--filter` matches the source identifier, not the `@Suite`
 display name: use the struct name (`--filter SceneGraphTests`), not
-`--filter 'Scene graph'`.
+`--filter 'Scene graph'`. Plugin and capability-service coverage lives in
+`PluginRuntimeTests`, `PluginSlotTests`, `PluginSceneTests`,
+`PluginCommandTests`, and `PlatformServicesTests`.
 Do not add `import XCTest`. Macro expansion tests use
 `SwiftSyntaxMacrosGenericTestSupport`. See `docs/Testing.md` and
 `docs/Toolchain.md`.
@@ -137,9 +140,6 @@ with typed throws, so hosts are moved, never shared.
 Target layering (all under `Sources/`, single test target `GamaTests` at
 `Tests/gamaTests`):
 
-Target layering (all under `Sources/`, single test target `GamaTests` at
-`Tests/gamaTests`):
-
 - **GamaCore** — scenes, views, identity, state, layout, events, and
   `FrameHost`. Embedded-Swift-safe: stdlib only. `check-boundaries.sh`
   rejects any import of Foundation, AppKit, UIKit, Darwin, Glibc, WinSDK, or
@@ -149,16 +149,21 @@ Target layering (all under `Sources/`, single test target `GamaTests` at
   out-of-band changes go through the host's `SubscriptionContext` or explicit
   `invalidate()`.
 - **Gama** — compatibility umbrella (`@_exported import GamaCore`) only.
-- **GamaPlugin** — Tier-1 static plugin runtime: manifest, grants,
-  unforgeable handles (internal initializers), per-host `PluginRuntime` and
-  `PluginSlot`. Stdlib-only, interfaces only. Tier 1 is capability-based
-  *design*, not a sandbox — never describe it as isolation. Tiers 2/3 are
-  Proposed. `docs/Plugins.md` carries the tier table and the honest
-  enforcement statement.
-- **GamaPlatformServices** — the Foundation-backed `HostServices`
-  implementations (stderr log, monotonic clock, scoped filesystem). It may
-  import Foundation precisely because no portable target may import *it*;
-  `check-boundaries.sh` enforces that inverse boundary.
+- **GamaPlugin** — stdlib-only Tier-1 static plugin and capability model:
+  manifests, deny-by-default grants, unforgeable host-service handles
+  (internal initializers), per-host `PluginRuntime`/`PluginSlot`, and opt-in
+  slot/scene/command contributions. It depends on GamaCore and defines
+  service interfaces only. Tier 1 is capability-based *design*, not a
+  sandbox: in-process plugins are cooperative code — never describe it as
+  isolation. Tiers 2/3 are Proposed. Read `docs/Plugins.md` before changing
+  its tier, capability, lifecycle, or contribution contracts.
+- **GamaPlatformServices** — Foundation-backed implementations for the
+  `HostServices` interfaces (standard logging, monotonic time, contained
+  filesystem access). It is the platform-capability layer, not a portable
+  framework dependency: only applications, demos, examples, and tests may
+  import it. `check-boundaries.sh` rejects imports from every
+  portable/framework target, routing OS-backed services outward through this
+  target instead.
 - **GamaMacros / GamaMacrosImpl** — optional `@Component`, `@Reactive`, `#rgb`
   sugar; the impl is a host-side compiler plugin. swift-syntax is the only
   package dependency, pinned by revision, build-time only — nothing from it
@@ -224,6 +229,7 @@ Before changing a backend or a settled design, read its record rather than
 re-deriving it: `docs/README.md` is the index, `docs/adr/` holds the seven
 decision records (own-the-rendering, toolchain pinning, Swift-Testing-only,
 signal confinement, DrawList wire format, noncopyable hosts, frame pumps),
+`docs/Plugins.md` defines the plugin tiers and capability model,
 `docs/backends/<Backend>.md` the per-backend guides, and
 `Sources/GamaCore/GamaCore.docc/` the symbol-level articles built by
 `check-docs.sh`.
