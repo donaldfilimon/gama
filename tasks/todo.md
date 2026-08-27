@@ -79,9 +79,10 @@
       goals.md), repaired forward by PR #14 on a fully green six-job
       matrix. Main's current proof rides on the post-#16 acceptance run
       (33044975550, watched 2026-08-27).
-- [ ] Linux ASan: re-enable `detect_leaks=1`. ROOT-CAUSED 2026-08-27, still
-      open by choice. The premise of this item was wrong: the runner is not
-      leak-clean and moving every suite to Swift Testing did not make it so.
+- [x] Linux leak detection: replaced the rejected `leak:XCTest` suppression
+      with a harness-free executable and required negative control. The
+      original premise was wrong: the runner is not leak-clean and moving
+      every suite to Swift Testing did not make it so.
       Evidence — PR #24's Linux job (run 33048676959) under detect_leaks=1
       reports exactly 7 indirect leaks / 432 bytes, every stack rooted in
       `libXCTest.so` (`XCTestSuiteRun.init`, `XCTMain`, `XCTMainMisc`) or
@@ -93,16 +94,13 @@
       "hosted trial green under detect_leaks=1" is unreachable while the
       generated runner keeps its XCTest half — waiting for one is waiting
       forever.
-      Two honest directions, neither urgent:
-      (a) keep detect_leaks=0 (current policy, PR #30) and accept no leak
-          coverage for Gama code; or
-      (b) add a harness-free leak test, or first prove a suppression pattern
-          unique to the known runner allocations. A broad `leak:XCTest`
-          suppression is not acceptable evidence: LeakSanitizer suppresses
-          any allocation whose stack contains XCTest, so it can also hide a
-          Gama allocation made beneath that harness. Closed PR #31 preserves
-          that rejected experiment, not a coverage-preserving solution.
-      Do not re-run the bare experiment; it will fail the same way.
+      Resolution: `swift test --sanitize address` keeps `detect_leaks=0` for
+      address-safety coverage, while `scripts/check-linux-leaks.sh` builds and
+      directly executes `gama-leak-check` under `detect_leaks=1`. Its clean
+      path exercises `FrameHost`; `--deliberate-leak` retains a real GamaCore
+      `Signal`. The script requires clean exit 0, control exit 86, the control
+      marker, and LSan's diagnostic, with no suppression file. This makes a
+      disabled detector fail the contract instead of producing false green.
 - [x] MemberImportVisibility spike on strictCore (direct-import fallout in
       tests); keep off until Apple + Embedded stay green. CLOSED
       2026-08-27: enabled in strictCore (Package.swift:13, hygiene-flags
@@ -316,13 +314,14 @@
       to 'round'/'rint'/'trunc'/'ceil'/'floor'"). Hit live on PR #42's wave-2
       head. Closing the hole needs a link-or-symbol check for the portable
       targets, not another import grep.
-- [ ] **PR #43 reopens the rejected `leak:XCTest` suppression.** Its
+- [x] **PR #43 reopened the rejected `leak:XCTest` suppression.** Its
       lsan-suppressions.supp has exactly one non-comment line, `leak:XCTest` —
       the pattern closed with PR #31 and rejected at todo.md:100, goals.md:208,
       and roadmap:94. It ships no negative control (diff is ci.yml + the .supp
       only), so a green matrix proves the suppression works, not that Gama leak
-      coverage survived. Flagged on the PR; one deliberately-leaking Gama Swift
-      Testing case proving the job still fails would satisfy option (b).
+      coverage survived. Repaired on `main` by deleting the suppression and
+      moving leak proof out of Swift Testing entirely: the direct executable's
+      deliberately leaked GamaCore `Signal` must fail under hosted Linux LSan.
 
 ## Later sub-projects (each needs its own spec first)
 - [x] Sub-project 2: plugin runtime + capability model — APPROVED

@@ -25,4 +25,8 @@ AppKit and POSIX PTY tests are Swift Testing suites behind platform
 availability checks.
 
 See `docs/Testing.md` in the repository root for invocation, file map, and
-sanitizer notes.
+sanitizer notes. Linux leak coverage uses the separate `gama-leak-check`
+executable rather than this test runner: it exercises a real ``FrameHost``
+lifecycle under LeakSanitizer without loading XCTest, then proves the detector
+is live with a deliberately retained ``Signal`` negative control. Darwin does
+not provide the corresponding LeakSanitizer proof.
