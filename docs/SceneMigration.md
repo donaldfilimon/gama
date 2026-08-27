@@ -82,10 +82,17 @@ pump's size and invalidates the host **before** the event is forwarded.
 If you wrote code that relied on reading the old extent during a resize on
 TUI or AppleUI, it now sees the new one:
 
+`.resize` is handled by `FrameHost` and never reaches
+`App.handleLifecycle` — `LifecycleEvent` carries no resize case and no
+extent. The extent a backend lays out against is the pump's:
+
 ```swift
-// Before (TUI/AppleUI): `size` was still the pre-resize extent here.
-// After (everywhere):   `size` is already the new extent.
-func handleLifecycle(_ event: LifecycleEvent) { /* observes new size */ }
+// Before (TUI/AppleUI): the pump still reported the pre-resize extent
+//                       while the event was being forwarded.
+// After (everywhere):   `pump.size` is already the new extent, and the
+//                       host has already been invalidated.
+pump.handle(.resize(renderer.size))
+_ = pump.size  // the new extent, before any view code runs
 ```
 
 Embed and WASM are unaffected — they already behaved this way. See

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+TOOLCHAIN="${GAMA_TOOLCHAIN_ID:-org.swift.65202608211a}"
+swift_bin="$(xcrun --toolchain "$TOOLCHAIN" --find swift)"
+swiftc_bin="${GAMA_SWIFTC_64:-$(xcrun --toolchain "$TOOLCHAIN" --find swiftc)}"
 # Catches every import spelling: plain, indented, access-scoped
 # (`public import`), attributed (`@preconcurrency`, `@_implementationOnly`),
 # and submodule/decl imports (`import struct Foundation.Data`). The old
@@ -25,6 +28,41 @@ if grep -R -n -E --include='*.swift' \
   "$ROOT/Sources/GamaMLIR"; then
   echo "error: a portable/framework target imported GamaPlatformServices" >&2; exit 1
 fi
+# Compile the platform-free targets before any cross-platform product link,
+# then inspect the actual undefined references. Import greps cannot see
+# compiler-emitted libm dependencies such as FloatingPoint.rounded().
+portable_scratch="${GAMA_PORTABLE_SYMBOL_SCRATCH_PATH:-$(mktemp -d)/spm}"
+portable_targets=(GamaCore GamaPlugin GamaDraw GamaMLIR)
+for target in "${portable_targets[@]}"; do
+  "$swift_bin" build --package-path "$ROOT" --scratch-path "$portable_scratch" \
+    --target "$target" >/dev/null
+  target_objects=()
+  while IFS= read -r -d '' object; do target_objects+=("$object"); done < <(
+    find "$portable_scratch" -type f \
+      \( -path "*/${target}-t.build/Objects-normal/*/*.o" \
+         -o -path "*/${target}.build/*.o" \) -print0
+  )
+  [[ ${#target_objects[@]} -gt 0 ]] || {
+    echo "error: no compiled objects found for portable target $target" >&2; exit 1
+  }
+  "$ROOT/scripts/check-portable-symbols.sh" "$target" "${target_objects[@]}"
+done
+
+# Prove the scanner rejects the exact source construct behind the original
+# native-Linux round/rint/trunc/ceil/floor link failure.
+symbol_fixture="$ROOT/Tests/Fixtures/PortableSymbols/Sources/RoundedRequiresLibm/RoundedRequiresLibm.swift"
+symbol_fixture_object="${GAMA_PORTABLE_SYMBOL_FIXTURE_OUTPUT:-$(mktemp -d)/RoundedRequiresLibm.o}"
+"$swiftc_bin" -parse-as-library -swift-version 6 -Onone -emit-object \
+  -module-name GamaPortableSymbolNegative "$symbol_fixture" -o "$symbol_fixture_object"
+if fixture_output="$("$ROOT/scripts/check-portable-symbols.sh" \
+  'PortableSymbols/RoundedRequiresLibm.swift' "$symbol_fixture_object" 2>&1)"; then
+  echo "error: portable-symbol negative fixture passed but must fail" >&2; exit 1
+fi
+grep -q '_roundSlowPath' <<<"$fixture_output" || {
+  echo "error: portable-symbol fixture failed without naming _roundSlowPath" >&2; exit 1
+}
+echo "OK — portable-symbol negative (RoundedRequiresLibm -> _roundSlowPath)"
+
 # Confinement negatives: Signal is non-Sendable. These fixtures live
 # outside every SwiftPM target (ADR 0009).
 #   error.*  -> must FAIL to compile
@@ -33,10 +71,7 @@ fi
 # toolchain, so the gate pins the diagnostic rather than pretending the
 # conformance is impossible.
 if [[ -d "$ROOT/Tests/Fixtures/Confinement" ]]; then
-  swiftc_bin="${GAMA_SWIFTC_64:-$(xcrun --toolchain "${GAMA_TOOLCHAIN_ID:-org.swift.65202608211a}" --find swiftc)}"
-  conf_scratch="${GAMA_CONFINEMENT_SCRATCH_PATH:-$(mktemp -d)/spm}"
-  xcrun --toolchain "${GAMA_TOOLCHAIN_ID:-org.swift.65202608211a}" swift build \
-    --package-path "$ROOT" --scratch-path "$conf_scratch" --target GamaCore >/dev/null
+  conf_scratch="${GAMA_CONFINEMENT_SCRATCH_PATH:-$portable_scratch}"
   conf_inc="$(dirname "$(find "$conf_scratch" -name 'GamaCore.swiftmodule' -print -quit)")"
   conf_n=0
   for fixture in "$ROOT"/Tests/Fixtures/Confinement/*.swift; do

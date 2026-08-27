@@ -11,6 +11,7 @@ import Android
 #endif
 
 import GamaCore
+import GamaTUISignal
 
 /// Process-global rescue for a terminal left in raw mode.
 ///
@@ -41,14 +42,18 @@ enum TerminalRescue {
     nonisolated(unsafe) private static var savedInputFD: Int32 = -1
     /// The tty to write the un-styling escape sequence to.
     nonisolated(unsafe) private static var savedOutputFD: Int32 = -1
-    /// `sig_atomic_t` because the handler reads it: the only integer type
-    /// the C standard guarantees is safe to touch from handler context.
-    nonisolated(unsafe) private static var isArmed: sig_atomic_t = 0
-    /// Raised by the `SIGWINCH` handler, drained by the event loop.
-    nonisolated(unsafe) private static var resizePending: sig_atomic_t = 0
     /// Whether `atexit` has been registered; registering twice would
     /// restore twice, which is harmless but noisy.
     nonisolated(unsafe) private static var atexitRegistered = false
+    /// Dispositions displaced by ``arm()``, replayed by ``disarm()``.
+    nonisolated(unsafe) private static var previousTerm = sigaction()
+    nonisolated(unsafe) private static var previousHup = sigaction()
+    nonisolated(unsafe) private static var previousInt = sigaction()
+    nonisolated(unsafe) private static var previousQuit = sigaction()
+    nonisolated(unsafe) private static var previousWinch = sigaction()
+    /// Whether the `previous*` slots contain the host's dispositions rather
+    /// than handlers installed by an earlier Gama arm.
+    nonisolated(unsafe) private static var hasSavedDispositions = false
 
     /// Leave alt-screen, disable mouse reporting, reset SGR, show cursor.
     /// Static storage, so writing it from a signal handler is allocation-free.
@@ -56,7 +61,7 @@ enum TerminalRescue {
         "\u{1B}[?1006l\u{1B}[?1000l\u{1B}[0m\u{1B}[?25h\u{1B}[?1049l"
 
     /// Whether a rescue is currently installed.
-    static var isActive: Bool { isArmed != 0 }
+    static var isActive: Bool { gama_tui_get_armed() != 0 }
 
     /// Records the terminal state to restore and installs the handlers.
     ///
@@ -66,15 +71,20 @@ enum TerminalRescue {
         savedTermios = original
         savedInputFD = inputFD
         savedOutputFD = outputFD
-        isArmed = 1
+        gama_tui_set_armed(1)
 
-        install(SIGTERM)
-        install(SIGHUP)
-        // SIGINT and SIGQUIT are included for the case where raw mode failed
-        // to clear ISIG, or a child restored default line discipline.
-        install(SIGINT)
-        install(SIGQUIT)
-        installWinch()
+        // Only the first arm captures dispositions; a nested arm must not
+        // overwrite the host's saved handlers with Gama's own handlers.
+        if !hasSavedDispositions {
+            install(SIGTERM, saving: &previousTerm)
+            install(SIGHUP, saving: &previousHup)
+            // SIGINT and SIGQUIT are included for the case where raw mode
+            // failed to clear ISIG, or a child restored default discipline.
+            install(SIGINT, saving: &previousInt)
+            install(SIGQUIT, saving: &previousQuit)
+            installWinch(saving: &previousWinch)
+            hasSavedDispositions = true
+        }
 
         if !atexitRegistered {
             atexitRegistered = true
@@ -84,19 +94,26 @@ enum TerminalRescue {
 
     /// Stops rescuing — the owning session restored the terminal itself.
     ///
-    /// Handlers stay installed but become no-ops, because removing them
-    /// would race a signal already in flight.
+    /// Clearing the armed flag first makes Gama's handlers no-ops for a signal
+    /// already in flight. The host's original dispositions are then restored.
     static func disarm() {
-        isArmed = 0
+        gama_tui_set_armed(0)
         savedInputFD = -1
         savedOutputFD = -1
+        guard hasSavedDispositions else { return }
+        hasSavedDispositions = false
+        sigaction(SIGTERM, &previousTerm, nil)
+        sigaction(SIGHUP, &previousHup, nil)
+        sigaction(SIGINT, &previousInt, nil)
+        sigaction(SIGQUIT, &previousQuit, nil)
+        sigaction(SIGWINCH, &previousWinch, nil)
     }
 
     /// The restoration itself. Safe to call from a signal handler, from
     /// `atexit`, or directly.
     static func restoreNow() {
-        guard isArmed != 0 else { return }
-        isArmed = 0
+        guard gama_tui_get_armed() != 0 else { return }
+        gama_tui_set_armed(0)
         let outputFD = savedOutputFD
         if outputFD >= 0 {
             restoreSequence.withUTF8Buffer { bytes in
@@ -123,18 +140,16 @@ enum TerminalRescue {
     /// The handler only sets a flag — the smallest thing a handler may do —
     /// and the event loop turns that into a `.resize` on its next poll.
     static func consumePendingResize() -> Bool {
-        guard resizePending != 0 else { return false }
-        resizePending = 0
-        return true
+        gama_tui_take_resize_pending() != 0
     }
 
     /// Test seam: pretend a `SIGWINCH` arrived, without signalling the
     /// process and disturbing a concurrently running test.
-    static func simulateWindowChangeForTesting() { resizePending = 1 }
+    static func simulateWindowChangeForTesting() { gama_tui_set_resize_pending(1) }
 
     // MARK: - Handler installation
 
-    private static func install(_ signalNumber: Int32) {
+    private static func install(_ signalNumber: Int32, saving previous: inout sigaction) {
         var action = sigaction()
         // Re-raise with the default disposition so the process still dies of
         // the signal it was sent, and its exit status stays truthful for
@@ -154,10 +169,10 @@ enum TerminalRescue {
         #endif
         sigemptyset(&action.sa_mask)
         action.sa_flags = 0
-        sigaction(signalNumber, &action, nil)
+        sigaction(signalNumber, &action, &previous)
     }
 
-    private static func installWinch() {
+    private static func installWinch(saving previous: inout sigaction) {
         var action = sigaction()
         let handler: @convention(c) (Int32) -> Void = { _ in
             TerminalRescue.markResizePending()
@@ -173,13 +188,13 @@ enum TerminalRescue {
         // SA_RESTART so a pending read is resumed rather than failing with
         // EINTR every time the window changes.
         action.sa_flags = Int32(SA_RESTART)
-        sigaction(SIGWINCH, &action, nil)
+        sigaction(SIGWINCH, &action, &previous)
     }
 
     /// Separate entry point because a C function pointer cannot capture,
     /// and assigning to a `static var` from the closure needs a named
     /// function to stay allocation-free.
-    fileprivate static func markResizePending() { resizePending = 1 }
+    fileprivate static func markResizePending() { gama_tui_set_resize_pending(1) }
 }
 
 #endif

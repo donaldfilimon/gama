@@ -105,11 +105,11 @@ public enum CellPainter {
         }
 
         if let title, !title.isEmpty,
-            rect.size.width >= TextLayout.displayWidth(of: title) + 4
+            rect.size.width >= BorderTitleLayout.minimumWidth(for: title)
         {
             var titleStyle = style
             titleStyle.attributes.insert(.bold)
-            // Measure reserves displayWidth+4: corner + " title " + corner.
+            // The shared minimum is: corner + " title " + corner.
             buffer.putText(
                 " \(title) ",
                 at: Point(x: rect.minX + 1, y: rect.minY),

@@ -94,8 +94,7 @@ jobs:
         # generated runner still loads XCTest and leaks process-lifetime suite
         # metadata, so leak detection is disabled for this process only.
         env:
-          ASAN_OPTIONS: detect_leaks=1
-          LSAN_OPTIONS: suppressions=${{ github.workspace }}/scripts/lsan-suppressions.supp:print_suppressions=1
+          ASAN_OPTIONS: detect_leaks=0
         run: swift test --sanitize address
       - name: Harness-free LeakSanitizer with negative control
         # Builds and directly executes gama-leak-check: no Swift Testing,

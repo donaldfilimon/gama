@@ -17,13 +17,11 @@ private func painted(
     return (measured, buffer)
 }
 
-private func characters(in buffer: CellBuffer) -> String {
+private func characters(in buffer: CellBuffer, row: Int) -> String {
     var out = ""
-    for y in 0..<buffer.size.height {
-        for x in 0..<buffer.size.width {
-            if let cell = buffer.cell(atX: x, y: y), !cell.isContinuation {
-                out.append(cell.character)
-            }
+    for x in 0..<buffer.size.width {
+        if let cell = buffer.cell(atX: x, y: row), !cell.isContinuation {
+            out.append(cell.character)
         }
     }
     return out
@@ -31,15 +29,39 @@ private func characters(in buffer: CellBuffer) -> String {
 
 @Suite("Border title")
 struct BorderTitleTests {
-    @Test("natural-size titled border paints the caption")
-    func naturalSizeTitleIsVisible() {
+    @Test("natural width is exactly the padded caption width")
+    func naturalSizeTitleFillsReservedTopEdge() {
         let node = RenderNode.border(
             .rounded, style: .plain, title: "T",
             child: .text("x", style: .plain)
         )
         let (size, buffer) = painted(node)
         #expect(size.width == TextLayout.displayWidth(of: "T") + 4)
-        #expect(characters(in: buffer).contains("T"))
+        #expect(characters(in: buffer, row: 0) == "╭ T ╮")
+    }
+
+    @Test("wide and combining graphemes keep display-cell sizing")
+    func unicodeTitleUsesDisplayWidth() {
+        let title = "界e\u{301}"
+        let node = RenderNode.border(
+            .rounded, style: .plain, title: title,
+            child: .text("x", style: .plain)
+        )
+        let (size, buffer) = painted(node)
+        #expect(TextLayout.displayWidth(of: title) == 3)
+        #expect(size.width == 7)
+        #expect(characters(in: buffer, row: 0) == "╭ 界e\u{301} ╮")
+    }
+
+    @Test("empty caption adds no title padding")
+    func emptyTitleDoesNotReserveBlankSpace() {
+        let node = RenderNode.border(
+            .rounded, style: .plain, title: "",
+            child: .text("x", style: .plain)
+        )
+        let (size, buffer) = painted(node)
+        #expect(size.width == 3)
+        #expect(characters(in: buffer, row: 0) == "╭─╮")
     }
 }
 

@@ -118,6 +118,9 @@ for variable in \
   GAMA_ANDROID_POST_BOOT_CEILING_SECONDS \
   GAMA_ANDROID_JOB_HEADROOM_SECONDS \
   GAMA_ANDROID_RECOVERY_BUDGET \
+  GAMA_ANDROID_GRADLE_PROJECT_CACHE_DIR \
+  GAMA_ANDROID_GRADLE_BUILD_DIR \
+  GAMA_ANDROID_CXX_BUILD_DIR \
   GAMA_ANDROID_GRADLE_TIMEOUT_SECONDS \
   GAMA_ANDROID_READY_PROBE_TIMEOUT_SECONDS \
   GAMA_ANDROID_RECONNECT_TIMEOUT_SECONDS \
@@ -140,6 +143,18 @@ TEST_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SELF="$TEST_ROOT/scripts/test-android-emulator-readiness.sh"
 # shellcheck source=/dev/null
 source "$TEST_ROOT/scripts/check-android-emulator.sh"
+
+for external_path in \
+  "$GAMA_ANDROID_GRADLE_PROJECT_CACHE_DIR" \
+  "$GAMA_ANDROID_GRADLE_BUILD_DIR" \
+  "$GAMA_ANDROID_CXX_BUILD_DIR"; do
+  case "$external_path/" in
+    "$PROJECT/"*)
+      echo "error: Android Gradle/CMake scratch must stay outside the iCloud checkout" >&2
+      exit 1
+      ;;
+  esac
+done
 
 test_tmp="$(mktemp -d "${TMPDIR:-/tmp}/gama-android-readiness.XXXXXX")"
 trap 'rm -rf "$test_tmp"' EXIT

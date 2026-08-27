@@ -3,6 +3,10 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROJECT="$ROOT/Examples/Android"
+SCRATCH_ROOT="${GAMA_SCRATCH_ROOT:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}}"
+GAMA_ANDROID_GRADLE_PROJECT_CACHE_DIR="${GAMA_ANDROID_GRADLE_PROJECT_CACHE_DIR:-$SCRATCH_ROOT/gama-android-gradle-project-cache}"
+GAMA_ANDROID_GRADLE_BUILD_DIR="${GAMA_ANDROID_GRADLE_BUILD_DIR:-$SCRATCH_ROOT/gama-android-gradle-build}"
+GAMA_ANDROID_CXX_BUILD_DIR="${GAMA_ANDROID_CXX_BUILD_DIR:-$SCRATCH_ROOT/gama-android-cxx-build}"
 
 # The 45-minute job budget is partitioned explicitly. The setup allowance
 # includes snapshot/SDK/NDK installation and cross-compilation; the boot
@@ -339,12 +343,20 @@ run_android_post_boot_gate() {
   command -v gradle >/dev/null
   command -v timeout >/dev/null
   test -f "$PROJECT/app/src/main/jniLibs/x86_64/libGamaAndroidDemo.so"
+  mkdir -p \
+    "$GAMA_ANDROID_GRADLE_PROJECT_CACHE_DIR" \
+    "$GAMA_ANDROID_GRADLE_BUILD_DIR" \
+    "$GAMA_ANDROID_CXX_BUILD_DIR"
   (
     cd "$PROJECT"
     run_with_timeout "$GAMA_ANDROID_GRADLE_TIMEOUT_SECONDS" \
-      gradle --no-daemon :app:assembleDebug
+      gradle --no-daemon \
+        --project-cache-dir "$GAMA_ANDROID_GRADLE_PROJECT_CACHE_DIR" \
+        -PgamaAndroidBuildDir="$GAMA_ANDROID_GRADLE_BUILD_DIR" \
+        -PgamaAndroidCxxBuildDir="$GAMA_ANDROID_CXX_BUILD_DIR" \
+        :app:assembleDebug
   )
-  local apk="$PROJECT/app/build/outputs/apk/debug/app-debug.apk"
+  local apk="$GAMA_ANDROID_GRADLE_BUILD_DIR/outputs/apk/debug/app-debug.apk"
   test -f "$apk"
 
   wait_for_android_services

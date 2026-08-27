@@ -79,10 +79,10 @@
       goals.md), repaired forward by PR #14 on a fully green six-job
       matrix. Main's current proof rides on the post-#16 acceptance run
       (33044975550, watched 2026-08-27).
-- [x] Linux leak detection: added a suppression-free harness-free executable
-      and required negative control. The original premise was wrong: the
-      runner is not leak-clean and moving every suite to Swift Testing did not
-      make it so.
+- [x] Linux leak detection: replaced the rejected `leak:XCTest` suppression
+      with a harness-free executable and required negative control. The
+      original premise was wrong: the runner is not leak-clean and moving
+      every suite to Swift Testing did not make it so.
       Evidence — PR #24's Linux job (run 33048676959) under detect_leaks=1
       reports exactly 7 indirect leaks / 432 bytes, every stack rooted in
       `libXCTest.so` (`XCTestSuiteRun.init`, `XCTMain`, `XCTMainMisc`) or
@@ -125,8 +125,10 @@
 - [x] P1: ZStack(.topLeading) flatten sentinel — fixed via `RenderNode.group`
       (View.swift flattenChildren / TupleView / ForEach). Regression in
       BuilderTests.zStackTopLeadingLayersInsteadOfFlattening.
-- [x] Border title: paint uses `>= displayWidth+4` and places `" title "`
-      at minX+1 so a natural-size title is visible (BorderTitleTests).
+- [x] Border title: measurement and paint share the non-empty
+      `displayWidth+4` minimum; natural ASCII/Unicode captions fill their
+      reserved top edge, while an empty caption adds no padding
+      (BorderTitleTests).
 - [x] Divider orientation follows the containing stack axis; a 1×1 HStack
       Divider paints `│` (DividerAxisTests).
 - [x] TextField consumes C0/DEL `.character` events (including embed) and
@@ -312,13 +314,14 @@
       to 'round'/'rint'/'trunc'/'ceil'/'floor'"). Hit live on PR #42's wave-2
       head. Closing the hole needs a link-or-symbol check for the portable
       targets, not another import grep.
-- [ ] **PR #43 reopens the rejected `leak:XCTest` suppression.** Its
+- [x] **PR #43 reopened the rejected `leak:XCTest` suppression.** Its
       lsan-suppressions.supp has exactly one non-comment line, `leak:XCTest` —
       the pattern closed with PR #31 and rejected at todo.md:100, goals.md:208,
       and roadmap:94. It ships no negative control (diff is ci.yml + the .supp
       only), so a green matrix proves the suppression works, not that Gama leak
-      coverage survived. Flagged on the PR; one deliberately-leaking Gama Swift
-      Testing case proving the job still fails would satisfy option (b).
+      coverage survived. Repaired on `main` by deleting the suppression and
+      moving leak proof out of Swift Testing entirely: the direct executable's
+      deliberately leaked GamaCore `Signal` must fail under hosted Linux LSan.
 
 ## Later sub-projects (each needs its own spec first)
 - [x] Sub-project 2: plugin runtime + capability model — APPROVED

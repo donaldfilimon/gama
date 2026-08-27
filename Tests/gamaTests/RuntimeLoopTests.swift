@@ -49,6 +49,45 @@ struct RuntimeLoopTests {
         }
     }
 
+    /// Changes its drawable extent without emitting `.resize`, which the
+    /// Renderer protocol permits. The recorder owns the observable frame count
+    /// because AppRuntime stores the renderer by value.
+    private struct SilentlyResizingRenderer: Renderer {
+        let recorder: Recorder
+        let changeAfterFrames: Int
+        let newSize: Size
+        let startSize: Size
+        private var remainingIdle: Int
+
+        var size: Size {
+            recorder.presented.count >= changeAfterFrames ? newSize : startSize
+        }
+
+        init(
+            startSize: Size,
+            newSize: Size,
+            changeAfterFrames: Int,
+            idleIterations: Int,
+            recorder: Recorder
+        ) {
+            self.startSize = startSize
+            self.newSize = newSize
+            self.changeAfterFrames = changeAfterFrames
+            self.remainingIdle = idleIterations
+            self.recorder = recorder
+        }
+
+        mutating func begin() { recorder.beginCount += 1 }
+        mutating func end() { recorder.endCount += 1 }
+        mutating func present(_ root: LaidOutNode) { recorder.presented.append(root) }
+
+        mutating func nextEvent(timeoutMillis: Int) -> InputEvent? {
+            guard remainingIdle > 0 else { return .key(.ctrl("q")) }
+            remainingIdle -= 1
+            return nil
+        }
+    }
+
     /// A renderer whose `present` fails on the Nth frame, to prove the
     /// error leaves `run()` and that teardown still happens.
     private struct FailingRenderer: Renderer {
@@ -128,6 +167,25 @@ struct RuntimeLoopTests {
         #expect(recorder.presentedSizes.count == 2)
         #expect(recorder.presentedSizes.first == Size(width: 20, height: 4))
         #expect(recorder.presentedSizes.last == Size(width: 44, height: 9))
+    }
+
+    @Test("a renderer that resizes without emitting an event still re-lays out")
+    func silentRendererResizeIsPickedUp() throws {
+        let recorder = Recorder()
+        var runtime = try AppRuntime(
+            app: PlainApp(),
+            renderer: SilentlyResizingRenderer(
+                startSize: Size(width: 20, height: 4),
+                newSize: Size(width: 51, height: 13),
+                changeAfterFrames: 1,
+                idleIterations: 4,
+                recorder: recorder))
+
+        runtime.run()
+
+        #expect(recorder.presentedSizes.first == Size(width: 20, height: 4))
+        #expect(recorder.presentedSizes.last == Size(width: 51, height: 13))
+        #expect(recorder.presentedSizes.count == 2)
     }
 
     @Test("run re-syncs to the renderer extent that begin established")

@@ -58,6 +58,32 @@ extension TerminalProcessGlobalTests {
             }
         }
 
+        @Test("a clean close gives the host back its own signal handlers")
+        func cleanCloseRestoresHostDispositions() throws {
+            var hostAction = sigaction()
+            hostAction.__sigaction_u.__sa_handler = SIG_IGN
+            sigemptyset(&hostAction.sa_mask)
+            hostAction.sa_flags = 0
+            var beforeGama = sigaction()
+            try #require(sigaction(SIGWINCH, &hostAction, &beforeGama) == 0)
+            defer { sigaction(SIGWINCH, &beforeGama, nil) }
+
+            try withPTY { slave in
+                var session = try RawModeSession(
+                    terminal: Terminal(inputFD: slave, outputFD: slave))
+                #expect(TerminalRescue.isActive)
+                try session.close()
+            }
+
+            var afterDisarm = sigaction()
+            try #require(sigaction(SIGWINCH, nil, &afterDisarm) == 0)
+            // C function pointers are not Equatable; compare bit patterns.
+            let restored = unsafeBitCast(
+                afterDisarm.__sigaction_u.__sa_handler, to: UInt.self)
+            let expected = unsafeBitCast(SIG_IGN, to: UInt.self)
+            #expect(restored == expected)
+        }
+
         @Test("restoreNow puts termios back, which is what the signal path does")
         func restoreNowRestoresTermios() throws {
             try withPTY { slave in

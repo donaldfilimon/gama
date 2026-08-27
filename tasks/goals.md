@@ -198,8 +198,9 @@ status: in_progress
   `FrameHost` without any test harness under `detect_leaks=1`. Its required
   `--deliberate-leak` control retains a GamaCore `Signal`, and the gate passes
   only when the clean process exits zero while the control produces LSan's
-  exact configured failure code and diagnostic. No suppression is used.
-  Darwin cannot supply this proof; hosted Linux is the acceptance authority.
+  exact configured failure code and diagnostic. The broad `leak:XCTest`
+  suppression is deleted. Darwin cannot supply this proof; hosted Linux is the
+  acceptance authority.
 - Acceptance-run continuity risk (2026-08-27): main has had no COMPLETED
   acceptance run since 33044975550 (pre-#19). Post-#22 run 33048024225 was
   cancelled by the #24 push and post-#24 by the #26 push — ci.yml's
