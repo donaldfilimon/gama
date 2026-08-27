@@ -1,0 +1,4 @@
+# Doc-coverage allowlist: one Module.Path.To.Symbol per line.
+# Every entry requires a justification comment above it.
+# An empty allowlist is the goal; additions need a reason a doc comment
+# genuinely cannot or should not exist.

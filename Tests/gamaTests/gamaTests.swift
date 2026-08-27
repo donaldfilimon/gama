@@ -237,6 +237,14 @@ struct LayoutTests {
 
 @Suite("View builder")
 struct BuilderTests {
+    @Test("render nodes remain hashable")
+    func renderNodesRemainHashable() {
+        func requireHashable<T: Hashable>(_: T.Type) {}
+
+        requireHashable(RenderNode.self)
+        requireHashable(LaidOutNode.self)
+    }
+
     @Test("tuple flattening")
     func tupleFlattening() {
         struct Two: View {
@@ -575,6 +583,18 @@ struct MLIRTests {
         #expect(mlir.contains("min = 2 : i64"))
         #expect(mlir.contains("\"gama.divider\"()"))
         #expect(mlir.filter { $0 == "{" }.count == mlir.filter { $0 == "}" }.count)
+    }
+
+    @Test("group sentinel lowers to gama.group")
+    func groupSentinelLowersToGamaGroup() {
+        let node = RenderNode.group(children: [
+            .text("a", style: .plain), .text("b", style: .plain),
+        ])
+        let mlir = GamaLowering.lower(module: node, name: "grouped")
+        // Proves the Capabilities.md claim: the flatten sentinel reaches
+        // the dialect as its own op, not as an overlay.
+        #expect(mlir.contains("\"gama.group\"()"))
+        #expect(!mlir.contains("\"gama.overlay\"()"))
     }
 
     @Test("interactive NodeID emits full 64-bit id")

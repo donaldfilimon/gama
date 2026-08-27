@@ -73,6 +73,8 @@ private final class WASMHostBox<A: App>: AnyWASMHost {
     }
 }
 
+/// Browser-reactor entry point: install an app once from wasm `main`;
+/// the `gama_web_v1_*` exports then drive it from JavaScript.
 public enum GamaWeb {
     /// The single installed host. wasm32 is single-threaded, which is the
     /// entire justification for `nonisolated(unsafe)` here; a threaded wasm

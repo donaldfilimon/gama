@@ -181,9 +181,23 @@ public enum Axis: Hashable, Sendable {
 }
 
 /// Cross-axis placement inside a `VStack`; also the horizontal half of `Alignment`.
-public enum HorizontalAlignment: Hashable, Sendable { case leading, center, trailing }
+public enum HorizontalAlignment: Hashable, Sendable {
+    /// Align to the leading (left) edge.
+    case leading
+    /// Center horizontally.
+    case center
+    /// Align to the trailing (right) edge.
+    case trailing
+}
 /// Cross-axis placement inside an `HStack`; also the vertical half of `Alignment`.
-public enum VerticalAlignment: Hashable, Sendable { case top, center, bottom }
+public enum VerticalAlignment: Hashable, Sendable {
+    /// Align to the top edge.
+    case top
+    /// Center vertically.
+    case center
+    /// Align to the bottom edge.
+    case bottom
+}
 
 /// Two-axis placement of content inside larger bounds — used by frames,
 /// overlays, and `ZStack` when the content measures smaller than the

@@ -30,9 +30,14 @@ struct GamaDiagnostic: DiagnosticMessage {
 
 // MARK: - @Component
 
+/// `@Component`: synthesizes a memberwise initializer over stored
+/// properties (member role) and adds the missing `GamaCore.View`
+/// conformance (extension role). Structs only.
 public struct ComponentMacro: MemberMacro, ExtensionMacro {
     // Extension role: add `: GamaCore.View` when the conformance is
     // missing (the compiler passes only missing protocols in).
+    /// Extension role: adds `: GamaCore.View` when the compiler reports
+    /// the conformance missing.
     public static func expansion(
         of node: AttributeSyntax,
         attachedTo declaration: some DeclGroupSyntax,
@@ -47,6 +52,7 @@ public struct ComponentMacro: MemberMacro, ExtensionMacro {
     }
 
     // Member role: memberwise init over stored properties.
+    /// Member role: synthesizes the access-mirroring memberwise `init`.
     public static func expansion(
         of node: AttributeSyntax,
         providingMembersOf declaration: some DeclGroupSyntax,
@@ -127,6 +133,8 @@ public struct ComponentMacro: MemberMacro, ExtensionMacro {
 
 // MARK: - @Reactive
 
+/// `@Reactive`: backs a stored `var` with a `GamaCore.Signal` peer and
+/// accessor set, so reads/writes route through host-observable state.
 public struct ReactiveMacro: PeerMacro, AccessorMacro {
     private static func binding(
         of declaration: some DeclSyntaxProtocol,
@@ -169,6 +177,8 @@ public struct ReactiveMacro: PeerMacro, AccessorMacro {
         return (pattern.identifier.text, type)
     }
 
+    /// Peer role: emits the `_name: GamaCore.Signal<T>` storage (and owns
+    /// the diagnostics, so each error reports exactly once).
     public static func expansion(
         of node: AttributeSyntax,
         providingPeersOf declaration: some DeclSyntaxProtocol,
@@ -184,6 +194,8 @@ public struct ReactiveMacro: PeerMacro, AccessorMacro {
         ]
     }
 
+    /// Accessor role: emits the storage-restricted `init(initialValue)`,
+    /// `get`, and `nonmutating set` over the signal.
     public static func expansion(
         of node: AttributeSyntax,
         providingAccessorsOf declaration: some DeclSyntaxProtocol,
@@ -209,7 +221,11 @@ public struct ReactiveMacro: PeerMacro, AccessorMacro {
 
 // MARK: - #rgb
 
+/// `#rgb`: compile-time hex color literal (`"F80"` or `"FF8800"`,
+/// optional leading `#`); malformed input diagnoses and expands to
+/// `Color.default` so the expression stays recoverable.
 public struct RGBMacro: ExpressionMacro {
+    /// Parses the literal and expands to a `GamaCore.Color` constructor.
     public static func expansion(
         of node: some FreestandingMacroExpansionSyntax,
         in context: some MacroExpansionContext

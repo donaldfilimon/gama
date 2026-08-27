@@ -18,10 +18,14 @@
 //   "gama.styled"     region; attrs: fg, bg, attrs-bitmask
 //   "gama.interactive" region; attrs: id, focusable
 //  Post-layout ops additionally carry x, y, w, h.
+//  Canonical user-facing reference: docs/MLIRDialect.md.
 
 import GamaCore
 
+/// Lowers render trees into the textual `gama` MLIR dialect (generic op
+/// form, parseable with `mlir-opt --allow-unregistered-dialect`).
 public enum GamaLowering {
+    /// Lowers a structural (pre-layout) tree into a `gama.module`.
     public static func lower(module node: RenderNode, name: String = "main") -> String {
         var b = MLIRBuilder()
         b.open("\"gama.module\"() ({")
@@ -30,6 +34,7 @@ public enum GamaLowering {
         return b.text
     }
 
+    /// Lowers a laid-out tree, attaching absolute frame geometry to ops.
     public static func lower(laidOut root: LaidOutNode, name: String = "main") -> String {
         var b = MLIRBuilder()
         b.open("\"gama.module\"() ({")

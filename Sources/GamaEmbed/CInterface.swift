@@ -71,6 +71,10 @@ private struct CEmbedDiagnosticApp: App {
     }
 }
 
+/// Swift-side entry to the versioned C embedding ABI: build a context for
+/// any ``GamaCore/App`` and hand the opaque pointer to a C, JNI, or
+/// game-engine host. Status codes and ownership rules live in
+/// `GamaEmbed.h`.
 public enum GamaEmbed {
     /// Creates an opaque context for a C, JNI, game-engine, or FFI host.
     ///
@@ -129,6 +133,7 @@ private func key(code: Int32, scalar: Int32, shift: Int32, control: Int32) -> Ke
 @_cdecl("gama_embed_v1_abi_version")
 public nonisolated func gama_embed_v1_abi_version() -> Int32 { 1 }
 
+/// C ABI: creates a context running the built-in diagnostic app.
 @_cdecl("gama_embed_v1_context_create")
 public nonisolated func gama_embed_v1_context_create(
     _ columns: Int32,
@@ -141,12 +146,14 @@ public nonisolated func gama_embed_v1_context_create(
     )
 }
 
+/// C ABI: releases a context; the pointer must not be reused afterwards.
 @_cdecl("gama_embed_v1_context_destroy")
 public nonisolated func gama_embed_v1_context_destroy(_ pointer: UnsafeMutableRawPointer?) {
     guard let pointer else { return }
     Unmanaged<EmbedContext>.fromOpaque(pointer).release()
 }
 
+/// C ABI: resizes the grid (dimensions clamped to 1...Int32.max).
 @_cdecl("gama_embed_v1_resize")
 public nonisolated func gama_embed_v1_resize(
     _ pointer: UnsafeMutableRawPointer?,
@@ -166,6 +173,7 @@ public nonisolated func gama_embed_v1_resize(
     return 0
 }
 
+/// C ABI: translates and delivers one key event; -2 for unknown codes.
 @_cdecl("gama_embed_v1_key")
 public nonisolated func gama_embed_v1_key(
     _ pointer: UnsafeMutableRawPointer?,
@@ -182,6 +190,7 @@ public nonisolated func gama_embed_v1_key(
     return 0
 }
 
+/// C ABI: delivers one pointer press/release at a grid position.
 @_cdecl("gama_embed_v1_pointer")
 public nonisolated func gama_embed_v1_pointer(
     _ pointer: UnsafeMutableRawPointer?,
@@ -196,12 +205,16 @@ public nonisolated func gama_embed_v1_pointer(
     return 0
 }
 
+/// C ABI: 1 when state changed since the last frame, 0 when clean.
 @_cdecl("gama_embed_v1_needs_frame")
 public nonisolated func gama_embed_v1_needs_frame(_ pointer: UnsafeMutableRawPointer?) -> Int32 {
     guard let context = context(pointer) else { return -1 }
     return context.host.needsFrame ? 1 : 0
 }
 
+/// C ABI: encodes the next frame into context-owned storage. NULL with
+/// length 0 means clean; NULL with length -3 means the frame exceeded
+/// Int32.max bytes (GAMA_EMBED_ERR_FRAME_TOO_LARGE).
 @_cdecl("gama_embed_v1_frame")
 public nonisolated func gama_embed_v1_frame(
     _ pointer: UnsafeMutableRawPointer?,
