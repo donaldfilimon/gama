@@ -20,7 +20,9 @@ struct WASMSerializerTests {
         #expect(html.hasSuffix("</pre>"))
         #expect(html.contains("hi"))
         // Two rows → exactly two row containers.
-        #expect(html.components(separatedBy: "<pre class=\"gama-row\">").count - 1 == 2)
+        let rowPrefix = "<pre class=\"gama-row\">"
+        let rowCount = html.indices.filter { html[$0...].hasPrefix(rowPrefix) }.count
+        #expect(rowCount == 2)
     }
 
     @Test("Text content is entity-escaped")
