@@ -17,6 +17,8 @@ describe a blocked capability as shipped.
   capability model (deny-by-default, exact-match grants, unforgeable
   handles), the contribution surface, and what enforcement honestly
   means per tier.
+- [Packaging.md](Packaging.md) — shippable artifacts (wasm site, macOS
+  `.app`), their verification gates, and the credential boundary.
 - [../CONTRIBUTING.md](../CONTRIBUTING.md) — gates, CI mapping, claim-honesty
   policy, and the gated-slice workflow.
 

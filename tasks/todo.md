@@ -48,6 +48,17 @@
       generalized to build every module catalog (was: GamaCore-only with
       hardcoded paths; closed 2026-08-27 by the scene-first consolidation,
       merged via PR #19).
+      EXTENDED 2026-08-27 (branch docs/docc-catalogs-backends): curated
+      catalogs added for GamaAppleUI, GamaAppleShell, GamaWASM, and
+      GamaMLIR; check-docs.sh needed no further changes (its discovery
+      loop already builds every Sources/*/*.docc catalog) and now gates
+      seven zero-warning archives. Honest residuals: GamaEmbed is
+      deliberately skipped because its CInterface.swift doc comment links
+      ``GamaCore/App``, which cannot resolve in the per-module docc pass,
+      so a GamaEmbed catalog requires a one-line source doc-comment fix
+      first (out of scope for the docs-only branch); GamaWASM's catalog
+      is prose-only because its entire public API is arch(wasm32)-gated
+      and absent from the host symbol graph.
 - [x] check-docs.sh's Capabilities.md grep is tautological (matches the
       table header "Current evidence"); tighten if a stronger claim-honesty
       check is wanted. CLOSED 2026-08-27 by the docs overhaul: the grep now
@@ -116,8 +127,10 @@
       unify frame pumps now (finish ADR 0007); adopt the validated
       non-Sendable Signal design (supersedes ADR 0003's interim); execute
       every remaining item in gated slices, measure-first where noted.
-      Sequencing: wave 2, after feat/plugin-runtime-v1, feat/packaging-v1,
-      and docs/docc-catalogs-backends land (shared GamaCore files).
+      BLOCKED ON INTEGRATION: do not begin wave 2 until DocC-catalog PR
+      #28 is actually merged and the plugin-runtime post-merge hardening
+      follow-up is green. Packaging PR #32 and plugin PR #33 are merged;
+      an open branch or a locally green gate is not integration.
       Original scope list:
       unify the four divergent frame pumps + pick one resize policy (audit's
       top structural item; changes observable resize semantics); Signal
@@ -188,10 +201,15 @@
       offscreen shell test included), GamaPlatformServices
       (HostServices.standard + scoped filesystem with hostile-path
       tests), demo status-line slot, extended check-boundaries.sh, and
-      docs/Plugins.md; 34 Swift Testing cases green locally with the
-      full local gate set. Keep open until the PR's six-job matrix is
-      green and merged. Deferred inside sub-project 2: Tier 2 (dylib
-      loading), Tier 3 (out-of-process ABI), `.network`, scope
+      docs/Plugins.md. PR #33 merged after its exact-head six-job matrix
+      passed. Post-merge review found five substantive defects: unstable
+      survivor slot identity, host-wide plugin observation ownership,
+      missing lifecycle invalidation, callable cached commands after
+      uninstall, and internal empty filesystem components. The hardening
+      follow-up fixes those contracts and has 39 focused Swift Testing
+      cases green locally; keep this item open until that follow-up's own
+      exact-head six-job matrix is green. Deferred inside sub-project 2:
+      Tier 2 (dylib loading), Tier 3 (out-of-process ABI), `.network`, scope
       subsumption/path normalization, manifest macros,
       discovery/scanning, plugin persistence, and shell teardown of
       contributed windows on uninstall (uninstall stops future graph
@@ -204,8 +222,30 @@
       design at docs/superpowers/specs/2026-08-27-scene-first-app-shell-design.md.
       Scene core/migration and macOS shell are separate green delivery slices;
       packaging's .app slice depends on both.
-- [ ] Sub-project 4: packaging & distribution — APPROVED 2026-08-27
-      (docs/superpowers/specs/2026-08-27-packaging-design.md): Track W (wasm
-      site bundle) and Track M (.app of gama-apple-demo + Distribution/
-      manifest + --smoke + ad-hoc and Developer ID/notarize scripts) in
-      parallel; notarization is V1 (credential-gated, local evidence only).
+- [ ] Sub-project 4: packaging & distribution — APPROVED
+      (docs/superpowers/specs/2026-08-27-packaging-design.md; the 2026-08-26
+      draft is kept for inventory and rejected alternatives). V1 implemented
+      2026-08-27 on feat/packaging-v1:
+      - Landed and locally proven: scripts/lib/manifest.sh (fail-closed
+        flat-TOML reader), Distribution/ manifests + Info.plist.in
+        (com.donaldfilimon.gama.*, 0.1.0), scripts/bundle-web.sh (site
+        assembled to $GAMA_DIST_ROOT/web, browser smoke green against the
+        assembled directory), gama-apple-demo --smoke (offscreen
+        NSApplication launch gate, non-empty DrawList), and
+        scripts/bundle-macos.sh (staged .app outside the iCloud tree,
+        plutil lint, ad-hoc deep-strict codesign, smoke launch, all green).
+      - CI-gated (hosted proof pending the PR matrix): the macOS job's
+        bundle step + mode-preserving macos-app ZIP upload and the wasm job's
+        bundle step + wasm-site upload. PR review hardening validates whole
+        manifest identifiers, canonicalizes the dist root, uses plist-aware
+        branding, applies and browser-verifies `[web].title`, and checks the
+        exact Swift revision.
+      - Credential-gated: scripts/release-macos.sh Developer ID +
+        notarization path is implemented, rebuilds the download ZIP after
+        stapling, and its fail-closed gating is locally proven; no credentialed
+        run has occurred, so the notarized artifact is not claimed.
+      - Deferred per spec: embed SDK dir, Linux static binary, Windows
+        staged dir, Android assembleRelease + keystore, gama CLI veneer,
+        iOS-family .ipa. No icon source exists, so the iconutil path is
+        implemented but unproven. Keep open until the packaging PR and its
+        six-job matrix are green.
