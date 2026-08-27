@@ -65,12 +65,13 @@ def main():
             missing.append((module, ident, kind))
 
     if missing:
+        unique = sorted(set(missing))
         print(
             "error: %d public declarations lack documentation (see %s)"
-            % (len(missing), os.path.basename(allowlist_path)),
+            % (len(unique), os.path.basename(allowlist_path)),
             file=sys.stderr,
         )
-        for module, ident, kind in sorted(set(missing)):
+        for module, ident, kind in unique:
             print("%s  %s  (%s)" % (module, ident, kind), file=sys.stderr)
         return 1
     print("OK — every public declaration in every Gama module is documented")
