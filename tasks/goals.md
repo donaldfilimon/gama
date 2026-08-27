@@ -197,6 +197,28 @@ status: in_progress
   previously documented `detect_leaks=0` policy while retaining the required
   ASan job. Leak detection remains an open, separately root-caused item in
   `tasks/todo.md`; do not describe the Swift Testing runner as leak-clean.
+  Root cause identified 2026-08-27 (goal-loop session, from PR #24's job
+  log, run 33048676959): 7 indirect leaks / 432 bytes, every stack in the
+  SwiftPM-generated runner's XCTest harness (`XCTestSuiteRun.init`,
+  `XCTMain`, `XCTMainMisc`, plus Foundation `URL.lastPathComponent` under
+  XCTMain), zero Gama frames. The generated entry point runs the XCTest
+  harness even with zero XCTest suites, so the current generated test job
+  cannot be called leak-clean while those allocations persist. A future
+  runner change or a separate harness-free leak test can provide honest
+  coverage. Competing PR #31 used a broad `leak:XCTest` suppression and was
+  closed in favor of #30; that suppression is not coverage-preserving
+  because it can also match a Gama allocation made beneath XCTest.
+- Acceptance-run continuity risk (2026-08-27): main has had no COMPLETED
+  acceptance run since 33044975550 (pre-#19). Post-#22 run 33048024225 was
+  cancelled by the #24 push and post-#24 by the #26 push — ci.yml's
+  concurrency group is `cancel-in-progress: true`, so those closely spaced
+  merges cancelled the previous merge's proof. This is missing evidence,
+  not a structural blocker: a quiet merge interval or the existing
+  `workflow_dispatch` entry point can produce a completed main run. Two
+  optional continuity improvements remain Donald's call: mark the six jobs
+  required (blocks merges until green, also fixes the merged-while-red
+  pattern), and/or exempt `refs/heads/main` from cancel-in-progress so
+  post-merge proofs are less likely to be superseded.
 - Consolidation complete + specs finalized (2026-08-27, Donald's "merge all
   into main / finish all" session): PRs #20 (doc-coverage count), #21
   (macOS shell + gama-apple-demo), and #22 (ledger) merged; local main ==
