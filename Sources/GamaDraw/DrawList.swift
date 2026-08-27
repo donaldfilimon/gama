@@ -35,7 +35,9 @@ public struct DrawList: Hashable, Sendable {
                 return  // fully default blank run — nothing to draw
             }
             if !isBlankText {
-                let leading = TextLayout.displayWidth(of: String(text.prefix { $0 == " " }))
+                // Leading blanks are always the space character (width 1),
+                // so the character count IS the column offset.
+                let leading = text.prefix(while: { $0 == " " }).count
                 let visible = String(
                     text.dropFirst(leading).reversed().drop(while: { $0 == " " }).reversed()
                 )
@@ -60,36 +62,62 @@ public struct DrawList: Hashable, Sendable {
 
     public func encode() -> [UInt8] {
         var out: [UInt8] = []
-        appendU32(&out, 0x414D_4147)
-        appendU32(&out, 1)
-        appendI32(&out, Self.clampedI32(size.width))
-        appendI32(&out, Self.clampedI32(size.height))
-        appendU32(&out, UInt32(commands.count))
+        // Header is 20 bytes; a text command averages well under 40.
+        out.reserveCapacity(20 + commands.count * 40)
+        Self.appendU32(&out, 0x414D_4147)
+        Self.appendU32(&out, 1)
+        Self.appendI32(&out, Self.clampedI32(size.width))
+        Self.appendI32(&out, Self.clampedI32(size.height))
+        Self.appendU32(&out, UInt32(commands.count))
         for c in commands {
             switch c {
             case .fillRect(let r, let color):
                 out.append(0)
-                appendI32(&out, Self.clampedI32(r.minX))
-                appendI32(&out, Self.clampedI32(r.minY))
-                appendI32(&out, Self.clampedI32(r.size.width))
-                appendI32(&out, Self.clampedI32(r.size.height))
-                appendColor(&out, color)
+                Self.appendI32(&out, Self.clampedI32(r.minX))
+                Self.appendI32(&out, Self.clampedI32(r.minY))
+                Self.appendI32(&out, Self.clampedI32(r.size.width))
+                Self.appendI32(&out, Self.clampedI32(r.size.height))
+                Self.appendColor(&out, color)
             case .text(let s, let p, let style):
                 out.append(1)
-                appendI32(&out, Self.clampedI32(p.x))
-                appendI32(&out, Self.clampedI32(p.y))
-                appendColor(&out, style.foreground)
-                appendColor(&out, style.background)
-                appendU16(&out, UInt16(style.attributes.rawValue))
+                Self.appendI32(&out, Self.clampedI32(p.x))
+                Self.appendI32(&out, Self.clampedI32(p.y))
+                Self.appendColor(&out, style.foreground)
+                Self.appendColor(&out, style.background)
+                Self.appendU16(&out, UInt16(style.attributes.rawValue))
                 let bytes = Array(s.utf8)
-                appendU32(&out, UInt32(bytes.count))
+                Self.appendU32(&out, UInt32(bytes.count))
                 out.append(contentsOf: bytes)
             }
         }
         return out
     }
 
-    public static func decode(_ bytes: [UInt8]) -> DrawList? {
+    /// Why ``decode(_:)`` rejected a payload — one case per distinct
+    /// wire-format violation, so embedding hosts can report the actual
+    /// fault instead of a bare nil.
+    public enum DecodeError: Error, Hashable, Sendable {
+        /// The payload ended before a complete header or command was read.
+        case truncated
+        /// The leading magic was not `GAMA`.
+        case badMagic
+        /// The header named a wire-format revision this decoder does not speak.
+        case unsupportedVersion(UInt32)
+        /// The grid dimensions were negative.
+        case negativeDimensions
+        /// The declared command count cannot fit in the remaining payload.
+        case commandCountOverflow
+        /// A command byte named an unknown kind.
+        case unknownCommandKind(UInt8)
+        /// A fill rect carried a negative width or height.
+        case negativeRect
+        /// A text payload was not valid UTF-8.
+        case invalidUTF8
+        /// Bytes remained after the declared command count was decoded.
+        case trailingBytes
+    }
+
+    public static func decode(_ bytes: [UInt8]) throws(DecodeError) -> DrawList {
         // The smallest possible command is a 17-byte fill. Bounding command
         // count by the payload prevents hostile headers from forcing a huge
         // reserve before any command bytes have been validated.
@@ -115,41 +143,50 @@ public struct DrawList: Hashable, Sendable {
             return flags & 1 != 0 ? .default : Color(r: r, g: g, b: b)
         }
 
-        guard u32() == 0x414D_4147, u32() == 1,
-            let w = i32(), let h = i32(), let count = u32(),
-            w >= 0, h >= 0,
-            bytes.count >= headerSize,
-            UInt64(count) <= UInt64((bytes.count - headerSize) / minimumCommandSize)
-        else { return nil }
+        guard let magic = u32() else { throw DecodeError.truncated }
+        guard magic == 0x414D_4147 else { throw DecodeError.badMagic }
+        guard let version = u32() else { throw DecodeError.truncated }
+        guard version == 1 else { throw DecodeError.unsupportedVersion(version) }
+        guard let w = i32(), let h = i32(), let count = u32() else {
+            throw DecodeError.truncated
+        }
+        guard w >= 0, h >= 0 else { throw DecodeError.negativeDimensions }
+        guard UInt64(count) <= UInt64((bytes.count - headerSize) / minimumCommandSize)
+        else { throw DecodeError.commandCountOverflow }
 
         var commands: [DrawCommand] = []
         commands.reserveCapacity(Int(count))
         for _ in 0..<count {
-            switch u8() {
+            guard let kind = u8() else { throw DecodeError.truncated }
+            switch kind {
             case 0:
                 guard let x = i32(), let y = i32(), let cw = i32(), let ch = i32(),
-                    let col = color(), cw >= 0, ch >= 0
-                else { return nil }
+                    let col = color()
+                else { throw DecodeError.truncated }
+                guard cw >= 0, ch >= 0 else { throw DecodeError.negativeRect }
                 commands.append(
                     .fillRect(
                         Rect(x: Int(x), y: Int(y), width: Int(cw), height: Int(ch)), col))
             case 1:
                 guard let x = i32(), let y = i32(),
                     let fg = color(), let bg = color(), let sgr = u16(),
-                    let len = u32(), UInt64(len) <= UInt64(bytes.count - i)
-                else { return nil }
+                    let len = u32()
+                else { throw DecodeError.truncated }
+                guard UInt64(len) <= UInt64(bytes.count - i) else {
+                    throw DecodeError.truncated
+                }
                 let payload = bytes[i..<(i + Int(len))]
-                guard Self.isValidUTF8(payload) else { return nil }
+                guard Self.isValidUTF8(payload) else { throw DecodeError.invalidUTF8 }
                 let text = String(decoding: payload, as: UTF8.self)
                 i += Int(len)
                 var style = TextStyle(foreground: fg, background: bg)
                 style.attributes = TextAttributes(rawValue: UInt8(truncatingIfNeeded: sgr))
                 commands.append(.text(text, at: Point(x: Int(x), y: Int(y)), style: style))
             default:
-                return nil
+                throw DecodeError.unknownCommandKind(kind)
             }
         }
-        guard i == bytes.count else { return nil }
+        guard i == bytes.count else { throw DecodeError.trailingBytes }
         return DrawList(size: Size(width: Int(w), height: Int(h)), commands: commands)
     }
 
@@ -158,13 +195,16 @@ public struct DrawList: Hashable, Sendable {
     /// Strict RFC 3629 validation kept stdlib-only and available at the
     /// package's macOS 14 deployment floor.
     private static func isValidUTF8(_ slice: ArraySlice<UInt8>) -> Bool {
-        let bytes = Array(slice)
+        // Validated in place; ArraySlice shares indices with its base, so
+        // everything is offset from `start`, never from zero.
+        let start = slice.startIndex
+        let count = slice.count
         var index = 0
         func continuation(_ offset: Int) -> Bool {
-            index + offset < bytes.count && (0x80...0xbf).contains(bytes[index + offset])
+            index + offset < count && (0x80...0xbf).contains(slice[start + index + offset])
         }
-        while index < bytes.count {
-            let first = bytes[index]
+        while index < count {
+            let first = slice[start + index]
             if first <= 0x7f { index += 1; continue }
             if (0xc2...0xdf).contains(first) {
                 guard continuation(1) else { return false }
@@ -173,7 +213,7 @@ public struct DrawList: Hashable, Sendable {
             }
             if (0xe0...0xef).contains(first) {
                 guard continuation(1), continuation(2) else { return false }
-                let second = bytes[index + 1]
+                let second = slice[start + index + 1]
                 if first == 0xe0 && second < 0xa0 { return false }
                 if first == 0xed && second > 0x9f { return false }
                 index += 3
@@ -181,7 +221,7 @@ public struct DrawList: Hashable, Sendable {
             }
             if (0xf0...0xf4).contains(first) {
                 guard continuation(1), continuation(2), continuation(3) else { return false }
-                let second = bytes[index + 1]
+                let second = slice[start + index + 1]
                 if first == 0xf0 && second < 0x90 { return false }
                 if first == 0xf4 && second > 0x8f { return false }
                 index += 4
@@ -218,8 +258,4 @@ public struct DrawList: Hashable, Sendable {
         appendU32(&out, UInt32(bitPattern: v))
     }
 
-    private func appendColor(_ out: inout [UInt8], _ c: Color) { Self.appendColor(&out, c) }
-    private func appendU16(_ out: inout [UInt8], _ v: UInt16) { Self.appendU16(&out, v) }
-    private func appendU32(_ out: inout [UInt8], _ v: UInt32) { Self.appendU32(&out, v) }
-    private func appendI32(_ out: inout [UInt8], _ v: Int32) { Self.appendI32(&out, v) }
 }

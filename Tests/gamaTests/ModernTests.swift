@@ -1,7 +1,4 @@
-//  ModernTests.swift — Swift Testing suites (swift-testing ships with
-//  Swift 6 toolchains; runs alongside XCTest under `swift test`).
-
-#if canImport(Testing)
+//  ModernTests.swift — Swift Testing suites for DrawList codec and painter.
 
 import Testing
 
@@ -11,7 +8,7 @@ import Testing
 @Suite("DrawList codec")
 struct DrawListCodecSuite {
     @Test("round-trips every attribute bit")
-    func attributeBits() {
+    func attributeBits() throws {
         let all: [TextAttributes] = [.bold, .dim, .italic, .underline, .inverse, .strikethrough]
         for attr in all {
             var style = TextStyle()
@@ -19,7 +16,7 @@ struct DrawListCodecSuite {
             let list = DrawList(
                 size: Size(width: 3, height: 1),
                 commands: [.text("x", at: Point(x: 0, y: 0), style: style)])
-            #expect(DrawList.decode(list.encode()) == list)
+            #expect(try DrawList.decode(list.encode()) == list)
         }
     }
 
@@ -27,29 +24,35 @@ struct DrawListCodecSuite {
     func magic() {
         var bytes = DrawList(size: Size(width: 1, height: 1)).encode()
         bytes[0] ^= 0xFF
-        #expect(DrawList.decode(bytes) == nil)
+        #expect(throws: DrawList.DecodeError.badMagic) { try DrawList.decode(bytes) }
     }
 
     @Test("empty frame encodes to header only")
-    func emptyFrame() {
+    func emptyFrame() throws {
         let list = DrawList(size: Size(width: 40, height: 12))
         #expect(list.encode().count == 4 + 4 + 4 + 4 + 4)
-        #expect(DrawList.decode(list.encode()) == list)
+        #expect(try DrawList.decode(list.encode()) == list)
     }
 
     @Test("rejects hostile counts, negative geometry, and trailing bytes")
     func malformedPayloads() {
         var hostileCount = DrawList(size: .zero).encode()
         hostileCount[16...19] = [0xff, 0xff, 0xff, 0xff]
-        #expect(DrawList.decode(hostileCount) == nil)
+        #expect(throws: DrawList.DecodeError.commandCountOverflow) {
+            try DrawList.decode(hostileCount)
+        }
 
         var negativeSize = DrawList(size: .zero).encode()
         negativeSize[8...11] = [0xff, 0xff, 0xff, 0xff]
-        #expect(DrawList.decode(negativeSize) == nil)
+        #expect(throws: DrawList.DecodeError.negativeDimensions) {
+            try DrawList.decode(negativeSize)
+        }
 
         var trailing = DrawList(size: .zero).encode()
         trailing.append(0)
-        #expect(DrawList.decode(trailing) == nil)
+        #expect(throws: DrawList.DecodeError.trailingBytes) {
+            try DrawList.decode(trailing)
+        }
     }
 
     @Test("rejects every major class of malformed UTF-8")
@@ -70,21 +73,23 @@ struct DrawListCodecSuite {
             var bytes = valid
             bytes[39...42] = [UInt8(payload.count), 0, 0, 0]
             bytes.replaceSubrange(43..., with: payload)
-            #expect(DrawList.decode(bytes) == nil)
+            #expect(throws: DrawList.DecodeError.invalidUTF8) {
+                try DrawList.decode(bytes)
+            }
         }
     }
 
     @Test("encoding clamps geometry to the stable 32-bit wire ABI")
-    func wireGeometryClamping() {
+    func wireGeometryClamping() throws {
         let frame = DrawList(
             size: Size(width: .max, height: .max),
             commands: [
                 .fillRect(Rect(x: .min, y: .max, width: .max, height: 1), .red)
             ]
         )
-        let decoded = DrawList.decode(frame.encode())
-        #expect(decoded?.size == Size(width: Int(Int32.max), height: Int(Int32.max)))
-        if case .fillRect(let bounds, _)? = decoded?.commands.first {
+        let decoded = try DrawList.decode(frame.encode())
+        #expect(decoded.size == Size(width: Int(Int32.max), height: Int(Int32.max)))
+        if case .fillRect(let bounds, _)? = decoded.commands.first {
             #expect(bounds.minX == Int(Int32.min))
             #expect(bounds.minY == Int(Int32.max))
             #expect(bounds.size.width == Int(Int32.max))
@@ -94,7 +99,7 @@ struct DrawListCodecSuite {
     }
 
     @Test("deterministic randomized frames round-trip")
-    func randomizedRoundTrips() {
+    func randomizedRoundTrips() throws {
         var state: UInt64 = 0x4741_4D41_0000_0001
         func next() -> UInt64 {
             state = state &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
@@ -117,7 +122,7 @@ struct DrawListCodecSuite {
                 commands.append(.text("row-\(index)-🙂", at: Point(x: x, y: y), style: style))
             }
             let frame = DrawList(size: Size(width: width, height: height), commands: commands)
-            #expect(DrawList.decode(frame.encode()) == frame)
+            #expect(try DrawList.decode(frame.encode()) == frame)
         }
     }
 }
@@ -193,5 +198,3 @@ struct PainterVectorizeSuite {
                 == .zero)
     }
 }
-
-#endif  // canImport(Testing)

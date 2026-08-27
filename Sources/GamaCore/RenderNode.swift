@@ -27,11 +27,15 @@ public struct NodeID: Hashable, Sendable {
     public static let root = NodeID(raw: 0xCBF2_9CE4_8422_2325)
 }
 
-public indirect enum RenderNode: Sendable {
+public indirect enum RenderNode: Hashable, Sendable {
     case empty
     case text(String, style: TextStyle)
     case stack(axis: Axis, spacing: Int, alignment: Alignment, children: [RenderNode])
-    case overlay(alignment: Alignment, children: [RenderNode])  // ZStack
+    /// Layered children of a ``ZStack``. Never used as a flatten sentinel.
+    case overlay(alignment: Alignment, children: [RenderNode])
+    /// ViewBuilder / ForEach flatten sentinel. Containers unpack this via
+    /// `flattenChildren`; it is not a ``ZStack``.
+    case group(children: [RenderNode])
     case spacer(minLength: Int)
     /// Axis-resolved rule: 1 cell on the enclosing stack's main axis,
     /// full length on the cross axis. Backends pick the glyph by aspect.
@@ -56,13 +60,16 @@ public indirect enum RenderNode: Sendable {
         case .padding(_, let c), .border(_, _, _, let c), .background(_, let c),
              .styled(_, let c), .interactive(_, _, let c):
             return c.flexPriority
-        default: return .fixed
+        // Exhaustive on purpose: a new case must choose its flex behavior
+        // here instead of silently inheriting `.fixed`.
+        case .empty, .text, .stack, .overlay, .group, .divider, .frame:
+            return .fixed
         }
     }
 }
 
 /// Layout output: the same tree shape, annotated with absolute frames.
-public struct LaidOutNode: Sendable {
+public struct LaidOutNode: Hashable, Sendable {
     public var node: RenderNode
     public var frame: Rect
     public var children: [LaidOutNode]
@@ -73,10 +80,29 @@ public struct LaidOutNode: Sendable {
     }
 
     /// Depth-first visit of interactive nodes in visual order.
-    public func collectInteractive(into out: inout [(NodeID, Rect, focusable: Bool)]) {
+    public func collectInteractive(into out: inout [InteractiveRegion]) {
         if case .interactive(let id, let focusable, _) = node {
-            out.append((id, frame, focusable))
+            out.append(InteractiveRegion(id: id, frame: frame, isFocusable: focusable))
         }
         for c in children { c.collectInteractive(into: &out) }
     }
 }
+
+/// One interactive node of a laid-out frame: the hit-test/focus record
+/// produced by ``LaidOutNode/collectInteractive(into:)``.
+public struct InteractiveRegion: Hashable, Sendable {
+    /// The stable identity backends route key and pointer events by.
+    public let id: NodeID
+    /// The node's absolute frame in grid cells.
+    public let frame: Rect
+    /// Whether the node participates in keyboard focus order.
+    public let isFocusable: Bool
+
+    /// Creates a region record.
+    public init(id: NodeID, frame: Rect, isFocusable: Bool) {
+        self.id = id
+        self.frame = frame
+        self.isFocusable = isFocusable
+    }
+}
+

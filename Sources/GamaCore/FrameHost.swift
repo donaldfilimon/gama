@@ -5,6 +5,9 @@
 //  own event sources. One implementation of focus, actions, and dirty
 //  tracking — identical behavior on every platform.
 
+/// Action tables for one `FrameHost`. `@unchecked Sendable` because GamaCore
+/// cannot import Synchronization; the store is confined to the host's owning
+/// executor and is never shared across concurrent hosts.
 private final class HostActionStore: @unchecked Sendable {
     var actions: [NodeID: @Sendable () -> Void] = [:]
     var keyHandlers: [NodeID: @Sendable (Key) -> Bool] = [:]
@@ -21,11 +24,14 @@ private final class HostActionStore: @unchecked Sendable {
     func invokeKey(_ key: Key, for id: NodeID) -> Bool { keyHandlers[id]?(key) ?? false }
 }
 
-public struct FrameHost<A: App> {
+/// Noncopyable: the host owns live reference state (action tables, the
+/// dirty signal, subscriptions); a copy would silently share all of it.
+/// Single ownership is now a compile-time guarantee.
+public struct FrameHost<A: App>: ~Copyable {
     public var app: A
 
     /// Every interactive node — the pointer hit-test set.
-    private var interactive: [(NodeID, Rect, focusable: Bool)] = []
+    private var interactive: [InteractiveRegion] = []
     /// Keyboard-reachable subset, in tab order.
     private var focusables: [(id: NodeID, rect: Rect)] = []
     /// Focus is tracked by identity, not index, so it survives rebuilds
@@ -38,11 +44,13 @@ public struct FrameHost<A: App> {
     /// malformed application crash in production.
     public private(set) var duplicateIDs: [NodeID] = []
 
-    private var dirty: Signal<Bool>
+    private let dirty: Signal<Bool>
     /// Explicit model observation lifetime owned by this host.
     public let subscriptions: SubscriptionContext
     /// Set when the host wants to stop (Ctrl-C on TUI; hosts may ignore).
     public private(set) var wantsQuit = false
+    /// Last size applied by `pump(size:)` or a `.resize` event.
+    public private(set) var lastSize: Size = .zero
 
     public init(app: A) {
         self.app = app
@@ -54,7 +62,7 @@ public struct FrameHost<A: App> {
     /// True when state changed since the last `pump`.
     public var needsFrame: Bool { dirty.get() }
 
-    public mutating func invalidate() { dirty.set(true) }
+    public func invalidate() { dirty.set(true) }
 
     /// Observe a model signal for this host. Duplicate connections are
     /// coalesced and all observers can be cancelled as one host-owned lifetime.
@@ -67,6 +75,7 @@ public struct FrameHost<A: App> {
     /// Build + lay out one frame at `size`, reconciling focus.
     /// Pure with respect to the renderer: callers paint the result.
     public mutating func pump(size: Size) -> LaidOutNode {
+        lastSize = size
         dirty.set(false)
 
         actions.beginBuildPass()
@@ -86,7 +95,7 @@ public struct FrameHost<A: App> {
         interactive.removeAll(keepingCapacity: true)
         laid.collectInteractive(into: &interactive)
         validateIdentities()
-        focusables = interactive.compactMap { $0.focusable ? (id: $0.0, rect: $0.1) : nil }
+        focusables = interactive.compactMap { $0.isFocusable ? (id: $0.id, rect: $0.frame) : nil }
 
         // Reconcile focus with the new tree.
         if let id = focusedID, !focusables.contains(where: { $0.id == id }) {
@@ -110,7 +119,7 @@ public struct FrameHost<A: App> {
             interactive.removeAll(keepingCapacity: true)
             laid.collectInteractive(into: &interactive)
             validateIdentities()
-            focusables = interactive.compactMap { $0.focusable ? (id: $0.0, rect: $0.1) : nil }
+            focusables = interactive.compactMap { $0.isFocusable ? (id: $0.id, rect: $0.frame) : nil }
         }
         return laid
     }
@@ -123,11 +132,11 @@ public struct FrameHost<A: App> {
     private mutating func validateIdentities() {
         var seen: Set<NodeID> = []
         var duplicates: Set<NodeID> = []
-        for item in interactive where !seen.insert(item.0).inserted {
-            duplicates.insert(item.0)
+        for item in interactive where !seen.insert(item.id).inserted {
+            duplicates.insert(item.id)
         }
         duplicateIDs = interactive.compactMap { item in
-            duplicates.remove(item.0) == nil ? nil : item.0
+            duplicates.remove(item.id) == nil ? nil : item.id
         }
     }
 
@@ -159,13 +168,14 @@ public struct FrameHost<A: App> {
         case .pointer(let p, pressed: true):
             // Hit-test the full interactive set (topmost wins), not just
             // the focusable subset — non-focusable targets stay clickable.
-            if let hit = interactive.last(where: { $0.1.contains(p) }) {
-                if hit.focusable { focusedID = hit.0 }
-                actions.invoke(hit.0)
+            if let hit = interactive.last(where: { $0.frame.contains(p) }) {
+                if hit.isFocusable { focusedID = hit.id }
+                actions.invoke(hit.id)
                 dirty.set(true)
             }
 
-        case .resize:
+        case .resize(let size):
+            lastSize = size
             dirty.set(true)
 
         case .key(let key):

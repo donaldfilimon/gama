@@ -11,6 +11,10 @@
     import Darwin
 #elseif canImport(Glibc)
     import Glibc
+#elseif canImport(Musl)
+    import Musl
+#elseif canImport(Android)
+    import Android
 #elseif os(Windows)
     import WinSDK
 #endif
@@ -61,6 +65,9 @@ public struct Terminal {
     private var originalTermios = termios()
     private var isRaw = false
     private var pendingBytes: [UInt8] = []
+    /// Reused read buffer: one heap allocation for the session instead of
+    /// one per nextEvent call.
+    private var readBuffer = [UInt8](repeating: 0, count: 64)
 
     public init() {
         inputFD = STDIN_FILENO
@@ -140,8 +147,12 @@ public struct Terminal {
                 guard let base = buf.baseAddress else { return 0 }
                 #if canImport(Darwin)
                     return Darwin.write(outputFD, base.advanced(by: off), buf.count - off)
-                #else
+                #elseif canImport(Glibc)
                     return Glibc.write(outputFD, base.advanced(by: off), buf.count - off)
+                #elseif canImport(Musl)
+                    return Musl.write(outputFD, base.advanced(by: off), buf.count - off)
+                #elseif canImport(Android)
+                    return Android.write(outputFD, base.advanced(by: off), buf.count - off)
                 #endif
             }
             if n < 0, errno == EINTR { continue }
@@ -165,7 +176,7 @@ public struct Terminal {
                 throw TerminalError("terminal poll failed")
             }
             if r == 0 {
-                if pendingBytes == [0x1B] {
+                if pendingBytes.count == 1 && pendingBytes[0] == 0x1B {
                     pendingBytes.removeAll(keepingCapacity: true)
                     return .key(.escape)
                 }
@@ -177,11 +188,12 @@ public struct Terminal {
                 }
                 return nil
             }
-            var buf = [UInt8](repeating: 0, count: 64)
-            let n = read(inputFD, &buf, buf.count)
+            let n = readBuffer.withUnsafeMutableBytes { raw in
+                read(inputFD, raw.baseAddress, raw.count)
+            }
             if n < 0, errno == EINTR { return nil }
             guard n > 0 else { throw TerminalError("terminal input reached EOF") }
-            pendingBytes.append(contentsOf: buf[0..<n])
+            pendingBytes.append(contentsOf: readBuffer[0..<n])
         }
         return decodeOne()
     }
@@ -418,8 +430,8 @@ public struct Terminal {
         // UTF-8 byte stream out.
         savedCP = GetConsoleOutputCP()
         guard SetConsoleOutputCP(65001) else {
-            SetConsoleMode(hIn, savedInMode)
-            SetConsoleMode(hOut, savedOutMode)
+            _ = SetConsoleMode(hIn, savedInMode)
+            _ = SetConsoleMode(hOut, savedOutMode)
             throw TerminalError("SetConsoleOutputCP(CP_UTF8) failed")
         }
 

@@ -33,6 +33,10 @@ swiftly run swift test --scratch-path /private/tmp/gama-framework-swiftpm
 `swift test` still needs the `--scratch-path` outside iCloud (see below).
 Verify identity with `swiftly run swift --version` (must report 6.5-dev).
 
+Tests are Swift Testing only (`import Testing`). Do not add XCTest. See
+`docs/Testing.md`. Pin authority is `Toolchains.toml`;
+`scripts/check-toolchain-pins.sh` fails on drift.
+
 This checkout lives under iCloud-managed `~/Desktop`: run `swift test` only
 through the check scripts or with `--scratch-path` outside iCloud, and never
 run `git gc`, `git prune`, `git fsck`, or `git repack` here.

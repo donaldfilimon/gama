@@ -62,7 +62,7 @@ public enum CellPainter {
                 title: title, in: frame, into: &buffer)
             for c in laid.children { draw(c, inheritedStyle: inheritedStyle, into: &buffer) }
 
-        case .stack, .overlay, .padding, .frame, .flexFrame, .interactive:
+        case .stack, .overlay, .group, .padding, .frame, .flexFrame, .interactive:
             for c in laid.children { draw(c, inheritedStyle: inheritedStyle, into: &buffer) }
         }
     }
@@ -72,7 +72,11 @@ public enum CellPainter {
         into buffer: inout CellBuffer
     ) {
         guard rect.size.width >= 2, rect.size.height >= 2 else { return }
-        let (tl, top, tr, left, right, bl, bottom, br) = borderStyle.glyphs
+        let g = borderStyle.glyphs
+        let (tl, top, tr, left, right, bl, bottom, br) = (
+            g.topLeft, g.top, g.topRight, g.left, g.right,
+            g.bottomLeft, g.bottom, g.bottomRight
+        )
 
         buffer.put(tl, at: Point(x: rect.minX, y: rect.minY), style: style)
         buffer.put(tr, at: Point(x: rect.maxX - 1, y: rect.minY), style: style)

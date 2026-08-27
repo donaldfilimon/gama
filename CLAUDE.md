@@ -88,8 +88,15 @@ swiftly run swift run gama-demo
 `gama-demo --emit-mlir` prints the MLIR dialect form. Android needs
 `ANDROID_NDK_HOME=… ./scripts/check-android.sh`.
 
+Tests are Swift Testing only. Filter with `--filter SuiteName.testName`.
+Do not add `import XCTest`. Macro expansion tests use
+`SwiftSyntaxMacrosGenericTestSupport`. See `docs/Testing.md` and
+`docs/Toolchain.md`.
+
 CI is `.github/workflows/ci.yml` — six jobs pinned to the same snapshot family
 with SHA256-verified downloads (`scripts/ci-install-swift-*.sh`).
+`scripts/check-toolchain-pins.sh` (via `check-boundaries.sh`) fails if CI
+URLs/SHAs drift from `Toolchains.toml`.
 
 ## Architecture
 

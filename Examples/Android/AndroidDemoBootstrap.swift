@@ -14,6 +14,6 @@ private struct AndroidDemo: App {
 }
 
 @_cdecl("gama_android_demo_v1_create")
-public func gama_android_demo_v1_create() -> UnsafeMutableRawPointer {
+public nonisolated func gama_android_demo_v1_create() -> UnsafeMutableRawPointer {
     GamaEmbed.makeContext(app: AndroidDemo())
 }

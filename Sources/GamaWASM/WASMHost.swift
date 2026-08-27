@@ -4,15 +4,14 @@
 //  @_extern(wasm) imports (module "gama"). Frames render as an HTML grid
 //  of styled spans built from the same CellBuffer every backend paints.
 //
-//  Build (Swift 6 official WASM SDK):
-//    swift build --swift-sdk wasm32-unknown-wasi --product gama-web \
-//        -Xswiftc -enable-experimental-feature -Xswiftc Extern
-//  then serve WebHost/ next to the produced .wasm (see WebHost/gama.js).
-
-#if arch(wasm32)
+//  Build with the pinned 6.5-dev WASM SDK ([sdk.wasm] in Toolchains.toml):
+//    scripts/check-wasm.sh  (product gama-web-demo; Extern is already
+//    enabled on this target). Serve WebHost/ next to the .wasm artifact.
 
 import GamaCore
 import GamaDraw
+
+#if arch(wasm32)
 
 // MARK: - JS imports (provided by WebHost/gama.js at instantiation)
 
@@ -31,12 +30,15 @@ func gama_js_requestFrame()
 // MARK: - Host
 
 /// Type-erased shim so the exported C entry points can drive any App.
-private protocol AnyWASMHost {
-    mutating func frame()
-    mutating func handle(_ event: InputEvent)
+/// Class-constrained to match the other two erasure sites (EmbedHostBox,
+/// GamaHostView.Session): one reference owner for the FrameHost/CellBuffer
+/// pair, no existential-box copies on every event.
+private protocol AnyWASMHost: AnyObject {
+    func frame()
+    func handle(_ event: InputEvent)
 }
 
-private struct WASMHostBox<A: App>: AnyWASMHost {
+private final class WASMHostBox<A: App>: AnyWASMHost {
     var host: FrameHost<A>
     var buffer: CellBuffer
     var size: Size
@@ -47,7 +49,7 @@ private struct WASMHostBox<A: App>: AnyWASMHost {
         self.buffer = CellBuffer(size: size)
     }
 
-    mutating func handle(_ event: InputEvent) {
+    func handle(_ event: InputEvent) {
         if case .resize(let s) = event {
             size = s
             buffer.resize(s)
@@ -56,7 +58,7 @@ private struct WASMHostBox<A: App>: AnyWASMHost {
         if host.needsFrame { gama_js_requestFrame() }
     }
 
-    mutating func frame() {
+    func frame() {
         guard host.needsFrame else { return }
         let laid = host.pump(size: size)
         buffer.clearBack()
@@ -71,28 +73,37 @@ private struct WASMHostBox<A: App>: AnyWASMHost {
     }
 }
 
-private nonisolated(unsafe) var _host: (any AnyWASMHost)? = nil
-
 public enum GamaWeb {
+    /// The single installed host. wasm32 is single-threaded, which is the
+    /// entire justification for `nonisolated(unsafe)` here; a threaded wasm
+    /// future must replace this with real isolation.
+    private nonisolated(unsafe) static var installed: (any AnyWASMHost)?
+
     /// Install the app. Call from the module's `main` (wasi reactor runs
-    /// top-level code once at `_initialize`).
+    /// top-level code once at `_initialize`). A second call replaces the
+    /// previous host wholesale (its subscriptions and state are dropped).
     public static func install<A: App>(app: A, columns: Int = 100, rows: Int = 30) {
-        _host = WASMHostBox(app: app, size: Size(width: columns, height: rows))
+        installed = WASMHostBox(app: app, size: Size(width: columns, height: rows))
         let title = Array("Gama".utf8)
         title.withUnsafeBufferPointer { gama_js_setTitle($0.baseAddress, Int32($0.count)) }
         gama_js_requestFrame()
     }
+
+    fileprivate static var current: (any AnyWASMHost)? { installed }
 }
 
 // MARK: - Exports (called from WebHost/gama.js)
+// Explicitly `nonisolated`: these must never acquire actor isolation from a
+// future defaultIsolation/NonisolatedNonsendingByDefault adoption — JS calls
+// them on whatever thread the wasm host runs.
 
 @_cdecl("gama_web_v1_frame")
-func gama_web_v1_frame() {
-    _host?.frame()
+nonisolated func gama_web_v1_frame() {
+    GamaWeb.current?.frame()
 }
 
 @_cdecl("gama_web_v1_key")
-func gama_web_v1_key(_ code: Int32, _ char: Int32, _ shift: Int32, _ ctrl: Int32) {
+nonisolated func gama_web_v1_key(_ code: Int32, _ char: Int32, _ shift: Int32, _ ctrl: Int32) {
     // code: JS KeyboardEvent mapping done host-side (see gama.js):
     //   1=up 2=down 3=left 4=right 5=enter 6=escape 7=tab 8=backspace
     //   9=delete 10=home 11=end 12=pageUp 13=pageDown 100+n=Fn
@@ -123,20 +134,24 @@ func gama_web_v1_key(_ code: Int32, _ char: Int32, _ shift: Int32, _ ctrl: Int32
     default:
         key = nil
     }
-    if let key { _host?.handle(.key(key)) }
+    if let key { GamaWeb.current?.handle(.key(key)) }
 }
 
 @_cdecl("gama_web_v1_pointer")
-func gama_web_v1_pointer(_ col: Int32, _ row: Int32, _ pressed: Int32) {
-    _host?.handle(.pointer(Point(x: Int(col), y: Int(row)), pressed: pressed != 0))
+nonisolated func gama_web_v1_pointer(_ col: Int32, _ row: Int32, _ pressed: Int32) {
+    GamaWeb.current?.handle(.pointer(Point(x: Int(col), y: Int(row)), pressed: pressed != 0))
 }
 
 @_cdecl("gama_web_v1_resize")
-func gama_web_v1_resize(_ cols: Int32, _ rows: Int32) {
-    _host?.handle(.resize(Size(width: max(1, Int(cols)), height: max(1, Int(rows)))))
+nonisolated func gama_web_v1_resize(_ cols: Int32, _ rows: Int32) {
+    GamaWeb.current?.handle(.resize(Size(width: max(1, Int(cols)), height: max(1, Int(rows)))))
 }
 
+#endif  // arch(wasm32)
+
 // MARK: - HTML serialization
+// Deliberately outside `#if arch(wasm32)`: pure String code with no wasm
+// dependency, so it compiles — and is unit-tested — on every host platform.
 
 enum HTMLSerializer {
     /// One <pre> line per row; runs of identical style collapse into one
@@ -174,6 +189,11 @@ enum HTMLSerializer {
         return s
     }
 
+    /// Escapes element *content* only (`&`, `<`, `>`). Attribute values are
+    /// never routed through user text: the style attribute comes exclusively
+    /// from `css(for:)`, which interpolates integers and fixed literals.
+    /// Any future edit that puts run text into an attribute must add quote
+    /// escaping here first.
     static func escape(_ s: String) -> String {
         var out = ""
         out.reserveCapacity(s.count)
@@ -188,5 +208,3 @@ enum HTMLSerializer {
         return out
     }
 }
-
-#endif  // arch(wasm32)

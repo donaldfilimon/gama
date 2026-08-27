@@ -6,6 +6,16 @@
 //  Tab / Shift-Tab move focus, Enter/Space activates, mouse clicks work,
 //  Ctrl-C / Ctrl-Q quits.
 
+#if canImport(Darwin)
+    import Darwin
+#elseif canImport(Glibc)
+    import Glibc
+#elseif canImport(Musl)
+    import Musl
+#elseif canImport(Android)
+    import Android
+#endif
+
 import GamaTUI
 import GamaMLIR
 import GamaMacros
@@ -105,16 +115,12 @@ if wantsMLIR {
 // Foundation-free getenv.
 enum ProcessEnvLookup {
     static func isSet(_ name: String) -> Bool {
-        #if canImport(Darwin) || canImport(Glibc)
+        #if canImport(Darwin) || canImport(Glibc) || canImport(Musl) || canImport(Android)
             return name.withCString { getenv($0) != nil }
         #else
+            // Windows and other hosts: the MLIR emit toggle is unavailable.
             return false
         #endif
     }
 }
 
-#if canImport(Darwin)
-    import Darwin
-#elseif canImport(Glibc)
-    import Glibc
-#endif
