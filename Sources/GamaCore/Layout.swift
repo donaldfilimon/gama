@@ -4,9 +4,19 @@
 //  space; GUI backends scale cells to a font/point grid, the MLIR path
 //  carries frames as op attributes.
 
+/// The shared two-pass layout solver. `measure` is the bottom-up sizing
+/// pass; `layout` is the top-down placement pass. Both are pure functions
+/// of the node tree — the engine holds no state — so every backend derives
+/// identical geometry from the same `RenderNode`. All arithmetic is in
+/// integer cells; GUI backends scale the result to their own grid.
 public enum LayoutEngine {
     // MARK: Measure
 
+    /// Answers what size `node` wants under `proposal`. A `nil` axis in
+    /// the proposal is unconstrained: content replies with its ideal
+    /// extent on that axis. Inside stacks, flexible children contribute
+    /// only their main-axis floors here — the leftover space is
+    /// distributed to them during `layout`.
     public static func measure(_ node: RenderNode, proposal: ProposedSize) -> Size {
         switch node {
         case .empty:
@@ -136,6 +146,11 @@ public enum LayoutEngine {
 
     // MARK: Place
 
+    /// Assigns `node` and its subtree absolute frames within `bounds`,
+    /// re-invoking `measure` where alignment or flex distribution needs a
+    /// child's ideal size. The returned tree mirrors the render tree with
+    /// every frame resolved — the form `CellPainter` rasterizes and
+    /// `FrameHost` hit-tests.
     public static func layout(_ node: RenderNode, in bounds: Rect) -> LaidOutNode {
         switch node {
         case .empty, .text, .spacer, .divider:
