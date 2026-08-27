@@ -28,7 +28,7 @@
 import GamaCore
 import GamaDraw
 
-/// A native AppKit/UIKit view hosting one Gama app: it pumps the app's
+/// A native AppKit/UIKit view hosting one Gama surface: it pumps the surface's
 /// `FrameHost`, paints the shared `DrawList` through CoreGraphics as a
 /// monospaced character grid, and translates platform keyboard, mouse, and
 /// touch input into `InputEvent`s. Like every backend it only carries
@@ -42,6 +42,10 @@ public final class GamaHostView: GamaPlatformView {
     private var driver: (@MainActor () -> Void)?  // erased frame pump
     private var invalidateHost: (@MainActor () -> Void)?
     private var handleEvent: (@MainActor (InputEvent) -> Void)?
+    /// Shell hook run after one native event has been handled and any required
+    /// frame has been pumped. Package-only so embedded host views keep their
+    /// standalone ownership model.
+    package var afterEventDispatch: (@MainActor () -> Void)?
     /// Cancels the current session's model subscriptions; called before a
     /// second `install` replaces the session wholesale.
     private var tearDownSession: (@MainActor () -> Void)?
@@ -102,6 +106,13 @@ public final class GamaHostView: GamaPlatformView {
     /// the current cell grid, wires the frame pump and event routing, and
     /// pumps the first frame. Installing again replaces the previous app.
     public func install<A: App>(app: A) throws(SceneConfigurationError) {
+        let graph = try compileSceneGraph(app)
+        let surface = try graph.makePrimarySurface()
+        install(surface: surface)
+    }
+
+    /// Installs one already-validated scene surface for a package-owned shell.
+    package func install(surface: SceneSurface) {
         // `driver` and `handleEvent` are separately-stored, type-erased
         // closures (the view can't be generic over A without breaking the
         // two-phase init this class exposes), yet both must read and
@@ -114,7 +125,7 @@ public final class GamaHostView: GamaPlatformView {
         // its model subscriptions instead of silently orphaning them.
         tearDownSession?()
 
-        let session = try Session(app: app, size: gridSize())
+        let session = Session(surface: surface, size: gridSize())
         tearDownSession = {
             session.host.cancelSubscriptions()
         }
@@ -136,8 +147,25 @@ public final class GamaHostView: GamaPlatformView {
         handleEvent = { [weak self] event in
             session.host.handle(event)
             self?.pumpIfNeeded(session.host.needsFrame)
+            self?.afterEventDispatch?()
         }
         driver?()
+    }
+
+    /// Routes an event into the installed surface. Shells use this for native
+    /// lifecycle transitions in addition to the view's own key/pointer events.
+    package func send(_ event: InputEvent) {
+        handleEvent?(event)
+    }
+
+    /// Cancels the installed host's subscriptions and detaches its closures.
+    package func tearDown() {
+        tearDownSession?()
+        tearDownSession = nil
+        driver = nil
+        invalidateHost = nil
+        handleEvent = nil
+        afterEventDispatch = nil
     }
 
     /// Requests a frame after application state changes outside a Gama event.
@@ -153,8 +181,8 @@ public final class GamaHostView: GamaPlatformView {
     private final class Session {
         var host: FrameHost
         var buffer: CellBuffer
-        init<A: App>(app: A, size: Size) throws(SceneConfigurationError) {
-            host = try FrameHost(app: app)
+        init(surface: SceneSurface, size: Size) {
+            host = FrameHost(surface: surface)
             buffer = CellBuffer(size: size)
         }
     }
