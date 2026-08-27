@@ -19,6 +19,18 @@
       untouched (unverified); [swift_syntax] keeps its revision pin and drops
       the misleading 6.4.x tag.
 
+## Documentation depth (surveyed 2026-08-26, not yet started)
+- [ ] DocC doc-comment coverage: ~16% of ~486 public decls have /// docs
+      (GamaCore 60/364, GamaTUI 2/34, GamaAppleUI 2/26). Pattern: type- and
+      algorithm-level docs exist; member-level (properties, inits, methods)
+      are mostly bare. Author them module by module, starting with GamaCore.
+- [ ] DocC catalogs exist only for GamaCore (7 articles); GamaDraw and the
+      backends have none. Adding catalogs requires extending check-docs.sh,
+      which hardcodes the GamaCore symbol-graph/catalog paths.
+- [ ] check-docs.sh's Capabilities.md grep is tautological (matches the
+      table header "Current evidence"); tighten if a stronger claim-honesty
+      check is wanted.
+
 ## Later sub-projects (each needs its own spec first)
 - [ ] Sub-project 2: plugin runtime + capability model — DRAFT written
       (docs/superpowers/specs/drafts/2026-08-26-plugin-runtime-draft.md),
