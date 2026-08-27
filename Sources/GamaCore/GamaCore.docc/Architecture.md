@@ -4,7 +4,9 @@ Understand the retained tree, layout passes, drawing boundary, and event loop.
 
 ## Overview
 
-An application produces a typed ``View`` hierarchy. A ``BuildContext`` assigns
+An application produces a typed ``Scene`` graph with exactly one explicit
+primary scene. Each live scene instance produces a typed ``View`` hierarchy.
+A ``BuildContext`` assigns
 stable ``NodeID`` values and renders that hierarchy into a backend-neutral
 ``RenderNode`` tree. ``LayoutEngine`` first measures and then places the tree,
 producing ``LaidOutNode`` values clipped to the host's current bounds. Both
@@ -16,13 +18,16 @@ tuples and `ForEach` emit — containers unpack it into their own child list —
 while ``RenderNode/overlay(alignment:children:)`` is the `ZStack` lowering
 and always layers. A `ZStack` therefore never flattens into a parent stack.
 
-``FrameHost`` owns the mutable runtime state for one application instance:
+``FrameHost`` owns the mutable runtime state for one live surface:
 actions, key handlers, focus, duplicate-identity diagnostics, dirty state, and
 the latest dimensions. There are no process-global action or invalidation
-registries. Multiple hosts therefore cannot invoke or dirty one another.
+registries. Multiple hosts therefore cannot invoke one another or share
+host-local state; a shared observed ``Signal`` may intentionally dirty each
+host that subscribed to it.
 
 ```text
-App -> ViewBuilder/macros -> RenderNode -> LayoutEngine -> LaidOutNode
+App -> SceneBuilder -> explicit surface -> ViewBuilder/macros
+    -> RenderNode -> LayoutEngine -> LaidOutNode
 event -> FrameHost -> action or focus change -> dirty -> next frame
 ```
 

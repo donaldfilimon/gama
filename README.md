@@ -24,16 +24,24 @@ struct Counter {
 }
 
 struct CounterApp: App {
-    var content: some View { Counter() }
+    var scenes: some Scene {
+        Window("Counter", id: "main", role: .primary) { Counter() }
+    }
 }
 ```
+
+Every app declares exactly one explicit primary scene. Auxiliary windows and
+typed payload-addressed groups can appear in any declaration order; TUI, WASM,
+Embed, Android, MLIR, and custom Apple hosts render only the primary scene.
+See [`docs/SceneMigration.md`](docs/SceneMigration.md) for the intentional
+pre-release migration from `App.content` and typed `WindowGroup` examples.
 
 ## Products
 
 | Product | Responsibility |
 | --- | --- |
 | `Gama` | Compatibility umbrella (`@_exported import GamaCore`) |
-| `GamaCore` | Views, identity, state, layout, events, and `FrameHost` |
+| `GamaCore` | Scenes, views, identity, state, layout, events, and `FrameHost` |
 | `GamaMacros` | Optional `@Component`, `@Reactive`, and `#rgb` sugar |
 | `GamaDraw` | Cell buffer, painter, draw list, and versioned binary codec |
 | `GamaTUI` | POSIX and Windows terminal backend |
@@ -50,6 +58,7 @@ struct CounterApp: App {
 ## Architecture
 
 ```text
+App → @SceneBuilder → explicit primary/auxiliary surfaces
 App state → @ViewBuilder / macros → RenderNode
           → LayoutEngine → LaidOutNode
           → CellPainter → CellBuffer → DrawList

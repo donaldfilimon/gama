@@ -1,6 +1,7 @@
 #if canImport(SwiftSyntaxMacrosGenericTestSupport)
 
 import SwiftSyntax
+import SwiftSyntaxBuilder
 import SwiftSyntaxMacroExpansion
 import SwiftSyntaxMacros
 import SwiftSyntaxMacrosGenericTestSupport

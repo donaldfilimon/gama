@@ -339,13 +339,15 @@ struct SignalTests {
     }
 
     @Test("host-owned subscription invalidates and cancels in isolation")
-    func hostOwnedSubscriptionInvalidatesAndCancelsInIsolation() {
+    func hostOwnedSubscriptionInvalidatesAndCancelsInIsolation() throws {
         struct StaticApp: App {
-            var content: some View { Text("model") }
+            var scenes: some Scene {
+                Window("Model", id: "main", role: .primary) { Text("model") }
+            }
         }
         let model = Signal(0)
-        var first = FrameHost(app: StaticApp())
-        var second = FrameHost(app: StaticApp())
+        var first = try FrameHost(app: StaticApp())
+        var second = try FrameHost(app: StaticApp())
         first.observe(model)
         first.observe(model)
         second.observe(model)
@@ -450,8 +452,10 @@ struct SignalTests {
             let count: Signal<Int>
             init() { count = Signal(0) }
             init(count: Signal<Int>) { self.count = count }
-            var content: some View {
-                Button("increment") { count.update { $0 += 1 } }
+            var scenes: some Scene {
+                Window("Concurrent", id: "main", role: .primary) {
+                    Button("increment") { count.update { $0 += 1 } }
+                }
             }
         }
 
@@ -459,7 +463,7 @@ struct SignalTests {
             for _ in 0..<16 {
                 group.addTask {
                     let count = Signal(0)
-                    var host = FrameHost(app: ConcurrentApp(count: count))
+                    var host = try! FrameHost(app: ConcurrentApp(count: count))
                     _ = host.pump(size: Size(width: 20, height: 2))
                     host.handle(.key(.enter))
                     _ = host.pump(size: Size(width: 20, height: 2))
@@ -728,16 +732,25 @@ struct CellPainterTests {
         CellPainter.paint(laid, into: &buf)
         #expect(buf.cell(atX: 0, y: 0)?.character == "╭")
         #expect(buf.cell(atX: 11, y: 2)?.character == "╯")
-        #expect(buf.cell(atX: 3, y: 0)?.character == "T")
-        #expect(buf.cell(atX: 3, y: 0)?.style.attributes.contains(.bold) ?? false)
+        var titleCell: Cell?
+        for x in 0..<12 {
+            if buf.cell(atX: x, y: 0)?.character == "T" {
+                titleCell = buf.cell(atX: x, y: 0)
+                break
+            }
+        }
+        #expect(titleCell != nil)
+        #expect(titleCell?.style.attributes.contains(.bold) == true)
     }
 }
 
 private struct HostProbeApp: App {
-    var content: some View {
-        VStack(spacing: 1) {
-            Button("One", action: {})
-            Button("Two", action: {})
+    var scenes: some Scene {
+        Window("Probe", id: "main", role: .primary) {
+            VStack(spacing: 1) {
+                Button("One", action: {})
+                Button("Two", action: {})
+            }
         }
     }
 }
@@ -747,16 +760,18 @@ private struct HostIsolationApp: App {
     init() { value = Signal(0) }
     init(value: Signal<Int>) { self.value = value }
 
-    var content: some View {
-        Button("Increment") { value.update { $0 += 1 } }
+    var scenes: some Scene {
+        Window("Isolation", id: "main", role: .primary) {
+            Button("Increment") { value.update { $0 += 1 } }
+        }
     }
 }
 
 @Suite("FrameHost")
 struct FrameHostTests {
     @Test("focus cycles with tab")
-    func focusCyclesWithTab() {
-        var host = FrameHost(app: HostProbeApp())
+    func focusCyclesWithTab() throws {
+        var host = try FrameHost(app: HostProbeApp())
         _ = host.pump(size: Size(width: 20, height: 6))
         host.handle(.key(.tab))
         // Bound before #expect throughout this suite: the macro's
@@ -772,8 +787,8 @@ struct FrameHostTests {
     }
 
     @Test("ctrl-C requests quit")
-    func ctrlCRequestsQuit() {
-        var host = FrameHost(app: HostProbeApp())
+    func ctrlCRequestsQuit() throws {
+        var host = try FrameHost(app: HostProbeApp())
         _ = host.pump(size: Size(width: 20, height: 6))
         host.handle(.key(.ctrl("c")))
         let quitRequested = host.wantsQuit
@@ -781,8 +796,8 @@ struct FrameHostTests {
     }
 
     @Test("resize marks dirty")
-    func resizeMarksDirty() {
-        var host = FrameHost(app: HostProbeApp())
+    func resizeMarksDirty() throws {
+        var host = try FrameHost(app: HostProbeApp())
         _ = host.pump(size: Size(width: 20, height: 6))
         let cleanAfterPump = host.needsFrame
         #expect(!cleanAfterPump)
@@ -792,8 +807,8 @@ struct FrameHostTests {
     }
 
     @Test("resize event records lastSize and dirties")
-    func resizeEventRecordsLastSizeAndDirties() {
-        var host = FrameHost(app: HostProbeApp())
+    func resizeEventRecordsLastSizeAndDirties() throws {
+        var host = try FrameHost(app: HostProbeApp())
         _ = host.pump(size: Size(width: 20, height: 6))
         let sizeAfterPump = host.lastSize
         let cleanAfterPump = host.needsFrame
@@ -807,11 +822,11 @@ struct FrameHostTests {
     }
 
     @Test("hosts keep actions and dirty state isolated")
-    func hostsKeepActionsAndDirtyStateIsolated() {
+    func hostsKeepActionsAndDirtyStateIsolated() throws {
         let leftValue = Signal(0)
         let rightValue = Signal(0)
-        var left = FrameHost(app: HostIsolationApp(value: leftValue))
-        var right = FrameHost(app: HostIsolationApp(value: rightValue))
+        var left = try FrameHost(app: HostIsolationApp(value: leftValue))
+        var right = try FrameHost(app: HostIsolationApp(value: rightValue))
         _ = left.pump(size: Size(width: 20, height: 3))
         _ = right.pump(size: Size(width: 20, height: 3))
 

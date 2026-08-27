@@ -22,19 +22,27 @@ public enum CellPainter {
             break
 
         case .text(let s, let style):
+            // Outer wrappers (focus, disabled) win over a child's baked style
+            // so a focused custom-colored label still shows the focus wrap.
             buffer.putText(
                 s,
                 at: frame.origin,
-                style: inheritedStyle.merging(style),
+                style: style.merging(inheritedStyle),
                 maxWidth: max(1, frame.size.width)
             )
 
         case .spacer:
             break
 
-        case .divider(let style):
+        case .divider(let style, let axis):
             let merged = inheritedStyle.merging(style)
-            if frame.size.height > frame.size.width {
+            let vertical: Bool
+            if let axis {
+                vertical = axis == .horizontal
+            } else {
+                vertical = frame.size.height > frame.size.width
+            }
+            if vertical {
                 let x = frame.minX
                 for y in frame.minY..<frame.maxY {
                     buffer.put("│", at: Point(x: x, y: y), style: merged)
@@ -51,11 +59,12 @@ public enum CellPainter {
             for c in laid.children { draw(c, inheritedStyle: inheritedStyle, into: &buffer) }
 
         case .styled(let style, _):
-            let merged = inheritedStyle.merging(style)
+            let merged = style.merging(inheritedStyle)
             // Paint style backdrop across the interactive/styled region so
-            // focus highlights read as a block, not per-glyph.
-            if !style.background.isDefault {
-                buffer.fillBackground(frame, color: style.background)
+            // focus highlights read as a block, not per-glyph. Outer wrap
+            // background wins when both are set.
+            if !merged.background.isDefault {
+                buffer.fillBackground(frame, color: merged.background)
             }
             for c in laid.children { draw(c, inheritedStyle: merged, into: &buffer) }
 
@@ -96,15 +105,16 @@ public enum CellPainter {
         }
 
         if let title, !title.isEmpty,
-            rect.size.width > TextLayout.displayWidth(of: title) + 4
+            rect.size.width >= TextLayout.displayWidth(of: title) + 4
         {
             var titleStyle = style
             titleStyle.attributes.insert(.bold)
+            // Measure reserves displayWidth+4: corner + " title " + corner.
             buffer.putText(
                 " \(title) ",
-                at: Point(x: rect.minX + 2, y: rect.minY),
+                at: Point(x: rect.minX + 1, y: rect.minY),
                 style: titleStyle,
-                maxWidth: rect.size.width - 4
+                maxWidth: max(1, rect.size.width - 2)
             )
         }
     }

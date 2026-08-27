@@ -9,22 +9,29 @@ import Testing
 @MainActor
 struct AppleHostRuntimeTests {
     private struct SmokeApp: App {
-        var content: some View {
-            VStack {
-                Text("Apple runtime")
-                Button("Action") {}
+        var scenes: some Scene {
+            Window("Auxiliary", id: "auxiliary") {
+                Text("Must not render")
+            }
+            Window("Apple runtime", id: "main", role: .primary) {
+                VStack {
+                    Text("Apple runtime")
+                    Button("Action") {}
+                }
             }
         }
     }
 
     private struct SecondApp: App {
-        var content: some View { Text("SECOND APP") }
+        var scenes: some Scene {
+            Window("Second", id: "second", role: .primary) { Text("SECOND APP") }
+        }
     }
 
     @Test("host builds, lays out, and invalidates a frame")
-    func appKitHostBuildsLaysOutAndInvalidatesAFrame() {
+    func appKitHostBuildsLaysOutAndInvalidatesAFrame() throws {
         let view = GamaHostView(frame: NSRect(x: 0, y: 0, width: 420, height: 180))
-        view.install(app: SmokeApp())
+        try view.install(app: SmokeApp())
         view.layoutSubtreeIfNeeded()
         view.invalidate()
 
@@ -38,15 +45,23 @@ struct AppleHostRuntimeTests {
                 return false
             }
         )
+        #expect(
+            !view.currentDrawList.commands.contains { command in
+                if case .text(let text, _, _) = command {
+                    return text.contains("Must not render")
+                }
+                return false
+            }
+        )
     }
 
     @Test("second install replaces the previous session")
-    func secondInstallReplacesPreviousSession() {
+    func secondInstallReplacesPreviousSession() throws {
         let view = GamaHostView(frame: NSRect(x: 0, y: 0, width: 420, height: 180))
-        view.install(app: SmokeApp())
+        try view.install(app: SmokeApp())
         view.layoutSubtreeIfNeeded()
         view.invalidate()
-        view.install(app: SecondApp())
+        try view.install(app: SecondApp())
         view.invalidate()
         #expect(
             view.currentDrawList.commands.contains { command in

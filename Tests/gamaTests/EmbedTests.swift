@@ -3,15 +3,17 @@ import GamaEmbed
 import Testing
 
 private struct EmbedProbeApp: App {
-    var content: some View { Text("embedded") }
+    var scenes: some Scene {
+        Window("Embedded", id: "main", role: .primary) { Text("embedded") }
+    }
 }
 
 @Suite("C embedding context")
 struct EmbedTests {
     @Test("contexts own independent frames and reject null handles")
-    func contextLifecycle() {
-        let first = GamaEmbed.makeContext(app: EmbedProbeApp(), columns: 12, rows: 2)
-        let second = GamaEmbed.makeContext(app: EmbedProbeApp(), columns: 20, rows: 3)
+    func contextLifecycle() throws {
+        let first = try GamaEmbed.makeContext(app: EmbedProbeApp(), columns: 12, rows: 2)
+        let second = try GamaEmbed.makeContext(app: EmbedProbeApp(), columns: 20, rows: 3)
         defer {
             gama_embed_v1_context_destroy(first)
             gama_embed_v1_context_destroy(second)

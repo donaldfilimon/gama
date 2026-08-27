@@ -8,6 +8,9 @@ import PackageDescription
 let strictCore: [SwiftSetting] = [
     .swiftLanguageMode(.v6),
     .enableUpcomingFeature("ExistentialAny"),
+    // SE-0444: members are visible only in files that import their module.
+    // GamaCore is stdlib-only, so this is a conservative 6.5-dev hygiene flag.
+    .enableUpcomingFeature("MemberImportVisibility"),
 ]
 
 // @_extern(wasm) is still experimental — scoped to the WASM target only.
@@ -103,7 +106,9 @@ let package = Package(
         .target(
             name: "GamaAppleUI",
             dependencies: ["GamaCore", "GamaDraw"],
-            swiftSettings: strictCore
+            swiftSettings: strictCore + [
+                .enableUpcomingFeature("InferIsolatedConformances"),
+            ]
         ),
 
         // ── Embed backend: flat C ABI (events in, DrawList bytes out)
