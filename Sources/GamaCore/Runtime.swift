@@ -14,9 +14,34 @@
 public enum Key: Hashable, Sendable {
     /// A printable input as a full grapheme cluster, not a lone scalar.
     case character(Character)
-    case up, down, left, right
-    case enter, escape, tab, backTab, backspace, delete
-    case home, end, pageUp, pageDown
+    /// The up arrow key.
+    case up
+    /// The down arrow key.
+    case down
+    /// The left arrow key.
+    case left
+    /// The right arrow key.
+    case right
+    /// Return/Enter.
+    case enter
+    /// Escape (delivered after the escape-sequence timeout on terminals).
+    case escape
+    /// Tab — forward focus traversal.
+    case tab
+    /// Shift-Tab — reverse focus traversal.
+    case backTab
+    /// Backspace (delete backward).
+    case backspace
+    /// Forward delete.
+    case delete
+    /// Home.
+    case home
+    /// End.
+    case end
+    /// Page Up.
+    case pageUp
+    /// Page Down.
+    case pageDown
     /// A function key by number — `function(1)` is F1.
     case function(Int)
     /// A control chord: the letter held with Ctrl.

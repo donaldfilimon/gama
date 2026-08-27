@@ -67,7 +67,10 @@ public struct EnvironmentValues: Sendable {
 /// `render(in:)`. The protocol stays fully generic — no `any View`
 /// anywhere — which is what keeps the layer Embedded-Swift compatible.
 public protocol View: Sendable {
+    /// The concrete view type `body` composes.
     associatedtype Body: View
+    /// The view's content; primitives instead implement `render(in:)`
+    /// directly and terminate recursion.
     @ViewBuilder var body: Body { get }
     /// Compile this view into render IR. Primitives override; composites
     /// inherit the default that recurses into `body`.

@@ -5,7 +5,10 @@
 
 import GamaCore
 
+/// Rasterizes a laid-out tree into a ``CellBuffer`` — the one shared
+/// painter every backend drives.
 public enum CellPainter {
+    /// Paints `root` (and its subtree) into the buffer's back plane.
     public static func paint(_ root: LaidOutNode, into buffer: inout CellBuffer) {
         draw(root, inheritedStyle: .plain, into: &buffer)
     }

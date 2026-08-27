@@ -7,8 +7,12 @@ creating two runtime models.
 
 ``ViewBuilder`` accepts expressions, conditionals, optional branches, arrays,
 and limited-arity tuples. Primitive views and modifiers all render into the
-same ``RenderNode`` cases. The `@Component`, `@Reactive`, and `#rgb` macros in
-the optional `GamaMacros` product expand into these public GamaCore types.
+same ``RenderNode`` cases. Tuples and ``ForEach`` emit the dedicated
+``RenderNode/group(children:)`` flatten sentinel, which containers unpack
+into their own child list; only `group` unpacks — a `ZStack`'s
+``RenderNode/overlay(alignment:children:)`` always layers. The `@Component`,
+`@Reactive`, and `#rgb` macros in the optional `GamaMacros` product expand
+into these public GamaCore types.
 
 Use ``ForEach`` with stable application identifiers when collections can be
 inserted, reordered, or removed. ``FrameHost/duplicateIDs`` reports duplicate

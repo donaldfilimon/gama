@@ -113,6 +113,46 @@
       (verified live on this snapshot; import-regex tightening is the
       prerequisite); MLIR emitter unification; scale-aware ProgressView.
 
+## Docs overhaul (planned + largely executed 2026-08-27; see docs/README.md)
+- [x] P0 repair: PR #10 merge-forward reverted sweep hunks on main
+      (RenderNode.group + Hashable, ~Copyable hosts, non-mutating
+      invalidate, hello() docs) leaving main non-compiling with a red
+      matrix; #10/#13 were merged while red (honest residual). Fixed
+      forward on fix/restore-sweep-semantics (PR #14) + cherry-picked the
+      sweep contract tests; merge only on green matrix.
+- [x] Claim honesty: gama.group now gate-proven by an MLIR suite test;
+      Capabilities.md gained the Status vocabulary legend; check-docs.sh's
+      tautological grep now requires the legend heading (closes the
+      long-standing item above); Testing.md file map completed; goals.md
+      74-test line superseded-marked (peer session).
+- [x] GamaCore.docc sweep alignment: Topics curate the sweep-era types;
+      BackendAuthoring documents noncopyable hosts; Architecture/
+      CompositionAndState document group vs overlay; Migration gained the
+      6.5-dev adoption section.
+- [x] Member docs: zero undocumented public declarations package-wide
+      (42 remaining decls documented across GamaDraw/GamaEmbed/GamaMLIR/
+      GamaWASM/GamaMacrosImpl; heuristic scan + zero-warning DocC + full
+      pinned build).
+- [x] Guides: docs/README.md index, CONTRIBUTING.md gate reference,
+      docs/backends/{TUI,AppleUI,WASM,CEmbed,Android}.md,
+      docs/MLIRDialect.md; README products table completed (13 products)
+      with Examples/WebHost pointers. Per-target .docc catalogs stay
+      deliberately deferred (item above).
+- [x] ADRs: docs/adr/0000-0007 (own-the-rendering, toolchain pinning,
+      Swift Testing only, Signal confinement interim, DrawList v1,
+      noncopyable hosts, frame pumps Provisional).
+- [x] check-doc-coverage.sh: deterministic per-module symbol-graph
+      coverage gate (docComment presence; origin- and declared-in-module-
+      filtered so re-exports and protocol-synthesized members are not this
+      module's debt; path-keyed allowlist requiring justifications, empty
+      at adoption); wired into check.sh after check-docs and the macOS
+      boundaries-and-documentation CI step; verified deterministic (two
+      identical green runs). Adoption also split the single-line
+      multi-case enum rows (Key, alignments) with per-case docs, fixed 7
+      GamaEmbed doc comments that sat between @_cdecl and their function
+      (compiler-accepted, symbol-graph-invisible), and converted
+      GamaEmbed.h to per-symbol /** */ docs.
+
 ## Later sub-projects (each needs its own spec first)
 - [ ] Sub-project 2: plugin runtime + capability model — DRAFT written
       (docs/superpowers/specs/drafts/2026-08-26-plugin-runtime-draft.md),

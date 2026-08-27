@@ -41,7 +41,11 @@ struct CounterApp: App {
 | `GamaWASM` | Browser reactor using `gama_web_v1_*` exports |
 | `GamaEmbed` | Context-owned `gama_embed_v1_*` C ABI |
 | `GamaMLIR` | Deterministic generic-form `gama` dialect emitter |
+| `GamaEmbedABI` | The C header (`GamaEmbed.h`): opaque context type, status codes, `gama_embed_v1_abi_version` |
+| `GamaAndroidDemo` | Sample dynamic library bootstrapping an app for the JNI example |
 | `gama-demo` | Interactive TUI and `--emit-mlir` showcase |
+| `gama-web-demo` | Browser reactor demo served from `WebHost/` |
+| `gama-windows-console-smoke` | Windows console acceptance binary |
 
 ## Architecture
 
@@ -78,8 +82,14 @@ swiftly run swift --version
 
 `./scripts/check.sh` is the complete acceptance matrix. It intentionally fails
 when an exact pinned prerequisite or required runtime proof is unavailable.
-See [`docs/Toolchain.md`](docs/Toolchain.md), [`docs/Testing.md`](docs/Testing.md),
+See [`docs/README.md`](docs/README.md) for the full documentation index —
+per-backend guides under `docs/backends/`, the `gama` dialect reference,
+decision records under `docs/adr/`, and
+[`CONTRIBUTING.md`](CONTRIBUTING.md) for the gate reference. Key entries:
+[`docs/Toolchain.md`](docs/Toolchain.md), [`docs/Testing.md`](docs/Testing.md),
 `Toolchains.toml`, and [`docs/Capabilities.md`](docs/Capabilities.md).
+Runnable samples live in `Examples/` (C, Android/JNI, AppleHost, Embedded)
+and `WebHost/` (browser).
 
 Run the terminal demo with:
 

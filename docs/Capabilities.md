@@ -2,6 +2,19 @@
 
 Status is evidence-based, not inferred from source presence.
 
+## Status vocabulary
+
+- **Implemented** — the code exists and compiles in at least one local
+  configuration; no runtime proof is claimed.
+- **Locally proven** — a check script or test suite passes on the pinned
+  toolchain on this machine; not yet (or not currently) backed by CI.
+- **Hosted proven** — the claim is enforced by a required job in the hosted
+  "Gama acceptance" matrix.
+- **Provisional** — behavior exists but a design decision that could change
+  it is still open (see tasks/todo.md Slice C and the spec drafts).
+- **Blocked** — proof is impossible right now for a stated external reason
+  (e.g. no Windows 6.5-dev snapshot); never described as shipped.
+
 | Capability | Current evidence | Remaining proposed/required proof |
 | --- | --- | --- |
 | Core/builders/layout/drawing | Locally proven: Apple Swift 6.5-dev (main-snapshot-2026-08-21) debug/test/release. Tests are Swift Testing only (no XCTest). Coverage includes Unicode cells, hostile allocation bounds, strict wire UTF-8, identity, host-owned subscriptions, concurrent host isolation, and `ZStack(.topLeading)` overlay vs group sentinel | Keep hosted macOS job and Linux sanitizer job green; revisit ASan `detect_leaks` now that XCTest is gone |
