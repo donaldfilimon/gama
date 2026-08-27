@@ -173,9 +173,12 @@
       GamaEmbed.h to per-symbol /** */ docs.
 
 ## Later sub-projects (each needs its own spec first)
-- [ ] Sub-project 2: plugin runtime + capability model — DRAFT written
-      (docs/superpowers/specs/drafts/2026-08-26-plugin-runtime-draft.md),
-      awaiting Donald's review of its 3 open questions
+- [ ] Sub-project 2: plugin runtime + capability model — APPROVED 2026-08-27
+      (docs/superpowers/specs/2026-08-27-plugin-runtime-design.md): first-party
+      GamaPlatformServices in V1, full contribution surface (slots + scenes +
+      commands), Tier 2/3 deferred. Implement in gated slices: A (types/
+      grants/lifecycle), B (slots), C (scenes+commands), D (platform
+      services).
 - [ ] Sub-project 3: scene-first app shell, windowing, lifecycle — APPROVED;
       scene core integrated on main and the macOS shell is implemented/local-
       proven on its delivery branch. Keep open until the shell PR and its
@@ -183,6 +186,8 @@
       design at docs/superpowers/specs/2026-08-27-scene-first-app-shell-design.md.
       Scene core/migration and macOS shell are separate green delivery slices;
       packaging's .app slice depends on both.
-- [ ] Sub-project 4: packaging & distribution — DRAFT written
-      (docs/superpowers/specs/drafts/2026-08-26-packaging-draft.md),
-      awaiting review; wasm site slice is independent of 2/3
+- [ ] Sub-project 4: packaging & distribution — APPROVED 2026-08-27
+      (docs/superpowers/specs/2026-08-27-packaging-design.md): Track W (wasm
+      site bundle) and Track M (.app of gama-apple-demo + Distribution/
+      manifest + --smoke + ad-hoc and Developer ID/notarize scripts) in
+      parallel; notarization is V1 (credential-gated, local evidence only).
