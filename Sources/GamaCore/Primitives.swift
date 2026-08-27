@@ -3,8 +3,11 @@
 // MARK: - Text
 
 /// A run of styled text. Measured in display cells via `TextLayout`
-/// (combining marks are zero width, East Asian wide characters and emoji
-/// are two) and greedily word-wrapped when the proposal constrains width.
+/// (combining marks are zero width; scalars in the implemented wide table
+/// — East Asian Wide/Fullwidth ranges, common emoji blocks, and anything
+/// followed by variation selector-16 — are two; emoji outside that table
+/// measure one) and greedily word-wrapped when the proposal constrains
+/// width.
 public struct Text: View {
     /// Terminates `body` recursion; this view compiles in `render(in:)`.
     public typealias Body = Never_
@@ -132,7 +135,11 @@ public struct HStack<Content: View>: View {
 }
 
 /// Layers children back to front in shared bounds; later children draw on
-/// top and win pointer hit-tests.
+/// top and win pointer hit-tests. Caveat: with `.topLeading` alignment the
+/// stack lowers to the same overlay shape `flattenChildren` uses as its
+/// tuple sentinel, so inside a `VStack`/`HStack`/`List` its children are
+/// flattened into the parent's child list and laid out separately instead
+/// of layered.
 public struct ZStack<Content: View>: View {
     /// Terminates `body` recursion; this view compiles in `render(in:)`.
     public typealias Body = Never_
@@ -182,8 +189,11 @@ public struct Spacer: View {
     }
 }
 
-/// A separator rule whose orientation is resolved by the enclosing
-/// stack's axis, drawn in gray.
+/// A separator rule drawn in gray. Orientation is chosen from the
+/// laid-out frame's aspect — vertical only when height exceeds width —
+/// which normally matches the enclosing stack's axis; a square frame
+/// (for example a divider in a one-row `HStack`) renders the horizontal
+/// glyph.
 public struct Divider: View {
     /// Terminates `body` recursion; this view compiles in `render(in:)`.
     public typealias Body = Never_
@@ -204,9 +214,12 @@ public struct Divider: View {
 // MARK: - Button
 
 /// A focusable action target. The owning `FrameHost` invokes `action` on
-/// Enter/Space while focused or on pointer press; while focused the label
-/// draws black on cyan. Disabled buttons render dimmed, register no
-/// action, and leave the focus order.
+/// Enter/Space while focused or on pointer press; while focused a bold
+/// black-on-cyan style wraps the label, fully recoloring labels that use
+/// default styling — a label that sets its own foreground or background
+/// keeps it, because deeper styles win through `TextStyle.merging`.
+/// Disabled buttons render dimmed, register no action, and leave the
+/// focus order.
 public struct Button<Label: View>: View {
     /// Terminates `body` recursion; this view compiles in `render(in:)`.
     public typealias Body = Never_
@@ -266,10 +279,12 @@ extension Button where Label == Text {
 
 // MARK: - Form controls
 
-/// Single-line editable text bound to external storage. While focused,
-/// printable keys append, backspace removes the last character, and
-/// Delete clears the field; there is no cursor movement. Every keystroke
-/// writes through the binding immediately.
+/// Editable text bound to external storage, rendered as a single row.
+/// While focused, character key events append (the field itself does not
+/// filter control characters — a host that delivers `"\n"`, such as the
+/// C embedding entry point, embeds it verbatim), backspace removes the
+/// last character, and Delete clears the field; there is no cursor
+/// movement. Every keystroke writes through the binding immediately.
 public struct TextField: View {
     /// Terminates `body` recursion; this view compiles in `render(in:)`.
     public typealias Body = Never_
@@ -364,15 +379,16 @@ public struct Toggle: View {
 /// `Toggle` under its checkbox name — the rendered control is identical.
 public typealias Checkbox = Toggle
 
-/// Read-only progress indicator: a fixed 20-cell bar plus a percentage,
-/// with the fraction clamped to 0...1.
+/// Read-only progress indicator: a fixed 20-cell bar plus a percentage.
+/// Finite fractions clamp to 0...1; a non-finite `value` degrades to the
+/// empty 0% bar.
 public struct ProgressView: View {
     /// Terminates `body` recursion; this view compiles in `render(in:)`.
     public typealias Body = Never_
     /// Never invoked; present only to satisfy `View`.
     public var body: Never_ { Never_() }
-    /// Progress in the same units as `total`; out-of-range values clamp to
-    /// the 0%/100% ends.
+    /// Progress in the same units as `total`; finite out-of-range values
+    /// clamp to the 0%/100% ends, and non-finite values render as 0%.
     public var value: Double
     /// The amount that maps to 100%; non-positive totals render as 0%.
     public var total: Double
@@ -455,8 +471,10 @@ public struct _Bordered<Content: View>: View {
     public var style: BorderStyle
     /// Color and attributes the frame glyphs are drawn with.
     public var textStyle: TextStyle
-    /// Optional caption; the measure pass reserves room for it in the top
-    /// edge.
+    /// Optional caption. The measure pass reserves `displayWidth + 4`
+    /// cells for it, but the painter draws it only when the laid-out frame
+    /// is strictly wider than that; at exactly the natural width the
+    /// reserved top-edge space stays blank.
     public var title: String?
     /// The wrapped view; laid out inset by one cell on every edge.
     public var content: Content
