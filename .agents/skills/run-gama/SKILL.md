@@ -11,7 +11,7 @@ Gama is a Swift 6.5-dev retained-IR UI framework. Its runnable surfaces are
 
 The TUI needs a real tty, so the agent path drives it inside tmux and reads
 frames back with `capture-pane`. That harness is
-`.Codex/skills/run-gama/driver.sh`. Paths below are relative to the
+`.agents/skills/run-gama/driver.sh`. Paths below are relative to the
 repository root; run everything from there.
 
 ## Prerequisites
@@ -32,7 +32,7 @@ unset TOOLCHAINS && swiftly run swift --version
 One command builds, launches, drives, asserts, and cleans up:
 
 ```bash
-.Codex/skills/run-gama/driver.sh smoke
+.agents/skills/run-gama/driver.sh smoke
 ```
 
 Verified output: `PASS - launched, rendered, and drove focus.` It writes
@@ -42,14 +42,14 @@ Verified output: `PASS - launched, rendered, and drove focus.` It writes
 For step-by-step control:
 
 ```bash
-.Codex/skills/run-gama/driver.sh build      # pinned build of gama-demo
-.Codex/skills/run-gama/driver.sh launch     # detached tmux session, 100x30
-.Codex/skills/run-gama/driver.sh text       # print the current frame
-.Codex/skills/run-gama/driver.sh snap base  # save the frame to a file
-.Codex/skills/run-gama/driver.sh focus      # label of the focused control
-.Codex/skills/run-gama/driver.sh count      # the demo's counter value
-.Codex/skills/run-gama/driver.sh keys Tab   # any tmux send-keys argument
-.Codex/skills/run-gama/driver.sh quit       # Ctrl-C and kill the session
+.agents/skills/run-gama/driver.sh build      # pinned build of gama-demo
+.agents/skills/run-gama/driver.sh launch     # detached tmux session, 100x30
+.agents/skills/run-gama/driver.sh text       # print the current frame
+.agents/skills/run-gama/driver.sh snap base  # save the frame to a file
+.agents/skills/run-gama/driver.sh focus      # label of the focused control
+.agents/skills/run-gama/driver.sh count      # the demo's counter value
+.agents/skills/run-gama/driver.sh keys Tab   # any tmux send-keys argument
+.agents/skills/run-gama/driver.sh quit       # Ctrl-C and kill the session
 ```
 
 `keys` forwards to `tmux send-keys`, so `Tab`, `BTab`, `Enter`, `Space`,
@@ -58,11 +58,11 @@ For step-by-step control:
 A verified interaction, exactly as observed:
 
 ```bash
-.Codex/skills/run-gama/driver.sh launch
-.Codex/skills/run-gama/driver.sh focus        # -> −1
-.Codex/skills/run-gama/driver.sh keys Tab
-.Codex/skills/run-gama/driver.sh focus        # -> +1
-.Codex/skills/run-gama/driver.sh quit
+.agents/skills/run-gama/driver.sh launch
+.agents/skills/run-gama/driver.sh focus        # -> −1
+.agents/skills/run-gama/driver.sh keys Tab
+.agents/skills/run-gama/driver.sh focus        # -> +1
+.agents/skills/run-gama/driver.sh quit
 ```
 
 Override `GAMA_RUN_SCRATCH`, `GAMA_RUN_ARTIFACTS`, `GAMA_RUN_SESSION`,
@@ -75,13 +75,13 @@ The MLIR path is the cheapest way to exercise the view tree, layout, and
 lowering without a terminal. Verified: exit 0, 184 lines of dialect.
 
 ```bash
-.Codex/skills/run-gama/driver.sh mlir
+.agents/skills/run-gama/driver.sh mlir
 ```
 
 ## Run: the AppKit app
 
 ```bash
-.Codex/skills/run-gama/driver.sh apple
+.agents/skills/run-gama/driver.sh apple
 ```
 
 This opens real windows and blocks until Command-Q. Verified: it launches
