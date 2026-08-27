@@ -220,3 +220,13 @@ status: in_progress
   remaining Slice C items as gated slices. Scheduled as wave 2 behind the
   plugin-runtime, packaging, and DocC-catalog branches to avoid GamaCore
   merge conflicts.
+- DocC catalogs for the backends (2026-08-27, branch
+  docs/docc-catalogs-backends): GamaAppleUI, GamaAppleShell, GamaWASM, and
+  GamaMLIR gained curated .docc catalogs (claim-honest overviews grounded in
+  docs/Capabilities.md and docs/backends/*, plus Topics curation where the
+  host symbol graph has symbols). check-docs.sh required no changes: its
+  generalized loop discovered the new catalogs and the gate now proves seven
+  zero-warning archives. GamaEmbed deliberately has no catalog yet: its
+  source doc comment links ``GamaCore/App``, unresolvable in the per-module
+  docc pass, so that catalog needs a one-line source doc-comment fix in a
+  code-touching change first.

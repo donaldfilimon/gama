@@ -48,6 +48,17 @@
       generalized to build every module catalog (was: GamaCore-only with
       hardcoded paths; closed 2026-08-27 by the scene-first consolidation,
       merged via PR #19).
+      EXTENDED 2026-08-27 (branch docs/docc-catalogs-backends): curated
+      catalogs added for GamaAppleUI, GamaAppleShell, GamaWASM, and
+      GamaMLIR; check-docs.sh needed no further changes (its discovery
+      loop already builds every Sources/*/*.docc catalog) and now gates
+      seven zero-warning archives. Honest residuals: GamaEmbed is
+      deliberately skipped because its CInterface.swift doc comment links
+      ``GamaCore/App``, which cannot resolve in the per-module docc pass,
+      so a GamaEmbed catalog requires a one-line source doc-comment fix
+      first (out of scope for the docs-only branch); GamaWASM's catalog
+      is prose-only because its entire public API is arch(wasm32)-gated
+      and absent from the host symbol graph.
 - [x] check-docs.sh's Capabilities.md grep is tautological (matches the
       table header "Current evidence"); tighten if a stronger claim-honesty
       check is wanted. CLOSED 2026-08-27 by the docs overhaul: the grep now
