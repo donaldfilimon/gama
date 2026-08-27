@@ -36,8 +36,9 @@ private final class HostActionStore: @unchecked Sendable {
 /// dirty signal, subscriptions); a copy would silently share all of it.
 /// Single ownership is a compile-time guarantee.
 public struct FrameHost: ~Copyable {
-    /// Scene and live-surface identities owned by this host.
+    /// Stable declaration identity for the scene rendered by this host.
     public let sceneID: SceneID
+    /// Runtime identity of the one live surface owned by this host.
     public let windowInstanceID: WindowInstanceID
     private let renderScene: @Sendable (BuildContext) -> RenderNode
     private let deliverLifecycle: @Sendable (LifecycleEvent) -> Void

@@ -99,6 +99,7 @@ public protocol Renderer {
 /// The shell creates one app value, while each live surface owns an
 /// independent ``FrameHost``.
 public protocol App: Sendable {
+    /// Concrete scene-list type produced by the application's scene builder.
     associatedtype Scenes: Scene
     /// Declarative scene graph evaluated once when the application launches.
     @SceneBuilder var scenes: Scenes { get }
@@ -111,6 +112,7 @@ public protocol App: Sendable {
 }
 
 extension App {
+    /// Default lifecycle handler for applications that do not observe lifecycle events.
     public func handleLifecycle(_ event: LifecycleEvent) {}
 }
 
@@ -189,6 +191,8 @@ extension App {
 /// Typed error from the convenience launch path, preserving the distinction
 /// between scene validation and the renderer's declared failure.
 public enum AppLaunchError<RendererFailure: Error>: Error {
+    /// Scene validation failed before the renderer began.
     case sceneConfiguration(SceneConfigurationError)
+    /// The renderer failed after successful scene initialization.
     case renderer(RendererFailure)
 }
