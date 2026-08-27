@@ -14,4 +14,5 @@ if grep -R -n -E --include='*.swift' 'ActionRegistry|Invalidator\.shared|nonisol
   echo "error: process-global framework state detected" >&2; exit 1
 fi
 grep -q 'swift-tools-version: 6.4' "$ROOT/Package.swift"
+"$ROOT/scripts/check-toolchain-pins.sh"
 echo "OK — portable-core and explicit-ownership boundaries"
