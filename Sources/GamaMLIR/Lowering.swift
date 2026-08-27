@@ -18,6 +18,7 @@
 //   "gama.styled"     region; attrs: fg, bg, attrs-bitmask
 //   "gama.interactive" region; attrs: id, focusable
 //  Post-layout ops additionally carry x, y, w, h.
+//  Canonical user-facing reference: docs/MLIRDialect.md.
 
 import GamaCore
 
