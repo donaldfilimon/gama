@@ -57,12 +57,19 @@ unset TOOLCHAINS
 ./scripts/check-apple.sh        # debug build + tests + release build
 ./scripts/check-boundaries.sh   # portable-core import/ownership greps
 ./scripts/check-docs.sh         # symbol graph + docc, zero-warning
+./scripts/check-doc-coverage.sh # every public decl needs a doc comment
 ```
 
+`check-doc-coverage.sh` fails on any undocumented public declaration;
+baseline exceptions live in `scripts/doc-coverage-allowlist.txt` with a
+written justification. Adding a public symbol means adding its `///`, not an
+allowlist entry.
+
 Full acceptance matrix: `./scripts/check.sh` runs every `check-*.sh` gate in
-order (apple, apple-platforms, boundaries, c-abi, embedded, linux, wasm,
-android, android-emulator, mlir, docs). Parts require pinned SDKs, the NDK,
-node, or CI/Linux — it intentionally fails when an exact prerequisite or
+order — twelve as of 2026-08-27 (apple, apple-platforms, boundaries, c-abi,
+embedded, linux, wasm, android, android-emulator, mlir, docs, doc-coverage);
+the `gates=(…)` array in `scripts/check.sh` is the authority. Parts require pinned SDKs,
+the NDK, node, or CI/Linux — it intentionally fails when a prerequisite or
 required runtime proof is unavailable. Do not weaken or skip a gate to make
 the matrix green.
 
@@ -86,9 +93,15 @@ swiftly run swift run gama-demo
 ```
 
 `gama-demo --emit-mlir` prints the MLIR dialect form. Android needs
-`ANDROID_NDK_HOME=… ./scripts/check-android.sh`.
+`ANDROID_NDK_HOME=… ./scripts/check-android.sh`. Other executables:
+`gama-apple-demo` (macOS scene/window lifecycle), `gama-web-demo` (browser
+reactor served from `WebHost/`), `gama-windows-console-smoke` (Windows
+acceptance binary).
 
-Tests are Swift Testing only. Filter with `--filter SuiteName.testName`.
+Tests are Swift Testing only. The single test target is `GamaTests` at
+`Tests/gamaTests`. `--filter` matches the source identifier, not the `@Suite`
+display name: use the struct name (`--filter SceneGraphTests`), not
+`--filter 'Scene graph'`.
 Do not add `import XCTest`. Macro expansion tests use
 `SwiftSyntaxMacrosGenericTestSupport`. See `docs/Testing.md` and
 `docs/Toolchain.md`.
@@ -103,15 +116,24 @@ URLs/SHAs drift from `Toolchains.toml`.
 One retained render pipeline, many backends:
 
 ```text
+App → @SceneBuilder → one explicit primary + auxiliary Window/WindowGroup
 App state → @ViewBuilder / macros → RenderNode (value IR, GamaCore)
           → LayoutEngine → LaidOutNode
           → CellPainter → CellBuffer → DrawList (GamaDraw)
-          → GamaTUI | GamaAppleUI | GamaWASM | GamaEmbed (C ABI) | GamaMLIR
+          → GamaTUI | GamaAppleUI/GamaAppleShell | GamaWASM
+          | GamaEmbed (C ABI) | GamaMLIR
 
 platform event → InputEvent → FrameHost → host-owned action → rebuild
 ```
 
-Target layering (all under `Sources/`, single test target `Tests/gamaTests`):
+The surface is scene-first: an `App` declares `scenes`, exactly one scene is
+`role: .primary`, and every backend except the macOS shell renders only that
+primary scene. `App.content` is gone — `docs/SceneMigration.md` records the
+deliberate pre-release break. `AppRuntime` and `FrameHost` are `~Copyable`
+with typed throws, so hosts are moved, never shared.
+
+Target layering (all under `Sources/`, single test target `GamaTests` at
+`Tests/gamaTests`):
 
 - **GamaCore** — views, identity, state, layout, events, and `FrameHost`.
   Embedded-Swift-safe: stdlib only. `check-boundaries.sh` rejects any import
@@ -129,16 +151,21 @@ Target layering (all under `Sources/`, single test target `Tests/gamaTests`):
   version 1).
 - **Backends** translate events in and present `DrawList` out; they never fork
   application semantics. GamaTUI (POSIX termios + Windows Console VT),
-  GamaAppleUI (`@MainActor` NSView/UIView via CoreGraphics), GamaWASM
+  GamaAppleUI (`@MainActor` NSView/UIView via CoreGraphics), GamaAppleShell
+  (NSApplication/NSWindow ownership, multi-window and per-shell command
+  routing; compiles to an inert target without AppKit — it is the one
+  backend that renders auxiliary scenes), GamaWASM
   (browser reactor, `gama_web_v1_*` exports, inert stubs off wasm32,
-  experimental `Extern` feature scoped to this target only), GamaEmbed +
+  experimental `Extern` feature scoped to this target only; `WebHost/` holds
+  the page and JS glue the web demo is served from), GamaEmbed +
   GamaEmbedABI (context-owned flat C ABI `gama_embed_v1_*`; C header and
   ownership rules in `Sources/GamaEmbedABI/include/GamaEmbed.h`; static so the
   entry points fold into the host binary), GamaMLIR (deterministic textual
   `gama` dialect emitter — not a Swift MLIR frontend).
 - C and WASM symbols remain versioned and separately namespaced.
-- `Examples/Android` holds the JNI/Gradle sample (`GamaAndroidDemo`); it never
-  enters the portable framework targets.
+- `Examples/` holds host integrations kept out of the framework targets:
+  `Android` (JNI/Gradle, built as the `GamaAndroidDemo` product), plus
+  `AppleHost`, `CEmbed`, and `Embedded` consumer samples.
 
 ## Evidence policy
 
@@ -153,4 +180,13 @@ capability (e.g. Windows console native proof) as shipped.
 Prefer small reviewable commits, preserve `Package.resolved`, never commit
 credentials or runner configuration, never force-push the default branch, and
 only merge after required checks are green. Design specs live in
-`docs/superpowers/specs/`; the running goal ledger is `tasks/goals.md`.
+`docs/superpowers/specs/` (`drafts/` are open questions, not commitments);
+the running goal ledger is `tasks/goals.md` + `tasks/todo.md`.
+
+Before changing a backend or a settled design, read its record rather than
+re-deriving it: `docs/README.md` is the index, `docs/adr/` holds the seven
+decision records (own-the-rendering, toolchain pinning, Swift-Testing-only,
+signal confinement, DrawList wire format, noncopyable hosts, frame pumps),
+`docs/backends/<Backend>.md` the per-backend guides, and
+`Sources/GamaCore/GamaCore.docc/` the symbol-level articles built by
+`check-docs.sh`.
