@@ -24,9 +24,7 @@ struct AppleHostRuntimeTests {
 
     private struct SecondApp: App {
         var scenes: some Scene {
-            Window("Second runtime", id: "main", role: .primary) {
-                Text("SECOND APP")
-            }
+            Window("Second", id: "second", role: .primary) { Text("SECOND APP") }
         }
     }
 
