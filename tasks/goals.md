@@ -26,11 +26,21 @@ status: in_progress
   UI/UX/application framework in Swift — Tauri/React-Native-class — spanning
   WASM, Windows, macOS desktop, Embedded, and more, with the retained-IR
   renderer as the foundation (own-the-rendering decision).
-- Sub-project 1 (foundation) Current: canonical checkout adopted at
+- Sub-project 1 (foundation) Current: DONE. Canonical checkout adopted at
   ~/Desktop/Gama on the donaldfilimon/gama history; migrated to swiftly
   main-snapshot-2026-08-21 (Swift 6.5-dev); Qt adapter removed; all eight
-  local gates green; CI migration open as PR #7 — matrix pending, merge
-  gated on green.
-- Sub-projects 2-4 Proposed (specs to be brainstormed separately): plugin
-  runtime + capability model; app shell/windowing/lifecycle; packaging &
-  distribution. Spec: docs/superpowers/specs/2026-08-26-gama-umbrella-foundation-design.md
+  local gates green; full hosted matrix green (Linux/macOS/WASM/Embedded/
+  Android on 6.5-dev, Windows on 6.4.x — see exception below); merged as
+  PR #7 (74e77df on main, 61 commits); dev/active/gama-swift retired to
+  dev/archive/gama-swift-superseded-2026-08-26 after verifying zero unique
+  commits/stashes; ~/CLAUDE.md corrected.
+- Windows exception (Current, honest residual): swift.org has published no
+  Windows main-development snapshot since 2026-05-20-a, so the Windows job
+  runs the proven 6.4.x 2026-08-14-a installer. Windows is NOT yet verified
+  on 6.5-dev; revisit when swift.org resumes Windows main snapshots.
+- Sub-projects 2-4 Proposed: drafts written and committed under
+  docs/superpowers/specs/drafts/ (plugin runtime + capability model; app
+  shell/windowing/lifecycle; packaging & distribution). Each is DRAFT ONLY —
+  no code, no approval — and ends with open questions Donald must decide
+  before its spec is finalized. Foundation spec:
+  docs/superpowers/specs/2026-08-26-gama-umbrella-foundation-design.md
