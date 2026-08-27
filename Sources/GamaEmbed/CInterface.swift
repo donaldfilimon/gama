@@ -10,12 +10,12 @@ private protocol AnyEmbedHost: AnyObject {
 }
 
 private final class EmbedHostBox<A: App>: AnyEmbedHost {
-    var host: FrameHost<A>
+    var host: FrameHost
     var buffer: CellBuffer
     var size: Size
 
-    init(app: A, size: Size) {
-        host = FrameHost(app: app)
+    init(app: A, size: Size) throws(SceneConfigurationError) {
+        host = try FrameHost(app: app)
         self.size = size
         buffer = CellBuffer(size: size)
     }
@@ -63,10 +63,12 @@ private final class EmbedContext {
 private struct CEmbedDiagnosticApp: App {
     let count = Signal(0)
 
-    var content: some View {
-        VStack {
-            Text("Gama C Embed \(count.get())")
-            Button("Increment") { count.update { $0 += 1 } }
+    var scenes: some Scene {
+        Window("Gama C Embed", id: "main", role: .primary) {
+            VStack {
+                Text("Gama C Embed \(count.get())")
+                Button("Increment") { count.update { $0 += 1 } }
+            }
         }
     }
 }
@@ -85,12 +87,12 @@ public enum GamaEmbed {
         app: A,
         columns: Int = 80,
         rows: Int = 24
-    ) -> UnsafeMutableRawPointer {
+    ) throws(SceneConfigurationError) -> UnsafeMutableRawPointer {
         let size = Size(
             width: min(Int(Int32.max), max(1, columns)),
             height: min(Int(Int32.max), max(1, rows))
         )
-        let context = EmbedContext(host: EmbedHostBox(app: app, size: size))
+        let context = EmbedContext(host: try EmbedHostBox(app: app, size: size))
         return Unmanaged.passRetained(context).toOpaque()
     }
 }
@@ -139,7 +141,7 @@ public nonisolated func gama_embed_v1_context_create(
     _ columns: Int32,
     _ rows: Int32
 ) -> UnsafeMutableRawPointer? {
-    GamaEmbed.makeContext(
+    try? GamaEmbed.makeContext(
         app: CEmbedDiagnosticApp(),
         columns: Int(columns),
         rows: Int(rows)

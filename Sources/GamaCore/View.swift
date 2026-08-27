@@ -58,6 +58,9 @@ public struct EnvironmentValues: Sendable {
     /// Identity of the currently focused node, set by the owning
     /// `FrameHost` before each build; `nil` when nothing has focus.
     public var focusedID: NodeID? = nil
+    /// Identity and window operations for the current surface. Backends
+    /// without shell ownership leave the actions unavailable.
+    public var windowContext: WindowContext = WindowContext()
     /// Creates the default environment: enabled, nothing focused.
     public init() {}
 }

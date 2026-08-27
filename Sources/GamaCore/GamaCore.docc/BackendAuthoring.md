@@ -18,8 +18,8 @@ page, and mouse reporting during teardown.
 
 ``FrameHost`` and `AppRuntime` are noncopyable (`~Copyable`): a host owns
 live reference state — action tables, the dirty signal, subscriptions — and
-a copy would silently share all of it. Own exactly one per application
-instance: store it in a single property (a class stored property or a local
+a copy would silently share all of it. Own exactly one per live surface:
+store it in a single property (a class stored property or a local
 `var`), mutate it in place, and never assign it to a second binding. Passing
 one around means `inout`, `borrowing`, or `consuming`; Swift rejects an
 accidental copy at compile time. Requesting a frame out-of-band uses the
@@ -28,7 +28,10 @@ host.
 
 ## Reactor-style hosts
 
-AppKit/UIKit, browser, and foreign-language hosts own a ``FrameHost``.
+AppKit/UIKit, browser, and foreign-language hosts compile the app's scene graph,
+select its explicit primary scene when they own only one surface, and retain a
+``FrameHost``. Scene compilation and host initialization throw
+``SceneConfigurationError`` before presentation begins.
 
 The dependency-free `WebHost` is a UI demonstration host, not a general WASI
 runtime. It implements the process metadata, clock, random, and output imports
@@ -36,7 +39,7 @@ needed by the reactor and returns explicit WASI errors for unsupported calls;
 it does not provide a filesystem. Applications needing broader WASI facilities
 must supply a complete host and revalidate it with their selected Swift
 snapshot.
-Translate native resize, key, focus, touch, and pointer callbacks into
+Translate native resize, key, focus, touch, pointer, and lifecycle callbacks into
 ``InputEvent`` values. When ``FrameHost/needsFrame`` is true, call
 `pump(size:)`, convert the laid-out tree through the shared drawing layer, and
 schedule another frame only if the host becomes dirty again.

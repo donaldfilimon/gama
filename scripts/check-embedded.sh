@@ -22,7 +22,7 @@ while IFS= read -r source; do sources+=("$source"); done < <(find "$ROOT/Sources
 OUT="${GAMA_EMBEDDED_OUTPUT:-${TMPDIR:-/tmp}/GamaCore.embedded.o}"
 LINKED="${GAMA_EMBEDDED_LINKED_OUTPUT:-${OUT%.o}.linked.o}"
 mkdir -p "$(dirname "$OUT")"
-"$SWIFTC" -target armv7em-none-none-eabi -enable-experimental-feature Embedded -wmo -parse-as-library -Xfrontend -disable-objc-interop -c "${sources[@]}" -o "$OUT"
+"$SWIFTC" -target armv7em-none-none-eabi -enable-experimental-feature Embedded -package-name Gama -wmo -parse-as-library -Xfrontend -disable-objc-interop -c "${sources[@]}" -o "$OUT"
 test -s "$OUT"
 LLD="${GAMA_LLD:-$(dirname "$SWIFTC")/ld.lld}"
 [[ -x "$LLD" ]] || { echo "error: matching snapshot ld.lld not found: $LLD" >&2; exit 1; }

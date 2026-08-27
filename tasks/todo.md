@@ -159,9 +159,10 @@
 - [ ] Sub-project 2: plugin runtime + capability model — DRAFT written
       (docs/superpowers/specs/drafts/2026-08-26-plugin-runtime-draft.md),
       awaiting Donald's review of its 3 open questions
-- [ ] Sub-project 3: app shell, windowing, lifecycle — DRAFT written
-      (docs/superpowers/specs/drafts/2026-08-26-app-shell-draft.md),
-      awaiting review; packaging's .app slice depends on this
+- [ ] Sub-project 3: scene-first app shell, windowing, lifecycle — APPROVED
+      design at docs/superpowers/specs/2026-08-27-scene-first-app-shell-design.md.
+      Scene core/migration and macOS shell are separate green delivery slices;
+      packaging's .app slice depends on both.
 - [ ] Sub-project 4: packaging & distribution — DRAFT written
       (docs/superpowers/specs/drafts/2026-08-26-packaging-draft.md),
       awaiting review; wasm site slice is independent of 2/3

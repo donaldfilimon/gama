@@ -2,10 +2,12 @@ import GamaCore
 
 struct EmbeddedExample: App {
     init() {}
-    var content: some View {
-        VStack {
-            Text("Gama Embedded")
-            ProgressView(value: 1, total: 4, label: "boot")
+    var scenes: some Scene {
+        Window("Gama Embedded", id: "main", role: .primary) {
+            VStack {
+                Text("Gama Embedded")
+                ProgressView(value: 1, total: 4, label: "boot")
+            }
         }
     }
 }
