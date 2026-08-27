@@ -114,9 +114,13 @@ let package = Package(
         // ── TUI backend: POSIX terminals (Darwin/Glibc — termios/ioctl
         //    import cleanly) and Windows Console (WinSDK — VT output,
         //    ReadConsoleInputW input). One Renderer, three OS families.
+        // C storage for signal-shared flags: Swift cannot express C's
+        // `volatile sig_atomic_t`, which POSIX requires for handler state.
+        .target(name: "GamaTUISignal"),
+
         .target(
             name: "GamaTUI",
-            dependencies: ["GamaCore", "GamaDraw"],
+            dependencies: ["GamaCore", "GamaDraw", "GamaTUISignal"],
             swiftSettings: strictCore
         ),
 

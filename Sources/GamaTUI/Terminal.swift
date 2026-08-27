@@ -229,7 +229,15 @@ public struct Terminal {
             let wait = hasPartialSequence ? min(max(0, timeoutMillis), 25) : max(0, timeoutMillis)
             let r = poll(&fds, 1, Int32(wait))
             if r < 0 {
-                if errno == EINTR { return nil }
+                if errno == EINTR {
+                    // poll is not restartable on every supported libc even
+                    // with SA_RESTART. Drain a SIGWINCH latch on this path so
+                    // the same resize is not observed again on the next call.
+                    if TerminalRescue.consumePendingResize() {
+                        return .resize(size())
+                    }
+                    return nil
+                }
                 throw TerminalError("terminal poll failed")
             }
             if r == 0 {

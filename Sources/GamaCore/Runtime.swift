@@ -163,11 +163,26 @@ public struct AppRuntime<A: App, R: Renderer>: ~Copyable {
             try? renderer.end()
         }
 
+        // `size` is the current drawable extent, but a renderer is not
+        // required to emit `.resize`. Track the last extent observed directly
+        // so a silent resize is still reflected in layout. Do not compare to
+        // `pump.size`: an explicit resize event may legitimately be newer than
+        // a renderer whose `size` property has not caught up yet.
+        var lastObservedRendererSize = renderer.size
         while !pump.wantsQuit {
+            if renderer.size != lastObservedRendererSize {
+                lastObservedRendererSize = renderer.size
+                pump.handle(.resize(renderer.size))
+            }
             if let advanced = pump.advance() {
                 try renderer.present(advanced.frame)
             }
             if let event = try renderer.nextEvent(timeoutMillis: frameTimeoutMillis) {
+                if case .resize(let size) = event, renderer.size == size {
+                    // Avoid presenting the same resize twice when a renderer
+                    // updates `size` and emits its explicit event together.
+                    lastObservedRendererSize = size
+                }
                 pump.handle(event)
             }
         }
