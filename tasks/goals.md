@@ -191,6 +191,12 @@ status: in_progress
   gates, hosted PR proof, post-merge proof, and the supplemental manual Dock/
   Command-Q smoke remain separate acceptance layers; do not mark the shell
   shipped until the required automated layers are green.
+- Linux sanitizer policy repair (2026-08-27): PR #24 enabled
+  `ASAN_OPTIONS=detect_leaks=1` and merged before its hosted matrix completed;
+  that PR's own Linux Address Sanitizer step then failed. Restore the
+  previously documented `detect_leaks=0` policy while retaining the required
+  ASan job. Leak detection remains an open, separately root-caused item in
+  `tasks/todo.md`; do not describe the Swift Testing runner as leak-clean.
 - Consolidation complete + specs finalized (2026-08-27, Donald's "merge all
   into main / finish all" session): PRs #20 (doc-coverage count), #21
   (macOS shell + gama-apple-demo), and #22 (ledger) merged; local main ==
@@ -214,3 +220,9 @@ status: in_progress
   docs/superpowers/specs/2026-08-27-packaging-design.md (drafts annotated
   SUPERSEDED, kept for rationale). Implementation proceeds in gated
   slices; green-before-merge is the rule each slice must actually honor.
+- Slice C approved in full (2026-08-27, Donald): frame-pump unification with
+  a single resize policy (ADR 0007 leaves Provisional), the validated
+  non-Sendable Signal redesign (ADR 0003 interim to be superseded), and all
+  remaining Slice C items as gated slices. Scheduled as wave 2 behind the
+  plugin-runtime, packaging, and DocC-catalog branches to avoid GamaCore
+  merge conflicts.
