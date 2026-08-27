@@ -13,11 +13,14 @@ import GamaCore
 /// concurrent hosts. Deinitializing a runtime deactivates every
 /// installed plugin, mirroring `SubscriptionContext.deinit`.
 public final class PluginRuntime: @unchecked Sendable {
-    /// One installed plugin and the context it was issued.
+    /// One installed plugin, the context it was issued, and its declared
+    /// contributions.
     struct Entry {
         var plugin: any GamaPluginProtocol
         let id: PluginID
         let context: PluginContext
+        let scenes: [PluginSceneContribution]
+        let declaredCommands: [PluginCommand]
     }
 
     private let grants: CapabilityGrants
@@ -76,9 +79,22 @@ public final class PluginRuntime: @unchecked Sendable {
             + manifest.optional.filter { grants.permits(id, $0) && services.supports($0) }
         let context = makeContext(id: id, granted: granted)
 
+        let scenes = plugin.scenes(in: PluginSceneContext(plugin: id))
+        for contribution in scenes where contribution.role == .primary {
+            throw .primarySceneContribution(id, name: contribution.name)
+        }
+        let declaredCommands = plugin.commands()
+
         var activated = plugin
         try activated.activate(in: context)
-        entries.append(Entry(plugin: activated, id: id, context: context))
+        entries.append(
+            Entry(
+                plugin: activated,
+                id: id,
+                context: context,
+                scenes: scenes,
+                declaredCommands: declaredCommands
+            ))
     }
 
     /// Uninstalls the plugin with `id`, calling its `deactivate()` and
@@ -101,6 +117,42 @@ public final class PluginRuntime: @unchecked Sendable {
                 entry.plugin.render(slot: slot, in: context.child(index))
             }
         )
+    }
+
+    /// Every contributed command in deterministic order: plugins in
+    /// install order, each plugin's commands in declaration order. Each
+    /// entry is already bound to its owning plugin's context; the
+    /// application or shell chooses the presentation and calls
+    /// ``RegisteredPluginCommand/perform()`` on the host's executor.
+    public var commands: [RegisteredPluginCommand] {
+        entries.flatMap { entry in
+            entry.declaredCommands.map { command in
+                let context = entry.context
+                let action = command.action
+                return RegisteredPluginCommand(
+                    plugin: entry.id,
+                    id: command.id,
+                    title: command.title,
+                    run: { action(context) }
+                )
+            }
+        }
+    }
+
+    /// The namespaced identities of every contributed scene, in install
+    /// order, for inspection and window actions.
+    public var contributedSceneIDs: [SceneID] {
+        sceneEntries.map(\.sceneID)
+    }
+
+    /// Contributed scenes with their namespaced identities, consumed by
+    /// ``PluginScenes`` when the application's scene graph compiles.
+    var sceneEntries: [(sceneID: SceneID, contribution: PluginSceneContribution)] {
+        entries.flatMap { entry in
+            entry.scenes.map { contribution in
+                (sceneID: contribution.sceneID(for: entry.id), contribution: contribution)
+            }
+        }
     }
 
     private func makeContext(id: PluginID, granted: [Capability]) -> PluginContext {

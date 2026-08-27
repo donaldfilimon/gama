@@ -34,6 +34,16 @@ public protocol GamaPluginProtocol: Sendable {
     /// Render-IR contribution for a named slot the application renders.
     /// The default contributes nothing.
     func render(slot: SlotID, in context: BuildContext) -> RenderNode
+    /// Scene contributions: additional windows the application agrees to
+    /// host through ``PluginScenes``. Called at install, before
+    /// activation, as a static declaration surface; the role may never
+    /// be primary. The default contributes none.
+    func scenes(in context: PluginSceneContext) -> [PluginSceneContribution]
+    /// Command contributions surfaced through ``PluginRuntime/commands``.
+    /// Called at install, before activation, as a static declaration
+    /// surface; actions receive the owning plugin's context at dispatch.
+    /// The default contributes none.
+    func commands() -> [PluginCommand]
 }
 
 extension GamaPluginProtocol {
@@ -43,5 +53,15 @@ extension GamaPluginProtocol {
     /// Default slot contribution: nothing.
     public func render(slot: SlotID, in context: BuildContext) -> RenderNode {
         .empty
+    }
+
+    /// Default scene contribution: none.
+    public func scenes(in context: PluginSceneContext) -> [PluginSceneContribution] {
+        []
+    }
+
+    /// Default command contribution: none.
+    public func commands() -> [PluginCommand] {
+        []
     }
 }
