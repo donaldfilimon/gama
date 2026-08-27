@@ -13,44 +13,47 @@ import GamaCore
 /// Minimal MLIR text builder — SSA names, attributes, regions. Uses the
 /// *generic* op syntax ("dialect.op"(...) {attrs} : type) which is always
 /// parseable without a registered dialect (with -allow-unregistered-dialect).
-public struct MLIRBuilder {
+///
+/// Internal: the target's public surface is `GamaLowering.lower` only; the
+/// builder, attribute model, and renderer are emitter implementation detail.
+struct MLIRBuilder {
     private var lines: [String] = []
     private var indentLevel = 0
     private var ssaCounter = 0
 
-    public init() {}
+    init() {}
 
-    public mutating func fresh() -> String {
+    mutating func fresh() -> String {
         defer { ssaCounter += 1 }
         return "%\(ssaCounter)"
     }
 
-    public mutating func line(_ s: String) {
+    mutating func line(_ s: String) {
         lines.append(String(repeating: "  ", count: indentLevel) + s)
     }
 
-    public mutating func open(_ s: String) {
+    mutating func open(_ s: String) {
         line(s)
         indentLevel += 1
     }
 
-    public mutating func close(_ s: String = "}") {
+    mutating func close(_ s: String = "}") {
         indentLevel = max(0, indentLevel - 1)
         line(s)
     }
 
-    public var text: String { lines.joined(separator: "\n") + "\n" }
+    var text: String { lines.joined(separator: "\n") + "\n" }
 }
 
 /// MLIR attribute value rendering.
-public enum MLIRAttr {
+enum MLIRAttr {
     case i64(Int)
     case str(String)
     case bool(Bool)
     case color(Color)
     case unit
 
-    public var rendered: String {
+    var rendered: String {
         switch self {
         case .i64(let v): return "\(v) : i64"
         case .str(let s): return "\"\(Self.escape(s))\""
@@ -78,7 +81,7 @@ public enum MLIRAttr {
     }
 }
 
-public func renderAttrs(_ attrs: [(String, MLIRAttr)]) -> String {
+func renderAttrs(_ attrs: [(String, MLIRAttr)]) -> String {
     guard !attrs.isEmpty else { return "" }
     let body = attrs.map { "\($0.0) = \($0.1.rendered)" }.joined(separator: ", ")
     return " {\(body)}"
