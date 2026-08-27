@@ -314,13 +314,22 @@
       to 'round'/'rint'/'trunc'/'ceil'/'floor'"). Hit live on PR #42's wave-2
       head. Closing the hole needs a link-or-symbol check for the portable
       targets, not another import grep.
-- [ ] **PR #43 reopens the rejected `leak:XCTest` suppression.** Its
-      lsan-suppressions.supp has exactly one non-comment line, `leak:XCTest` —
-      the pattern closed with PR #31 and rejected at todo.md:100, goals.md:208,
-      and roadmap:94. It ships no negative control (diff is ci.yml + the .supp
-      only), so a green matrix proves the suppression works, not that Gama leak
-      coverage survived. Flagged on the PR; one deliberately-leaking Gama Swift
-      Testing case proving the job still fails would satisfy option (b).
+- [x] **PR #43 reopened the rejected `leak:XCTest` suppression — CLOSED as
+      unsound 2026-08-27.** Its lsan-suppressions.supp had exactly one
+      non-comment line, `leak:XCTest`, the pattern closed with PR #31 and
+      rejected at todo.md:100, goals.md:208, and roadmap:94. It shipped no
+      negative control (diff was ci.yml + the .supp only), so its 5/6 green
+      matrix proved the suppression works, not that Gama leak coverage
+      survived. RESOLUTION, and it is stronger than the original objection:
+      LSan `leak:` suppressions match if ANY frame in the allocation stack
+      matches, not just the allocating frame. Because SwiftPM runs these suites
+      beneath its XCTest harness, a leak allocated in Gama or a test helper
+      still has XCTest farther down its stack and is suppressed too. So the
+      approach is unsound, not merely unproven — a negative control would not
+      rescue it, and the earlier suggestion that one would "satisfy option (b)"
+      was wrong. Option (b) still requires a harness-free leak test or an
+      allocation-symbol-specific pattern; detect_leaks=0 (option (a)) remains
+      the honest status quo until then.
 
 ## Later sub-projects (each needs its own spec first)
 - [x] Sub-project 2: plugin runtime + capability model — APPROVED
