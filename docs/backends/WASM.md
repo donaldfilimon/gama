@@ -26,6 +26,14 @@ Swift exports (called from `WebHost/gama.js`):
 | `gama_web_v1_pointer(col, row, pressed)` | Pointer press/release at a grid cell |
 | `gama_web_v1_resize(cols, rows)` | Grid resize (clamped to ≥1) |
 
+The v1 exports retain their original void-returning WebAssembly signatures.
+Status-reporting hosts may call the argument-compatible `gama_web_v2_*`
+family instead: it returns `0` when accepted, `-1` when no app host is
+installed, and `-2` from `gama_web_v2_key` for an invalid key code. Changing
+the result type of a published symbol is an ABI break even when JavaScript
+callers ignore the result, so new result contracts require a new symbol
+family.
+
 JS imports the module provides to Swift (module `"gama"`): `setHTML`,
 `setTitle`, `requestFrame`.
 

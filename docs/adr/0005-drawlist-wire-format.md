@@ -22,7 +22,9 @@ payloads stay decodable.
 ## Consequences
 
 C and WASM symbol families (`gama_embed_v1_*`, `gama_web_v1_*`) and the
-wire version can evolve independently; hostile-input behavior is part of
-the contract (and fuzz-tested); the byte layout is documented user-facing
-in `GamaCore.docc/EmbeddingAndDrawList.md` and must move in lockstep with
-the encoder.
+wire version can evolve independently. Published symbol parameter and result
+types are immutable within a family: status-returning WASM entry points use
+`gama_web_v2_*` while the original v1 exports remain void-returning.
+Hostile-input behavior is part of the contract (and fuzz-tested); the byte
+layout is documented user-facing in `GamaCore.docc/EmbeddingAndDrawList.md`
+and must move in lockstep with the encoder.
