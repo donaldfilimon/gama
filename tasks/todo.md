@@ -67,19 +67,17 @@
 - [x] P1: ZStack(.topLeading) flatten sentinel — fixed via `RenderNode.group`
       (View.swift flattenChildren / TupleView / ForEach). Regression in
       BuilderTests.zStackTopLeadingLayersInsteadOfFlattening.
-- [ ] Border title: measure reserves displayWidth+4 but painter requires
-      strictly-wider frame — natural-size bordered views reserve blank
-      space and drop the caption (CellPainter.drawBorder).
-- [ ] Divider in a square (1x1) frame renders the horizontal glyph even
-      inside an HStack; carry the stack axis into the node or break ties.
-- [ ] TextField appends control characters (e.g. "\n" via the C embed
-      input path) — decide filter-or-allow and test it.
-- [ ] TextLayout wide table misses emoji-presentation scalars outside the
-      hard-coded ranges (e.g. U+231A) — extend or keep the documented
-      subset deliberately.
-- [ ] Button focus style: deeper label styles win over the focus wrap
-      (custom-colored labels keep their colors when focused) — confirm
-      intended or invert precedence.
+- [x] Border title: paint uses `>= displayWidth+4` and places `" title "`
+      at minX+1 so a natural-size title is visible (BorderTitleTests).
+- [x] Divider orientation follows the containing stack axis; a 1×1 HStack
+      Divider paints `│` (DividerAxisTests).
+- [x] TextField consumes C0/DEL `.character` events (including embed) and
+      does not insert them (TextFieldControlTests).
+- [x] TextLayout treats U+231A (and a documented Misc Technical subset) as
+      wide; other symbols stay narrow unless VS16 is present
+      (TextLayoutEmojiTests).
+- [x] Button focus wrap wins over a custom-colored label (outer-wins
+      style merge in CellPainter; ButtonFocusStyleTests).
 
 ## Modern-Swift sweep (audited 2026-08-27, three parallel audits; execute in
 ## gated slices — slice A avoids PR #10's files until that PR merges)

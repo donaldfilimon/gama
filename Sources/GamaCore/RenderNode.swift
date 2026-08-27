@@ -38,8 +38,9 @@ public indirect enum RenderNode: Hashable, Sendable {
     case group(children: [RenderNode])
     case spacer(minLength: Int)
     /// Axis-resolved rule: 1 cell on the enclosing stack's main axis,
-    /// full length on the cross axis. Backends pick the glyph by aspect.
-    case divider(style: TextStyle)
+    /// full length on the cross axis. `axis` is the containing stack
+    /// (horizontal stack → vertical bar). `nil` falls back to aspect.
+    case divider(style: TextStyle, axis: Axis? = nil)
     case padding(EdgeInsets, child: RenderNode)
     case border(BorderStyle, style: TextStyle, title: String?, child: RenderNode)
     case background(Color, child: RenderNode)

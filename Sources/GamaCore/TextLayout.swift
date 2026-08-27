@@ -5,6 +5,10 @@ public enum TextLayout {
     /// Display cells occupied by an extended grapheme cluster. Combining
     /// marks and joiners are zero width; East Asian wide characters and emoji
     /// occupy two cells. A cluster uses its widest scalar, not their sum.
+    ///
+    /// Default-emoji-presentation scalars outside the main U+1F300 block are
+    /// a documented subset (WATCH/HOURGLASS and a few media keys). Other
+    /// miscellaneous symbols stay narrow unless VS16 (U+FE0F) is present.
     public static func cellWidth(of character: Character) -> Int {
         var width = 0
         var emojiPresentation = false
@@ -125,7 +129,9 @@ public enum TextLayout {
     }
 
     private static func isWide(_ value: UInt32) -> Bool {
-        (0x1100...0x115F).contains(value) || value == 0x2329 || value == 0x232A
+        (0x1100...0x115F).contains(value) || value == 0x231A || value == 0x231B
+            || value == 0x2329 || value == 0x232A
+            || (0x23E9...0x23EC).contains(value) || value == 0x23F0 || value == 0x23F3
             || (0x2E80...0x303E).contains(value) || (0x3040...0xA4CF).contains(value)
             || (0xAC00...0xD7A3).contains(value) || (0xF900...0xFAFF).contains(value)
             || (0xFE10...0xFE19).contains(value) || (0xFE30...0xFE6F).contains(value)

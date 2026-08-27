@@ -158,6 +158,8 @@ public struct Button<Label: View>: View {
         }
         context.registerAction(id, action)
         let focused = context.environment.focusedID == id
+        // Focus wrap is applied outside the label so CellPainter's
+        // outer-wins merge paints cyan/black over a custom-colored label.
         let style: TextStyle =
             focused
             ? TextStyle(foreground: .black, background: .cyan, attributes: [.bold])
@@ -198,6 +200,12 @@ public struct TextField: View {
             context.registerKeyHandler(id) { key in
                 switch key {
                 case .character(let character):
+                    // C0 / DEL never enter the field, including the C embed
+                    // `.character` path. The event is consumed so it does not
+                    // bubble as a submit/newline.
+                    guard character.unicodeScalars.allSatisfy({
+                        $0.value >= 0x20 && $0.value != 0x7F
+                    }) else { return true }
                     var value = binding.wrappedValue
                     value.append(character)
                     binding.wrappedValue = value
