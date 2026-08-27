@@ -4,6 +4,10 @@
 import Darwin
 #elseif canImport(Glibc)
 import Glibc
+#elseif canImport(Musl)
+import Musl
+#elseif canImport(Android)
+import Android
 #endif
 
 import GamaCore
@@ -132,21 +136,21 @@ enum TerminalRescue {
 
     private static func install(_ signalNumber: Int32) {
         var action = sigaction()
+        // Re-raise with the default disposition so the process still dies of
+        // the signal it was sent, and its exit status stays truthful for
+        // whatever supervises it.
+        let handler: @convention(c) (Int32) -> Void = { signalNumber in
+            TerminalRescue.restoreNow()
+            signal(signalNumber, SIG_DFL)
+            raise(signalNumber)
+        }
         #if canImport(Darwin)
-        action.__sigaction_u.__sa_handler = { signalNumber in
-            TerminalRescue.restoreNow()
-            // Re-raise with the default disposition so the process still
-            // dies of the signal it was sent, and its exit status stays
-            // truthful for whatever supervises it.
-            signal(signalNumber, SIG_DFL)
-            raise(signalNumber)
-        }
+        action.__sigaction_u.__sa_handler = handler
+        #elseif canImport(Glibc)
+        action.__sigaction_handler.sa_handler = handler
         #else
-        action.__sigaction_handler.sa_handler = { signalNumber in
-            TerminalRescue.restoreNow()
-            signal(signalNumber, SIG_DFL)
-            raise(signalNumber)
-        }
+        // musl nests the union as `__sa_handler`.
+        action.__sa_handler.sa_handler = handler
         #endif
         sigemptyset(&action.sa_mask)
         action.sa_flags = 0
@@ -155,14 +159,15 @@ enum TerminalRescue {
 
     private static func installWinch() {
         var action = sigaction()
+        let handler: @convention(c) (Int32) -> Void = { _ in
+            TerminalRescue.markResizePending()
+        }
         #if canImport(Darwin)
-        action.__sigaction_u.__sa_handler = { _ in
-            TerminalRescue.markResizePending()
-        }
+        action.__sigaction_u.__sa_handler = handler
+        #elseif canImport(Glibc)
+        action.__sigaction_handler.sa_handler = handler
         #else
-        action.__sigaction_handler.sa_handler = { _ in
-            TerminalRescue.markResizePending()
-        }
+        action.__sa_handler.sa_handler = handler
         #endif
         sigemptyset(&action.sa_mask)
         // SA_RESTART so a pending read is resumed rather than failing with
