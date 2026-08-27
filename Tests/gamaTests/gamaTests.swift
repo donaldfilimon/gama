@@ -237,6 +237,14 @@ struct LayoutTests {
 
 @Suite("View builder")
 struct BuilderTests {
+    @Test("render nodes remain hashable")
+    func renderNodesRemainHashable() {
+        func requireHashable<T: Hashable>(_: T.Type) {}
+
+        requireHashable(RenderNode.self)
+        requireHashable(LaidOutNode.self)
+    }
+
     @Test("tuple flattening")
     func tupleFlattening() {
         struct Two: View {

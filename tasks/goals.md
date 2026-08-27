@@ -71,7 +71,8 @@ status: in_progress
 - Verification 2026-08-26 (evening): `swiftly run swift build` and
   `swift test` (scratch path /private/tmp/gama-framework-swiftpm) green on the
   pinned main-snapshot-2026-08-21 — 74 tests (56 XCTest + 18 Swift Testing),
-  0 failures; `check-docs.sh` zero-warning gate green. CLAUDE.md expanded into
+  0 failures (superseded 2026-08-27: the suite is Swift Testing only now,
+  92+ tests — see the Swift Testing bullet below); `check-docs.sh` zero-warning gate green. CLAUDE.md expanded into
   the full operational guide and opened as PR #8
   (docs/claude-md-operational-guide branch).
 - Post-merge matrix for PR #9 (toolchain-accuracy sweep): Android emulator
@@ -102,6 +103,27 @@ status: in_progress
 - Swiftly-run convention (Donald, 2026-08-27): agents run the codebase
   with `unset TOOLCHAINS` then `swiftly run swift <build|run|test|…>`.
   Recorded in AGENTS.md, CLAUDE.md, README.md, docs/Toolchain.md.
+- Integration repair (2026-08-27): merging the DocC branch after PR #11
+  resolved three source conflicts in favor of stale declarations, removing
+  RenderNode.group, the Hashable conformances, and the noncopyable
+  host/runtime declarations — main was non-compiling with a red acceptance
+  matrix, and PRs #10/#13 were merged while red (honest residual; the
+  green-matrix rule was violated). Repaired by PR #14 (fix/restore-sweep-
+  semantics, merged 5c27a32 on a fully green six-job matrix), which also
+  fixed the actual Linux failure inherited from PR #11
+  (Foundation-only components(separatedBy:) in WASMSerializerTests) and
+  the stale ZStack/TupleView flattening prose. Duplicate repair PR #15
+  closed unmerged; its unique Hashable compile test folded into the docs
+  overhaul PR.
+- Docs overhaul (2026-08-27, Donald's /plan approved): executed in six
+  phases on docs/claim-honesty — claim-honesty (gama.group now test-
+  proven; Capabilities status vocabulary; non-tautological check-docs
+  grep; Testing.md file map), GamaCore DocC sweep alignment (noncopyable
+  hosts guidance, group-vs-overlay, Topics curation), zero undocumented
+  public declarations package-wide, backend guides + CONTRIBUTING + MLIR
+  dialect reference + docs index + ADRs 0001-0007, and the deterministic
+  check-doc-coverage.sh gate wired into check.sh and CI (empty
+  allowlist). Merge only on a green matrix.
 - Sub-projects 2-4 Proposed: drafts written and committed under
   docs/superpowers/specs/drafts/ (plugin runtime + capability model; app
   shell/windowing/lifecycle; packaging & distribution). Each is DRAFT ONLY —
