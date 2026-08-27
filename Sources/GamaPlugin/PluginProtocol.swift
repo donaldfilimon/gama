@@ -23,7 +23,12 @@ public struct SlotID: Hashable, Sendable, ExpressibleByStringLiteral {
 /// ``PluginContext`` handed to `activate(in:)`, and contributes
 /// host-mediated render IR. Its lifecycle is owned by the
 /// ``PluginRuntime`` it is installed into.
-public protocol GamaPluginProtocol: Sendable {
+/// A Tier-1 plugin is **not `Sendable`**. It is installed into exactly one
+/// host and, as the `activate` doc below already stated, runs on that
+/// host's executor — while typically owning ``GamaCore/Signal`` state.
+/// The old `Sendable` requirement could only be satisfied by signals that
+/// laundered their own Sendability; per-host confinement is now checked.
+public protocol GamaPluginProtocol {
     /// Static identity, version, ABI, and capability declaration.
     var manifest: PluginManifest { get }
     /// Called once at install, on the host's executor. Everything the

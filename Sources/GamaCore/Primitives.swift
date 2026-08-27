@@ -230,10 +230,10 @@ public struct Button<Label: View>: View {
     public var label: Label
     /// Invoked by the owning host each time the button is activated;
     /// typically mutates observed state, which marks the host dirty.
-    public var action: @Sendable () -> Void
+    public var action: () -> Void
 
     /// Creates a button from an action and a label subtree.
-    public init(action: @escaping @Sendable () -> Void, @ViewBuilder label: () -> Label) {
+    public init(action: @escaping () -> Void, @ViewBuilder label: () -> Label) {
         self.action = action
         self.label = label()
     }
@@ -273,7 +273,7 @@ public struct Button<Label: View>: View {
 extension Button where Label == Text {
     /// Creates a button whose label is `title` padded with one space on
     /// each side, so the focus highlight reads as a block.
-    public init(_ title: String, action: @escaping @Sendable () -> Void) {
+    public init(_ title: String, action: @escaping () -> Void) {
         self.init(action: action) { Text(" \(title) ") }
     }
 }
@@ -662,13 +662,13 @@ public struct _EnvTransformed<Content: View>: View {
 
     /// Applied to a copy of the environment before the subtree builds;
     /// enclosing scopes are unaffected.
-    public var transform: @Sendable (inout EnvironmentValues) -> Void
+    public var transform: (inout EnvironmentValues) -> Void
     /// The subtree that builds under the mutated environment.
     public var content: Content
 
     /// Wraps `content` so it builds under the transformed environment.
     public init(
-        transform: @escaping @Sendable (inout EnvironmentValues) -> Void,
+        transform: @escaping (inout EnvironmentValues) -> Void,
         content: Content
     ) {
         self.transform = transform
@@ -693,7 +693,7 @@ extension View {
 
     /// Arbitrary environment mutation for a subtree.
     public func environment(
-        _ transform: @escaping @Sendable (inout EnvironmentValues) -> Void
+        _ transform: @escaping (inout EnvironmentValues) -> Void
     ) -> _EnvTransformed<Self> {
         _EnvTransformed(transform: transform, content: self)
     }

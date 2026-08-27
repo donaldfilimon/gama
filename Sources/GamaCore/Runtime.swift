@@ -98,7 +98,7 @@ public protocol Renderer {
 /// The application root: a value whose scene graph declares every surface.
 /// The shell creates one app value, while each live surface owns an
 /// independent ``FrameHost``.
-public protocol App: Sendable {
+public protocol App {
     /// Concrete scene-list type produced by the application's scene builder.
     associatedtype Scenes: Scene
     /// Declarative scene graph evaluated once when the application launches.

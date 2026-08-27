@@ -28,7 +28,7 @@ public struct PluginSceneContext: Sendable {
 /// derives the scene identity by namespacing the name under the owning
 /// plugin, and rejects any contribution asking for the primary role at
 /// install time with a typed error.
-public struct PluginSceneContribution: Sendable {
+public struct PluginSceneContribution {
     /// Plugin-local scene name; the full identity is
     /// `plugin/<pluginID>/<name>`.
     public var name: String
@@ -44,7 +44,7 @@ public struct PluginSceneContribution: Sendable {
     public var isResizable: Bool
     /// Builds the contributed window's render IR under the host that
     /// owns the opened window.
-    public var content: @Sendable (BuildContext) -> RenderNode
+    public var content: (BuildContext) -> RenderNode
 
     /// Creates a scene contribution; the role defaults to auxiliary,
     /// which is the only accepted value in V1.
@@ -54,7 +54,7 @@ public struct PluginSceneContribution: Sendable {
         role: SceneRole = .auxiliary,
         initialCellSize: Size = Size(width: 80, height: 24),
         isResizable: Bool = true,
-        content: @escaping @Sendable (BuildContext) -> RenderNode
+        content: @escaping (BuildContext) -> RenderNode
     ) {
         self.name = name
         self.title = title
@@ -77,7 +77,7 @@ struct ContributedSceneContent: View {
     /// Terminates `body` recursion; this primitive compiles directly.
     typealias Body = Never_
     var body: Never_ { Never_() }
-    let content: @Sendable (BuildContext) -> RenderNode
+    let content: (BuildContext) -> RenderNode
 
     func render(in context: BuildContext) -> RenderNode {
         content(context)
