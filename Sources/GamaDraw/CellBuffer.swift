@@ -5,12 +5,16 @@
 
 import GamaCore
 
+/// One grid cell: a character, its style, and wide-glyph bookkeeping.
 public struct Cell: Hashable, Sendable {
+    /// The grapheme stored in this cell (continuation cells keep a space).
     public var character: Character
+    /// The foreground/background/attribute styling applied to the cell.
     public var style: TextStyle
     /// The second grid column occupied by a wide grapheme stored immediately
     /// before this cell. Backends skip continuation cells when emitting text.
     public var isContinuation: Bool
+    /// Creates a cell; defaults produce the blank cell.
     public init(
         character: Character = " ", style: TextStyle = .plain,
         isContinuation: Bool = false
@@ -19,9 +23,12 @@ public struct Cell: Hashable, Sendable {
         self.style = style
         self.isContinuation = isContinuation
     }
+    /// The default empty cell every buffer starts from.
     public static let blank = Cell()
 }
 
+/// Double-buffered cell grid shared by every backend: paint into the back
+/// plane, then diff against the front plane on presentation.
 public struct CellBuffer: Hashable, Sendable {
     /// Defensive ceiling for dimensions received from untrusted hosts.
     public static let maximumCellCount = 16 * 1_024 * 1_024
@@ -29,8 +36,10 @@ public struct CellBuffer: Hashable, Sendable {
     private var front: [Cell]
     private var back: [Cell]
     private var forceFull = true
+    /// Whether ANSI output uses 24-bit color (`false` falls back to 256).
     public var trueColor: Bool = true
 
+    /// Creates a buffer of `size` (normalized to the defensive ceiling).
     public init(size: Size) {
         let normalized = Self.normalized(size)
         self.size = normalized.size
@@ -39,6 +48,7 @@ public struct CellBuffer: Hashable, Sendable {
         self.back = Array(repeating: .blank, count: n)
     }
 
+    /// Resizes both planes, clearing content and forcing a full present.
     public mutating func resize(_ newSize: Size) {
         let normalized = Self.normalized(newSize)
         size = normalized.size
@@ -48,6 +58,7 @@ public struct CellBuffer: Hashable, Sendable {
         forceFull = true
     }
 
+    /// Clears the back plane to blank cells before a paint pass.
     public mutating func clearBack() {
         for i in back.indices { back[i] = .blank }
     }
@@ -58,6 +69,8 @@ public struct CellBuffer: Hashable, Sendable {
         return y * size.width + x
     }
 
+    /// Writes one grapheme at `p`, reserving a continuation cell after a
+    /// wide glyph; out-of-bounds writes are ignored.
     public mutating func put(_ ch: Character, at p: Point, style: TextStyle) {
         guard let i = index(p.x, p.y) else { return }
         clearGlyph(overlapping: i)
@@ -85,6 +98,7 @@ public struct CellBuffer: Hashable, Sendable {
         }
     }
 
+    /// Fills `rect` (clipped to the grid) with copies of `cell`.
     public mutating func fill(_ rect: Rect, with cell: Cell) {
         let clipped = rect.intersection(Rect(origin: .zero, size: size))
         for y in clipped.minY..<clipped.maxY {
@@ -97,6 +111,7 @@ public struct CellBuffer: Hashable, Sendable {
         }
     }
 
+    /// Sets only the background color across `rect`, preserving glyphs.
     public mutating func fillBackground(_ rect: Rect, color: Color) {
         let clipped = rect.intersection(Rect(origin: .zero, size: size))
         for y in clipped.minY..<clipped.maxY {

@@ -5,6 +5,8 @@
 
 import GamaCore
 
+/// One backend-neutral vector command produced by run-merging a
+/// ``CellBuffer``.
 public enum DrawCommand: Hashable, Sendable {
     /// Grid-space rect (cells, not pixels) filled with a solid color.
     case fillRect(Rect, Color)
@@ -12,10 +14,16 @@ public enum DrawCommand: Hashable, Sendable {
     case text(String, at: Point, style: TextStyle)
 }
 
+/// A frame as vector commands plus the grid it was painted for; the same
+/// list ships to GUI hosts directly and to C hosts as the flat binary
+/// encoding.
 public struct DrawList: Hashable, Sendable {
+    /// The cell grid dimensions the commands were produced for.
     public var size: Size
+    /// Ordered draw commands; later entries paint over earlier ones.
     public var commands: [DrawCommand]
 
+    /// Creates a list, empty by default.
     public init(size: Size, commands: [DrawCommand] = []) {
         self.size = size
         self.commands = commands
@@ -60,6 +68,9 @@ public struct DrawList: Hashable, Sendable {
     //               u32 byteLen · UTF-8 bytes
     // Hosts on any language decode with a 40-line reader; see README.
 
+    /// Encodes the list into the versioned little-endian wire format
+    /// (magic `GAMA`, version 1) documented above and in
+    /// `GamaCore.docc/EmbeddingAndDrawList.md`.
     public func encode() -> [UInt8] {
         var out: [UInt8] = []
         // Header is 20 bytes; a text command averages well under 40.
@@ -117,6 +128,10 @@ public struct DrawList: Hashable, Sendable {
         case trailingBytes
     }
 
+    /// Decodes a wire-format payload, throwing the exact
+    /// ``DecodeError`` for the first violation encountered. Untrusted
+    /// input is safe: counts are bounded before allocation and text is
+    /// strictly UTF-8 validated.
     public static func decode(_ bytes: [UInt8]) throws(DecodeError) -> DrawList {
         // The smallest possible command is a 17-byte fill. Bounding command
         // count by the payload prevents hostile headers from forcing a huge
