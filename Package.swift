@@ -24,6 +24,7 @@ let package = Package(
     products: [
         .library(name: "Gama", targets: ["Gama"]),
         .library(name: "GamaCore", targets: ["GamaCore"]),
+        .library(name: "GamaPlugin", targets: ["GamaPlugin"]),
         .library(name: "GamaMacros", targets: ["GamaMacros"]),
         .library(name: "GamaDraw", targets: ["GamaDraw"]),
         .library(name: "GamaTUI", targets: ["GamaTUI"]),
@@ -59,6 +60,16 @@ let package = Package(
         //    views in hot paths. No weak refs. Pure value render IR.
         //    Owns FrameHost — the backend-shared event/focus engine.
         .target(name: "GamaCore", swiftSettings: strictCore),
+
+        // ── Plugin runtime: Tier-1 capability model (manifest, grants,
+        //    unforgeable handles, per-host PluginRuntime, PluginSlot).
+        //    Stdlib-only like GamaCore; interfaces only — service
+        //    implementations live in GamaPlatformServices or the app.
+        .target(
+            name: "GamaPlugin",
+            dependencies: ["GamaCore"],
+            swiftSettings: strictCore
+        ),
 
         // ── Macro declarations (what user code imports)
         .target(
@@ -179,7 +190,7 @@ let package = Package(
         .testTarget(
             name: "GamaTests",
             dependencies: [
-                "Gama", "GamaCore", "GamaMacros", "GamaMLIR",
+                "Gama", "GamaCore", "GamaPlugin", "GamaMacros", "GamaMLIR",
                 "GamaTUI", "GamaDraw", "GamaEmbed", "GamaMacrosImpl",
                 "GamaAppleUI", "GamaAppleShell", "GamaWASM",
                 .product(name: "SwiftSyntaxMacroExpansion", package: "swift-syntax"),
