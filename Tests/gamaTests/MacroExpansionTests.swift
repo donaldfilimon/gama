@@ -98,7 +98,68 @@ struct MacroExpansionTests {
             "struct Bad {\n  @Reactive let value: Int = 1\n}",
             expanded: "struct Bad {\n  let value: Int = 1\n}",
             diagnostics: [
-                DiagnosticSpec(message: "@Reactive requires a stored 'var'", line: 2, column: 3)
+                DiagnosticSpec(
+                    message: "@Reactive requires a stored 'var'",
+                    line: 2,
+                    column: 3,
+                    fixIts: [FixItSpec(message: "replace 'let' with 'var'")]
+                )
+            ]
+        )
+    }
+
+    @Test("Reactive offers no Fix-It when the declaration is not a property")
+    func reactiveOffersNoFixItForNonProperties() {
+        // `let` -> `var` is only correct when the declaration really is an
+        // immutable stored property. Applied to anything else there is no
+        // single right edit, so the diagnostic stays advice-only.
+        expectExpansion(
+            "struct Bad {\n  @Reactive func value() -> Int {\n    1\n  }\n}",
+            expanded: "struct Bad {\n  func value() -> Int {\n    1\n  }\n}",
+            diagnostics: [
+                DiagnosticSpec(
+                    message: "@Reactive requires a stored 'var'",
+                    line: 2,
+                    column: 3,
+                    fixIts: []
+                )
+            ]
+        )
+    }
+
+    @Test("Reactive offers no let-to-var Fix-It on a property that is already var")
+    func reactiveOffersNoFixItWhenAlreadyVar() {
+        // A tuple-pattern binding reaches the same diagnostic while already
+        // being `var`. Offering "replace 'let' with 'var'" here would apply a
+        // rewrite with no `let` to rewrite, so the Fix-It must be withheld.
+        expectExpansion(
+            "struct Bad {\n  @Reactive var (a, b): (Int, Int) = (1, 2)\n}",
+            expanded: "struct Bad {\n  var (a, b): (Int, Int) = (1, 2)\n}",
+            diagnostics: [
+                DiagnosticSpec(
+                    message: "@Reactive requires a stored 'var'",
+                    line: 2,
+                    column: 3,
+                    fixIts: []
+                )
+            ]
+        )
+    }
+
+    @Test("Reactive missing-type diagnostic offers no Fix-It")
+    func reactiveMissingTypeOffersNoFixIt() {
+        // The intended type cannot be recovered from the syntax alone, so
+        // offering an edit here would be a guess presented as a fix.
+        expectExpansion(
+            "struct Bad {\n  @Reactive var value = 1\n}",
+            expanded: "struct Bad {\n  var value = 1\n}",
+            diagnostics: [
+                DiagnosticSpec(
+                    message: "@Reactive requires an explicit type annotation",
+                    line: 2,
+                    column: 3,
+                    fixIts: []
+                )
             ]
         )
     }
@@ -147,7 +208,8 @@ struct MacroExpansionTests {
                 DiagnosticSpec(
                     message: "@Component can only be applied to structs",
                     line: 1,
-                    column: 1
+                    column: 1,
+                    fixIts: [FixItSpec(message: "remove '@Component'")]
                 )
             ]
         )
