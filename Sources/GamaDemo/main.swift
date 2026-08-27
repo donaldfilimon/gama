@@ -124,13 +124,19 @@ struct StatusLinePlugin: GamaPluginProtocol {
 
 struct DemoApp: App {
     let pluginBox: PluginRuntimeBox
+    // One panel instance for the life of the app. `@Reactive` state lives in
+    // the component instance and scene content is rebuilt every frame, so a
+    // `CounterPanel()` constructed inside the closure below would be replaced
+    // — along with its count, step, name, and toggle — before the frame that
+    // follows a press ever paints.
+    private let panel = CounterPanel()
     init() { pluginBox = PluginRuntimeBox() }
     init(pluginBox: PluginRuntimeBox) { self.pluginBox = pluginBox }
     var scenes: some Scene {
         Window("Gama Demo", id: "main", role: .primary) {
             ZStack(alignment: .center) {
                 VStack(spacing: 0) {
-                    CounterPanel()
+                    panel
                     if let runtime = pluginBox.runtime {
                         PluginSlot("status", runtime: runtime)
                     }
