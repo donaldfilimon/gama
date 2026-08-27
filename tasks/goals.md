@@ -197,6 +197,29 @@ status: in_progress
   previously documented `detect_leaks=0` policy while retaining the required
   ASan job. Leak detection remains an open, separately root-caused item in
   `tasks/todo.md`; do not describe the Swift Testing runner as leak-clean.
+  Root cause identified 2026-08-27 (goal-loop session, from PR #24's job
+  log, run 33048676959): 7 indirect leaks / 432 bytes, every stack in the
+  SwiftPM-generated runner's XCTest harness (`XCTestSuiteRun.init`,
+  `XCTMain`, `XCTMainMisc`, plus Foundation `URL.lastPathComponent` under
+  XCTMain), zero Gama frames. The generated entry point runs the XCTest
+  harness even with zero XCTest suites, so no future "leak-clean hosted
+  trial" is reachable without either a suppression or a SwiftPM change —
+  the todo item now carries both options. Competing fix PR #31 (scoped
+  `leak:XCTest` suppression, detection retained for Gama code) was closed
+  in favor of #30 to avoid two sessions merging conflicting ci.yml edits;
+  its implementation survives in that PR's history.
+- Acceptance-run continuity gap (2026-08-27): main has had no COMPLETED
+  acceptance run since 33044975550 (pre-#19). Post-#22 run 33048024225 was
+  cancelled by the #24 push and post-#24 by the #26 push — ci.yml's
+  concurrency group is `cancel-in-progress: true`, so each merge kills the
+  previous merge's proof. With merges arriving faster than a ~20-minute
+  matrix, main's hosted evidence is structurally unobtainable, which is a
+  second-order consequence of the same root gap noted above: the six
+  acceptance jobs are NOT required status checks, so nothing waits. Two
+  candidate fixes, Donald's call: mark the six jobs required (blocks
+  merges until green, also fixes the merged-while-red pattern), and/or
+  exempt `refs/heads/main` from cancel-in-progress so post-merge proofs
+  always finish.
 - Consolidation complete + specs finalized (2026-08-27, Donald's "merge all
   into main / finish all" session): PRs #20 (doc-coverage count), #21
   (macOS shell + gama-apple-demo), and #22 (ledger) merged; local main ==
