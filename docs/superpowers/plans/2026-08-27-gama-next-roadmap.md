@@ -81,11 +81,15 @@ Create `ci/preserve-main-acceptance-runs` from current `main` and change `.githu
 
 ```yaml
 concurrency:
-  group: gama-${{ github.workflow }}-${{ github.ref }}
+  group: gama-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 ```
 
-This retains cancellation for superseded PR commits while allowing every `main` push run to finish.
+This retains cancellation for superseded PR commits while giving every non-PR
+run a unique group, so a later `main` push cannot cancel either an in-progress
+or a pending merge-SHA run. This refines the originally approved `github.ref`
+group after independent review identified GitHub's one-pending-run replacement
+behavior for shared concurrency groups.
 
 Keep `ASAN_OPTIONS=detect_leaks=0` for `swift test --sanitize address`. Do not reopen the closed broad `leak:XCTest` suppression branch: because all test allocations run beneath XCTest harness frames, that pattern lacks a negative-control proof that a real Gama leak would still fail.
 
