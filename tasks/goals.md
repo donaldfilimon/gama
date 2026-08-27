@@ -147,6 +147,26 @@ status: in_progress
   allowlist). Outcome: merged as PR #16 (acc2f88) 2026-08-27 06:11Z on a
   fully green six-job PR matrix (green-before-merge honored); post-merge
   main acceptance run 33044975550 also completed successfully.
+- Consolidation finalized (2026-08-27, Donald's "merge all branches into
+  main and delete old"): every branch's content is in main — scene-first
+  core + backend DocC catalogs + ledger sync via PR #19; my completion
+  work (test-migration stragglers and scene-surface docs) landed
+  independently on main before PR #20 could carry it, so #20 reduced to
+  the doc-coverage count-dedup fix plus PR #18's surviving docs delta.
+  Deleted after containment verification (ancestor or patch-equivalent):
+  remote+local docs/docc-member-coverage, fix/zstack-topleading-flatten,
+  fix/restore-modern-sweep-merge, feat/scene-first-core (PR #18 closed,
+  delta folded into #20), chore/swift-65-dev-refresh,
+  abbey/consolidate-gama-branches, plus five stale /private/tmp
+  worktrees. Post-#16 main acceptance: completed green. Honest residuals:
+  PR #19 was merged while its PR matrix was incomplete (pattern repeat),
+  and PR #20's auto-merge fired instantly because branch protection
+  requires PRs but does NOT mark the six acceptance jobs as required
+  status checks — auto-merge only waits on required checks. Marking
+  those jobs required is the settings fix (Donald's call). Post-#19 and
+  post-#20 main runs pending at ledger time — Current only when they
+  land green. Remaining branches: main and feat/apple-multiwindow-shell
+  (Remote Control session's active sub-project 3 slice 2).
 - Sub-projects 2 and 4 remain Proposed drafts under
   docs/superpowers/specs/drafts/ (plugin runtime + capability model; packaging
   & distribution). Sub-project 3 is approved and split into independently
