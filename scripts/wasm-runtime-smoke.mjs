@@ -57,16 +57,38 @@ const module = await WebAssembly.compile(fs.readFileSync(artifact));
 const instance = await WebAssembly.instantiate(module, imports);
 memory = instance.exports.memory;
 
-for (const name of ["gama_web_v1_frame", "gama_web_v1_key", "gama_web_v1_pointer", "gama_web_v1_resize"]) {
+for (const name of [
+  "gama_web_v1_frame", "gama_web_v1_key", "gama_web_v1_pointer", "gama_web_v1_resize",
+  "gama_web_v2_frame", "gama_web_v2_key", "gama_web_v2_pointer", "gama_web_v2_resize",
+]) {
   if (typeof instance.exports[name] !== "function") throw new Error(`missing export ${name}`);
 }
 
 instance.exports._start();
-instance.exports.gama_web_v1_resize(40, 8);
-instance.exports.gama_web_v1_key(7, 0, 0, 0);
-instance.exports.gama_web_v1_pointer(1, 1, 1);
-instance.exports.gama_web_v1_pointer(1, 1, 0);
-instance.exports.gama_web_v1_frame();
+const v1Results = [
+  instance.exports.gama_web_v1_resize(40, 8),
+  instance.exports.gama_web_v1_key(7, 0, 0, 0),
+  instance.exports.gama_web_v1_pointer(1, 1, 1),
+  instance.exports.gama_web_v1_pointer(1, 1, 0),
+  instance.exports.gama_web_v1_frame(),
+];
+if (v1Results.some((result) => result !== undefined)) {
+  throw new Error("gama_web_v1_* ABI must retain void WebAssembly results");
+}
+
+const v2Results = [
+  instance.exports.gama_web_v2_resize(40, 8),
+  instance.exports.gama_web_v2_key(7, 0, 0, 0),
+  instance.exports.gama_web_v2_pointer(1, 1, 1),
+  instance.exports.gama_web_v2_pointer(1, 1, 0),
+  instance.exports.gama_web_v2_frame(),
+];
+if (v2Results.some((result) => result !== 0)) {
+  throw new Error(`gama_web_v2_* accepted calls returned ${v2Results.join(",")}`);
+}
+if (instance.exports.gama_web_v2_key(999, 0, 0, 0) !== -2) {
+  throw new Error("gama_web_v2_key must reject unknown key codes with -2");
+}
 
 if (title !== "Gama") throw new Error(`unexpected title: ${title}; frames=${frameRequests}; html=${html.length}`);
 if (!html.includes("Gama Web")) throw new Error("rendered frame did not reach JavaScript host");
