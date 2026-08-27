@@ -23,7 +23,9 @@ struct AppleHostRuntimeTests {
     }
 
     private struct SecondApp: App {
-        var content: some View { Text("SECOND APP") }
+        var scenes: some Scene {
+            Window("Second", id: "second", role: .primary) { Text("SECOND APP") }
+        }
     }
 
     @Test("host builds, lays out, and invalidates a frame")
@@ -54,12 +56,12 @@ struct AppleHostRuntimeTests {
     }
 
     @Test("second install replaces the previous session")
-    func secondInstallReplacesPreviousSession() {
+    func secondInstallReplacesPreviousSession() throws {
         let view = GamaHostView(frame: NSRect(x: 0, y: 0, width: 420, height: 180))
-        view.install(app: SmokeApp())
+        try view.install(app: SmokeApp())
         view.layoutSubtreeIfNeeded()
         view.invalidate()
-        view.install(app: SecondApp())
+        try view.install(app: SecondApp())
         view.invalidate()
         #expect(
             view.currentDrawList.commands.contains { command in
