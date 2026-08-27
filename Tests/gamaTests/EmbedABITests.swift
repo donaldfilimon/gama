@@ -29,7 +29,7 @@ struct EmbedABITests {
         #expect(length >= 20)
         if let bytes {
             let frame = Array(UnsafeBufferPointer(start: bytes, count: Int(length)))
-            #expect(DrawList.decode(frame) != nil)
+            #expect(throws: Never.self) { try DrawList.decode(frame) }
         }
     }
 
@@ -48,7 +48,9 @@ struct EmbedABITests {
             #expect(bytes != nil, "round \(round) produced no frame")
             guard let bytes else { continue }
             let frame = Array(UnsafeBufferPointer(start: bytes, count: Int(length)))
-            #expect(DrawList.decode(frame) != nil, "round \(round) frame must decode")
+            #expect(throws: Never.self, "round \(round) frame must decode") {
+                try DrawList.decode(frame)
+            }
             #expect(frame.prefix(4) == [0x47, 0x41, 0x4D, 0x41])  // 'GAMA'
             previous = frame
         }

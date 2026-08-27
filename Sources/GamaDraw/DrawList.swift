@@ -93,7 +93,31 @@ public struct DrawList: Hashable, Sendable {
         return out
     }
 
-    public static func decode(_ bytes: [UInt8]) -> DrawList? {
+    /// Why ``decode(_:)`` rejected a payload — one case per distinct
+    /// wire-format violation, so embedding hosts can report the actual
+    /// fault instead of a bare nil.
+    public enum DecodeError: Error, Hashable, Sendable {
+        /// The payload ended before a complete header or command was read.
+        case truncated
+        /// The leading magic was not `GAMA`.
+        case badMagic
+        /// The header named a wire-format revision this decoder does not speak.
+        case unsupportedVersion(UInt32)
+        /// The grid dimensions were negative.
+        case negativeDimensions
+        /// The declared command count cannot fit in the remaining payload.
+        case commandCountOverflow
+        /// A command byte named an unknown kind.
+        case unknownCommandKind(UInt8)
+        /// A fill rect carried a negative width or height.
+        case negativeRect
+        /// A text payload was not valid UTF-8.
+        case invalidUTF8
+        /// Bytes remained after the declared command count was decoded.
+        case trailingBytes
+    }
+
+    public static func decode(_ bytes: [UInt8]) throws(DecodeError) -> DrawList {
         // The smallest possible command is a 17-byte fill. Bounding command
         // count by the payload prevents hostile headers from forcing a huge
         // reserve before any command bytes have been validated.
@@ -119,41 +143,50 @@ public struct DrawList: Hashable, Sendable {
             return flags & 1 != 0 ? .default : Color(r: r, g: g, b: b)
         }
 
-        guard u32() == 0x414D_4147, u32() == 1,
-            let w = i32(), let h = i32(), let count = u32(),
-            w >= 0, h >= 0,
-            bytes.count >= headerSize,
-            UInt64(count) <= UInt64((bytes.count - headerSize) / minimumCommandSize)
-        else { return nil }
+        guard let magic = u32() else { throw DecodeError.truncated }
+        guard magic == 0x414D_4147 else { throw DecodeError.badMagic }
+        guard let version = u32() else { throw DecodeError.truncated }
+        guard version == 1 else { throw DecodeError.unsupportedVersion(version) }
+        guard let w = i32(), let h = i32(), let count = u32() else {
+            throw DecodeError.truncated
+        }
+        guard w >= 0, h >= 0 else { throw DecodeError.negativeDimensions }
+        guard UInt64(count) <= UInt64((bytes.count - headerSize) / minimumCommandSize)
+        else { throw DecodeError.commandCountOverflow }
 
         var commands: [DrawCommand] = []
         commands.reserveCapacity(Int(count))
         for _ in 0..<count {
-            switch u8() {
+            guard let kind = u8() else { throw DecodeError.truncated }
+            switch kind {
             case 0:
                 guard let x = i32(), let y = i32(), let cw = i32(), let ch = i32(),
-                    let col = color(), cw >= 0, ch >= 0
-                else { return nil }
+                    let col = color()
+                else { throw DecodeError.truncated }
+                guard cw >= 0, ch >= 0 else { throw DecodeError.negativeRect }
                 commands.append(
                     .fillRect(
                         Rect(x: Int(x), y: Int(y), width: Int(cw), height: Int(ch)), col))
             case 1:
                 guard let x = i32(), let y = i32(),
                     let fg = color(), let bg = color(), let sgr = u16(),
-                    let len = u32(), UInt64(len) <= UInt64(bytes.count - i)
-                else { return nil }
+                    let len = u32()
+                else { throw DecodeError.truncated }
+                guard UInt64(len) <= UInt64(bytes.count - i) else {
+                    throw DecodeError.truncated
+                }
                 let payload = bytes[i..<(i + Int(len))]
-                guard Self.isValidUTF8(payload) else { return nil }
+                guard Self.isValidUTF8(payload) else { throw DecodeError.invalidUTF8 }
                 let text = String(decoding: payload, as: UTF8.self)
                 i += Int(len)
                 var style = TextStyle(foreground: fg, background: bg)
                 style.attributes = TextAttributes(rawValue: UInt8(truncatingIfNeeded: sgr))
                 commands.append(.text(text, at: Point(x: Int(x), y: Int(y)), style: style))
             default:
-                return nil
+                throw DecodeError.unknownCommandKind(kind)
             }
         }
-        guard i == bytes.count else { return nil }
+        guard i == bytes.count else { throw DecodeError.trailingBytes }
         return DrawList(size: Size(width: Int(w), height: Int(h)), commands: commands)
     }
 

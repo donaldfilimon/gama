@@ -639,7 +639,7 @@ struct DrawListTests {
     }
 
     @Test("binary round trip")
-    func binaryRoundTrip() {
+    func binaryRoundTrip() throws {
         var style = TextStyle(foreground: .red, background: .blue)
         style.attributes = [.bold, .underline]
         let original = DrawList(
@@ -651,19 +651,19 @@ struct DrawListTests {
                 .text("plain", at: Point(x: 0, y: 0), style: .plain),
             ]
         )
-        #expect(DrawList.decode(original.encode()) == original)
+        #expect(try DrawList.decode(original.encode()) == original)
     }
 
     @Test("decode rejects garbage")
     func decodeRejectsGarbage() {
-        #expect(DrawList.decode([]) == nil)
-        #expect(DrawList.decode([1, 2, 3, 4]) == nil)
+        #expect(throws: DrawList.DecodeError.truncated) { try DrawList.decode([]) }
+        #expect(throws: DrawList.DecodeError.badMagic) { try DrawList.decode([1, 2, 3, 4]) }
         var truncated = DrawList(
             size: Size(width: 1, height: 1),
             commands: [.text("x", at: Point(x: 0, y: 0), style: .plain)]
         ).encode()
         truncated.removeLast()
-        #expect(DrawList.decode(truncated) == nil)
+        #expect(throws: DrawList.DecodeError.truncated) { try DrawList.decode(truncated) }
     }
 }
 
