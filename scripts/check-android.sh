@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SDK="${GAMA_ANDROID_SDK_ID:-swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a_android}"
-SWIFT="${GAMA_SWIFT_64:-/Users/donaldfilimon/Library/Developer/Toolchains/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a.xctoolchain/usr/bin/swift}"
+SDK="${GAMA_ANDROID_SDK_ID:-swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a_android}"
+SWIFT="${GAMA_SWIFT_64:-/Users/donaldfilimon/Library/Developer/Toolchains/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a.xctoolchain/usr/bin/swift}"
 SCRATCH_ROOT="${GAMA_SCRATCH_ROOT:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}}"
 EMBED_SCRATCH="$SCRATCH_ROOT/gama-android-swiftpm"
 EMULATOR_SCRATCH="$SCRATCH_ROOT/gama-android-emulator-swiftpm"

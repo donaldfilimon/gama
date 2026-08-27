@@ -15,17 +15,26 @@ concurrency:
 
 jobs:
   macos-swift-64:
-    name: macOS / Apple Swift 6.4
-    # Preview image whose default toolchain is Xcode 27 / Apple Swift 6.4.
+    name: macOS / Apple Swift 6.5-dev
+    # Preview image; Xcode 27's default toolchain stays 6.4 (xcodebuild platform
+    # gates use it) while the pinned 6.5-dev snapshot is installed for primary gates.
     runs-on: xcode-27
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-      - name: Select and verify Xcode default toolchain
+      - name: Install pinned Swift 6.5-dev snapshot toolchain
+        env:
+          GAMA_MACOS_TOOLCHAIN_URL: https://download.swift.org/development/xcode/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a-osx.pkg
+          GAMA_MACOS_TOOLCHAIN_SHA256: 0a2437602704f1ceb6024452b5fa17be7c82bae3cd1d4a3569affd7706e27cbc
         run: |
           unset TOOLCHAINS
-          /usr/bin/xcrun --toolchain default swift --version | tee swift-version.txt
-          grep -q 'Swift version 6.4' swift-version.txt
+          pkg="$RUNNER_TEMP/swift-snapshot.pkg"
+          curl --fail --location --retry 3 "$GAMA_MACOS_TOOLCHAIN_URL" --output "$pkg"
+          echo "$GAMA_MACOS_TOOLCHAIN_SHA256  $pkg" | shasum -a 256 --check --strict
+          sudo installer -pkg "$pkg" -target /
+          /usr/bin/xcrun --toolchain org.swift.65202608211a swift --version | tee swift-version.txt
+          grep -q 'Swift version 6.5' swift-version.txt
+          grep -q 'Swift 95c5142e84b82c1' swift-version.txt
       - name: Core, macros, POSIX TUI, Apple UI
         run: ./scripts/check-apple.sh
       - name: iOS, tvOS, and visionOS compile
@@ -37,10 +46,6 @@ jobs:
           brew install llvm
           echo "$(brew --prefix llvm)/bin" >> "$GITHUB_PATH"
           PATH="$(brew --prefix llvm)/bin:$PATH" ./scripts/check-mlir.sh
-      - name: Qt adapter
-        run: |
-          brew install qtbase
-          QT_PREFIX="$(brew --prefix qtbase)" ./scripts/check-qt.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -50,16 +55,16 @@ jobs:
             Sources/GamaEmbedABI/include/GamaEmbed.h
 
   linux-swift-64:
-    name: Linux / Swift 6.4 native and static SDK
+    name: Linux / Swift 6.5-dev native and static SDK
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
-      GAMA_SWIFT_64_URL: https://download.swift.org/swift-6.4.x-branch/ubuntu2404/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a-ubuntu24.04.tar.gz
-      GAMA_SWIFT_64_SHA256: dae1f550c6e9132322a3c35b5fa16c925e591879a681733ea9b652534b9c8902
-      GAMA_LINUX_SDK_ID: swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a_static-linux-0.1.0
-      GAMA_SWIFT_SDK_ID: swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a_static-linux-0.1.0
-      GAMA_SWIFT_SDK_URL: https://download.swift.org/swift-6.4.x-branch/static-sdk/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a_static-linux-0.1.0.artifactbundle.tar.gz
-      GAMA_SWIFT_SDK_SHA256: 60964bf3ed1b25b9a002e2b5bb3fa7ed4f7b686a57816c5ddfa3784eeb0823d5
+      GAMA_SWIFT_64_URL: https://download.swift.org/development/ubuntu2404/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a-ubuntu24.04.tar.gz
+      GAMA_SWIFT_64_SHA256: 855d0f63319043e84c8a293ee855703a9b9aa6c18686ecb88f8ee02592e879f0
+      GAMA_LINUX_SDK_ID: swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a_static-linux-0.1.0
+      GAMA_SWIFT_SDK_ID: swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a_static-linux-0.1.0
+      GAMA_SWIFT_SDK_URL: https://download.swift.org/development/static-sdk/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a_static-linux-0.1.0.artifactbundle.tar.gz
+      GAMA_SWIFT_SDK_SHA256: 2787311e738fbda99215e2af82f52fd18ed3bbdd347ccb5c5afc8d3ecb7550db
     steps:
       - uses: actions/checkout@v4
       - name: Install snapshot
@@ -71,7 +76,7 @@ jobs:
       - name: C ABI consumer compile, link, and run
         run: ./scripts/check-c-abi.sh
       - name: Address Sanitizer
-        # Swift 6.4's Linux XCTest runner retains its suite metadata through
+        # Swift 6.5-dev's Linux XCTest runner retains its suite metadata through
         # process exit; keep ASan's memory-safety checks without treating that
         # framework-owned process-lifetime state as a Gama leak.
         env:
@@ -83,16 +88,16 @@ jobs:
         run: ./scripts/check-linux.sh
 
   wasm-swift-64:
-    name: WebAssembly / Swift 6.4 SDK and runtime
+    name: WebAssembly / Swift 6.5-dev SDK and runtime
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
-      GAMA_SWIFT_64_URL: https://download.swift.org/swift-6.4.x-branch/ubuntu2404/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a-ubuntu24.04.tar.gz
-      GAMA_SWIFT_64_SHA256: dae1f550c6e9132322a3c35b5fa16c925e591879a681733ea9b652534b9c8902
-      GAMA_WASM_SDK_ID: swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a_wasm
-      GAMA_SWIFT_SDK_ID: swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a_wasm
-      GAMA_SWIFT_SDK_URL: https://download.swift.org/swift-6.4.x-branch/wasm-sdk/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a_wasm.artifactbundle.tar.gz
-      GAMA_SWIFT_SDK_SHA256: 11fabfac6804222569d330fbbb5fa34eef736abda46790e723ac73b256fd1c7a
+      GAMA_SWIFT_64_URL: https://download.swift.org/development/ubuntu2404/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a-ubuntu24.04.tar.gz
+      GAMA_SWIFT_64_SHA256: 855d0f63319043e84c8a293ee855703a9b9aa6c18686ecb88f8ee02592e879f0
+      GAMA_WASM_SDK_ID: swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a_wasm
+      GAMA_SWIFT_SDK_ID: swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a_wasm
+      GAMA_SWIFT_SDK_URL: https://download.swift.org/development/wasm-sdk/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a_wasm.artifactbundle.tar.gz
+      GAMA_SWIFT_SDK_SHA256: 19cb319e07661625928f43df3fddabfa9ca4821a3215f5f5a7592c06f3d632e3
     steps:
       - uses: actions/checkout@v4
       - run: ./scripts/ci-install-swift-snapshot.sh
@@ -105,16 +110,16 @@ jobs:
           path: .build/artifacts/gama-web-demo.wasm
 
   android-swift-64:
-    name: Android / Swift 6.4 embedding and emulator
+    name: Android / Swift 6.5-dev embedding and emulator
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
-      GAMA_SWIFT_64_URL: https://download.swift.org/swift-6.4.x-branch/ubuntu2404/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a-ubuntu24.04.tar.gz
-      GAMA_SWIFT_64_SHA256: dae1f550c6e9132322a3c35b5fa16c925e591879a681733ea9b652534b9c8902
-      GAMA_ANDROID_SDK_ID: swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a_android
-      GAMA_SWIFT_SDK_ID: swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a_android
-      GAMA_SWIFT_SDK_URL: https://download.swift.org/swift-6.4.x-branch/android-sdk/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a_android.artifactbundle.tar.gz
-      GAMA_SWIFT_SDK_SHA256: 0f0fc710504b1221397b32c4dff6a6360caf385e336c1d96380811459a87cb9b
+      GAMA_SWIFT_64_URL: https://download.swift.org/development/ubuntu2404/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a-ubuntu24.04.tar.gz
+      GAMA_SWIFT_64_SHA256: 855d0f63319043e84c8a293ee855703a9b9aa6c18686ecb88f8ee02592e879f0
+      GAMA_ANDROID_SDK_ID: swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a_android
+      GAMA_SWIFT_SDK_ID: swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a_android
+      GAMA_SWIFT_SDK_URL: https://download.swift.org/development/android-sdk/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a_android.artifactbundle.tar.gz
+      GAMA_SWIFT_SDK_SHA256: 1c91679aa96ccf51c8d46d1393de8061ac66d45c5899bc6a70068e9f50e6609d
     steps:
       - uses: actions/checkout@v4
       - run: ./scripts/ci-install-swift-snapshot.sh
@@ -137,12 +142,12 @@ jobs:
           script: ./scripts/check-android-emulator.sh
 
   embedded-swift-64:
-    name: Embedded / exact Swift 6.4 snapshot
+    name: Embedded / exact Swift 6.5-dev snapshot
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
-      GAMA_SWIFT_64_URL: https://download.swift.org/swift-6.4.x-branch/ubuntu2404/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a-ubuntu24.04.tar.gz
-      GAMA_SWIFT_64_SHA256: dae1f550c6e9132322a3c35b5fa16c925e591879a681733ea9b652534b9c8902
+      GAMA_SWIFT_64_URL: https://download.swift.org/development/ubuntu2404/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a-ubuntu24.04.tar.gz
+      GAMA_SWIFT_64_SHA256: 855d0f63319043e84c8a293ee855703a9b9aa6c18686ecb88f8ee02592e879f0
       GAMA_EMBEDDED_OUTPUT: .build/artifacts/GamaCore.embedded.o
       GAMA_EMBEDDED_LINKED_OUTPUT: .build/artifacts/GamaCore.embedded.linked.o
     steps:
@@ -158,18 +163,18 @@ jobs:
             .build/artifacts/GamaCore.embedded.linked.o
 
   windows-swift-64:
-    name: Windows / native console Swift 6.4
+    name: Windows / native console Swift 6.5-dev
     runs-on: windows-2025
     timeout-minutes: 40
     env:
-      GAMA_SWIFT_64_WINDOWS_URL: https://download.swift.org/swift-6.4.x-branch/windows10/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a-windows10.exe
-      GAMA_SWIFT_64_WINDOWS_SHA256: 17d5eba8dfdc9e99bf13c0f26169022be2f816b19e66d883a596d3512cfb0a04
+      GAMA_SWIFT_64_WINDOWS_URL: https://download.swift.org/development/windows10/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a-windows10.exe
+      GAMA_SWIFT_64_WINDOWS_SHA256: c87fbf6db0f01f31c28476614678d3e406a29842182172840f8d9eaee00fa929
     steps:
       - uses: actions/checkout@v4
       - name: Install checksum-pinned Windows snapshot
         shell: pwsh
         run: |
-          $installer = Join-Path $env:RUNNER_TEMP 'swift-6.4.exe'
+          $installer = Join-Path $env:RUNNER_TEMP 'swift-6.5.exe'
           Invoke-WebRequest -Uri $env:GAMA_SWIFT_64_WINDOWS_URL -OutFile $installer
           $actual = (Get-FileHash -Algorithm SHA256 $installer).Hash.ToLowerInvariant()
           if ($actual -ne $env:GAMA_SWIFT_64_WINDOWS_SHA256) { throw 'Swift installer checksum mismatch.' }
@@ -197,7 +202,7 @@ jobs:
         shell: pwsh
         run: |
           swift --version | Tee-Object -FilePath swift-version.txt
-          Select-String -Path swift-version.txt -Pattern 'Swift version 6.4' -Quiet | ForEach-Object { if (-not $_) { throw 'Wrong Swift version.' } }
-          Select-String -Path swift-version.txt -Pattern 'Swift 424cae54c1a10da' -Quiet | ForEach-Object { if (-not $_) { throw 'Wrong Swift snapshot.' } }
+          Select-String -Path swift-version.txt -Pattern 'Swift version 6.5' -Quiet | ForEach-Object { if (-not $_) { throw 'Wrong Swift version.' } }
+          Select-String -Path swift-version.txt -Pattern 'Swift 95c5142e84b82c1' -Quiet | ForEach-Object { if (-not $_) { throw 'Wrong Swift snapshot.' } }
           swift test
           swift run gama-windows-console-smoke

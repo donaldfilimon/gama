@@ -20,4 +20,4 @@ echo "GAMA_SWIFT_64=$swift_bin" >> "${GITHUB_ENV:?GITHUB_ENV is required}"
 echo "GAMA_SWIFTC_64=$swift_dir/swiftc" >> "$GITHUB_ENV"
 "$swift_bin" --version | tee swift-version.txt
 grep -q 'Swift version 6.5' swift-version.txt
-grep -q 'Swift 424cae54c1a10da' swift-version.txt
+grep -q 'Swift 95c5142e84b82c1' swift-version.txt
