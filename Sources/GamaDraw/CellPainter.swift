@@ -62,7 +62,7 @@ public enum CellPainter {
                 title: title, in: frame, into: &buffer)
             for c in laid.children { draw(c, inheritedStyle: inheritedStyle, into: &buffer) }
 
-        case .stack, .overlay, .padding, .frame, .flexFrame, .interactive:
+        case .stack, .overlay, .group, .padding, .frame, .flexFrame, .interactive:
             for c in laid.children { draw(c, inheritedStyle: inheritedStyle, into: &buffer) }
         }
     }

@@ -31,7 +31,11 @@ public indirect enum RenderNode: Sendable {
     case empty
     case text(String, style: TextStyle)
     case stack(axis: Axis, spacing: Int, alignment: Alignment, children: [RenderNode])
-    case overlay(alignment: Alignment, children: [RenderNode])  // ZStack
+    /// Layered children of a ``ZStack``. Never used as a flatten sentinel.
+    case overlay(alignment: Alignment, children: [RenderNode])
+    /// ViewBuilder / ForEach flatten sentinel. Containers unpack this via
+    /// `flattenChildren`; it is not a ``ZStack``.
+    case group(children: [RenderNode])
     case spacer(minLength: Int)
     /// Axis-resolved rule: 1 cell on the enclosing stack's main axis,
     /// full length on the cross axis. Backends pick the glyph by aspect.

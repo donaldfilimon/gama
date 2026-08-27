@@ -124,9 +124,8 @@ public struct TupleView<each V: View>: View {
             children.append(view.render(in: context.child(index)))
             index += 1
         }
-        // A bare tuple flattens into its parent container; parents that
-        // stack extract `.overlay` children of this sentinel form.
-        return .overlay(alignment: .topLeading, children: children)
+        // A bare tuple flattens into its parent container via `.group`.
+        return .group(children: children)
     }
 }
 
@@ -152,8 +151,7 @@ public struct ForEachView<V: View>: View {
     public init(views: [V]) { self.views = views }
 
     public func render(in context: BuildContext) -> RenderNode {
-        .overlay(
-            alignment: .topLeading,
+        .group(
             children: views.enumerated().map { i, v in v.render(in: context.child(i)) }
         )
     }
@@ -172,8 +170,7 @@ where Data.Index == Int {
     }
 
     public func render(in context: BuildContext) -> RenderNode {
-        .overlay(
-            alignment: .topLeading,
+        .group(
             children: data.indices.map { i in
                 content(data[i]).render(in: context.child(i))
             }
@@ -201,8 +198,7 @@ where Data.Index == Int {
     }
 
     public func render(in context: BuildContext) -> RenderNode {
-        .overlay(
-            alignment: .topLeading,
+        .group(
             children: data.indices.map { index in
                 let element = data[index]
                 var childContext = context
@@ -214,9 +210,10 @@ where Data.Index == Int {
 }
 
 /// Flatten the tuple/forEach sentinel so containers get a plain child list.
+/// Only ``RenderNode/group(children:)`` unpacks; a ``ZStack`` overlay does not.
 @inlinable
 public func flattenChildren(_ node: RenderNode) -> [RenderNode] {
-    if case .overlay(alignment: .topLeading, let children) = node {
+    if case .group(let children) = node {
         return children.flatMap(flattenChildren)
     }
     if case .empty = node { return [] }

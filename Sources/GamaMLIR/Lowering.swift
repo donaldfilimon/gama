@@ -9,6 +9,7 @@
 //   "gama.text"       leaf; attrs: text, fg, bg, attrs-bitmask
 //   "gama.stack"      region; attrs: axis, spacing, halign, valign
 //   "gama.overlay"    region; attrs: halign, valign
+//   "gama.group"      region; ViewBuilder flatten sentinel
 //   "gama.spacer"     leaf;  attrs: min
 //   "gama.padding"    region; attrs: top/leading/bottom/trailing
 //   "gama.border"     region; attrs: style, title, fg
@@ -93,6 +94,11 @@ public enum GamaLowering {
             b.open("\"gama.overlay\"() ({")
             for c in children { emit(c, into: &b, frame: nil) }
             b.close("})\(renderAttrs(attrs)) : () -> ()")
+
+        case .group(let children):
+            b.open("\"gama.group\"() ({")
+            for c in children { emit(c, into: &b, frame: nil) }
+            b.close("})\(renderAttrs(frameAttrs)) : () -> ()")
 
         case .padding(let e, let child):
             let attrs: [(String, MLIRAttr)] =
@@ -212,6 +218,8 @@ public enum GamaLowering {
                     ("valign", .str(name(alignment.vertical))),
                 ]
             )
+        case .group:
+            region("group", [])
         case .padding(let e, _):
             region(
                 "padding",
