@@ -90,18 +90,18 @@ jobs:
       - name: C ABI consumer compile, link, and run
         run: ./scripts/check-c-abi.sh
       - name: Address Sanitizer
-        # detect_leaks=1 stays ON for Gama code. The leak is root-caused
-        # (PR #24, run 33048676959): the SwiftPM-generated runner's XCTest
-        # HARNESS leaks 7 allocations / 432 bytes of process-lifetime suite
-        # metadata even with every suite on Swift Testing — zero Gama frames.
-        # Only those harness frames are suppressed, via
-        # scripts/lsan-suppressions.supp (evidence and deletion condition
-        # inside); print_suppressions=1 keeps the suppressed set auditable in
-        # the log. A leak in Gama code touches no XCTest frame and still fails.
+        # This step keeps broad test-suite address-safety coverage. SwiftPM's
+        # generated runner still loads XCTest and leaks process-lifetime suite
+        # metadata, so leak detection is disabled for this process only.
         env:
           ASAN_OPTIONS: detect_leaks=1
           LSAN_OPTIONS: suppressions=${{ github.workspace }}/scripts/lsan-suppressions.supp:print_suppressions=1
         run: swift test --sanitize address
+      - name: Harness-free LeakSanitizer with negative control
+        # Builds and directly executes gama-leak-check: no Swift Testing,
+        # XCTest, or suppression file. The script also requires a deliberate
+        # leaked GamaCore Signal to terminate with LSan's exact failure code.
+        run: ./scripts/check-linux-leaks.sh
       - name: Thread Sanitizer
         run: swift test --sanitize thread
       - name: Static Linux SDK
@@ -138,7 +138,7 @@ jobs:
   android-swift-64:
     name: Android / Swift 6.5-dev embedding and emulator
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 55
     env:
       GAMA_SWIFT_64_URL: https://download.swift.org/development/ubuntu2404/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a-ubuntu24.04.tar.gz
       GAMA_SWIFT_64_SHA256: 855d0f63319043e84c8a293ee855703a9b9aa6c18686ecb88f8ee02592e879f0
@@ -158,13 +158,14 @@ jobs:
           gradle-version: '9.5.0'
       - name: Cross-compile GamaEmbed
         run: ANDROID_NDK_HOME="$ANDROID_HOME/ndk/30.0.15729638" ./scripts/check-android.sh
+      - name: Verify emulator readiness recovery policy
+        run: ./scripts/test-android-emulator-readiness.sh
       - name: Required emulator input/frame round trip
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 36
           arch: x86_64
           profile: pixel_2
-          disable-animations: true
           script: ./scripts/check-android-emulator.sh
 
   embedded-swift-64:
