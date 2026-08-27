@@ -45,7 +45,7 @@ public enum LayoutEngine {
                 height: proposal.height.map { max(0, $0 - 2) }
             )
             let c = measure(child, proposal: inner)
-            let titleWidth = title.map { TextLayout.displayWidth(of: $0) + 4 } ?? 0
+            let titleWidth = BorderTitleLayout.minimumWidth(for: title)
             return Size(width: max(c.width + 2, titleWidth), height: c.height + 2)
 
         case .background(_, let child), .styled(_, let child),

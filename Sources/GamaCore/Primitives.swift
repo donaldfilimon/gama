@@ -537,10 +537,9 @@ public struct _Bordered<Content: View>: View {
     public var style: BorderStyle
     /// Color and attributes the frame glyphs are drawn with.
     public var textStyle: TextStyle
-    /// Optional caption. The measure pass reserves `displayWidth + 4`
-    /// cells for it, but the painter draws it only when the laid-out frame
-    /// is strictly wider than that; at exactly the natural width the
-    /// reserved top-edge space stays blank.
+    /// Optional caption. A non-empty title reserves its Unicode display
+    /// width plus four cells: two corners and one padding cell on each side.
+    /// The painter accepts that exact natural width.
     public var title: String?
     /// The wrapped view; laid out inset by one cell on every edge.
     public var content: Content

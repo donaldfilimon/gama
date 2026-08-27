@@ -127,8 +127,10 @@
 - [x] P1: ZStack(.topLeading) flatten sentinel — fixed via `RenderNode.group`
       (View.swift flattenChildren / TupleView / ForEach). Regression in
       BuilderTests.zStackTopLeadingLayersInsteadOfFlattening.
-- [x] Border title: paint uses `>= displayWidth+4` and places `" title "`
-      at minX+1 so a natural-size title is visible (BorderTitleTests).
+- [x] Border title: measurement and paint share the non-empty
+      `displayWidth+4` minimum; natural ASCII/Unicode captions fill their
+      reserved top edge, while an empty caption adds no padding
+      (BorderTitleTests).
 - [x] Divider orientation follows the containing stack axis; a 1×1 HStack
       Divider paints `│` (DividerAxisTests).
 - [x] TextField consumes C0/DEL `.character` events (including embed) and
