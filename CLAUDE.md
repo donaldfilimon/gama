@@ -226,9 +226,10 @@ only merge after required checks are green. Design specs live in
 the running goal ledger is `tasks/goals.md` + `tasks/todo.md`.
 
 Before changing a backend or a settled design, read its record rather than
-re-deriving it: `docs/README.md` is the index, `docs/adr/` holds the seven
+re-deriving it: `docs/README.md` is the index, `docs/adr/` holds the nine
 decision records (own-the-rendering, toolchain pinning, Swift-Testing-only,
-signal confinement, DrawList wire format, noncopyable hosts, frame pumps),
+signal confinement, DrawList wire format, noncopyable hosts, frame pumps,
+one-pump eager resize, Signal-is-not-Sendable),
 `docs/Plugins.md` defines the plugin tiers and capability model,
 `docs/backends/<Backend>.md` the per-backend guides, and
 `Sources/GamaCore/GamaCore.docc/` the symbol-level articles built by
