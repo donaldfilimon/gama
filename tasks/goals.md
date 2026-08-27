@@ -220,3 +220,12 @@ status: in_progress
   remaining Slice C items as gated slices. Scheduled as wave 2 behind the
   plugin-runtime, packaging, and DocC-catalog branches to avoid GamaCore
   merge conflicts.
+- Wave-2 structural designs authored (2026-08-27): frame-pump unification
+  (HostPump, eager resize policy, per-backend migration slices; supersedes
+  ADR 0007 when implemented) and the Signal redesign (non-Sendable with
+  unavailable conformance, sending transfer, App drops Sendable; supersedes
+  ADR 0004 when implemented). Specs:
+  docs/superpowers/specs/2026-08-27-frame-pump-unification-design.md,
+  docs/superpowers/specs/2026-08-27-signal-redesign-design.md.
+  Implementation waits for the wave-1 branches (plugin runtime, packaging,
+  DocC catalogs) to land.
