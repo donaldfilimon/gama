@@ -115,6 +115,16 @@ status: in_progress
   the stale ZStack/TupleView flattening prose. Duplicate repair PR #15
   closed unmerged; its unique Hashable compile test folded into the docs
   overhaul PR.
+- Scene-first core (2026-08-27): the approved app-shell design is implemented
+  on `feat/scene-first-core` as the second delivery slice. The source-breaking
+  `App.content` migration, explicit primary-scene validation, typed group
+  payloads/actions, lifecycle events, non-generic closure-backed `FrameHost`,
+  single-surface backend migration, and Embedded-safe payload erasure are
+  locally proven: pinned Apple debug/release plus 108 Swift Testing cases,
+  iOS/tvOS/visionOS compile, boundaries, zero-undocumented-public-API DocC,
+  C ABI, Embedded, Linux SDK, WASM browser/runtime, and MLIR gates are green.
+  Android is locally blocked only by the absent NDK; do not mark this slice
+  complete until its pull request and post-merge six-job matrices are green.
 - Docs overhaul (2026-08-27, Donald's /plan approved): executed in six
   phases on docs/claim-honesty — claim-honesty (gama.group now test-
   proven; Capabilities status vocabulary; non-tautological check-docs
@@ -124,9 +134,9 @@ status: in_progress
   dialect reference + docs index + ADRs 0001-0007, and the deterministic
   check-doc-coverage.sh gate wired into check.sh and CI (empty
   allowlist). Merge only on a green matrix.
-- Sub-projects 2-4 Proposed: drafts written and committed under
-  docs/superpowers/specs/drafts/ (plugin runtime + capability model; app
-  shell/windowing/lifecycle; packaging & distribution). Each is DRAFT ONLY —
-  no code, no approval — and ends with open questions Donald must decide
-  before its spec is finalized. Foundation spec:
+- Sub-projects 2 and 4 remain Proposed drafts under
+  docs/superpowers/specs/drafts/ (plugin runtime + capability model; packaging
+  & distribution). Sub-project 3 is approved and split into independently
+  green scene-core/migration and macOS-shell deliveries; only its first slice
+  is implemented locally at this point. Foundation spec:
   docs/superpowers/specs/2026-08-26-gama-umbrella-foundation-design.md
