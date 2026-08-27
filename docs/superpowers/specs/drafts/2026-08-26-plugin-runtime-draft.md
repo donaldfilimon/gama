@@ -1,5 +1,11 @@
 # Gama umbrella — plugin runtime + capability model (sub-project 2) — DRAFT
 
+> **SUPERSEDED 2026-08-27** by
+> `../2026-08-27-plugin-runtime-design.md` (approved). Donald resolved the
+> open questions: first-party `GamaPlatformServices` in V1; full
+> contribution surface (slots + scenes + commands); Tier-1 honesty stance
+> retained. This draft is kept for rationale and rejected alternatives.
+
 Date: 2026-08-26. Status: **draft for review — every design element below is
 Proposed unless explicitly marked as existing code.** Nothing here is
 implemented; no file in the repository changes with this document.

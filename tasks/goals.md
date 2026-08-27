@@ -191,3 +191,26 @@ status: in_progress
   gates, hosted PR proof, post-merge proof, and the supplemental manual Dock/
   Command-Q smoke remain separate acceptance layers; do not mark the shell
   shipped until the required automated layers are green.
+- Consolidation complete + specs finalized (2026-08-27, Donald's "merge all
+  into main / finish all" session): PRs #20 (doc-coverage count), #21
+  (macOS shell + gama-apple-demo), and #22 (ledger) merged; local main ==
+  origin/main (afbb5c1); the two /private/tmp shell/consolidate worktrees
+  are gone and no branch content remains outside main. Honest residual:
+  PR #21 merged with four of six acceptance jobs still pending (Embedded +
+  WASM green at merge); the post-#21 main run was superseded/cancelled, so
+  main's hosted proof rides on the post-#22 acceptance run 33048024225 —
+  record its conclusion here. A local union gate (main + both branches:
+  119 tests / 32 suites green, apple + boundaries + docs) provides the
+  local layer.
+- Sub-projects 2 and 4 APPROVED (2026-08-27): Donald resolved all open
+  questions via decision prompt — first-party GamaPlatformServices in
+  plugin V1 (.filesystem real); full contribution surface (slots + scenes +
+  commands) in plugin V1; com.donaldfilimon.gama.* confirmed with a
+  Developer ID cert in hand (release-macos.sh is real V1 scope);
+  wasm-site and .app packaging slices proceed in parallel on the
+  scene-first shell's gama-apple-demo payload; Distribution/ manifest
+  lands now. Approved specs:
+  docs/superpowers/specs/2026-08-27-plugin-runtime-design.md and
+  docs/superpowers/specs/2026-08-27-packaging-design.md (drafts annotated
+  SUPERSEDED, kept for rationale). Implementation proceeds in gated
+  slices; green-before-merge is the rule each slice must actually honor.
