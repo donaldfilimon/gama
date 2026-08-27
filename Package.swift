@@ -161,7 +161,8 @@ let package = Package(
                 "Gama", "GamaCore", "GamaMacros", "GamaMLIR",
                 "GamaTUI", "GamaDraw", "GamaEmbed", "GamaMacrosImpl",
                 "GamaAppleUI", "GamaWASM",
-                .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax")
+                .product(name: "SwiftSyntaxMacroExpansion", package: "swift-syntax"),
+                .product(name: "SwiftSyntaxMacrosGenericTestSupport", package: "swift-syntax")
             ],
             path: "Tests/gamaTests",
             swiftSettings: strictCore

@@ -1,7 +1,4 @@
-//  ModernTests.swift — Swift Testing suites (swift-testing ships with
-//  Swift 6 toolchains; runs alongside XCTest under `swift test`).
-
-#if canImport(Testing)
+//  ModernTests.swift — Swift Testing suites for DrawList codec and painter.
 
 import Testing
 
@@ -193,5 +190,3 @@ struct PainterVectorizeSuite {
                 == .zero)
     }
 }
-
-#endif  // canImport(Testing)

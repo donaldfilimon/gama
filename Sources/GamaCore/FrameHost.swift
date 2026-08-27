@@ -5,6 +5,9 @@
 //  own event sources. One implementation of focus, actions, and dirty
 //  tracking — identical behavior on every platform.
 
+/// Action tables for one `FrameHost`. `@unchecked Sendable` because GamaCore
+/// cannot import Synchronization; the store is confined to the host's owning
+/// executor and is never shared across concurrent hosts.
 private final class HostActionStore: @unchecked Sendable {
     var actions: [NodeID: @Sendable () -> Void] = [:]
     var keyHandlers: [NodeID: @Sendable (Key) -> Bool] = [:]

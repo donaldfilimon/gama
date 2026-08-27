@@ -1,4 +1,4 @@
-#if os(Windows) && canImport(Testing)
+#if os(Windows)
 
 import Testing
 import GamaCore
