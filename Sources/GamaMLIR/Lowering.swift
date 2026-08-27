@@ -9,6 +9,7 @@
 //   "gama.text"       leaf; attrs: text, fg, bg, attrs-bitmask
 //   "gama.stack"      region; attrs: axis, spacing, halign, valign
 //   "gama.overlay"    region; attrs: halign, valign
+//   "gama.group"      region; ViewBuilder flatten sentinel
 //   "gama.spacer"     leaf;  attrs: min
 //   "gama.padding"    region; attrs: top/leading/bottom/trailing
 //   "gama.border"     region; attrs: style, title, fg
@@ -94,6 +95,11 @@ public enum GamaLowering {
             for c in children { emit(c, into: &b, frame: nil) }
             b.close("})\(renderAttrs(attrs)) : () -> ()")
 
+        case .group(let children):
+            b.open("\"gama.group\"() ({")
+            for c in children { emit(c, into: &b, frame: nil) }
+            b.close("})\(renderAttrs(frameAttrs)) : () -> ()")
+
         case .padding(let e, let child):
             let attrs: [(String, MLIRAttr)] =
                 [
@@ -158,7 +164,7 @@ public enum GamaLowering {
         case .interactive(let id, let focusable, let child):
             let attrs: [(String, MLIRAttr)] =
                 [
-                    ("id", .i64(Int(bitPattern: UInt(truncatingIfNeeded: id.raw)))),
+                    ("id", .i64(Int64(bitPattern: id.raw))),
                     ("focusable", .bool(focusable)),
                 ] + frameAttrs
             b.open("\"gama.interactive\"() ({")
@@ -212,6 +218,8 @@ public enum GamaLowering {
                     ("valign", .str(name(alignment.vertical))),
                 ]
             )
+        case .group:
+            region("group", [])
         case .padding(let e, _):
             region(
                 "padding",
@@ -259,7 +267,7 @@ public enum GamaLowering {
             region(
                 "interactive",
                 [
-                    ("id", .i64(Int(bitPattern: UInt(truncatingIfNeeded: id.raw)))),
+                    ("id", .i64(Int64(bitPattern: id.raw))),
                     ("focusable", .bool(focusable)),
                 ]
             )

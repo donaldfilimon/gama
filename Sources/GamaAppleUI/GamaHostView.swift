@@ -37,17 +37,22 @@ import GamaDraw
 /// compiler rather than convention.
 @MainActor
 public final class GamaHostView: GamaPlatformView {
-    private var driver: (() -> Void)?  // erased frame pump
-    private var invalidateHost: (() -> Void)?
-    private var handleEvent: ((InputEvent) -> Void)?
+    // Closure types carry explicit @MainActor so the isolation contract
+    // survives any refactor that moves them off this class.
+    private var driver: (@MainActor () -> Void)?  // erased frame pump
+    private var invalidateHost: (@MainActor () -> Void)?
+    private var handleEvent: (@MainActor (InputEvent) -> Void)?
+    /// Cancels the current session's model subscriptions; called before a
+    /// second `install` replaces the session wholesale.
+    private var tearDownSession: (@MainActor () -> Void)?
     /// Most recently rendered shared draw list, exposed read-only for host
     /// accessibility adapters, diagnostics, and runtime smoke validation.
     public private(set) var currentDrawList = DrawList(size: Size(width: 0, height: 0))
 
     private let font = PlatformFont.monospacedSystemFont(ofSize: 14, weight: .regular)
     private var cellSize: CGSize = .zero
-    private var defaultForeground: PlatformColor = .white
-    private var defaultBackground: PlatformColor = .black
+    private let defaultForeground: PlatformColor = .white
+    private let defaultBackground: PlatformColor = .black
 
     // MARK: Init
 
@@ -105,7 +110,14 @@ public final class GamaHostView: GamaPlatformView {
         // implicitly share Swift's promoted capture storage for two loose
         // `var`s — makes the shared ownership visible at the call site
         // and keeps it intact if either closure is ever hoisted out.
+        // A second install replaces the previous session wholesale; cancel
+        // its model subscriptions instead of silently orphaning them.
+        tearDownSession?()
+
         let session = Session<A>(app: app, size: gridSize())
+        tearDownSession = {
+            session.host.cancelSubscriptions()
+        }
 
         driver = { [weak self] in
             guard let self else { return }
@@ -187,7 +199,7 @@ public final class GamaHostView: GamaPlatformView {
         /// window, so keys flow without an extra click.
         public override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            if window != nil { window?.makeFirstResponder(self) }
+            _ = window?.makeFirstResponder(self)
         }
     #else
         /// Forwards each UIKit layout pass to the host as a `.resize`
@@ -272,7 +284,9 @@ public final class GamaHostView: GamaPlatformView {
         var f = PlatformFont.monospacedSystemFont(ofSize: font.pointSize, weight: weight)
         if style.attributes.contains(.italic) {
             #if canImport(AppKit)
-                f = NSFontManager.shared.convert(f, toHaveTrait: .italicFontMask)
+                // NSFontDescriptor, not the legacy NSFontManager singleton.
+                let d = f.fontDescriptor.withSymbolicTraits(.italic)
+                f = NSFont(descriptor: d, size: f.pointSize) ?? f
             #else
                 if let d = f.fontDescriptor.withSymbolicTraits(.traitItalic) {
                     f = UIFont(descriptor: d, size: f.pointSize)

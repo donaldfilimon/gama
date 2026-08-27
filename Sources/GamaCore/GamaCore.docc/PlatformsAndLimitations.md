@@ -13,7 +13,10 @@ stays `swift-tools-version: 6.4`. Windows is a second, deliberate exception:
 swift.org has published no Windows main-development snapshot since May 20,
 2026, so that job stays on the proven `release/6.4.x` August 14, 2026 snapshot
 and is not verified on 6.5-dev. URLs, revisions, IDs, and SHA-256 values are
-pinned in `Toolchains.toml`.
+pinned in `Toolchains.toml`. Everyday builds use `swiftly run` (see
+`docs/Toolchain.md`). Tests are Swift Testing only (`docs/Testing.md`).
+`scripts/check-toolchain-pins.sh` fails if CI or check-script defaults
+drift from `Toolchains.toml`.
 
 The dated Android Swift runtime requires the libc++ ABI in Android NDK
 30.0.15729638 (an NDK 30 release candidate). That revision is pinned across the

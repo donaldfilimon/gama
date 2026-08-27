@@ -48,9 +48,13 @@ public final class TUIRenderer: Renderer {
     /// before `begin()` or after a previous `end()`.
     public func end() throws(TerminalError) {
         guard began else { return }
+        // Clear the session even when close() throws (dead PTY): a wedged
+        // renderer must not keep writing to an already-restored terminal.
+        defer {
+            session = nil
+            began = false
+        }
         try session?.close()
-        session = nil
-        began = false
     }
 
     /// Paints `root` into the back buffer — resizing it first if the

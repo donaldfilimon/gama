@@ -26,10 +26,13 @@ the foundation the later work builds on.
 5. **Toolchain: swiftly `main-snapshot-2026-08-21`** (Apple Swift 6.5-dev,
    toolchain id `org.swift.65202608211a`), pinned in `.swift-version`.
    Manifest stays tools-version 6.4 (Xcode's SwiftPM must still resolve it
-   for xcodebuild platform gates; nothing needs 6.5 grammar). Spike-verified 2026-08-26: full build + 18 tests /
-   6 suites pass, macros included, existing swift-syntax pin unchanged.
-   The pin bumps only deliberately (a needed compiler feature or fix), and
-   local + CI move together.
+   for xcodebuild platform gates; nothing needs 6.5 grammar). Spike-verified
+   2026-08-26: full build + tests, macros included, existing swift-syntax
+   pin unchanged. Re-verified 2026-08-27: Swift Testing only (82 tests /
+   23 suites on Apple 6.5-dev).
+   Everyday invocation is `swiftly run` (reads `.swift-version`). The pin
+   bumps only deliberately (a needed compiler feature or fix), and local +
+   CI move together. Tests are Swift Testing only.
 
 ## Sub-project decomposition (later specs)
 

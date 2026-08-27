@@ -146,13 +146,64 @@ public enum BorderStyle: Hashable, Sendable {
     case ascii
 
     /// (topLeft, top, topRight, left, right, bottomLeft, bottom, bottomRight)
-    public var glyphs: (Character, Character, Character, Character, Character, Character, Character, Character) {
+    public var glyphs: BorderGlyphs {
         switch self {
-        case .single: return ("┌", "─", "┐", "│", "│", "└", "─", "┘")
-        case .double: return ("╔", "═", "╗", "║", "║", "╚", "═", "╝")
-        case .rounded: return ("╭", "─", "╮", "│", "│", "╰", "─", "╯")
-        case .heavy: return ("┏", "━", "┓", "┃", "┃", "┗", "━", "┛")
-        case .ascii: return ("+", "-", "+", "|", "|", "+", "-", "+")
+        case .single:
+            return BorderGlyphs(
+                topLeft: "┌", top: "─", topRight: "┐", left: "│",
+                right: "│", bottomLeft: "└", bottom: "─", bottomRight: "┘")
+        case .double:
+            return BorderGlyphs(
+                topLeft: "╔", top: "═", topRight: "╗", left: "║",
+                right: "║", bottomLeft: "╚", bottom: "═", bottomRight: "╝")
+        case .rounded:
+            return BorderGlyphs(
+                topLeft: "╭", top: "─", topRight: "╮", left: "│",
+                right: "│", bottomLeft: "╰", bottom: "─", bottomRight: "╯")
+        case .heavy:
+            return BorderGlyphs(
+                topLeft: "┏", top: "━", topRight: "┓", left: "┃",
+                right: "┃", bottomLeft: "┗", bottom: "━", bottomRight: "┛")
+        case .ascii:
+            return BorderGlyphs(
+                topLeft: "+", top: "-", topRight: "+", left: "|",
+                right: "|", bottomLeft: "+", bottom: "-", bottomRight: "+")
         }
+    }
+}
+
+/// The eight box-drawing characters of one ``BorderStyle``, named by
+/// position (the old unlabeled 8-tuple forced positional destructuring).
+public struct BorderGlyphs: Hashable, Sendable {
+    /// Top-left corner character.
+    public let topLeft: Character
+    /// Horizontal run along the top edge.
+    public let top: Character
+    /// Top-right corner character.
+    public let topRight: Character
+    /// Vertical run along the left edge.
+    public let left: Character
+    /// Vertical run along the right edge.
+    public let right: Character
+    /// Bottom-left corner character.
+    public let bottomLeft: Character
+    /// Horizontal run along the bottom edge.
+    public let bottom: Character
+    /// Bottom-right corner character.
+    public let bottomRight: Character
+
+    /// Creates a glyph set; positions follow reading order.
+    public init(
+        topLeft: Character, top: Character, topRight: Character, left: Character,
+        right: Character, bottomLeft: Character, bottom: Character, bottomRight: Character
+    ) {
+        self.topLeft = topLeft
+        self.top = top
+        self.topRight = topRight
+        self.left = left
+        self.right = right
+        self.bottomLeft = bottomLeft
+        self.bottom = bottom
+        self.bottomRight = bottomRight
     }
 }

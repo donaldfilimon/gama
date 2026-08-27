@@ -17,6 +17,26 @@ explicitly via `xcrun --toolchain org.swift.65202608211a`. This repository is
 the machine-wide exception to the "Xcode default toolchain" rule. Do not weaken
 or skip a required cross-platform gate to make the matrix green.
 
+**Run the codebase through swiftly.** For ad-hoc builds, runs, and tests use
+`swiftly run swift <build|run|test|…>` from the repo root: swiftly reads
+`.swift-version` and selects the pinned `main-snapshot-2026-08-21` toolchain
+automatically, so it is equivalent to the scripts' explicit `xcrun
+--toolchain` pin without hardcoding the toolchain id.
+
+```bash
+unset TOOLCHAINS
+swiftly run swift build
+swiftly run swift run gama-demo
+swiftly run swift test --scratch-path /private/tmp/gama-framework-swiftpm
+```
+
+`swift test` still needs the `--scratch-path` outside iCloud (see below).
+Verify identity with `swiftly run swift --version` (must report 6.5-dev).
+
+Tests are Swift Testing only (`import Testing`). Do not add XCTest. See
+`docs/Testing.md`. Pin authority is `Toolchains.toml`;
+`scripts/check-toolchain-pins.sh` fails on drift.
+
 This checkout lives under iCloud-managed `~/Desktop`: run `swift test` only
 through the check scripts or with `--scratch-path` outside iCloud, and never
 run `git gc`, `git prune`, `git fsck`, or `git repack` here.

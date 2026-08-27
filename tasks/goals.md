@@ -74,6 +74,34 @@ status: in_progress
   0 failures; `check-docs.sh` zero-warning gate green. CLAUDE.md expanded into
   the full operational guide and opened as PR #8
   (docs/claude-md-operational-guide branch).
+- Post-merge matrix for PR #9 (toolchain-accuracy sweep): Android emulator
+  job failed once with an adb "Broken pipe" APK-install infra flake
+  (PR #9's CI changes were cosmetic renames, nowhere near the Android
+  path); rerun succeeded 2026-08-26 22:19 — matrix fully green on main.
+- DocC member coverage (2026-08-26 evening, goal-loop session): GamaCore
+  (all ten files), GamaTUI, and GamaAppleUI now have zero undocumented
+  public declarations — four comments-only commits (782 insertions, 0
+  deletions), each verified by check-docs.sh (slice 4 also by a full pinned
+  swift build), authored in worktree /private/tmp/gama-docc-wt. Open as
+  PR #10; merge only when its matrix is green.
+- Modern-Swift practices sweep (started 2026-08-27, Donald's request via
+  /plan then /goal continue): three parallel audits of the whole package
+  (portable core; backends; tests/macros/build config) produced a ranked
+  modernization backlog — granular checklist under "Modern-Swift sweep" in
+  tasks/todo.md. Executing in small gated slices on a topic branch; PR #10
+  (DocC member coverage) must merge first for GamaCore/TUI/AppleUI files
+  (its Android emulator job flaked with the same adb-offline infra failure
+  as PR #9; rerun started 2026-08-27 ~00:15).
+- Swift Testing globally (Donald, 2026-08-27): every XCTest suite moved to
+  Swift Testing. Macro expansion uses SwiftSyntaxMacrosGenericTestSupport
+  (no XCTest). Invocation is `swiftly run`. Pin-consistency gate added.
+  `ZStack(.topLeading)` no longer flattens into parent stacks (group
+  sentinel). Docs expanded: `docs/Testing.md`, `docs/Toolchain.md`,
+  Capabilities remaining-column honesty, GamaCore DocC Testing article.
+  Do not mark this umbrella goal done; sub-projects 2–4 remain Proposed.
+- Swiftly-run convention (Donald, 2026-08-27): agents run the codebase
+  with `unset TOOLCHAINS` then `swiftly run swift <build|run|test|…>`.
+  Recorded in AGENTS.md, CLAUDE.md, README.md, docs/Toolchain.md.
 - Sub-projects 2-4 Proposed: drafts written and committed under
   docs/superpowers/specs/drafts/ (plugin runtime + capability model; app
   shell/windowing/lifecycle; packaging & distribution). Each is DRAFT ONLY —

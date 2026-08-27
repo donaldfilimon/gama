@@ -101,7 +101,10 @@ public indirect enum RenderNode: Sendable {
         case .padding(_, let c), .border(_, _, _, let c), .background(_, let c),
              .styled(_, let c), .interactive(_, _, let c):
             return c.flexPriority
-        default: return .fixed
+        // Exhaustive on purpose: a new case must choose its flex behavior
+        // here instead of silently inheriting `.fixed`.
+        case .empty, .text, .stack, .overlay, .group, .divider, .frame:
+            return .fixed
         }
     }
 }
@@ -125,10 +128,29 @@ public struct LaidOutNode: Sendable {
     }
 
     /// Depth-first visit of interactive nodes in visual order.
-    public func collectInteractive(into out: inout [(NodeID, Rect, focusable: Bool)]) {
+    public func collectInteractive(into out: inout [InteractiveRegion]) {
         if case .interactive(let id, let focusable, _) = node {
-            out.append((id, frame, focusable))
+            out.append(InteractiveRegion(id: id, frame: frame, isFocusable: focusable))
         }
         for c in children { c.collectInteractive(into: &out) }
     }
 }
+
+/// One interactive node of a laid-out frame: the hit-test/focus record
+/// produced by ``LaidOutNode/collectInteractive(into:)``.
+public struct InteractiveRegion: Hashable, Sendable {
+    /// The stable identity backends route key and pointer events by.
+    public let id: NodeID
+    /// The node's absolute frame in grid cells.
+    public let frame: Rect
+    /// Whether the node participates in keyboard focus order.
+    public let isFocusable: Bool
+
+    /// Creates a region record.
+    public init(id: NodeID, frame: Rect, isFocusable: Bool) {
+        self.id = id
+        self.frame = frame
+        self.isFocusable = isFocusable
+    }
+}
+

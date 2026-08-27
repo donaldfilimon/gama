@@ -30,7 +30,7 @@ guard GetConsoleMode(input, &restoredInput), GetConsoleMode(output, &restoredOut
     restoredInput == originalInput, restoredOutput == originalOutput,
     GetConsoleOutputCP() == originalCodePage
 else { fatalError("console mode/code-page restoration mismatch") }
-if allocated { FreeConsole() }
+if allocated { _ = FreeConsole() }
 print("OK — native Windows console raw mode, UTF-8/VT setup, and restoration")
 #else
 print("gama-windows-console-smoke is a native Windows acceptance executable")

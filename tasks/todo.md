@@ -24,12 +24,110 @@
       (GamaCore 60/364, GamaTUI 2/34, GamaAppleUI 2/26). Pattern: type- and
       algorithm-level docs exist; member-level (properties, inits, methods)
       are mostly bare. Author them module by module, starting with GamaCore.
+      CLAIMED 2026-08-26 21:53 by the goal-loop session; working in worktree
+      /private/tmp/gama-docc-wt on branch docs/docc-member-coverage to keep
+      the shared checkout clean. Slice 1 DONE 22:00: Primitives (139→0
+      undocumented), View (58→0), Geometry (50→0); comments-only (389+/0-),
+      check-docs.sh green; PR #10 open, merge only when its matrix is green.
+      Slices 2+3 DONE 22:11 (0bddca1 Style/State/RenderNode 148+, aae753a
+      Runtime/FrameHost/Layout/TextLayout 95+): GamaCore now has ZERO
+      undocumented public declarations across all ten files (single-line
+      multi-case enum rows deliberately left unsplit); every slice verified
+      comments-only and check-docs.sh green; pushed to PR #10.
+      Slice 4 DONE 22:19 (1f9f3b3, 150+): GamaTUI and GamaAppleUI at zero
+      undocumented public decls; gated by check-docs.sh AND a full pinned
+      swift build (compiles both targets); Windows docs stay claim-honest.
+      All four slices pushed to PR #10 — remaining action: merge PR #10 when
+      its matrix is green, then mark this item done.
 - [ ] DocC catalogs exist only for GamaCore (7 articles); GamaDraw and the
       backends have none. Adding catalogs requires extending check-docs.sh,
       which hardcodes the GamaCore symbol-graph/catalog paths.
 - [ ] check-docs.sh's Capabilities.md grep is tautological (matches the
       table header "Current evidence"); tighten if a stronger claim-honesty
       check is wanted.
+
+## Swift 6.5-dev refresh (2026-08-27)
+- [x] Pin-consistency gate: `scripts/check-toolchain-pins.sh` fails if CI,
+      check-script defaults, or `.swift-version` drift from Toolchains.toml
+- [x] Everyday invocation: `swiftly run` documented in AGENTS.md / CLAUDE.md /
+      README.md / docs/Toolchain.md
+- [x] XCTest → Swift Testing globally (gamaTests, AppleHost, POSIX, macros)
+- [x] Macro tests: SwiftSyntaxMacrosGenericTestSupport, no XCTest product
+- [x] `RenderNode.group` flatten sentinel; ZStack(.topLeading) stays overlay
+- [x] Docs: docs/Testing.md, docs/Toolchain.md, Capabilities remaining column,
+      GamaCore.docc/Testing.md
+- [ ] Hosted matrix green on the refresh PR before merge
+- [ ] Linux ASan: re-enable `detect_leaks=1` once a hosted run proves the
+      Swift Testing runner is leak-clean (CI still sets detect_leaks=0)
+- [ ] MemberImportVisibility spike on strictCore (direct-import fallout in
+      tests); keep off until Apple + Embedded stay green
+
+## Code follow-ups from Codex review of PR #10 (docs narrowed in f0078dc;
+## behavior itself unchanged — each needs a code PR with tests)
+- [x] P1: ZStack(.topLeading) flatten sentinel — fixed via `RenderNode.group`
+      (View.swift flattenChildren / TupleView / ForEach). Regression in
+      BuilderTests.zStackTopLeadingLayersInsteadOfFlattening.
+- [ ] Border title: measure reserves displayWidth+4 but painter requires
+      strictly-wider frame — natural-size bordered views reserve blank
+      space and drop the caption (CellPainter.drawBorder).
+- [ ] Divider in a square (1x1) frame renders the horizontal glyph even
+      inside an HStack; carry the stack axis into the node or break ties.
+- [ ] TextField appends control characters (e.g. "\n" via the C embed
+      input path) — decide filter-or-allow and test it.
+- [ ] TextLayout wide table misses emoji-presentation scalars outside the
+      hard-coded ranges (e.g. U+231A) — extend or keep the documented
+      subset deliberately.
+- [ ] Button focus style: deeper label styles win over the focus wrap
+      (custom-colored labels keep their colors when focused) — confirm
+      intended or invert precedence.
+
+## Modern-Swift sweep (audited 2026-08-27, three parallel audits; execute in
+## gated slices — slice A avoids PR #10's files until that PR merges)
+- [ ] Slice A (non-GamaCore/TUI/AppleUI): Package.swift — strictCore on the
+      GamaMacrosImpl macro target (only target outside strict mode),
+      GamaWebDemo wasmSettings→strictCore (no @_extern there), add GamaWASM
+      to test target deps. check-boundaries.sh — tighten the import regex
+      (currently blind to `public import Darwin`, submodule imports,
+      indentation) BEFORE any import refactor. GamaWASM — move HTMLSerializer
+      (grid/css/escape, pure String) out of `#if arch(wasm32)` and test it;
+      escape-invariant comment. GamaDraw — Sendable+Equatable on CellBuffer;
+      typed throws on DrawList.decode (9 failure modes currently one nil);
+      delete dead forwarders; reserveCapacity in encode; isValidUTF8 without
+      the Array(slice) copy (rebase indices!); fix width-vs-character unit
+      mismatch in DrawList.from leading-trim. GamaEmbed — initialize→update
+      (fromContentsOf:) UB fix; clamp gama_embed_v1_resize upper bound;
+      distinct error for the >Int32.max truncation path; explicit
+      `nonisolated` on all @_cdecl entry points (incl. WASM + Android demo);
+      header: opaque struct pointer typedef, error enum, abi_version().
+      GamaMLIR — MLIRBuilder/MLIRAttr/renderAttrs → internal (zero external
+      consumers); MLIRAttr.i64(Int)→i64(Int64) (wasm32 NodeID truncation).
+      gama — real @_exported umbrella, retire deprecated hello().
+- [ ] Slice B (after PR #10 merges): GamaCore — FrameHost shared-reference-
+      in-struct fix (actions/dirty); dirty→let, invalidate() non-mutating;
+      named InteractiveRegion struct replacing (NodeID, Rect, focusable:)
+      tuples; BorderGlyphs struct replacing the 8-tuple; Equatable on
+      RenderNode/LaidOutNode; exhaustive switches (RenderNode.flexPriority,
+      flexMinimum); use-or-drop InputEvent.resize payload. GamaTUI —
+      defer-cleanup in TUIRenderer.end(); canImport(Musl)/canImport(Android)
+      branches (latent whole-package SDK build break); hoist 64-byte read
+      buffer; array-literal compare fix; `_ =` on WinSDK BOOLs. GamaAppleUI —
+      defaultForeground/Background var→let; @MainActor-typed closures; guard
+      double install; NSFontManager→NSFontDescriptor(.italic).
+- [ ] Slice C (needs Donald's sign-off / design decisions — Proposed only):
+      unify the four divergent frame pumps + pick one resize policy (audit's
+      top structural item; changes observable resize semantics); Signal
+      @unchecked Sendable redesign (Synchronization is banned in GamaCore —
+      options are per-field nonisolated(unsafe), non-Sendable + drop
+      App: Sendable, or documented confinement — confinement comments landed
+      2026-08-27; redesign still Proposed); MacroSpec FixIts for untested
+      diagnostic roles; VoiceOver
+      accessibility from currentDrawList; SIGTERM/SIGHUP/atexit terminal
+      restore + SIGWINCH; presentDiff/forEachRun allocation work (measure
+      first); ~Copyable on CellBuffer/Terminal (two-part deinit rework);
+      scripted in-memory Renderer double to cover AppRuntime.run();
+      StrictMemorySafety + InternalImportsByDefault upcoming features
+      (verified live on this snapshot; import-regex tightening is the
+      prerequisite); MLIR emitter unification; scale-aware ProgressView.
 
 ## Later sub-projects (each needs its own spec first)
 - [ ] Sub-project 2: plugin runtime + capability model — DRAFT written

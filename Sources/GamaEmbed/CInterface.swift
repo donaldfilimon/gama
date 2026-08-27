@@ -41,7 +41,13 @@ private final class EmbedHostBox<A: App>: AnyEmbedHost {
 
 private final class EmbedContext {
     let host: any AnyEmbedHost
-    var frameStorage: UnsafeMutableBufferPointer<UInt8> = .allocate(capacity: 0)
+    /// Raw storage deliberately: raw memory has no initialization state to
+    /// violate, so reusing the buffer frame-over-frame with `copyBytes` is
+    /// well-defined (typed `initialize(fromContentsOf:)` on already-
+    /// initialized memory is not). Grows to the high-water frame size and
+    /// never shrinks; freed with the context.
+    var frameStorage: UnsafeMutableRawBufferPointer = .allocate(
+        byteCount: 0, alignment: MemoryLayout<UInt8>.alignment)
 
     init(host: any AnyEmbedHost) {
         self.host = host
@@ -117,8 +123,14 @@ private func key(code: Int32, scalar: Int32, shift: Int32, control: Int32) -> Ke
     }
 }
 
+/// Entry points are explicitly `nonisolated`: the C contract is
+/// single-render-thread, not main-thread, and these must never inherit
+/// actor isolation from a future `defaultIsolation` adoption.
+@_cdecl("gama_embed_v1_abi_version")
+public nonisolated func gama_embed_v1_abi_version() -> Int32 { 1 }
+
 @_cdecl("gama_embed_v1_context_create")
-public func gama_embed_v1_context_create(
+public nonisolated func gama_embed_v1_context_create(
     _ columns: Int32,
     _ rows: Int32
 ) -> UnsafeMutableRawPointer? {
@@ -130,26 +142,32 @@ public func gama_embed_v1_context_create(
 }
 
 @_cdecl("gama_embed_v1_context_destroy")
-public func gama_embed_v1_context_destroy(_ pointer: UnsafeMutableRawPointer?) {
+public nonisolated func gama_embed_v1_context_destroy(_ pointer: UnsafeMutableRawPointer?) {
     guard let pointer else { return }
     Unmanaged<EmbedContext>.fromOpaque(pointer).release()
 }
 
 @_cdecl("gama_embed_v1_resize")
-public func gama_embed_v1_resize(
+public nonisolated func gama_embed_v1_resize(
     _ pointer: UnsafeMutableRawPointer?,
     _ columns: Int32,
     _ rows: Int32
 ) -> Int32 {
     guard let context = context(pointer) else { return -1 }
+    // Same clamp as create: an untrusted host must not drive the grid
+    // beyond Int32 bounds (CellBuffer additionally caps total cell count).
     context.host.handle(
-        .resize(Size(width: max(1, Int(columns)), height: max(1, Int(rows))))
+        .resize(
+            Size(
+                width: min(Int(Int32.max), max(1, Int(columns))),
+                height: min(Int(Int32.max), max(1, Int(rows)))
+            ))
     )
     return 0
 }
 
 @_cdecl("gama_embed_v1_key")
-public func gama_embed_v1_key(
+public nonisolated func gama_embed_v1_key(
     _ pointer: UnsafeMutableRawPointer?,
     _ code: Int32,
     _ scalar: Int32,
@@ -165,7 +183,7 @@ public func gama_embed_v1_key(
 }
 
 @_cdecl("gama_embed_v1_pointer")
-public func gama_embed_v1_pointer(
+public nonisolated func gama_embed_v1_pointer(
     _ pointer: UnsafeMutableRawPointer?,
     _ column: Int32,
     _ row: Int32,
@@ -179,13 +197,13 @@ public func gama_embed_v1_pointer(
 }
 
 @_cdecl("gama_embed_v1_needs_frame")
-public func gama_embed_v1_needs_frame(_ pointer: UnsafeMutableRawPointer?) -> Int32 {
+public nonisolated func gama_embed_v1_needs_frame(_ pointer: UnsafeMutableRawPointer?) -> Int32 {
     guard let context = context(pointer) else { return -1 }
     return context.host.needsFrame ? 1 : 0
 }
 
 @_cdecl("gama_embed_v1_frame")
-public func gama_embed_v1_frame(
+public nonisolated func gama_embed_v1_frame(
     _ pointer: UnsafeMutableRawPointer?,
     _ outputLength: UnsafeMutablePointer<Int32>?
 ) -> UnsafePointer<UInt8>? {
@@ -193,15 +211,22 @@ public func gama_embed_v1_frame(
         outputLength?.pointee = -1
         return nil
     }
-    guard let bytes = context.host.frame(), bytes.count <= Int(Int32.max) else {
-        outputLength?.pointee = 0
+    guard let bytes = context.host.frame() else {
+        outputLength?.pointee = 0  // clean frame — nothing to draw
+        return nil
+    }
+    guard bytes.count <= Int(Int32.max) else {
+        outputLength?.pointee = -3  // GAMA_EMBED_ERR_FRAME_TOO_LARGE
         return nil
     }
     if context.frameStorage.count < bytes.count {
         context.frameStorage.deallocate()
-        context.frameStorage = .allocate(capacity: bytes.count)
+        context.frameStorage = .allocate(
+            byteCount: bytes.count, alignment: MemoryLayout<UInt8>.alignment)
     }
-    _ = context.frameStorage.initialize(fromContentsOf: bytes)
+    context.frameStorage.copyBytes(from: bytes)
     outputLength?.pointee = Int32(bytes.count)
-    return UnsafePointer(context.frameStorage.baseAddress)
+    return context.frameStorage.baseAddress.map {
+        UnsafePointer($0.assumingMemoryBound(to: UInt8.self))
+    }
 }

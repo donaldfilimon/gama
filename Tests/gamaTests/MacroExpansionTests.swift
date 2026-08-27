@@ -1,56 +1,84 @@
-#if canImport(SwiftSyntaxMacrosTestSupport)
+#if canImport(SwiftSyntaxMacrosGenericTestSupport)
 
+import SwiftSyntax
+import SwiftSyntaxMacroExpansion
 import SwiftSyntaxMacros
-import SwiftSyntaxMacrosTestSupport
-import XCTest
+import SwiftSyntaxMacrosGenericTestSupport
+import Testing
 @testable import GamaMacrosImpl
 
-final class MacroExpansionTests: XCTestCase {
+@Suite("Macro expansion")
+struct MacroExpansionTests {
     private let macros: [String: any Macro.Type] = [
         "Component": ComponentMacro.self,
         "Reactive": ReactiveMacro.self,
         "rgb": RGBMacro.self,
     ]
 
-    func testRGBShorthandAndSixDigitExpansion() {
+    private func expectExpansion(
+        _ original: String,
+        expanded: String,
+        diagnostics: [DiagnosticSpec] = []
+    ) {
+        let specs = macros.mapValues { MacroSpec(type: $0) }
         assertMacroExpansion(
-            "let a = #rgb(\"F80\")\nlet b = #rgb(\"12ABef\")",
-            expandedSource: "let a = GamaCore.Color(r: 255, g: 136, b: 0)\nlet b = GamaCore.Color(r: 18, g: 171, b: 239)",
-            macros: macros
+            original,
+            expandedSource: expanded,
+            diagnostics: diagnostics,
+            macroSpecs: specs,
+            failureHandler: { spec in
+                Issue.record(
+                    Comment(rawValue: spec.message),
+                    sourceLocation: SourceLocation(
+                        fileID: spec.location.fileID,
+                        filePath: spec.location.filePath,
+                        line: spec.location.line,
+                        column: spec.location.column
+                    )
+                )
+            }
         )
     }
 
-    func testRGBMalformedLiteralHasActionableDiagnostic() {
-        assertMacroExpansion(
+    @Test("RGB shorthand and six-digit expansion")
+    func rgbShorthandAndSixDigitExpansion() {
+        expectExpansion(
+            "let a = #rgb(\"F80\")\nlet b = #rgb(\"12ABef\")",
+            expanded: "let a = GamaCore.Color(r: 255, g: 136, b: 0)\nlet b = GamaCore.Color(r: 18, g: 171, b: 239)"
+        )
+    }
+
+    @Test("RGB malformed literal has actionable diagnostic")
+    func rgbMalformedLiteralHasActionableDiagnostic() {
+        expectExpansion(
             "let color = #rgb(\"oops\")",
-            expandedSource: "let color = GamaCore.Color.default",
+            expanded: "let color = GamaCore.Color.default",
             diagnostics: [
-                .init(
+                DiagnosticSpec(
                     message: "invalid hex color 'oops': expected RGB or RRGGBB hex digits",
                     line: 1,
                     column: 13
                 )
-            ],
-            macros: macros
+            ]
         )
     }
 
-    func testReactiveRejectsImmutablePropertiesOnce() {
-        assertMacroExpansion(
+    @Test("Reactive rejects immutable properties once")
+    func reactiveRejectsImmutablePropertiesOnce() {
+        expectExpansion(
             "struct Bad {\n  @Reactive let value: Int = 1\n}",
-            expandedSource: "struct Bad {\n  let value: Int = 1\n}",
+            expanded: "struct Bad {\n  let value: Int = 1\n}",
             diagnostics: [
-                .init(message: "@Reactive requires a stored 'var'", line: 2, column: 3)
-            ],
-            macros: macros
+                DiagnosticSpec(message: "@Reactive requires a stored 'var'", line: 2, column: 3)
+            ]
         )
     }
 
-    func testComponentPreservesPublicAccess() {
-        assertMacroExpansion(
+    @Test("Component preserves public access")
+    func componentPreservesPublicAccess() {
+        expectExpansion(
             "@Component\npublic struct Badge {\n  public var label: String\n  public var body: some GamaCore.View { GamaCore.Text(label) }\n}",
-            expandedSource: "public struct Badge {\n  public var label: String\n  public var body: some GamaCore.View { GamaCore.Text(label) }\n\n    public init(label: String) {\n        self.label = label\n    }\n}",
-            macros: macros
+            expanded: "public struct Badge {\n  public var label: String\n  public var body: some GamaCore.View { GamaCore.Text(label) }\n\n    public init(label: String) {\n        self.label = label\n    }\n}"
         )
     }
 }

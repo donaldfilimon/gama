@@ -66,6 +66,10 @@ public final class SubscriptionContext: @unchecked Sendable {
 /// observers may subscribe/cancel/set during notification without
 /// mutating the list mid-iteration; observers added during a pass are
 /// not called until the next change.
+///
+/// `@unchecked Sendable` because GamaCore cannot import Synchronization.
+/// Confined to the owning host's executor; do not share one `Signal`
+/// across concurrent `FrameHost`s.
 public final class Signal<Value: Sendable>: @unchecked Sendable {
     private var value: Value
     private var observers: [(UInt64, @Sendable () -> Void)] = []

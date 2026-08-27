@@ -67,7 +67,7 @@ public enum LayoutEngine {
             if let minH { height = max(height, minH) }
             return Size(width: width, height: height)
 
-        case .overlay(_, let children):
+        case .overlay(_, let children), .group(let children):
             var s = Size.zero
             for c in children {
                 let m = measure(c, proposal: proposal)
@@ -132,7 +132,9 @@ public enum LayoutEngine {
             return flexMinimum(of: c, axis: axis) + 2
         case .background(_, let c), .styled(_, let c), .interactive(_, _, let c):
             return flexMinimum(of: c, axis: axis)
-        default:
+        // Exhaustive on purpose: a new case must choose its minimum here
+        // instead of silently contributing zero.
+        case .empty, .text, .stack, .overlay, .group, .divider, .frame:
             return 0
         }
     }
@@ -199,6 +201,12 @@ public enum LayoutEngine {
                 return layout(c, in: align(size: m, in: bounds, alignment: alignment))
             }
             return LaidOutNode(node: node, frame: bounds, children: laid)
+
+        case .group(let children):
+            return layout(
+                .overlay(alignment: .topLeading, children: children),
+                in: bounds
+            )
 
         case .stack(let axis, let spacing, let alignment, let children):
             return layoutStack(

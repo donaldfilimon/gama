@@ -68,7 +68,8 @@ let package = Package(
             dependencies: [
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
-            ]
+            ],
+            swiftSettings: strictCore
         ),
 
         // ── Draw: platform-free rasterizer shared by every backend —
@@ -90,7 +91,7 @@ let package = Package(
         ),
 
         // ── WASM backend: browser reactor. Compiles to inert stubs off
-        //    wasm32; build with `--swift-sdk wasm32-unknown-wasi`.
+        //    wasm32; build with the pinned WASM Swift SDK in Toolchains.toml.
         .target(
             name: "GamaWASM",
             dependencies: ["GamaCore", "GamaDraw"],
@@ -141,10 +142,12 @@ let package = Package(
             dependencies: ["GamaCore", "GamaMacros", "GamaTUI", "GamaMLIR"],
             swiftSettings: strictCore
         ),
+        // strictCore, not wasmSettings: the demo has no @_extern of its own,
+        // and the experimental Extern feature stays scoped to GamaWASM.
         .executableTarget(
             name: "GamaWebDemo",
             dependencies: ["GamaCore", "GamaWASM"],
-            swiftSettings: wasmSettings
+            swiftSettings: strictCore
         ),
         .executableTarget(
             name: "GamaWindowsConsoleSmoke",
@@ -157,8 +160,9 @@ let package = Package(
             dependencies: [
                 "Gama", "GamaCore", "GamaMacros", "GamaMLIR",
                 "GamaTUI", "GamaDraw", "GamaEmbed", "GamaMacrosImpl",
-                "GamaAppleUI",
-                .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax")
+                "GamaAppleUI", "GamaWASM",
+                .product(name: "SwiftSyntaxMacroExpansion", package: "swift-syntax"),
+                .product(name: "SwiftSyntaxMacrosGenericTestSupport", package: "swift-syntax")
             ],
             path: "Tests/gamaTests",
             swiftSettings: strictCore
