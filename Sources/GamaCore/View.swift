@@ -250,7 +250,7 @@ public struct ForEachView<V: View>: View {
 /// Renders one view per element of an integer-indexed collection.
 /// Identity is positional (the element's index), so mutations shift
 /// downstream identities — use `IdentifiedForEach` for stable identity.
-public struct ForEach<Data: RandomAccessCollection & Sendable, Content: View>: View
+public struct ForEach<Data: RandomAccessCollection, Content: View>: View
 where Data.Index == Int {
     /// Terminates `body` recursion; this view compiles in `render(in:)`.
     public typealias Body = Never_
@@ -280,7 +280,7 @@ where Data.Index == Int {
 }
 
 /// Identity-explicit collection rendering for dynamic insert/remove flows.
-public struct IdentifiedForEach<Data: RandomAccessCollection & Sendable, Content: View>: View
+public struct IdentifiedForEach<Data: RandomAccessCollection, Content: View>: View
 where Data.Index == Int {
     /// Terminates `body` recursion; this view compiles in `render(in:)`.
     public typealias Body = Never_

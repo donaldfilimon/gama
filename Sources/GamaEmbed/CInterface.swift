@@ -80,9 +80,10 @@ public enum GamaEmbed {
     ///
     /// The returned pointer is owned by the caller and must be released with
     /// `gama_embed_v1_context_destroy`. All calls for a context must occur on
-    /// the same render thread.
+    /// the same render thread. Ownership of the app region transfers into the
+    /// retained opaque context.
     public static func makeContext<A: App>(
-        app: A,
+        app: sending A,
         columns: Int = 80,
         rows: Int = 24
     ) throws(SceneConfigurationError) -> UnsafeMutableRawPointer {

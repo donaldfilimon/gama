@@ -90,7 +90,7 @@ struct CounterPanel {
 // Fills after the FrameHost exists: scene content closures evaluate
 // lazily, so the slot picks the runtime up on the first pump. Confined
 // to the demo's single-threaded setup.
-final class PluginRuntimeBox: @unchecked Sendable {
+final class PluginRuntimeBox {
     var runtime: PluginRuntime?
 }
 

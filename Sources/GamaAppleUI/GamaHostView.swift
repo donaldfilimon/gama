@@ -61,8 +61,9 @@ public final class GamaHostView: GamaPlatformView {
     // MARK: Init
 
     /// Creates a zero-frame view with `app` installed — one-step shorthand
-    /// for `init(frame:)` followed by `install(app:)`.
-    public convenience init<A: App>(app: A) throws(SceneConfigurationError) {
+    /// for `init(frame:)` followed by `install(app:)`. Ownership of `app` is
+    /// transferred into the MainActor-hosted session.
+    public convenience init<A: App>(app: sending A) throws(SceneConfigurationError) {
         self.init(frame: .zero)
         try install(app: app)
     }
@@ -105,7 +106,8 @@ public final class GamaHostView: GamaPlatformView {
     /// Attaches `app`: creates its `FrameHost` and back buffer sized to
     /// the current cell grid, wires the frame pump and event routing, and
     /// pumps the first frame. Installing again replaces the previous app.
-    public func install<A: App>(app: A) throws(SceneConfigurationError) {
+    /// Ownership of the app region transfers into this MainActor host.
+    public func install<A: App>(app: sending A) throws(SceneConfigurationError) {
         let graph = try compileSceneGraph(app)
         let surface = try graph.makePrimarySurface()
         install(surface: surface)
