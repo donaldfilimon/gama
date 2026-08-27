@@ -82,15 +82,15 @@
       "hosted trial green under detect_leaks=1" is unreachable while the
       generated runner keeps its XCTest half — waiting for one is waiting
       forever.
-      Two honest options, both fine, neither urgent:
+      Two honest directions, neither urgent:
       (a) keep detect_leaks=0 (current policy, PR #30) and accept no leak
           coverage for Gama code; or
-      (b) detect_leaks=1 plus
-          `LSAN_OPTIONS=suppressions=<file>:print_suppressions=1` with a
-          one-line `leak:XCTest` suppression — real Gama leaks still fail
-          the job, the one known exception is named, printed, and deleted
-          when the pinned snapshot's runner drops its XCTest half. The
-          implementation is preserved in closed PR #31 if wanted.
+      (b) add a harness-free leak test, or first prove a suppression pattern
+          unique to the known runner allocations. A broad `leak:XCTest`
+          suppression is not acceptable evidence: LeakSanitizer suppresses
+          any allocation whose stack contains XCTest, so it can also hide a
+          Gama allocation made beneath that harness. Closed PR #31 preserves
+          that rejected experiment, not a coverage-preserving solution.
       Do not re-run the bare experiment; it will fail the same way.
 - [x] MemberImportVisibility spike on strictCore (direct-import fallout in
       tests); keep off until Apple + Embedded stay green. CLOSED
