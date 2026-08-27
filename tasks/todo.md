@@ -44,9 +44,10 @@
       PR #14 on a green six-job matrix). Superseded by the stronger
       outcome: zero undocumented public declarations package-wide, enforced
       by the check-doc-coverage.sh gate in check.sh and CI.
-- [ ] DocC catalogs exist only for GamaCore (7 articles); GamaDraw and the
-      backends have none. Adding catalogs requires extending check-docs.sh,
-      which hardcodes the GamaCore symbol-graph/catalog paths.
+- [x] DocC catalogs for GamaDraw and GamaTUI added and check-docs.sh
+      generalized to build every module catalog (was: GamaCore-only with
+      hardcoded paths; closed 2026-08-27 by the scene-first consolidation,
+      merged via PR #19).
 - [x] check-docs.sh's Capabilities.md grep is tautological (matches the
       table header "Current evidence"); tighten if a stronger claim-honesty
       check is wanted. CLOSED 2026-08-27 by the docs overhaul: the grep now
