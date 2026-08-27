@@ -5,7 +5,7 @@ SDK="${GAMA_WASM_SDK_ID:-swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a_wasm}"
 SWIFT="${GAMA_SWIFT_64:-/Users/donaldfilimon/Library/Developer/Toolchains/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a.xctoolchain/usr/bin/swift}"
 SCRATCH_ROOT="${GAMA_SCRATCH_ROOT:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}}"
 SCRATCH="$SCRATCH_ROOT/gama-wasm-swiftpm"
-"$SWIFT" --version | grep -q 'Swift version 6.4'
+"$SWIFT" --version | grep -q 'Swift version 6.5'
 "$SWIFT" sdk list | grep -Fxq "$SDK" || { echo "error: missing WASM SDK $SDK" >&2; exit 1; }
 "$SWIFT" build --package-path "$ROOT" --scratch-path "$SCRATCH" --swift-sdk "$SDK" --product gama-web-demo \
   -Xlinker --export=gama_web_v1_frame \

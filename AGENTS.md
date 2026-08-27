@@ -1,20 +1,25 @@
 # Gama Framework agent guide
 
-Gama is a Swift 6.4 SwiftPM framework. The default package contains a portable
+Gama is a SwiftPM framework built with the pinned Swift 6.5-dev main snapshot (`.swift-version`: `main-snapshot-2026-08-21`, toolchain id `org.swift.65202608211a`). The default package contains a portable
 retained UI core, macros, shared drawing, terminal, Apple, WASM, C embedding,
-MLIR, and demo targets. `Adapters/GamaQt` is an isolated optional package.
+MLIR, and demo targets.
 
 ## Gates
 
 - Apple debug/test/release: `./scripts/check-apple.sh`
 - Portable ownership/import rules: `./scripts/check-boundaries.sh`
-- Exact Swift 6.4 Embedded proof: `./scripts/check-embedded.sh`
+- Exact pinned-snapshot Embedded proof: `./scripts/check-embedded.sh`
 - Android cross-build and JNI packaging: `ANDROID_NDK_HOME=… ./scripts/check-android.sh`
 - Full acceptance, including required runtime blockers: `./scripts/check.sh`
 
-Always unset `TOOLCHAINS` for Xcode Swift 6.4 work. Do not use PATH `swift`,
-which is Swiftly-managed. Do not weaken or skip a required cross-platform gate
-to make the matrix green.
+Always unset `TOOLCHAINS` first; the check scripts pin the snapshot toolchain
+explicitly via `xcrun --toolchain org.swift.65202608211a`. This repository is
+the machine-wide exception to the "Xcode default toolchain" rule. Do not weaken
+or skip a required cross-platform gate to make the matrix green.
+
+This checkout lives under iCloud-managed `~/Desktop`: run `swift test` only
+through the check scripts or with `--scratch-path` outside iCloud, and never
+run `git gc`, `git prune`, `git fsck`, or `git repack` here.
 
 ## Architecture rules
 
@@ -25,7 +30,6 @@ to make the matrix green.
 - Platform targets translate events and present `DrawList`; they do not fork
   application semantics.
 - C and WASM symbols remain versioned and separately namespaced.
-- Qt remains optional and does not enter the root dependency graph.
 - Documentation must distinguish implemented, locally proven, hosted proven,
   provisional, and blocked states.
 

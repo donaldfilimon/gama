@@ -10,7 +10,7 @@ DEVICE_SCRATCH="$SCRATCH_ROOT/gama-android-device-swiftpm"
 ANDROID_NDK_HOME="${ANDROID_NDK_HOME:-${ANDROID_NDK_ROOT:-}}"
 [[ -n "$ANDROID_NDK_HOME" ]] || { echo "error: ANDROID_NDK_HOME is required" >&2; exit 1; }
 export ANDROID_NDK_HOME
-"$SWIFT" --version | grep -q 'Swift version 6.4'
+"$SWIFT" --version | grep -q 'Swift version 6.5'
 "$SWIFT" sdk list | grep -Fxq "$SDK" || { echo "error: missing Android SDK $SDK" >&2; exit 1; }
 "$SWIFT" build --package-path "$ROOT" --scratch-path "$EMBED_SCRATCH" --swift-sdk "$SDK" --triple aarch64-unknown-linux-android28 --product GamaEmbed
 "$SWIFT" build -c release --package-path "$ROOT" --scratch-path "$EMULATOR_SCRATCH" --swift-sdk "$SDK" --triple x86_64-unknown-linux-android28 --product GamaAndroidDemo

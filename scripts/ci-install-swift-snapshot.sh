@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${GAMA_SWIFT_64_URL:?exact Swift 6.4 snapshot URL is required}"
-: "${GAMA_SWIFT_64_SHA256:?exact Swift 6.4 snapshot SHA-256 is required}"
+: "${GAMA_SWIFT_64_URL:?exact Swift 6.5 snapshot URL is required}"
+: "${GAMA_SWIFT_64_SHA256:?exact Swift 6.5 snapshot SHA-256 is required}"
 
 archive="${RUNNER_TEMP:-/private/tmp}/gama-swift-6.4.tar.gz"
 install_root="${RUNNER_TEMP:-/private/tmp}/gama-swift-6.4"
@@ -19,5 +19,5 @@ echo "$swift_dir" >> "${GITHUB_PATH:?GITHUB_PATH is required}"
 echo "GAMA_SWIFT_64=$swift_bin" >> "${GITHUB_ENV:?GITHUB_ENV is required}"
 echo "GAMA_SWIFTC_64=$swift_dir/swiftc" >> "$GITHUB_ENV"
 "$swift_bin" --version | tee swift-version.txt
-grep -q 'Swift version 6.4' swift-version.txt
+grep -q 'Swift version 6.5' swift-version.txt
 grep -q 'Swift 424cae54c1a10da' swift-version.txt

@@ -15,8 +15,6 @@ The dated Android Swift runtime requires the libc++ ABI in Android NDK
 manifest, Gradle sample, local setup, and CI; older NDK 27/28 libraries fail the
 runtime symbol gate and are not accepted.
 
-Qt is isolated in `Adapters/GamaQt` and requires a caller-supplied `QT_PREFIX`.
-Default package resolution does not discover or link Qt.
 
 ## Evidence boundaries
 
