@@ -191,23 +191,15 @@ status: in_progress
   gates, hosted PR proof, post-merge proof, and the supplemental manual Dock/
   Command-Q smoke remain separate acceptance layers; do not mark the shell
   shipped until the required automated layers are green.
-- Linux sanitizer policy repair (2026-08-27): PR #24 enabled
-  `ASAN_OPTIONS=detect_leaks=1` and merged before its hosted matrix completed;
-  that PR's own Linux Address Sanitizer step then failed. Restore the
-  previously documented `detect_leaks=0` policy while retaining the required
-  ASan job. Leak detection remains an open, separately root-caused item in
-  `tasks/todo.md`; do not describe the Swift Testing runner as leak-clean.
-  Root cause identified 2026-08-27 (goal-loop session, from PR #24's job
-  log, run 33048676959): 7 indirect leaks / 432 bytes, every stack in the
-  SwiftPM-generated runner's XCTest harness (`XCTestSuiteRun.init`,
-  `XCTMain`, `XCTMainMisc`, plus Foundation `URL.lastPathComponent` under
-  XCTMain), zero Gama frames. The generated entry point runs the XCTest
-  harness even with zero XCTest suites, so the current generated test job
-  cannot be called leak-clean while those allocations persist. A future
-  runner change or a separate harness-free leak test can provide honest
-  coverage. Competing PR #31 used a broad `leak:XCTest` suppression and was
-  closed in favor of #30; that suppression is not coverage-preserving
-  because it can also match a Gama allocation made beneath XCTest.
+- Linux sanitizer policy repair (2026-08-27): the XCTest-hosted ASan process
+  keeps `detect_leaks=0` after PR #24 proved the generated harness retains 7
+  allocations / 432 bytes with zero Gama frames. Leak coverage now runs in the
+  separate `gama-leak-check` executable, which constructs and destroys a real
+  `FrameHost` without any test harness under `detect_leaks=1`. Its required
+  `--deliberate-leak` control retains a GamaCore `Signal`, and the gate passes
+  only when the clean process exits zero while the control produces LSan's
+  exact configured failure code and diagnostic. No suppression is used.
+  Darwin cannot supply this proof; hosted Linux is the acceptance authority.
 - Acceptance-run continuity risk (2026-08-27): main has had no COMPLETED
   acceptance run since 33044975550 (pre-#19). Post-#22 run 33048024225 was
   cancelled by the #24 push and post-#24 by the #26 push — ci.yml's
@@ -347,4 +339,3 @@ status: in_progress
   (/opt/homebrew/bin, coreutils) which check-android-emulator.sh depends
   on. The emulator gate additionally needs ANDROID_HOME, adb on PATH, and
   an already-booted device — it does not boot one itself.
-
