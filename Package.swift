@@ -40,6 +40,9 @@ let package = Package(
         .executable(name: "gama-web-demo", targets: ["GamaWebDemo"]),
         .executable(name: "gama-apple-demo", targets: ["GamaAppleDemo"]),
         .executable(name: "gama-windows-console-smoke", targets: ["GamaWindowsConsoleSmoke"]),
+        // Acceptance lifecycle probe: runs as a plain process so Linux
+        // LeakSanitizer observes Gama without SwiftPM's XCTest harness.
+        .executable(name: "gama-leak-check", targets: ["GamaLeakCheck"]),
     ],
     dependencies: [
         // Build-time ONLY: macro plugins execute on the host compiler.
@@ -202,6 +205,11 @@ let package = Package(
         .executableTarget(
             name: "GamaWindowsConsoleSmoke",
             dependencies: ["GamaTUI"],
+            swiftSettings: strictCore
+        ),
+        .executableTarget(
+            name: "GamaLeakCheck",
+            dependencies: ["GamaCore"],
             swiftSettings: strictCore
         ),
 

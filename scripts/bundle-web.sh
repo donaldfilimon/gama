@@ -42,7 +42,11 @@ grep -q 'Swift version 6.5' <<<"$version" &&
   -Xlinker --export=gama_web_v1_frame \
   -Xlinker --export=gama_web_v1_key \
   -Xlinker --export=gama_web_v1_pointer \
-  -Xlinker --export=gama_web_v1_resize
+  -Xlinker --export=gama_web_v1_resize \
+  -Xlinker --export=gama_web_v2_frame \
+  -Xlinker --export=gama_web_v2_key \
+  -Xlinker --export=gama_web_v2_pointer \
+  -Xlinker --export=gama_web_v2_resize
 artifact="$(find "$SCRATCH" -type f -name 'gama-web-demo.wasm' -print -quit)"
 [[ -n "$artifact" ]] || { echo "error: executable WASM artifact not produced" >&2; exit 1; }
 

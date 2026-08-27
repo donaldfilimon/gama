@@ -44,7 +44,8 @@ the icon path is implemented but unproven.
 
 | Claim | Gate | State (2026-08-27) |
 | --- | --- | --- |
-| wasm site directory works in a browser | `node scripts/browser-runtime-smoke.mjs "$DIST/web/gama-web-demo.wasm" "$DIST/web" "$WEB_TITLE"` run by `bundle-web.sh` against the assembled directory (headless Chrome: title branding, DOM, key, pointer, resize, rAF, accessibility, frames) | Locally proven; hosted proof rides on the wasm CI job's bundle step |
+| wasm site directory works in a browser | `node scripts/browser-runtime-smoke.mjs "$DIST/web/gama-web-demo.wasm" "$DIST/web" "$WEB_TITLE"` run by `bundle-web.sh` against the assembled directory (headless Chrome: title branding, DOM, key, pointer, resize, rAF, accessibility, frames) | Locally proven; the acceptance WASM job independently rebuilds, smokes, and uploads the same directory |
+| GitHub Pages serves the interactive demo | `.github/workflows/pages.yml` rebuilds through `bundle-web.sh`, uploads only the verified `web/` directory, and deploys it to `https://donaldfilimon.github.io/gama/` from `main` | Hosted proof requires both a successful Pages deployment and a browser load of the deployed WASM demo; a green artifact-upload job alone is insufficient |
 | `.app` is well formed | `plutil -lint` on the generated `Info.plist` | Locally proven |
 | `.app` signature is intact | `codesign --verify --deep --strict` after ad-hoc signing | Locally proven (ad-hoc identity) |
 | `.app` launches and renders | `Contents/MacOS/gama-apple-demo --smoke`: boots `NSApplication` offscreen, hosts the primary scene, requires a non-empty `DrawList`, exits 0 | Locally proven; hosted proof rides on the macOS CI job's bundle step |
