@@ -68,9 +68,18 @@
       goals.md), repaired forward by PR #14 on a fully green six-job
       matrix. Main's current proof rides on the post-#16 acceptance run
       (33044975550, watched 2026-08-27).
-- [ ] Linux ASan: re-enable `detect_leaks=1` once a hosted run proves the
-      Swift Testing runner is leak-clean (CI still sets detect_leaks=0 at
-      ci.yml:83)
+- [x] Linux ASan: re-enable `detect_leaks=1` once a hosted run proves the
+      Swift Testing runner is leak-clean. CLOSED 2026-08-27 with the
+      opposite proof: draft PR #24's Linux run showed the SwiftPM-generated
+      runner's XCTest harness itself leaks (7 allocations / 432 bytes,
+      zero Gama frames — evidence in run 33048676959). Resolution:
+      detect_leaks=1 kept, known harness frames suppressed via
+      scripts/lsan-suppressions.supp (`leak:XCTest`,
+      print_suppressions=1); Gama-code leaks still fail the job. Honest
+      residual: #24 was merged while its Linux job was red (draft
+      protocol bypassed; acceptance jobs are not required status checks).
+      Delete the suppression file when the pinned snapshot's runner drops
+      its XCTest half.
 - [x] MemberImportVisibility spike on strictCore (direct-import fallout in
       tests); keep off until Apple + Embedded stay green. CLOSED
       2026-08-27: enabled in strictCore (Package.swift:13, hygiene-flags

@@ -76,12 +76,16 @@ jobs:
       - name: C ABI consumer compile, link, and run
         run: ./scripts/check-c-abi.sh
       - name: Address Sanitizer
-        # detect_leaks=1 re-enabled 2026-08-27: leak detection was originally
-        # disabled for the XCTest runner's process-lifetime metadata; the
-        # suite is Swift Testing only now, and this branch's hosted Linux run
-        # is the proof the new runner is leak-clean (tasks/todo.md ASan item).
+        # detect_leaks=1 stays on for Gama code. The hosted proof run
+        # (PR #24, run 33048676959) showed the SwiftPM-generated runner's
+        # XCTest HARNESS leaks 7 allocations / 432 bytes of process-lifetime
+        # suite metadata even with all suites on Swift Testing; those known
+        # harness frames are suppressed via scripts/lsan-suppressions.supp
+        # (rationale and evidence inside). print_suppressions=1 keeps the
+        # suppressed set visible in the log so drift is auditable.
         env:
           ASAN_OPTIONS: detect_leaks=1
+          LSAN_OPTIONS: suppressions=${{ github.workspace }}/scripts/lsan-suppressions.supp:print_suppressions=1
         run: swift test --sanitize address
       - name: Thread Sanitizer
         run: swift test --sanitize thread

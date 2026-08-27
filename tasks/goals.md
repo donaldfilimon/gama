@@ -167,6 +167,18 @@ status: in_progress
   post-#20 main runs pending at ledger time — Current only when they
   land green. Remaining branches: main and feat/apple-multiwindow-shell
   (Remote Control session's active sub-project 3 slice 2).
+- Linux ASan leak experiment (2026-08-27, goal-loop session): draft PR #24
+  flipped detect_leaks=1 as the hosted proof the todo item demanded. The
+  proof FAILED — 7 indirect leaks / 432 bytes, every stack in the SwiftPM
+  runner's XCTest harness (XCTestSuiteRun/XCTMain, plus Foundation
+  URL.lastPathComponent under XCTMain), zero Gama frames: "Swift Testing
+  only" does not make the generated runner leak-clean. Honest residual:
+  #24 was merged while its Linux job was red, bypassing the draft's
+  close-unmerged protocol (same not-required-checks gap as above).
+  Fix-forward: detect_leaks=1 retained with a scoped LSan suppression
+  (scripts/lsan-suppressions.supp, `leak:XCTest`, print_suppressions=1
+  for auditability) so Gama-code leaks still fail the job while the known
+  harness leak is named and suppressed.
 - Sub-projects 2 and 4 remain Proposed drafts under
   docs/superpowers/specs/drafts/ (plugin runtime + capability model; packaging
   & distribution). Sub-project 3 is approved and split into independently
