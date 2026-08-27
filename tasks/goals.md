@@ -191,6 +191,12 @@ status: in_progress
   gates, hosted PR proof, post-merge proof, and the supplemental manual Dock/
   Command-Q smoke remain separate acceptance layers; do not mark the shell
   shipped until the required automated layers are green.
+- Linux sanitizer policy repair (2026-08-27): PR #24 enabled
+  `ASAN_OPTIONS=detect_leaks=1` and merged before its hosted matrix completed;
+  that PR's own Linux Address Sanitizer step then failed. Restore the
+  previously documented `detect_leaks=0` policy while retaining the required
+  ASan job. Leak detection remains an open, separately root-caused item in
+  `tasks/todo.md`; do not describe the Swift Testing runner as leak-clean.
 - Consolidation complete + specs finalized (2026-08-27, Donald's "merge all
   into main / finish all" session): PRs #20 (doc-coverage count), #21
   (macOS shell + gama-apple-demo), and #22 (ledger) merged; local main ==
