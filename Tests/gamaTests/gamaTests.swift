@@ -577,6 +577,18 @@ struct MLIRTests {
         #expect(mlir.filter { $0 == "{" }.count == mlir.filter { $0 == "}" }.count)
     }
 
+    @Test("group sentinel lowers to gama.group")
+    func groupSentinelLowersToGamaGroup() {
+        let node = RenderNode.group(children: [
+            .text("a", style: .plain), .text("b", style: .plain),
+        ])
+        let mlir = GamaLowering.lower(module: node, name: "grouped")
+        // Proves the Capabilities.md claim: the flatten sentinel reaches
+        // the dialect as its own op, not as an overlay.
+        #expect(mlir.contains("\"gama.group\"()"))
+        #expect(!mlir.contains("\"gama.overlay\"()"))
+    }
+
     @Test("interactive NodeID emits full 64-bit id")
     func interactiveNodeIDEmitsFull64BitId() {
         let id = NodeID(raw: 1 << 40)

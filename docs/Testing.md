@@ -36,11 +36,13 @@ All suites live in `Tests/gamaTests/`:
 | File | Suites |
 | --- | --- |
 | `gamaTests.swift` | Geometry, Style, Layout, View builder (including ZStack overlay vs group), Signal, Actions, Cell buffer, MLIR, DrawList, Cell painter, FrameHost |
-| `ModernTests.swift` | DrawList codec hostility, CellPainter ↔ DrawList |
+| `ModernTests.swift` | DrawList codec hostility, CellPainter ↔ DrawList, Overflow-safe geometry |
 | `FormControlTests.swift` | TextField, Toggle, ProgressView |
 | `EmbedTests.swift` | Independent C-embed contexts |
 | `MacroUsageTests.swift` | `@Component` / `@Reactive` / `#rgb` compile-and-render |
 | `MacroExpansionTests.swift` | Macro expansion via `SwiftSyntaxMacrosGenericTestSupport` (no XCTest) |
+| `EmbedABITests.swift` | Embed ABI additions: `gama_embed_v1_abi_version`, hostile-resize clamps, frame-storage reuse |
+| `WASMSerializerTests.swift` | WASM HTML serializer (compiled off wasm32) |
 | `AppleHostTests.swift` | AppKit host (macOS only) |
 | `POSIXTerminalIntegrationTests.swift` | PTY raw-mode restore (Darwin) |
 | `WindowsTerminalTests.swift` | Native console translators (Windows only) |
