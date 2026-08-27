@@ -46,6 +46,7 @@ pre-release migration from `App.content` and typed `WindowGroup` examples.
 | `GamaDraw` | Cell buffer, painter, draw list, and versioned binary codec |
 | `GamaTUI` | POSIX and Windows terminal backend |
 | `GamaAppleUI` | `@MainActor` AppKit/UIKit host view |
+| `GamaAppleShell` | macOS AppKit application and multi-window ownership |
 | `GamaWASM` | Browser reactor using `gama_web_v1_*` exports |
 | `GamaEmbed` | Context-owned `gama_embed_v1_*` C ABI |
 | `GamaMLIR` | Deterministic generic-form `gama` dialect emitter |
@@ -53,6 +54,7 @@ pre-release migration from `App.content` and typed `WindowGroup` examples.
 | `GamaAndroidDemo` | Sample dynamic library bootstrapping an app for the JNI example |
 | `gama-demo` | Interactive TUI and `--emit-mlir` showcase |
 | `gama-web-demo` | Browser reactor demo served from `WebHost/` |
+| `gama-apple-demo` | macOS scene/window lifecycle showcase |
 | `gama-windows-console-smoke` | Windows console acceptance binary |
 
 ## Architecture
@@ -106,6 +108,19 @@ Run the terminal demo with:
 unset TOOLCHAINS
 swiftly run swift run gama-demo
 ```
+
+Run the macOS multi-window demo with:
+
+```bash
+unset TOOLCHAINS
+swiftly run swift run gama-apple-demo
+```
+
+The primary typed group opens at launch. Its controls reopen the same payload
+(focusing the existing window), open a distinct payload with its own host, and
+open the auxiliary singleton. See
+[`docs/backends/AppleShell.md`](docs/backends/AppleShell.md) for lifecycle and
+manual-smoke details.
 
 ## Compatibility
 

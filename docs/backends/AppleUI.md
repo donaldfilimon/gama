@@ -21,7 +21,7 @@ noncopyable `FrameHost` (boxed in a private session object). Calling
 `install` again replaces the session wholesale and cancels the previous
 session's model subscriptions first. Out-of-band state changes request a
 frame via the session's non-mutating `invalidate()` path
-(`requestFrame()` on the view).
+(`invalidate()` on the view).
 
 ## Rendering and input
 
@@ -36,3 +36,8 @@ symbolic traits.
 `Examples/AppleHost/main.swift` sketches a minimal AppKit embedding; note
 the packaging draft records that it lacks an `NSApplication` run loop and
 is not a package target — the runnable proof is the AppKit test suite.
+
+Applications that want Gama to own `NSApplication` and native windows use the
+separate `GamaAppleShell` product. See [AppleShell.md](AppleShell.md). The
+embeddable `GamaHostView` remains independent and renders only the explicit
+primary scene supplied by its app.

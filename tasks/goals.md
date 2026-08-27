@@ -153,3 +153,21 @@ status: in_progress
   green scene-core/migration and macOS-shell deliveries; only its first slice
   is implemented locally at this point. Foundation spec:
   docs/superpowers/specs/2026-08-26-gama-umbrella-foundation-design.md
+- Scene-first integration (2026-08-27): the scene API, atomic in-repository
+  migration, lifecycle channel, non-generic host, typed window commands, and
+  primary-only non-window backends reached `main` through consolidation PR
+  #19 (merge 7599a56). Honest process residual: PR #19 merged while four of
+  six acceptance jobs were still running, so the selected green-before-merge
+  policy was not followed; its merge-SHA push matrix remains the authoritative
+  hosted proof and must be recorded only after all six jobs finish green.
+  The residual scene-evidence/ADR diff remains isolated in PR #18 and must not
+  be mistaken for a second implementation.
+- macOS application shell (2026-08-27): `GamaAppleShell` and
+  `gama-apple-demo` are implemented on `feat/apple-multiwindow-shell` from the
+  consolidated main. Six offscreen AppKit tests locally prove launch
+  selection, singleton/group identity, independent hosts/draw lists, command
+  validation/draining, addressed delegate lifecycle, non-vetoable close,
+  last-window residency, Dock reopen, and once-only termination. Local full
+  gates, hosted PR proof, post-merge proof, and the supplemental manual Dock/
+  Command-Q smoke remain separate acceptance layers; do not mark the shell
+  shipped until the required automated layers are green.

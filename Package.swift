@@ -29,12 +29,14 @@ let package = Package(
         .library(name: "GamaTUI", targets: ["GamaTUI"]),
         .library(name: "GamaWASM", targets: ["GamaWASM"]),
         .library(name: "GamaAppleUI", targets: ["GamaAppleUI"]),
+        .library(name: "GamaAppleShell", targets: ["GamaAppleShell"]),
         // Static so the C entry points fold into the host binary/.so.
         .library(name: "GamaEmbed", type: .static, targets: ["GamaEmbed", "GamaEmbedABI"]),
         .library(name: "GamaMLIR", targets: ["GamaMLIR"]),
         .library(name: "GamaAndroidDemo", type: .dynamic, targets: ["GamaAndroidDemo"]),
         .executable(name: "gama-demo", targets: ["GamaDemo"]),
         .executable(name: "gama-web-demo", targets: ["GamaWebDemo"]),
+        .executable(name: "gama-apple-demo", targets: ["GamaAppleDemo"]),
         .executable(name: "gama-windows-console-smoke", targets: ["GamaWindowsConsoleSmoke"]),
     ],
     dependencies: [
@@ -111,6 +113,15 @@ let package = Package(
             ]
         ),
 
+        // macOS application ownership: NSApplication, NSWindow, lifecycle,
+        // and per-shell window command routing. The source compiles to an
+        // inert target when AppKit is unavailable.
+        .target(
+            name: "GamaAppleShell",
+            dependencies: ["GamaCore", "GamaDraw", "GamaAppleUI"],
+            swiftSettings: strictCore
+        ),
+
         // ── Embed backend: flat C ABI (events in, DrawList bytes out)
         //    for Android/NDK, game engines, and non-Swift hosts.
         .target(
@@ -155,6 +166,11 @@ let package = Package(
             swiftSettings: strictCore
         ),
         .executableTarget(
+            name: "GamaAppleDemo",
+            dependencies: ["GamaCore", "GamaAppleShell"],
+            swiftSettings: strictCore
+        ),
+        .executableTarget(
             name: "GamaWindowsConsoleSmoke",
             dependencies: ["GamaTUI"],
             swiftSettings: strictCore
@@ -165,7 +181,7 @@ let package = Package(
             dependencies: [
                 "Gama", "GamaCore", "GamaMacros", "GamaMLIR",
                 "GamaTUI", "GamaDraw", "GamaEmbed", "GamaMacrosImpl",
-                "GamaAppleUI", "GamaWASM",
+                "GamaAppleUI", "GamaAppleShell", "GamaWASM",
                 .product(name: "SwiftSyntaxMacroExpansion", package: "swift-syntax"),
                 .product(name: "SwiftSyntaxMacrosGenericTestSupport", package: "swift-syntax")
             ],
