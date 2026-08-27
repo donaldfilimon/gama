@@ -24,12 +24,48 @@
       (GamaCore 60/364, GamaTUI 2/34, GamaAppleUI 2/26). Pattern: type- and
       algorithm-level docs exist; member-level (properties, inits, methods)
       are mostly bare. Author them module by module, starting with GamaCore.
+      CLAIMED 2026-08-26 21:53 by the goal-loop session; working in worktree
+      /private/tmp/gama-docc-wt on branch docs/docc-member-coverage to keep
+      the shared checkout clean. Slice 1 DONE 22:00: Primitives (139→0
+      undocumented), View (58→0), Geometry (50→0); comments-only (389+/0-),
+      check-docs.sh green; PR #10 open, merge only when its matrix is green.
+      Slices 2+3 DONE 22:11 (0bddca1 Style/State/RenderNode 148+, aae753a
+      Runtime/FrameHost/Layout/TextLayout 95+): GamaCore now has ZERO
+      undocumented public declarations across all ten files (single-line
+      multi-case enum rows deliberately left unsplit); every slice verified
+      comments-only and check-docs.sh green; pushed to PR #10.
+      Slice 4 DONE 22:19 (1f9f3b3, 150+): GamaTUI and GamaAppleUI at zero
+      undocumented public decls; gated by check-docs.sh AND a full pinned
+      swift build (compiles both targets); Windows docs stay claim-honest.
+      All four slices pushed to PR #10 — remaining action: merge PR #10 when
+      its matrix is green, then mark this item done.
 - [ ] DocC catalogs exist only for GamaCore (7 articles); GamaDraw and the
       backends have none. Adding catalogs requires extending check-docs.sh,
       which hardcodes the GamaCore symbol-graph/catalog paths.
 - [ ] check-docs.sh's Capabilities.md grep is tautological (matches the
       table header "Current evidence"); tighten if a stronger claim-honesty
       check is wanted.
+
+## Code follow-ups from Codex review of PR #10 (docs narrowed in f0078dc;
+## behavior itself unchanged — each needs a code PR with tests)
+- [ ] P1: ZStack(.topLeading) lowers to the exact overlay shape
+      flattenChildren uses as its tuple sentinel, so stack/List parents
+      flatten its children instead of layering. Needs a distinct sentinel
+      or discriminator. (Primitives.swift ZStack.render / View.swift
+      flattenChildren)
+- [ ] Border title: measure reserves displayWidth+4 but painter requires
+      strictly-wider frame — natural-size bordered views reserve blank
+      space and drop the caption (CellPainter.drawBorder).
+- [ ] Divider in a square (1x1) frame renders the horizontal glyph even
+      inside an HStack; carry the stack axis into the node or break ties.
+- [ ] TextField appends control characters (e.g. "\n" via the C embed
+      input path) — decide filter-or-allow and test it.
+- [ ] TextLayout wide table misses emoji-presentation scalars outside the
+      hard-coded ranges (e.g. U+231A) — extend or keep the documented
+      subset deliberately.
+- [ ] Button focus style: deeper label styles win over the focus wrap
+      (custom-colored labels keep their colors when focused) — confirm
+      intended or invert precedence.
 
 ## Later sub-projects (each needs its own spec first)
 - [ ] Sub-project 2: plugin runtime + capability model — DRAFT written

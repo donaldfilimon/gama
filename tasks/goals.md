@@ -74,6 +74,16 @@ status: in_progress
   0 failures; `check-docs.sh` zero-warning gate green. CLAUDE.md expanded into
   the full operational guide and opened as PR #8
   (docs/claude-md-operational-guide branch).
+- Post-merge matrix for PR #9 (toolchain-accuracy sweep): Android emulator
+  job failed once with an adb "Broken pipe" APK-install infra flake
+  (PR #9's CI changes were cosmetic renames, nowhere near the Android
+  path); rerun succeeded 2026-08-26 22:19 — matrix fully green on main.
+- DocC member coverage (2026-08-26 evening, goal-loop session): GamaCore
+  (all ten files), GamaTUI, and GamaAppleUI now have zero undocumented
+  public declarations — four comments-only commits (782 insertions, 0
+  deletions), each verified by check-docs.sh (slice 4 also by a full pinned
+  swift build), authored in worktree /private/tmp/gama-docc-wt. Open as
+  PR #10; merge only when its matrix is green.
 - Sub-projects 2-4 Proposed: drafts written and committed under
   docs/superpowers/specs/drafts/ (plugin runtime + capability model; app
   shell/windowing/lifecycle; packaging & distribution). Each is DRAFT ONLY —
