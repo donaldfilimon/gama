@@ -800,8 +800,8 @@ struct FrameHostTests {
     }
 
     @Test("resize event records lastSize and dirties")
-    func resizeEventRecordsLastSizeAndDirties() {
-        var host = FrameHost(app: HostProbeApp())
+    func resizeEventRecordsLastSizeAndDirties() throws {
+        var host = try FrameHost(app: HostProbeApp())
         _ = host.pump(size: Size(width: 20, height: 6))
         let sizeAfterPump = host.lastSize
         let cleanAfterPump = host.needsFrame
