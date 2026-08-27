@@ -74,7 +74,7 @@ private struct CEmbedDiagnosticApp: App {
 }
 
 /// Swift-side entry to the versioned C embedding ABI: build a context for
-/// any ``GamaCore/App`` and hand the opaque pointer to a C, JNI, or
+/// any `App` and hand the opaque pointer to a C, JNI, or
 /// game-engine host. Status codes and ownership rules live in
 /// `GamaEmbed.h`.
 public enum GamaEmbed {
