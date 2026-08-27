@@ -43,7 +43,8 @@ All suites live in `Tests/gamaTests/`:
 | `MacroExpansionTests.swift` | Macro expansion via `SwiftSyntaxMacrosGenericTestSupport` (no XCTest) |
 | `EmbedABITests.swift` | Embed ABI additions: `gama_embed_v1_abi_version`, hostile-resize clamps, frame-storage reuse |
 | `WASMSerializerTests.swift` | WASM HTML serializer (compiled off wasm32) |
-| `AppleHostTests.swift` | AppKit host (macOS only) |
+| `AppleHostTests.swift` | Embeddable AppKit host (macOS only) |
+| `AppleShellTests.swift` | Offscreen AppKit scene/window ownership (macOS only) |
 | `POSIXTerminalIntegrationTests.swift` | PTY raw-mode restore (Darwin) |
 | `WindowsTerminalTests.swift` | Native console translators (Windows only) |
 

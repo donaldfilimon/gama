@@ -175,7 +175,10 @@
 - [ ] Sub-project 2: plugin runtime + capability model — DRAFT written
       (docs/superpowers/specs/drafts/2026-08-26-plugin-runtime-draft.md),
       awaiting Donald's review of its 3 open questions
-- [ ] Sub-project 3: scene-first app shell, windowing, lifecycle — APPROVED
+- [ ] Sub-project 3: scene-first app shell, windowing, lifecycle — APPROVED;
+      scene core integrated on main and the macOS shell is implemented/local-
+      proven on its delivery branch. Keep open until the shell PR and its
+      post-merge six-job matrix are green.
       design at docs/superpowers/specs/2026-08-27-scene-first-app-shell-design.md.
       Scene core/migration and macOS shell are separate green delivery slices;
       packaging's .app slice depends on both.

@@ -20,6 +20,8 @@ describe a blocked capability as shipped.
 
 - [backends/TUI.md](backends/TUI.md) — terminals (POSIX + Windows console).
 - [backends/AppleUI.md](backends/AppleUI.md) — AppKit/UIKit embedding.
+- [backends/AppleShell.md](backends/AppleShell.md) — macOS application and
+  multi-window ownership.
 - [backends/WASM.md](backends/WASM.md) — browser hosting via `WebHost/`.
 - [backends/CEmbed.md](backends/CEmbed.md) — the C ABI, walkthrough included.
 - [backends/Android.md](backends/Android.md) — JNI packaging and the emulator
