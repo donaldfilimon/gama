@@ -63,7 +63,8 @@ unset TOOLCHAINS
 `check-doc-coverage.sh` fails on any undocumented public declaration;
 baseline exceptions live in `scripts/doc-coverage-allowlist.txt` with a
 written justification. Adding a public symbol means adding its `///`, not an
-allowlist entry.
+allowlist entry. CI's macOS job runs boundaries, docs, and doc-coverage
+together.
 
 Full acceptance matrix: `./scripts/check.sh` runs every `check-*.sh` gate in
 order — twelve as of 2026-08-27 (apple, apple-platforms, boundaries, c-abi,
@@ -117,6 +118,7 @@ One retained render pipeline, many backends:
 
 ```text
 App → @SceneBuilder → one explicit primary + auxiliary Window/WindowGroup
+          → per-surface content closure, re-evaluated every frame
 App state → @ViewBuilder / macros → RenderNode (value IR, GamaCore)
           → LayoutEngine → LaidOutNode
           → CellPainter → CellBuffer → DrawList (GamaDraw)
@@ -135,12 +137,28 @@ with typed throws, so hosts are moved, never shared.
 Target layering (all under `Sources/`, single test target `GamaTests` at
 `Tests/gamaTests`):
 
-- **GamaCore** — views, identity, state, layout, events, and `FrameHost`.
-  Embedded-Swift-safe: stdlib only. `check-boundaries.sh` rejects any import
-  of Foundation, AppKit, UIKit, Darwin, Glibc, WinSDK, or Synchronization
-  here, and rejects process-global registries anywhere. Each `FrameHost` owns
-  focus, actions, subscriptions, dirty state, and frames; out-of-band changes
-  go through the host's `SubscriptionContext` or explicit `invalidate()`.
+Target layering (all under `Sources/`, single test target `GamaTests` at
+`Tests/gamaTests`):
+
+- **GamaCore** — scenes, views, identity, state, layout, events, and
+  `FrameHost`. Embedded-Swift-safe: stdlib only. `check-boundaries.sh`
+  rejects any import of Foundation, AppKit, UIKit, Darwin, Glibc, WinSDK, or
+  Synchronization in GamaCore *and* GamaPlugin, and rejects process-global
+  registries anywhere. `FrameHost` and `AppRuntime` are `~Copyable`: each
+  host uniquely owns focus, actions, subscriptions, dirty state, and frames;
+  out-of-band changes go through the host's `SubscriptionContext` or explicit
+  `invalidate()`.
+- **Gama** — compatibility umbrella (`@_exported import GamaCore`) only.
+- **GamaPlugin** — Tier-1 static plugin runtime: manifest, grants,
+  unforgeable handles (internal initializers), per-host `PluginRuntime` and
+  `PluginSlot`. Stdlib-only, interfaces only. Tier 1 is capability-based
+  *design*, not a sandbox — never describe it as isolation. Tiers 2/3 are
+  Proposed. `docs/Plugins.md` carries the tier table and the honest
+  enforcement statement.
+- **GamaPlatformServices** — the Foundation-backed `HostServices`
+  implementations (stderr log, monotonic clock, scoped filesystem). It may
+  import Foundation precisely because no portable target may import *it*;
+  `check-boundaries.sh` enforces that inverse boundary.
 - **GamaMacros / GamaMacrosImpl** — optional `@Component`, `@Reactive`, `#rgb`
   sugar; the impl is a host-side compiler plugin. swift-syntax is the only
   package dependency, pinned by revision, build-time only — nothing from it
@@ -166,6 +184,25 @@ Target layering (all under `Sources/`, single test target `GamaTests` at
 - `Examples/` holds host integrations kept out of the framework targets:
   `Android` (JNI/Gradle, built as the `GamaAndroidDemo` product), plus
   `AppleHost`, `CEmbed`, and `Embedded` consumer samples.
+
+## State lifetime trap (`@Reactive`)
+
+A scene's content closure runs **on every frame**, so a component value built
+inside it is a fresh instance each frame — and `@Reactive` stores its
+`Signal` in the component instance. Build a component inline in a `Window`
+body and its state resets before the next pump: keypresses appear to do
+nothing while the focus ring still moves. Hoist the instance so it outlives
+the closure (`Sources/GamaDemo/main.swift:132` does this).
+
+Hoisting stores state **per scene declaration, not per surface**: every
+window of a `WindowGroup` captures the same closure, so a hoisted instance or
+an app-level `Signal` is one shared instance behind all of them (`Signal`
+also requires one host at a time, never concurrent hosts). That is right for
+deliberately shared model state and wrong for per-window state, which has no
+framework-provided storage today — the gap is tracked in
+`docs/superpowers/specs/drafts/2026-08-27-view-state-identity-draft.md`.
+`ReactiveStateLifetimeTests` (in `Tests/gamaTests/MacroUsageTests.swift`)
+pins the behavior.
 
 ## Evidence policy
 
