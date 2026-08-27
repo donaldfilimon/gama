@@ -212,6 +212,47 @@
       (compiler-accepted, symbol-graph-invisible), and converted
       GamaEmbed.h to per-symbol /** */ docs.
 
+## Roadmap Task 4.2 (remaining Slice-C items, land in order)
+- [x] Item 3: macro diagnostic Fix-Its. PR #44 merged 2026-08-27 (8717a8c) with
+      its exact-head six-job matrix green. Fix-Its added only where exactly one
+      correct edit exists (reactive.var-only let->var, gated on the decl really
+      being `let`; component.struct-only removes the attribute). The other three
+      (reactive.needs-type, rgb.literal-required, rgb.malformed) deliberately
+      have NO Fix-It and tests pin that absence. Mutation-verified: dropping the
+      `let` gate fails "Reactive offers no let-to-var Fix-It on a property that
+      is already var". A first attempt at that negative test used a `func` and
+      never exercised the gate (mutation passed); replaced with a tuple-pattern
+      binding that does.
+
+## CI findings 2026-08-27 (evidence-backed, not yet fixed)
+- [ ] **Android emulator has never had KVM.** Verified on a GREEN main run
+      (33068264814, job 98503691390): `ProbeKVM: This user doesn't have
+      permissions to use KVM (/dev/kvm)`, group empty (`kvm:x:993:`), falls back
+      to TCG software emulation every run. `grep -ci 'kvm|udev|accel'
+      .github/workflows/ci.yml` == 0, and PR #41 adds none. Boot 380,965 ms on a
+      passing run vs 720,220 ms on a failing one — that spread is unaccelerated
+      QEMU, not a transport glitch, and the `Can't find service: package`
+      signature is a package manager that had not registered yet. Fix is the
+      android-emulator-runner README's ~6-line Enable-KVM udev step. Posted on
+      PR #41 (whose author owns that job) rather than opened as a conflicting
+      PR. Consequence if true: much of the 900/720/840/240 partitioning stops
+      being load-bearing. CORRECTS the repo's own "adb install flakes are infra,
+      not product" framing in docs/Capabilities.md:33.
+- [ ] **check-boundaries.sh cannot catch libm symbol references.** It greps
+      `^import (Foundation|AppKit|UIKit|Darwin|Glibc|WinSDK|Synchronization)$`,
+      so a bare `Double.rounded()` in GamaCore passes boundaries locally and
+      only fails at link on the static-Linux/wasm products ("undefined reference
+      to 'round'/'rint'/'trunc'/'ceil'/'floor'"). Hit live on PR #42's wave-2
+      head. Closing the hole needs a link-or-symbol check for the portable
+      targets, not another import grep.
+- [ ] **PR #43 reopens the rejected `leak:XCTest` suppression.** Its
+      lsan-suppressions.supp has exactly one non-comment line, `leak:XCTest` —
+      the pattern closed with PR #31 and rejected at todo.md:100, goals.md:208,
+      and roadmap:94. It ships no negative control (diff is ci.yml + the .supp
+      only), so a green matrix proves the suppression works, not that Gama leak
+      coverage survived. Flagged on the PR; one deliberately-leaking Gama Swift
+      Testing case proving the job still fails would satisfy option (b).
+
 ## Later sub-projects (each needs its own spec first)
 - [ ] Sub-project 2: plugin runtime + capability model — APPROVED
       (docs/superpowers/specs/2026-08-27-plugin-runtime-design.md; the
