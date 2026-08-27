@@ -11,8 +11,8 @@ if [[ -n "${GAMA_SWIFT_64:-}" ]]; then
   SWIFTC=("$(dirname "$GAMA_SWIFT_64")/swiftc")
 else
   unset TOOLCHAINS || true
-  SWIFT=(/usr/bin/xcrun --toolchain default swift)
-  SWIFTC=(/usr/bin/xcrun --toolchain default swiftc)
+  SWIFT=(/usr/bin/xcrun --toolchain "${GAMA_TOOLCHAIN_ID:-org.swift.65202608211a}" swift)
+  SWIFTC=(/usr/bin/xcrun --toolchain "${GAMA_TOOLCHAIN_ID:-org.swift.65202608211a}" swiftc)
 fi
 "${SWIFT[@]}" build --package-path "$ROOT" --scratch-path "$SCRATCH" --product GamaEmbed
 cc -std=c17 -Wall -Wextra -Werror \

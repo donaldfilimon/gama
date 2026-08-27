@@ -6,10 +6,10 @@ SCRATCH="${GAMA_DOCC_SCRATCH_PATH:-/private/tmp/gama-docc-swiftpm}"
 test -f "$ROOT/Sources/GamaCore/GamaCore.docc/GamaCore.md"
 test -f "$ROOT/docs/Capabilities.md"
 unset TOOLCHAINS || true
-/usr/bin/xcrun --toolchain default swift package --package-path "$ROOT" dump-package >/dev/null
+/usr/bin/xcrun --toolchain "${GAMA_TOOLCHAIN_ID:-org.swift.65202608211a}" swift package --package-path "$ROOT" dump-package >/dev/null
 (
   cd "$ROOT"
-  /usr/bin/xcrun --toolchain default swift package --scratch-path "$SCRATCH" dump-symbol-graph --minimum-access-level public
+  /usr/bin/xcrun --toolchain "${GAMA_TOOLCHAIN_ID:-org.swift.65202608211a}" swift package --scratch-path "$SCRATCH" dump-symbol-graph --minimum-access-level public
 )
 symbol_file="$(find "$SCRATCH" -type f -name 'GamaCore.symbols.json' -print -quit)"
 [[ -n "$symbol_file" ]] || { echo "error: GamaCore symbol graph was not produced" >&2; exit 1; }

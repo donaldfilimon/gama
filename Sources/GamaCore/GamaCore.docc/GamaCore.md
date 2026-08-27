@@ -8,7 +8,7 @@ GamaCore turns generic Swift views into a retained ``RenderNode`` tree, lays
 that tree out into ``LaidOutNode`` values, and routes typed ``InputEvent``
 values through a host-owned ``FrameHost``. It has no Foundation or platform
 dependency and is shared unchanged by terminal, Apple, WebAssembly, C/Android,
-Embedded, MLIR, and Qt integrations.
+Embedded, and MLIR integrations.
 
 Application state uses ``Signal``, ``State``, and ``Binding``. State mutations
 caused by Gama actions are rendered by the owning host. External asynchronous

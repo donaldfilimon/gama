@@ -2,12 +2,12 @@
 set -euo pipefail
 unset TOOLCHAINS || true
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SNAP="${GAMA_EMBEDDED_TOOLCHAIN:-/Users/donaldfilimon/Library/Developer/Toolchains/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a.xctoolchain}"
+SNAP="${GAMA_EMBEDDED_TOOLCHAIN:-/Users/donaldfilimon/Library/Developer/Toolchains/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a.xctoolchain}"
 SWIFTC="${GAMA_SWIFTC_64:-$SNAP/usr/bin/swiftc}"
 if [[ -n "${GAMA_SWIFTC_64:-}" ]]; then
   EXPECTED_SHA="${GAMA_SWIFTC_SHA256:-}"
 else
-  EXPECTED_SHA="${GAMA_SWIFTC_SHA256:-f977959cab6c9fe5996134849e223658b936208ba9ea8331aedf39f83740b815}"
+  EXPECTED_SHA="${GAMA_SWIFTC_SHA256:-dbbd4d7b467ad2f0cc7e451b4f828c76a4ba2ba3cf1b7bb7f5514cee1f9c9188}"
 fi
 [[ -x "$SWIFTC" ]] || { echo "error: missing Embedded compiler: $SWIFTC" >&2; exit 1; }
 if [[ -n "$EXPECTED_SHA" ]]; then
@@ -15,8 +15,8 @@ if [[ -n "$EXPECTED_SHA" ]]; then
   [[ "$actual_sha" == "$EXPECTED_SHA" ]] || { echo "error: Embedded compiler checksum mismatch" >&2; exit 1; }
 fi
 version="$($SWIFTC --version)"
-grep -q 'Swift version 6.4' <<<"$version" || { echo "error: exact Swift 6.4 snapshot required" >&2; exit 1; }
-grep -q 'Swift 424cae54c1a10da' <<<"$version" || { echo "error: wrong Swift 6.4 snapshot revision" >&2; exit 1; }
+grep -q 'Swift version 6.5' <<<"$version" || { echo "error: exact Swift 6.5 snapshot required" >&2; exit 1; }
+grep -q 'Swift 95c5142e84b82c1' <<<"$version" || { echo "error: wrong Swift 6.5 snapshot revision" >&2; exit 1; }
 sources=()
 while IFS= read -r source; do sources+=("$source"); done < <(find "$ROOT/Sources/GamaCore" -name '*.swift' | sort)
 OUT="${GAMA_EMBEDDED_OUTPUT:-${TMPDIR:-/tmp}/GamaCore.embedded.o}"

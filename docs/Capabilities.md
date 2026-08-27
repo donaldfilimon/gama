@@ -10,7 +10,6 @@ Status is evidence-based, not inferred from source presence.
 | iOS/tvOS/visionOS UIKit host | Locally compile proven: generic simulator builds including touch and hardware-key branches | Hosted macOS compile job |
 | Macros | Locally compile/test proven: `@Component`, `@Reactive`, and `#rgb` expansions and diagnostics | Hosted macOS job |
 | DrawList/C ABI | Locally proven: randomized/malformed codec tests and independent context lifecycle | Hosted Linux C consumer |
-| Qt adapter | Locally proven: C++23/Qt 6.11 renderer, retained `GamaQtHost`, input/frame lifecycle, and example build | Hosted macOS Qt job |
 | MLIR emitter | Locally proven: deterministic generic form parsed by `mlir-opt --allow-unregistered-dialect` | Hosted macOS MLIR job |
 | Embedded core | Locally compile/link proven: exact 2026-08-14 Swift 6.4 snapshot, bare-metal ARM ELF whole-module object and 465,656-byte relocatably linked artifact | Hosted Ubuntu artifact job; no physical-board claim |
 | Linux/static Linux | Locally cross-compile proven: matching static Linux SDK and aarch64 musl build | Hosted native Linux tests and sanitizers |

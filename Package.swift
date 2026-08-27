@@ -1,4 +1,7 @@
 // swift-tools-version: 6.4
+// Tools-version stays 6.4 deliberately: nothing here needs 6.5 manifest grammar,
+// and Xcode's integrated SwiftPM (6.4) must still resolve this package for the
+// xcodebuild platform gates. The COMPILER is the 6.5-dev snapshot via .swift-version.
 import CompilerPluginSupport
 import PackageDescription
 

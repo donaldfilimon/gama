@@ -2,7 +2,7 @@
 
 Gama is a modular declarative UI framework written in Swift 6.4. A single
 retained render tree drives terminal, CoreGraphics, WebAssembly, C/Android,
-MLIR, Embedded Swift, and optional Qt integrations.
+MLIR, and Embedded Swift integrations.
 
 ```swift
 import GamaCore
@@ -43,21 +43,18 @@ struct CounterApp: App {
 | `GamaMLIR` | Deterministic generic-form `gama` dialect emitter |
 | `gama-demo` | Interactive TUI and `--emit-mlir` showcase |
 
-The optional Qt/C++ adapter is a separate package in `Adapters/GamaQt`; Qt is
-not part of the default dependency graph.
-
 ## Architecture
 
 ```text
 App state → @ViewBuilder / macros → RenderNode
           → LayoutEngine → LaidOutNode
           → CellPainter → CellBuffer → DrawList
-          → TUI | Apple | WASM | C/Android | Qt | MLIR
+          → TUI | Apple | WASM | C/Android | MLIR
 
 platform event → InputEvent → FrameHost → host-owned action → rebuild
 ```
 
-`GamaCore` imports no Foundation, platform UI, POSIX, WinSDK, Qt, or
+`GamaCore` imports no Foundation, platform UI, POSIX, WinSDK, or
 Synchronization module. Each `FrameHost` owns actions, focus, dirty state, and explicit subscriptions;
 there is no process-global action or invalidation registry. Changes made
 outside a Gama input event connect through the host's `SubscriptionContext` or
