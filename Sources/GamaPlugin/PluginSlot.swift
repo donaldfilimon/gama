@@ -16,9 +16,9 @@ import GamaCore
 ///         Footer()
 ///     }
 ///
-/// Each plugin's contribution renders under a positional child identity
-/// derived from its install index, so node identities stay stable across
-/// rebuilds and reinstalls in the same order.
+/// Each plugin's contribution renders under a runtime-assigned child identity
+/// retained for its plugin ID, so node identities stay stable across rebuilds,
+/// peer removal, and reinstall in the same runtime.
 public struct PluginSlot: View {
     /// Terminates `body` recursion; this primitive compiles in
     /// `render(in:)`.

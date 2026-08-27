@@ -30,6 +30,31 @@ public macro Component() =
 ///             Button("count: \(count)") { count += 1 }
 ///         }
 ///     }
+///
+/// The state lives in the component *instance*, which must outlive the
+/// frame. Scene content is rebuilt on every frame, so a component
+/// constructed inside a `Window` or `WindowGroup` closure is replaced —
+/// state included — before the next frame paints, and every mutation is
+/// silently discarded. Store the instance where it survives instead:
+///
+///     struct CounterApp: App {
+///         private let counter = Counter()   // not `{ Counter() }` below
+///         var scenes: some Scene {
+///             Window("Counter", id: "main", role: .primary) { counter }
+///         }
+///     }
+///
+/// That shape is exact for a singleton ``GamaCore/Window``, which owns one
+/// surface. It is *sharing*, not per-surface storage: every surface built
+/// from a scene declaration captures the same closure, so a stored instance
+/// — like an app-level ``GamaCore/Signal`` — is one instance behind every
+/// open window of a ``GamaCore/WindowGroup``, and its `@Reactive` signals
+/// are shared state rather than per-window state. Store state on the app
+/// when the windows are meant to share a model (`Signal` still requires its
+/// readers to be one host at a time, never concurrent hosts). State that
+/// each window must own independently has no framework-provided storage
+/// today; the identity-keyed-view-state draft under
+/// `docs/superpowers/specs/drafts/` is where that gap is tracked.
 @attached(peer, names: prefixed(`_`))
 @attached(accessor, names: named(init), named(get), named(set))
 public macro Reactive() =

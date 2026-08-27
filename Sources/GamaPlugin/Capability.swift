@@ -74,8 +74,8 @@ public enum FilesystemScope: Hashable, Sendable {
     private static func hasSafeComponents(_ path: String) -> Bool {
         let components = path.dropFirst().split(
             separator: "/", omittingEmptySubsequences: false)
-        for component in components {
-            if component.isEmpty && component != components.last { return false }
+        for (index, component) in components.enumerated() {
+            if component.isEmpty && index != components.count - 1 { return false }
             if component == "." || component == ".." { return false }
         }
         return true

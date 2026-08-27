@@ -39,7 +39,7 @@ All suites live in `Tests/gamaTests/`:
 | `ModernTests.swift` | DrawList codec hostility, CellPainter ↔ DrawList, Overflow-safe geometry |
 | `FormControlTests.swift` | TextField, Toggle, ProgressView |
 | `EmbedTests.swift` | Independent C-embed contexts |
-| `MacroUsageTests.swift` | `@Component` / `@Reactive` / `#rgb` compile-and-render |
+| `MacroUsageTests.swift` | `@Component` / `@Reactive` / `#rgb` compile-and-render; reactive state lifetime across frames under keyboard and pointer activation |
 | `MacroExpansionTests.swift` | Macro expansion via `SwiftSyntaxMacrosGenericTestSupport` (no XCTest) |
 | `EmbedABITests.swift` | Embed ABI additions: `gama_embed_v1_abi_version`, hostile-resize clamps, frame-storage reuse |
 | `WASMSerializerTests.swift` | WASM HTML serializer (compiled off wasm32) |
