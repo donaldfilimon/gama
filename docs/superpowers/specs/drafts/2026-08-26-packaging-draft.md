@@ -1,5 +1,13 @@
 # Gama umbrella — packaging & distribution (sub-project 4) — DRAFT
 
+> **SUPERSEDED 2026-08-27** by
+> `../2026-08-27-packaging-design.md` (approved). Donald resolved the open
+> questions: `com.donaldfilimon.gama.*` confirmed; Developer ID exists, so
+> `release-macos.sh` is real V1 scope; wasm-site and `.app` slices proceed
+> in parallel with `gama-apple-demo` (scene-first shell) as the payload;
+> the `Distribution/` manifest lands now. This draft is kept for the
+> inventory and rejected alternatives.
+
 Date: 2026-08-26. Status: **draft for review** (nothing here is approved;
 everything not labeled "exists today" is Proposed).
 
