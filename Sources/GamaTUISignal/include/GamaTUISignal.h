@@ -15,9 +15,16 @@
  * drain the resize latch with one indivisible exchange instead of a racy
  * read-then-clear pair. */
 
+/** Records whether terminal rescue handlers currently own the process signals. */
 void gama_tui_set_armed(int value);
+
+/** Returns whether terminal rescue handlers currently own the process signals. */
 int gama_tui_get_armed(void);
+
+/** Records that the terminal size may have changed. */
 void gama_tui_set_resize_pending(int value);
+
+/** Atomically clears and returns the pending terminal-resize flag. */
 int gama_tui_take_resize_pending(void);
 
 #endif
