@@ -112,7 +112,13 @@
       session; Musl/Android write imports; hoisted readBuffer; 1-byte ESC
       compare; WinSDK BOOL `_ =`. AppleUI let colors, @MainActor closures,
       reinstall tears down previous session, italic via NSFontDescriptor.
-- [ ] Slice C (needs Donald's sign-off / design decisions — Proposed only):
+- [ ] Slice C — APPROVED IN FULL 2026-08-27 (Donald, decision prompt):
+      unify frame pumps now (finish ADR 0007); adopt the validated
+      non-Sendable Signal design (supersedes ADR 0003's interim); execute
+      every remaining item in gated slices, measure-first where noted.
+      Sequencing: wave 2, after feat/plugin-runtime-v1, feat/packaging-v1,
+      and docs/docc-catalogs-backends land (shared GamaCore files).
+      Original scope list:
       unify the four divergent frame pumps + pick one resize policy (audit's
       top structural item; changes observable resize semantics); Signal
       @unchecked Sendable redesign (Synchronization is banned in GamaCore —

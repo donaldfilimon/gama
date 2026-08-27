@@ -214,3 +214,9 @@ status: in_progress
   docs/superpowers/specs/2026-08-27-packaging-design.md (drafts annotated
   SUPERSEDED, kept for rationale). Implementation proceeds in gated
   slices; green-before-merge is the rule each slice must actually honor.
+- Slice C approved in full (2026-08-27, Donald): frame-pump unification with
+  a single resize policy (ADR 0007 leaves Provisional), the validated
+  non-Sendable Signal redesign (ADR 0003 interim to be superseded), and all
+  remaining Slice C items as gated slices. Scheduled as wave 2 behind the
+  plugin-runtime, packaging, and DocC-catalog branches to avoid GamaCore
+  merge conflicts.
