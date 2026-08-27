@@ -456,7 +456,13 @@ public struct ProgressView: View {
         guard width > 0 else { return "" }
         let eighthsPerCell = 8
         let totalEighths = width * eighthsPerCell
-        var filledEighths = Int((fraction * Double(totalEighths)).rounded())
+        // Round-half-up without `.rounded()`: that call lowers to libm
+        // (round/rint/trunc/ceil/floor), and GamaCore must stay stdlib-only
+        // so it links on the static-Linux, wasm, and Embedded targets.
+        // `Int(_: Double)` truncates via an intrinsic, so adding 0.5 first
+        // gives the same result for the non-negative values used here.
+        let scaled = fraction * Double(totalEighths)
+        var filledEighths = scaled <= 0 ? 0 : Int(scaled + 0.5)
         filledEighths = min(max(filledEighths, 0), totalEighths)
         // Rounding a fraction just under 1 (e.g. 0.99) up to the last
         // eighth would make it indistinguishable from an exact 1.0 bar;
