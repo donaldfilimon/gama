@@ -71,3 +71,38 @@ Swift host initialization now throws `SceneConfigurationError`. C/JNI/WASM
 entry points translate invalid configuration into their ABI failure value.
 Window actions are optional capabilities: outside `GamaAppleShell`, opening or
 dismissing a window returns `false` and the current surface continues rendering.
+
+## Resize timing is now eager on every backend (2026-08-27)
+
+Before wave 2, a `.resize` reached handling code immediately on Embed and
+WASM but only at the *next* pump on TUI and AppleUI. All four backends now
+share one canonical `HostPump` whose policy is eager: `.resize` updates the
+pump's size and invalidates the host **before** the event is forwarded.
+
+If you wrote code that relied on reading the old extent during a resize on
+TUI or AppleUI, it now sees the new one:
+
+```swift
+// Before (TUI/AppleUI): `size` was still the pre-resize extent here.
+// After (everywhere):   `size` is already the new extent.
+func handleLifecycle(_ event: LifecycleEvent) { /* observes new size */ }
+```
+
+Embed and WASM are unaffected — they already behaved this way. See
+[ADR 0008](adr/0008-one-pump-eager-resize.md).
+
+## `App`, `View`, and `Scene` are no longer `Sendable` (2026-08-27)
+
+`Signal` is now non-`Sendable`, so every type that transitively owns one
+drops the `Sendable` claim it could only satisfy because `Signal` laundered
+its own. If you wrote `struct MyApp: App, Sendable` or passed a view across
+an isolation boundary, that no longer type-checks — which is the point: it
+never was safe, it was merely unchecked.
+
+Host services (log, clock, filesystem), the window command channel, and
+scene payload values remain `Sendable`; those genuinely cross contexts.
+
+See [ADR 0009](adr/0009-signal-is-not-sendable.md), which also records a
+measured correction: a retroactive `@unchecked Sendable` conformance still
+compiles with a warning, so the confinement is loudly enforced, not
+impossible to defeat.

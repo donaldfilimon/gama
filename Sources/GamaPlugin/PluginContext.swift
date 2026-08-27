@@ -87,7 +87,11 @@ public struct FilesystemAccess: Sendable {
 /// granted (required capabilities are always non-nil after a successful
 /// install; optional ones are filtered to the granted, service-backed
 /// subset).
-public struct PluginContext: Sendable {
+/// **Not `Sendable`.** A plugin context holds the host's
+/// ``GamaCore/SubscriptionContext``, so it is confined to the one host
+/// that granted it — the same confinement the plugin runtime already
+/// documented for per-host `PluginRuntime` ownership.
+public struct PluginContext {
     /// The identity this context was issued to.
     public let plugin: PluginID
     /// Log handle, or `nil` when ``Capability/log`` was not granted.

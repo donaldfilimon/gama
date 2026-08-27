@@ -9,15 +9,15 @@
 /// cannot import Synchronization; the store is confined to the host's owning
 /// executor and is never shared across concurrent hosts.
 private final class HostActionStore: @unchecked Sendable {
-    var actions: [NodeID: @Sendable () -> Void] = [:]
-    var keyHandlers: [NodeID: @Sendable (Key) -> Bool] = [:]
+    var actions: [NodeID: () -> Void] = [:]
+    var keyHandlers: [NodeID: (Key) -> Bool] = [:]
 
     func beginBuildPass() {
         actions.removeAll(keepingCapacity: true)
         keyHandlers.removeAll(keepingCapacity: true)
     }
-    func register(_ id: NodeID, action: @escaping @Sendable () -> Void) { actions[id] = action }
-    func registerKey(_ id: NodeID, handler: @escaping @Sendable (Key) -> Bool) {
+    func register(_ id: NodeID, action: @escaping () -> Void) { actions[id] = action }
+    func registerKey(_ id: NodeID, handler: @escaping (Key) -> Bool) {
         keyHandlers[id] = handler
     }
     func invoke(_ id: NodeID) { actions[id]?() }
@@ -40,8 +40,8 @@ public struct FrameHost: ~Copyable {
     public let sceneID: SceneID
     /// Runtime identity of the one live surface owned by this host.
     public let windowInstanceID: WindowInstanceID
-    private let renderScene: @Sendable (BuildContext) -> RenderNode
-    private let deliverLifecycle: @Sendable (LifecycleEvent) -> Void
+    private let renderScene: (BuildContext) -> RenderNode
+    private let deliverLifecycle: (LifecycleEvent) -> Void
     private let windowContext: WindowContext
 
     /// Every interactive node — the pointer hit-test set.

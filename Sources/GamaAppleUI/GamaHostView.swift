@@ -127,26 +127,29 @@ public final class GamaHostView: GamaPlatformView {
 
         let session = Session(surface: surface, size: gridSize())
         tearDownSession = {
-            session.host.cancelSubscriptions()
+            session.pump.cancelSubscriptions()
         }
 
         driver = { [weak self] in
             guard let self else { return }
+            // The grid is re-synced through the pump's eager resize path,
+            // so a layout pass that changed the extent is visible to this
+            // frame rather than to the next one.
             let grid = self.gridSize()
-            if session.buffer.size != grid { session.buffer.resize(grid) }
-            guard session.host.needsFrame else { return }
-            let laid = session.host.pump(size: grid)
-            session.buffer.clearBack()
-            CellPainter.paint(laid, into: &session.buffer)
-            self.currentDrawList = DrawList.from(session.buffer)
+            if grid != session.pump.size { session.pump.handle(.resize(grid)) }
+            let outcome = session.pump.advance(into: &session.buffer) { painted in
+                self.currentDrawList = DrawList.from(painted)
+            }
+            guard outcome.produced else { return }
             self.setNeedsDisplayCompat()
+            if outcome.followUp { self.driver?() }
         }
         invalidateHost = {
-            session.host.invalidate()
+            session.pump.invalidate()
         }
         handleEvent = { [weak self] event in
-            session.host.handle(event)
-            self?.pumpIfNeeded(session.host.needsFrame)
+            session.pump.handle(event)
+            self?.pumpIfNeeded(session.pump.needsFrame)
             self?.afterEventDispatch?()
         }
         driver?()
@@ -179,10 +182,10 @@ public final class GamaHostView: GamaPlatformView {
     /// which are themselves MainActor-isolated because they're stored on
     /// this @MainActor class.
     private final class Session {
-        var host: FrameHost
+        var pump: HostPump
         var buffer: CellBuffer
         init(surface: SceneSurface, size: Size) {
-            host = FrameHost(surface: surface)
+            pump = HostPump(host: FrameHost(surface: surface), size: size)
             buffer = CellBuffer(size: size)
         }
     }

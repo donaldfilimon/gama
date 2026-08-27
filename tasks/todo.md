@@ -109,6 +109,19 @@
       commit e038ad6); hosted Apple + Embedded proof rides on the
       post-#16 matrix run.
 
+      DECISION 2026-08-27 (Donald, decision prompt): build a harness-free
+      leak test rather than closing this at detect_leaks=0 or retrying the
+      rejected suppression file (PR #31, closed). A leak target that runs
+      WITHOUT the Swift Testing harness lets detect_leaks=1 return with a
+      real negative control, since the measured leak was the harness
+      process, not Gama.
+      CONSTRAINT (measured): LeakSanitizer is Linux-only — detect_leaks is
+      unsupported on Darwin — so this gate cannot be locally proven on this
+      Mac at all. Its evidence is necessarily hosted-only, which makes the
+      Linux CI job the sole proof and means the negative control matters
+      more than usual: without it, "no leaks found" is indistinguishable
+      from "detector disabled".
+
 ## Code follow-ups from Codex review of PR #10 (docs narrowed in f0078dc;
 ## behavior itself unchanged — each needs a code PR with tests)
 - [x] P1: ZStack(.topLeading) flatten sentinel — fixed via `RenderNode.group`
@@ -172,6 +185,62 @@
       (verified live on this snapshot; import-regex tightening is the
       prerequisite); MLIR emitter unification; scale-aware ProgressView.
 
+      INTEGRATION BLOCKER CLEARED 2026-08-27: DocC-catalog PR #28 merged
+      (18ea46e) and the plugin-runtime hardening follow-up PR #37 is green
+      at its exact head (b11297d). Wave 2 is unblocked.
+
+      WAVE 2 STRUCTURAL HALF LANDED 2026-08-27 on branch
+      slice-c/wave-2-frame-pump-and-signal (not yet in a PR):
+      - Frame-pump unification. One canonical HostPump owns resize policy,
+        the dirty gate, and pump ordering; all four backends rewired (TUI,
+        Embed, WASM, AppleUI). ADR 0008 supersedes 0007. Embed and WASM
+        tests pass UNCHANGED, which is the spec's own proof that the
+        canonical shape matches what they already did.
+        SPEC AMENDED: D2 was unimplementable as written — it puts HostPump
+        in GamaCore with an `emit: (borrowing CellBuffer)` closure, but
+        CellBuffer is in GamaDraw, which depends on GamaCore. Split across
+        the dependency edge (policy in GamaCore so it stays inside
+        check-embedded.sh, which compiles GamaCore alone; buffer path as a
+        GamaDraw extension). A fifth duplicated fragment the spec's table
+        never named — per-backend buffer resizing — folded into
+        CellBuffer.resizeIfNeeded, which normalizes before comparing.
+      - Signal redesign. Signal is non-Sendable with an unavailable
+        conformance; the laundering it enabled is removed from View, Scene,
+        App, BuildContext, Binding, SubscriptionContext, State,
+        GamaPluginProtocol, PluginContext, and plugin contributions.
+        HostServices, the AppKit command channel, and ScenePayload keep
+        @Sendable deliberately. ADR 0009 supersedes 0004.
+        SPEC CORRECTED (measured, not inferred): the spec claimed the
+        unavailable conformance "prevents the conformance from ever being
+        retroactively fixed by a consumer". It does NOT. On the pinned
+        snapshot `extension Signal: @retroactive @unchecked Sendable {}`
+        still compiles, emitting warning #UnavailableSendableConformance
+        plus a note at the declaration. What it buys is a named,
+        attributable diagnostic a consumer must silence deliberately —
+        more than a comment, not impossibility. Pinned by negative
+        fixtures in Tests/Fixtures/Confinement/ driven from
+        check-boundaries.sh (error.* must fail to compile; warn.* must
+        compile AND emit the diagnostic). Folded into the existing
+        boundaries gate rather than a new CI job, because the six required
+        status-check contexts are name-pinned in repository ruleset
+        21626078 and a new job would orphan them.
+      Local evidence: check-apple 167 tests, boundaries (incl. 2
+      confinement fixtures), c-abi, wasm, docs, doc-coverage all green.
+      HOSTED PROOF OUTSTANDING — no PR opened yet, so nothing here is
+      Current.
+
+      LONG TAIL STILL OPEN (Donald chose "full wave 2, everything"
+      2026-08-27): MacroSpec FixIts; VoiceOver from currentDrawList;
+      SIGTERM/SIGHUP/atexit + SIGWINCH terminal restore; presentDiff/
+      forEachRun allocation work (measure first); ~Copyable CellBuffer/
+      Terminal; scripted Renderer double covering AppRuntime.run();
+      StrictMemorySafety + InternalImportsByDefault; MLIR emitter
+      unification; scale-aware ProgressView. Next slice is the Renderer
+      double, because AppRuntime.run() was just rewired onto HostPump and
+      the existing ScriptedRenderer (SceneTests.swift:305) covers only
+      lifecycle — not frame production, the dirty gate, resize through
+      run(), or renderer error propagation.
+
 ## Docs overhaul (planned + largely executed 2026-08-27; see docs/README.md)
 - [x] P0 repair: PR #10 merge-forward reverted sweep hunks on main
       (RenderNode.group + Hashable, ~Copyable hosts, non-mutating
@@ -213,7 +282,7 @@
       GamaEmbed.h to per-symbol /** */ docs.
 
 ## Later sub-projects (each needs its own spec first)
-- [ ] Sub-project 2: plugin runtime + capability model — APPROVED
+- [x] Sub-project 2: plugin runtime + capability model — APPROVED
       (docs/superpowers/specs/2026-08-27-plugin-runtime-design.md; the
       2026-08-26 draft holds rationale). V1 IMPLEMENTED 2026-08-27 on
       feat/plugin-runtime-v1: GamaPlugin (stdlib-only capability core,
@@ -236,14 +305,32 @@
       contributed windows on uninstall (uninstall stops future graph
       compiles from contributing; a live window stays open until closed
       through window actions — next slice if wanted).
-- [ ] Sub-project 3: scene-first app shell, windowing, lifecycle — APPROVED;
+      CLOSED 2026-08-27 (verification sweep): the item's own condition —
+      "the follow-up's own exact-head six-job matrix is green" — is met.
+      The hardening follow-up merged as PR #37; its exact head b11297d
+      passed all six hosted jobs plus Devin Review, and 9519c05 (the five
+      named defect fixes) is an ancestor of main. The deferred sub-items
+      inside this entry (Tier 2 dylib, Tier 3 out-of-process, `.network`,
+      scope subsumption, manifest macros, discovery, persistence, live
+      window teardown on uninstall) remain deferred scope, not open work
+      under this item.
+- [x] Sub-project 3: scene-first app shell, windowing, lifecycle — APPROVED;
       scene core integrated on main and the macOS shell is implemented/local-
       proven on its delivery branch. Keep open until the shell PR and its
       post-merge six-job matrix are green.
       design at docs/superpowers/specs/2026-08-27-scene-first-app-shell-design.md.
       Scene core/migration and macOS shell are separate green delivery slices;
       packaging's .app slice depends on both.
-- [ ] Sub-project 4: packaging & distribution — APPROVED
+      CLOSED 2026-08-27 (verification sweep) with a recorded evidence
+      substitution. PR #21 head ca95b220 passed all six hosted jobs. The
+      literal post-merge run 33048001992 at 84b2f40 was CANCELLED by the
+      workflow's concurrency group rather than failing, so the proof rides
+      on green descendant main runs 33054689162 (3b4c83a) and 33056641869
+      (18ea46e); `git merge-base --is-ancestor 84b2f40 18ea46e` confirms
+      both contain the shell. PR #39 exists precisely to stop this
+      cancellation failure mode; until it lands, cancelled-run substitution
+      stays a named residual, not a silent one.
+- [x] Sub-project 4: packaging & distribution — APPROVED
       (docs/superpowers/specs/2026-08-27-packaging-design.md; the 2026-08-26
       draft is kept for inventory and rejected alternatives). V1 implemented
       2026-08-27 on feat/packaging-v1:
@@ -270,3 +357,12 @@
         iOS-family .ipa. No icon source exists, so the iconutil path is
         implemented but unproven. Keep open until the packaging PR and its
         six-job matrix are green.
+
+      CLOSED 2026-08-27 (verification sweep): the item's own stated
+      condition — "the packaging PR and its six-job matrix are green" — was
+      already satisfied and the ledger had simply not been updated. PR #32
+      head 77e3160 passed all six hosted jobs plus Devin Review, and the
+      post-merge main acceptance run 33054689162 at 3b4c83a is also green.
+      Residuals unchanged and still honest: Developer ID notarization is
+      credential-gated with no credentialed run, and the iconutil path has
+      no icon source, so neither is claimed.
