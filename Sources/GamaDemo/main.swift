@@ -175,7 +175,7 @@ func runDemoWithPlugins() throws {
     try plugins.install(StatusLinePlugin())
     box.runtime = plugins
 
-    var renderer = TUIRenderer()
+    let renderer = TUIRenderer()
     try renderer.begin()
     host.handle(.lifecycle(.didLaunch))
     defer {
