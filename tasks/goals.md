@@ -84,6 +84,14 @@ status: in_progress
   deletions), each verified by check-docs.sh (slice 4 also by a full pinned
   swift build), authored in worktree /private/tmp/gama-docc-wt. Open as
   PR #10; merge only when its matrix is green.
+- Modern-Swift practices sweep (started 2026-08-27, Donald's request via
+  /plan then /goal continue): three parallel audits of the whole package
+  (portable core; backends; tests/macros/build config) produced a ranked
+  modernization backlog — granular checklist under "Modern-Swift sweep" in
+  tasks/todo.md. Executing in small gated slices on a topic branch; PR #10
+  (DocC member coverage) must merge first for GamaCore/TUI/AppleUI files
+  (its Android emulator job flaked with the same adb-offline infra failure
+  as PR #9; rerun started 2026-08-27 ~00:15).
 - Sub-projects 2-4 Proposed: drafts written and committed under
   docs/superpowers/specs/drafts/ (plugin runtime + capability model; app
   shell/windowing/lifecycle; packaging & distribution). Each is DRAFT ONLY —

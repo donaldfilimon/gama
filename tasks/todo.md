@@ -67,6 +67,55 @@
       (custom-colored labels keep their colors when focused) — confirm
       intended or invert precedence.
 
+## Modern-Swift sweep (audited 2026-08-27, three parallel audits; execute in
+## gated slices — slice A avoids PR #10's files until that PR merges)
+- [ ] Slice A (non-GamaCore/TUI/AppleUI): Package.swift — strictCore on the
+      GamaMacrosImpl macro target (only target outside strict mode),
+      GamaWebDemo wasmSettings→strictCore (no @_extern there), add GamaWASM
+      to test target deps. check-boundaries.sh — tighten the import regex
+      (currently blind to `public import Darwin`, submodule imports,
+      indentation) BEFORE any import refactor. GamaWASM — move HTMLSerializer
+      (grid/css/escape, pure String) out of `#if arch(wasm32)` and test it;
+      escape-invariant comment. GamaDraw — Sendable+Equatable on CellBuffer;
+      typed throws on DrawList.decode (9 failure modes currently one nil);
+      delete dead forwarders; reserveCapacity in encode; isValidUTF8 without
+      the Array(slice) copy (rebase indices!); fix width-vs-character unit
+      mismatch in DrawList.from leading-trim. GamaEmbed — initialize→update
+      (fromContentsOf:) UB fix; clamp gama_embed_v1_resize upper bound;
+      distinct error for the >Int32.max truncation path; explicit
+      `nonisolated` on all @_cdecl entry points (incl. WASM + Android demo);
+      header: opaque struct pointer typedef, error enum, abi_version().
+      GamaMLIR — MLIRBuilder/MLIRAttr/renderAttrs → internal (zero external
+      consumers); MLIRAttr.i64(Int)→i64(Int64) (wasm32 NodeID truncation).
+      gama — real @_exported umbrella, retire deprecated hello().
+- [ ] Slice B (after PR #10 merges): GamaCore — FrameHost shared-reference-
+      in-struct fix (actions/dirty); dirty→let, invalidate() non-mutating;
+      named InteractiveRegion struct replacing (NodeID, Rect, focusable:)
+      tuples; BorderGlyphs struct replacing the 8-tuple; Equatable on
+      RenderNode/LaidOutNode; exhaustive switches (RenderNode.flexPriority,
+      flexMinimum); use-or-drop InputEvent.resize payload. GamaTUI —
+      defer-cleanup in TUIRenderer.end(); canImport(Musl)/canImport(Android)
+      branches (latent whole-package SDK build break); hoist 64-byte read
+      buffer; array-literal compare fix; `_ =` on WinSDK BOOLs. GamaAppleUI —
+      defaultForeground/Background var→let; @MainActor-typed closures; guard
+      double install; NSFontManager→NSFontDescriptor(.italic).
+- [ ] Slice C (needs Donald's sign-off / design decisions — Proposed only):
+      unify the four divergent frame pumps + pick one resize policy (audit's
+      top structural item; changes observable resize semantics); Signal
+      @unchecked Sendable redesign (Synchronization is banned in GamaCore —
+      options are per-field nonisolated(unsafe), non-Sendable + drop
+      App: Sendable, or documented confinement); full XCTest→Swift Testing
+      migration (spec drafts currently say XCTest files stay; payoff is
+      removing the Linux ASAN leak suppression) + MacroSpec-based macro
+      tests (2 roles + 2 diagnostics untested) + FixIts; VoiceOver
+      accessibility from currentDrawList; SIGTERM/SIGHUP/atexit terminal
+      restore + SIGWINCH; presentDiff/forEachRun allocation work (measure
+      first); ~Copyable on CellBuffer/Terminal (two-part deinit rework);
+      scripted in-memory Renderer double to cover AppRuntime.run();
+      StrictMemorySafety + InternalImportsByDefault upcoming features
+      (verified live on this snapshot; import-regex tightening is the
+      prerequisite); MLIR emitter unification; scale-aware ProgressView.
+
 ## Later sub-projects (each needs its own spec first)
 - [ ] Sub-project 2: plugin runtime + capability model — DRAFT written
       (docs/superpowers/specs/drafts/2026-08-26-plugin-runtime-draft.md),

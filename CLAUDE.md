@@ -23,6 +23,12 @@ enforces the 6.4 tools-version line, so do not "upgrade" it.
 Always `unset TOOLCHAINS` first — a stray value overrides both the swiftly
 shim and the scripts' explicit `xcrun --toolchain` pins.
 
+**Preferred everyday invocation: `swiftly run`.** From the repo root,
+`swiftly run swift <build|run|test|…>` reads `.swift-version` and selects the
+pinned snapshot automatically — the same compiler the scripts pin via `xcrun
+--toolchain org.swift.65202608211a`, without hardcoding the id. Sanity-check
+with `swiftly run swift --version` → must report `6.5-dev`.
+
 The check scripts are the authority on toolchain identity: they verify
 `Swift version 6.5` (and for the Embedded gate, the exact compiler SHA256 and
 revision) and fail loudly on mismatch. `Toolchains.toml` records pinned
@@ -65,15 +71,18 @@ iCloud:
 
 ```bash
 unset TOOLCHAINS
-/usr/bin/xcrun --toolchain org.swift.65202608211a swift test \
+swiftly run swift test \
   --scratch-path /private/tmp/gama-framework-swiftpm --filter <TestNamePattern>
 ```
+
+(`/usr/bin/xcrun --toolchain org.swift.65202608211a swift test …` is the
+equivalent explicit form the scripts use.)
 
 Run the terminal demo:
 
 ```bash
 unset TOOLCHAINS
-/usr/bin/xcrun --toolchain org.swift.65202608211a swift run gama-demo
+swiftly run swift run gama-demo
 ```
 
 `gama-demo --emit-mlir` prints the MLIR dialect form. Android needs
