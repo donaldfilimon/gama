@@ -14,3 +14,7 @@ Examples/Android/app/src/main/jniLibs/
 Examples/Android/local.properties
 .claude/*.local.md
 .claude/*.local.json
+.swiftpm
+.build
+.remember
+.claude
