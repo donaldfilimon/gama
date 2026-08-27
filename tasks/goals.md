@@ -235,3 +235,24 @@ status: in_progress
   docs/superpowers/specs/2026-08-27-signal-redesign-design.md.
   Implementation waits for the wave-1 branches (plugin runtime, packaging,
   DocC catalogs) to land.
+- Plugin runtime + capability model V1 (2026-08-27): sub-project 2
+  implemented on feat/plugin-runtime-v1 per the approved spec
+  (docs/superpowers/specs/2026-08-27-plugin-runtime-design.md). Delivered:
+  stdlib-only GamaPlugin (manifest/grants/typed errors/unforgeable
+  handles/executor-confined PluginRuntime/PluginSlot), the full
+  contribution surface (namespaced scene contributions with typed
+  primary-role rejection, PluginScenes scene integration consumed by the
+  existing scene graph and AppKit shell, deterministic host-bound
+  commands), GamaPlatformServices (HostServices.standard: stderr log,
+  monotonic clock, real scoped FilesystemProvider with lexical
+  containment, no symlink resolution), a demo status-line slot in
+  gama-demo, extended check-boundaries.sh greps (GamaPlugin held to the
+  GamaCore rules; inverse grep fencing GamaPlatformServices out of
+  portable targets), docs/Plugins.md with the Tier-1 enforcement-honesty
+  stance, and 34 Swift Testing cases. Evidence at delivery time: local
+  check-apple.sh, check-boundaries.sh, check-docs.sh,
+  check-doc-coverage.sh green plus a full swift test run (record exact
+  results in the PR). Deferred, recorded in tasks/todo.md: Tier 2/3,
+  .network, scope subsumption, discovery, persistence, and shell
+  teardown of contributed windows on uninstall. Hosted proof is the
+  six-job matrix on the PR; merge only when green.

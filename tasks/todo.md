@@ -179,12 +179,24 @@
       GamaEmbed.h to per-symbol /** */ docs.
 
 ## Later sub-projects (each needs its own spec first)
-- [ ] Sub-project 2: plugin runtime + capability model — APPROVED 2026-08-27
-      (docs/superpowers/specs/2026-08-27-plugin-runtime-design.md): first-party
-      GamaPlatformServices in V1, full contribution surface (slots + scenes +
-      commands), Tier 2/3 deferred. Implement in gated slices: A (types/
-      grants/lifecycle), B (slots), C (scenes+commands), D (platform
-      services).
+- [ ] Sub-project 2: plugin runtime + capability model — APPROVED
+      (docs/superpowers/specs/2026-08-27-plugin-runtime-design.md; the
+      2026-08-26 draft holds rationale). V1 IMPLEMENTED 2026-08-27 on
+      feat/plugin-runtime-v1: GamaPlugin (stdlib-only capability core,
+      PluginRuntime, PluginSlot), scene + command contribution surface
+      (PluginScenes consumed by the scene graph and the AppKit shell,
+      offscreen shell test included), GamaPlatformServices
+      (HostServices.standard + scoped filesystem with hostile-path
+      tests), demo status-line slot, extended check-boundaries.sh, and
+      docs/Plugins.md; 34 Swift Testing cases green locally with the
+      full local gate set. Keep open until the PR's six-job matrix is
+      green and merged. Deferred inside sub-project 2: Tier 2 (dylib
+      loading), Tier 3 (out-of-process ABI), `.network`, scope
+      subsumption/path normalization, manifest macros,
+      discovery/scanning, plugin persistence, and shell teardown of
+      contributed windows on uninstall (uninstall stops future graph
+      compiles from contributing; a live window stays open until closed
+      through window actions — next slice if wanted).
 - [ ] Sub-project 3: scene-first app shell, windowing, lifecycle — APPROVED;
       scene core integrated on main and the macOS shell is implemented/local-
       proven on its delivery branch. Keep open until the shell PR and its

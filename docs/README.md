@@ -13,6 +13,10 @@ describe a blocked capability as shipped.
 - [Capabilities.md](Capabilities.md) — the evidence ledger: what each
   capability's proof actually is, and what proof is still required.
 - [MLIRDialect.md](MLIRDialect.md) — the `gama` dialect op reference.
+- [Plugins.md](Plugins.md) — the plugin tier table, the Tier-1
+  capability model (deny-by-default, exact-match grants, unforgeable
+  handles), the contribution surface, and what enforcement honestly
+  means per tier.
 - [../CONTRIBUTING.md](../CONTRIBUTING.md) — gates, CI mapping, claim-honesty
   policy, and the gated-slice workflow.
 
