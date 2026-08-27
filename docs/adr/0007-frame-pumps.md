@@ -15,10 +15,11 @@ on Embed/WASM but only at the next pump on TUI/AppleUI.
 ## Decision (interim)
 
 The divergence is tolerated and documented rather than papered over. The
-app-shell draft (`../superpowers/specs/drafts/2026-08-26-app-shell-draft.md`)
-surveys all four with line references and proposes extracting one canonical
-`advance` step plus a single resize policy; that change alters observable
-semantics and waits for Donald's decision on the draft's open questions.
+approved [scene-first app-shell design](../superpowers/specs/2026-08-27-scene-first-app-shell-design.md)
+keeps all surfaces on the shared `FrameHost`, but deliberately does not add
+frame-pump or resize-policy unification to that milestone. Extracting one
+canonical `advance` step still alters observable semantics and remains a
+separate Slice C decision.
 
 ## Consequences
 

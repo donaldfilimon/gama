@@ -125,6 +125,17 @@ status: in_progress
   the stale ZStack/TupleView flattening prose. Duplicate repair PR #15
   closed unmerged; its unique Hashable compile test folded into the docs
   overhaul PR.
+- Scene-first core (2026-08-27): the approved app-shell design is implemented
+  on `feat/scene-first-core` as the second delivery slice. The source-breaking
+  `App.content` migration, explicit primary-scene validation, typed group
+  payloads/actions, lifecycle events, non-generic closure-backed `FrameHost`,
+  single-surface backend migration, and Embedded-safe payload erasure are
+  locally proven on the consolidation tree: pinned Apple debug/release plus
+  113 Swift Testing cases in 31 suites, iOS/tvOS/visionOS compile, boundaries,
+  zero-undocumented-public-API DocC, C ABI, Embedded, Linux SDK, WASM
+  browser/runtime, Android cross-build plus emulator input/frame round trip,
+  and MLIR gates are green. Hosted PR and post-merge matrices remain separate
+  acceptance evidence and must be green before this slice is complete.
 - Docs overhaul (2026-08-27, Donald's /plan approved): executed in six
   phases on docs/claim-honesty — claim-honesty (gama.group now test-
   proven; Capabilities status vocabulary; non-tautological check-docs
@@ -135,13 +146,12 @@ status: in_progress
   check-doc-coverage.sh gate wired into check.sh and CI (empty
   allowlist). Outcome: merged as PR #16 (acc2f88) 2026-08-27 06:11Z on a
   fully green six-job PR matrix (green-before-merge honored); post-merge
-  main acceptance run 33044975550 in progress at merge time, watched by
-  the goal-loop session — record its conclusion here when it finishes.
-- Sub-projects 2-4 Proposed: drafts written and committed under
-  docs/superpowers/specs/drafts/ (plugin runtime + capability model; app
-  shell/windowing/lifecycle; packaging & distribution). Each is DRAFT ONLY —
-  no code, no approval — and ends with open questions Donald must decide
-  before its spec is finalized. Foundation spec:
+  main acceptance run 33044975550 also completed successfully.
+- Sub-projects 2 and 4 remain Proposed drafts under
+  docs/superpowers/specs/drafts/ (plugin runtime + capability model; packaging
+  & distribution). Sub-project 3 is approved and split into independently
+  green scene-core/migration and macOS-shell deliveries; only its first slice
+  is implemented locally at this point. Foundation spec:
   docs/superpowers/specs/2026-08-26-gama-umbrella-foundation-design.md
 - Scene-first integration (2026-08-27): the scene API, atomic in-repository
   migration, lifecycle channel, non-generic host, typed window commands, and
