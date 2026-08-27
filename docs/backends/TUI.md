@@ -32,11 +32,22 @@ Slice C in `tasks/todo.md` (Provisional).
 POSIX input is decoded byte-wise from termios (escape sequences, UTF-8,
 mouse); Windows uses `ReadConsoleInputW`, so no ANSI input parsing exists on
 that path. Ctrl-C arrives as a key event (`ISIG` is disabled) and
-`FrameHost` maps Ctrl-C/Ctrl-Q to `wantsQuit`. Resize is observed by
-polling the size after an event timeout and applied through the shared
-`HostPump`, so it takes effect eagerly — the same timing as every other
-backend ([ADR 0008](../adr/0008-one-pump-eager-resize.md)). `SIGWINCH`
-delivery is a ledgered Slice C item.
+`FrameHost` maps Ctrl-C/Ctrl-Q to `wantsQuit`. Resize arrives via
+`SIGWINCH`: the handler sets a flag, `nextEvent` drains it ahead of
+buffered input, and the shared `HostPump` applies it eagerly — the same
+timing as every other backend ([ADR 0008](../adr/0008-one-pump-eager-resize.md)).
+It no longer waits for the poll timeout to expire.
+
+`TerminalRescue` restores the tty on the exit paths Swift cannot see:
+`SIGTERM`, `SIGHUP`, `SIGINT`, `SIGQUIT`, and `atexit`. `RawModeSession`'s
+`deinit` covers every path the type system controls; without the rescue a
+supervisor's `SIGTERM` would leave the terminal in raw mode with no echo
+and no cursor. The rescue is process-global by necessity — signal
+disposition is process-wide — and everything reachable from a handler is
+async-signal-safe (`write`, `tcsetattr`, `sigaction`, `raise`), with the
+restore sequence held as a `StaticString` so emitting it allocates
+nothing. Handlers re-raise with the default disposition, so the process
+still dies of the signal it was sent and its exit status stays truthful.
 
 ## Output
 
