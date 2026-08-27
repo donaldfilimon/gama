@@ -46,6 +46,18 @@ jobs:
           brew install llvm
           echo "$(brew --prefix llvm)/bin" >> "$GITHUB_PATH"
           PATH="$(brew --prefix llvm)/bin:$PATH" ./scripts/check-mlir.sh
+      - name: Stage and verify the macOS app bundle
+        run: GAMA_DIST_ROOT="$RUNNER_TEMP/gama-dist" ./scripts/bundle-macos.sh
+      - name: Archive the macOS app bundle for transport
+        run: |
+          source scripts/lib/manifest.sh
+          name="$(manifest_get Distribution/gama-apple-demo.toml app name)"
+          ditto -c -k --keepParent \
+            "$RUNNER_TEMP/gama-dist/$name.app" "$RUNNER_TEMP/macos-app.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-app
+          path: ${{ runner.temp }}/macos-app.zip
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -104,6 +116,12 @@ jobs:
       - run: ./scripts/ci-install-swift-snapshot.sh
       - run: ./scripts/ci-install-swift-sdk.sh
       - run: ./scripts/check-wasm.sh
+      - name: Assemble and verify the deployable wasm site
+        run: GAMA_DIST_ROOT="$RUNNER_TEMP/gama-dist" ./scripts/bundle-web.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wasm-site
+          path: ${{ runner.temp }}/gama-dist/web
       - uses: actions/upload-artifact@v4
         if: always()
         with:
