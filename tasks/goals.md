@@ -223,9 +223,11 @@ status: in_progress
 - Slice C approved in full (2026-08-27, Donald): frame-pump unification with
   a single resize policy (ADR 0007 leaves Provisional), the validated
   non-Sendable Signal redesign (ADR 0003 interim to be superseded), and all
-  remaining Slice C items as gated slices. Scheduled as wave 2 behind the
-  plugin-runtime, packaging, and DocC-catalog branches to avoid GamaCore
-  merge conflicts.
+  remaining Slice C items as gated slices. It remains blocked on actual
+  wave-1 integration: packaging PR #32 is merged, but DocC-catalog PR #28
+  must merge and the plugin-runtime post-merge hardening must be green
+  before Slice C begins. Branch existence and local gates do not satisfy
+  this boundary.
 - Wave-2 structural designs authored (2026-08-27): frame-pump unification
   (HostPump, eager resize policy, per-backend migration slices; supersedes
   ADR 0007 when implemented) and the Signal redesign (non-Sendable with
@@ -256,3 +258,14 @@ status: in_progress
   .network, scope subsumption, discovery, persistence, and shell
   teardown of contributed windows on uninstall. Hosted proof is the
   six-job matrix on the PR; merge only when green.
+- Plugin runtime post-merge hardening (2026-08-27): PR #33 merged only
+  after its original head passed all six acceptance jobs, but a later
+  review identified five substantive defects. The follow-up gives each
+  plugin a stable slot identity retained across peer removal, isolates and
+  cancels plugin-owned observations on failed activation/uninstall,
+  invalidates the host after successful install/uninstall, revokes cached
+  commands at uninstall, and rejects internal empty filesystem components
+  while retaining one trailing separator. Focused evidence is 39 Swift
+  Testing cases in six suites on the pinned toolchain; the follow-up's own
+  exact-head hosted matrix is still required and must not be conflated with
+  PR #33's already-green head.

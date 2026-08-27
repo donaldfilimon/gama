@@ -13,20 +13,33 @@ import GamaCore
 /// concurrent hosts. Deinitializing a runtime deactivates every
 /// installed plugin, mirroring `SubscriptionContext.deinit`.
 public final class PluginRuntime: @unchecked Sendable {
+    /// Revocation state shared by every command value minted for one
+    /// installation. Like the runtime itself, access is host-executor
+    /// confined; `@unchecked Sendable` permits capture by command closures
+    /// without claiming cross-executor mutation is safe.
+    private final class Lease: @unchecked Sendable {
+        var isActive = true
+        func revoke() { isActive = false }
+    }
+
     /// One installed plugin, the context it was issued, and its declared
     /// contributions.
-    struct Entry {
+    private struct Entry {
         var plugin: any GamaPluginProtocol
         let id: PluginID
+        let slotIdentity: Int
         let context: PluginContext
         let scenes: [PluginSceneContribution]
         let declaredCommands: [PluginCommand]
+        let lease: Lease
     }
 
     private let grants: CapabilityGrants
     private let services: HostServices
     private let subscriptions: SubscriptionContext
     private var entries: [Entry] = []
+    private var slotIdentities: [PluginID: Int] = [:]
+    private var nextSlotIdentity = 0
 
     /// Creates a runtime bound to one host's grant table, services, and
     /// subscription context. `subscriptions` is the owning host's
@@ -47,7 +60,8 @@ public final class PluginRuntime: @unchecked Sendable {
     }
 
     /// Identities of every installed plugin, in install order. The order
-    /// is deterministic and drives slot child identity.
+    /// is deterministic and drives presentation order; slot node identity
+    /// is stable per plugin and never renumbered when a peer is removed.
     public var installed: [PluginID] {
         entries.map(\.id)
     }
@@ -57,7 +71,8 @@ public final class PluginRuntime: @unchecked Sendable {
     /// table and the available services, filters optional capabilities
     /// to the granted service-backed subset, builds the plugin's
     /// ``PluginContext``, and activates it. All-or-nothing: any failure
-    /// leaves the runtime unchanged with nothing partially activated.
+    /// leaves the runtime unchanged with nothing partially activated or
+    /// observed. Success invalidates the owning host.
     public func install(_ plugin: some GamaPluginProtocol) throws(PluginError) {
         let manifest = plugin.manifest
         let id = manifest.id
@@ -86,35 +101,48 @@ public final class PluginRuntime: @unchecked Sendable {
         let declaredCommands = plugin.commands()
 
         var activated = plugin
-        try activated.activate(in: context)
+        do {
+            try activated.activate(in: context)
+        } catch {
+            context.subscriptions.cancelAll()
+            throw error
+        }
+        let slotIdentity = stableSlotIdentity(for: id)
         entries.append(
             Entry(
                 plugin: activated,
                 id: id,
+                slotIdentity: slotIdentity,
                 context: context,
                 scenes: scenes,
-                declaredCommands: declaredCommands
+                declaredCommands: declaredCommands,
+                lease: Lease()
             ))
+        subscriptions.invalidate()
     }
 
-    /// Uninstalls the plugin with `id`, calling its `deactivate()` and
-    /// releasing it. Unknown identities are ignored.
+    /// Uninstalls the plugin with `id`, revoking cached commands, cancelling
+    /// its observations, calling its `deactivate()`, releasing it, and
+    /// invalidating the owning host. Unknown identities are ignored.
     public func uninstall(_ id: PluginID) {
         guard let index = entries.firstIndex(where: { $0.id == id }) else { return }
         var entry = entries.remove(at: index)
+        entry.lease.revoke()
+        entry.context.subscriptions.cancelAll()
         entry.plugin.deactivate()
+        subscriptions.invalidate()
     }
 
-    /// Renders every installed plugin's contribution for `slot`, each
-    /// under `context.child(i)` with `i` the plugin's install index, so
-    /// contributed interactive nodes get stable, collision-free node
-    /// identities from the existing path derivation. A runtime with no
+    /// Renders every installed plugin's contribution for `slot`, each under
+    /// a runtime-assigned child identity retained for that plugin ID. Removing
+    /// an earlier peer therefore never renumbers a surviving contribution or
+    /// redirects focus/actions to a different plugin. A runtime with no
     /// installed plugins contributes ``RenderNode/empty``.
     public func render(slot: SlotID, in context: BuildContext) -> RenderNode {
         guard !entries.isEmpty else { return .empty }
         return .group(
-            children: entries.enumerated().map { index, entry in
-                entry.plugin.render(slot: slot, in: context.child(index))
+            children: entries.map { entry in
+                entry.plugin.render(slot: slot, in: context.child(entry.slotIdentity))
             }
         )
     }
@@ -129,11 +157,15 @@ public final class PluginRuntime: @unchecked Sendable {
             entry.declaredCommands.map { command in
                 let context = entry.context
                 let action = command.action
+                let lease = entry.lease
                 return RegisteredPluginCommand(
                     plugin: entry.id,
                     id: command.id,
                     title: command.title,
-                    run: { action(context) }
+                    run: {
+                        guard lease.isActive else { return }
+                        action(context)
+                    }
                 )
             }
         }
@@ -173,18 +205,32 @@ public final class PluginRuntime: @unchecked Sendable {
         if !scopes.isEmpty, let provider = services.filesystem {
             filesystem = FilesystemAccess(scopes: scopes, provider: provider)
         }
+        let hostSubscriptions = subscriptions
+        let pluginSubscriptions = SubscriptionContext {
+            hostSubscriptions.invalidate()
+        }
         return PluginContext(
             plugin: id,
             log: log,
             clock: clock,
             filesystem: filesystem,
-            subscriptions: subscriptions
+            subscriptions: pluginSubscriptions
         )
+    }
+
+    private func stableSlotIdentity(for id: PluginID) -> Int {
+        if let existing = slotIdentities[id] { return existing }
+        let identity = nextSlotIdentity
+        nextSlotIdentity += 1
+        slotIdentities[id] = identity
+        return identity
     }
 
     private func deactivateAll() {
         while !entries.isEmpty {
             var entry = entries.removeFirst()
+            entry.lease.revoke()
+            entry.context.subscriptions.cancelAll()
             entry.plugin.deactivate()
         }
     }

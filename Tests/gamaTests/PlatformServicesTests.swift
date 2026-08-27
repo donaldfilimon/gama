@@ -47,9 +47,12 @@
             let scope = FilesystemScope.readWrite(pathPrefix: "/a")
             #expect(scope.permitsRead("/a"))
             #expect(scope.permitsRead("/a/b"))
+            #expect(scope.permitsRead("/a/b/"))
             #expect(!scope.permitsRead("/ab"))
             #expect(!scope.permitsRead("/ab/c"))
             #expect(!scope.permitsRead("a/b"))
+            #expect(!scope.permitsRead("/a//b/"))
+            #expect(!scope.permitsRead("/a/b//"))
         }
 
         @Test("read-only scopes refuse writes; readWrite scopes allow them")
