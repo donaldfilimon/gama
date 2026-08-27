@@ -90,12 +90,17 @@ jobs:
       - name: C ABI consumer compile, link, and run
         run: ./scripts/check-c-abi.sh
       - name: Address Sanitizer
-        # LeakSanitizer remains disabled: PR #24's hosted Linux job proved that
-        # the Swift Testing process still reports process-lifetime leaks. ASan
-        # stays required; re-enable leak detection only after the ledgered
-        # runner/framework leak is root-caused and a hosted trial is green.
+        # detect_leaks=1 stays ON for Gama code. The leak is root-caused
+        # (PR #24, run 33048676959): the SwiftPM-generated runner's XCTest
+        # HARNESS leaks 7 allocations / 432 bytes of process-lifetime suite
+        # metadata even with every suite on Swift Testing — zero Gama frames.
+        # Only those harness frames are suppressed, via
+        # scripts/lsan-suppressions.supp (evidence and deletion condition
+        # inside); print_suppressions=1 keeps the suppressed set auditable in
+        # the log. A leak in Gama code touches no XCTest frame and still fails.
         env:
-          ASAN_OPTIONS: detect_leaks=0
+          ASAN_OPTIONS: detect_leaks=1
+          LSAN_OPTIONS: suppressions=${{ github.workspace }}/scripts/lsan-suppressions.supp:print_suppressions=1
         run: swift test --sanitize address
       - name: Thread Sanitizer
         run: swift test --sanitize thread
