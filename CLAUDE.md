@@ -9,3 +9,14 @@ Quick anchors:
 - Build/test: `unset TOOLCHAINS` then `/Users/donaldfilimon/.grok/skills/swift/scripts/xcode-swift.sh build` / `... test` — never PATH `swiftly` or DEVELOPMENT-SNAPSHOT toolchains.
 - Primary UX is SwiftUI wrapping Qt (`QtPanelView` / bridge), not a standalone Qt `QApplication` window.
 - Keep `CGamaQt` header-oriented (`include/GamaQt.hpp` public, impls in `detail/*.hpp`, minimal `.cpp` stub); avoid `QStringLiteral` with raw string literals; pass `std::string` by value (not `string_view`) at the Swift/C++ boundary.
+
+<!-- machine-git-policy -->
+## Git workflow (machine policy, 2026-08-27)
+
+Work on the default branch in this canonical checkout. Do not create
+branches or worktrees by default; they are for tasks that genuinely need
+isolation, or when Donald asks. Any worktree or topic branch created here
+must be merged back into this checkout's default branch, the worktree
+removed, and the branch deleted, before pushing and before the task is
+called done. Full policy: `~/.claude/CLAUDE.md` (*Git discipline*).
+<!-- /machine-git-policy -->

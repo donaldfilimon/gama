@@ -12,3 +12,14 @@
 - Homebrew Qt defaults to `/opt/homebrew` (override with `QT_PREFIX`); package links QtCore/Gui/Widgets/Network frameworks plus JavaScriptCore; platform floor is macOS v27 (Liquid Glass + FoundationModels smart search).
 - Avoid `QStringLiteral` with raw string literals (breaks `qMakeStringPrivate`); use `QString::fromUtf8(R"(...)")` or equivalent at that boundary.
 - Prefer `std::string` by value (not `string_view`) at the Swift/C++ API boundary so interop owns a stable buffer.
+
+<!-- machine-git-policy -->
+## Git workflow (machine policy, 2026-08-27)
+
+Work on the default branch in this canonical checkout. Do not create
+branches or worktrees by default; they are for tasks that genuinely need
+isolation, or when Donald asks. Any worktree or topic branch created here
+must be merged back into this checkout's default branch, the worktree
+removed, and the branch deleted, before pushing and before the task is
+called done. Full policy: `~/.claude/CLAUDE.md` (*Git discipline*).
+<!-- /machine-git-policy -->
