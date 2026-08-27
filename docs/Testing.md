@@ -64,8 +64,18 @@ All suites live in `Tests/gamaTests/`:
 
 ## Linux sanitizers
 
-The Linux CI job used to disable ASan leak detection because the XCTest
-runner retained suite metadata until process exit. After the Swift Testing
-migration, revisit `ASAN_OPTIONS=detect_leaks=0` on a hosted Linux run
-before deleting it. Do not claim leak-free until that job is green with
-leaks enabled.
+The Linux job separates two contracts which cannot honestly share a process:
+
+- `swift test --sanitize address` retains broad address-safety coverage, with
+  `detect_leaks=0` only because SwiftPM's generated runner loads an XCTest
+  harness that retains process-lifetime suite metadata.
+- `scripts/check-linux-leaks.sh` builds `gama-leak-check` with ASan and runs
+  the executable directly under `detect_leaks=1`. The clean path constructs,
+  pumps, and destroys a real `FrameHost` without Swift Testing or XCTest. The
+  same binary's `--deliberate-leak` path intentionally retains a GamaCore
+  `Signal`; CI requires LeakSanitizer's exact configured failure code and
+  diagnostic before the gate can pass. No suppression file is involved.
+
+LeakSanitizer leak detection is unsupported on Darwin. macOS can prove that
+the executable builds and its clean lifecycle runs, but only the hosted Linux
+job can prove both the clean LSan result and the failing negative control.
