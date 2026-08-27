@@ -151,13 +151,14 @@ jobs:
           gradle-version: '9.5.0'
       - name: Cross-compile GamaEmbed
         run: ANDROID_NDK_HOME="$ANDROID_HOME/ndk/30.0.15729638" ./scripts/check-android.sh
+      - name: Verify emulator readiness recovery policy
+        run: ./scripts/test-android-emulator-readiness.sh
       - name: Required emulator input/frame round trip
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 36
           arch: x86_64
           profile: pixel_2
-          disable-animations: true
           script: ./scripts/check-android-emulator.sh
 
   embedded-swift-64:
