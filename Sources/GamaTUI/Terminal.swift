@@ -129,6 +129,10 @@ public struct Terminal {
             throw TerminalError("tcsetattr failed")
         }
         isRaw = true
+        // Arm the process-global rescue only now that raw mode is really in
+        // effect, so a terminal that was never modified is never "restored".
+        TerminalRescue.arm(
+            inputFD: inputFD, outputFD: outputFD, original: originalTermios)
         // Alternate screen, hide cursor, clear.
         do {
             try write("\u{1B}[?1049h\u{1B}[?25l\u{1B}[2J\u{1B}[H")
@@ -161,6 +165,9 @@ public struct Terminal {
             firstError = TerminalError("tcsetattr restoration failed")
         }
         isRaw = false
+        // The session restored the terminal itself; the signal rescue has
+        // nothing left to do and must not restore a second time.
+        TerminalRescue.disarm()
         if let firstError { throw firstError }
     }
 
@@ -206,6 +213,15 @@ public struct Terminal {
 
     /// Block up to `timeoutMillis`; decode one event.
     public mutating func nextEvent(timeoutMillis: Int) throws(TerminalError) -> InputEvent? {
+        // A delivered SIGWINCH outranks buffered input: the window already
+        // changed, so decoding a keystroke against the old extent would lay
+        // it out at a size that no longer exists. Draining the latch here
+        // also means resize no longer waits for the poll timeout to expire,
+        // which was the old "observed by polling the size after an event
+        // timeout" behavior.
+        if TerminalRescue.consumePendingResize() {
+            return .resize(size())
+        }
         if let event = decodeOne() { return event }
         let hasPartialSequence = !pendingBytes.isEmpty
         do {

@@ -1,7 +1,9 @@
 # 0007 — Four frame pumps
 
-Status: Provisional — unification is a Slice C sign-off item; this record
-documents current reality, not a lock.
+Status: **Superseded** by [0008](0008-one-pump-eager-resize.md)
+(2026-08-27). Unification landed: there is now one canonical `HostPump`
+with a single eager resize policy. This record is kept for the history of
+why four pumps existed and what the divergence cost.
 
 ## Context
 

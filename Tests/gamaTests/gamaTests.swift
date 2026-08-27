@@ -501,7 +501,7 @@ struct ActionTests {
     func disabledButtonDoesNotRegisterAndIsNotFocusable() {
         let pressed = TestBox(false)
         let button = Button("go") { pressed.value = true }.disabled()
-        let registered = TestBox<(@Sendable () -> Void)?>(nil)
+        let registered = TestBox<(() -> Void)?>(nil)
         let ctx = BuildContext(id: .root, registerAction: { _, action in registered.value = action })
         let node = button.render(in: ctx)
 
@@ -518,7 +518,7 @@ struct ActionTests {
     func enabledButtonStillRegisters() {
         let pressed = TestBox(false)
         let button = Button("go") { pressed.value = true }.disabled(false)
-        let registered = TestBox<(@Sendable () -> Void)?>(nil)
+        let registered = TestBox<(() -> Void)?>(nil)
         let context = BuildContext(id: .root, registerAction: { _, action in registered.value = action })
         let node = button.render(in: context)
         guard case .interactive(_, let focusable, _) = node else {
