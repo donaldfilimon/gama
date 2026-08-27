@@ -1,6 +1,6 @@
 # Gama Framework
 
-Gama is a modular declarative UI framework written in Swift 6.4. A single
+Gama is a modular declarative UI framework written in Swift. A single
 retained render tree drives terminal, CoreGraphics, WebAssembly, C/Android,
 MLIR, and Embedded Swift integrations.
 
@@ -62,8 +62,10 @@ are scheduled explicitly with the host/backend's `invalidate()` API.
 
 ## Build and verify
 
-Apple development uses Xcode's Swift 6.4 toolchain, never the PATH-selected
-Swiftly snapshot:
+Apple development uses the pinned Swift 6.5-dev main snapshot
+(`.swift-version`: `main-snapshot-2026-08-21`); the check scripts select it
+explicitly via `xcrun --toolchain org.swift.65202608211a`. Only the xcodebuild
+iOS/tvOS/visionOS gates use Xcode's default 6.4 toolchain.
 
 ```bash
 unset TOOLCHAINS
@@ -80,7 +82,7 @@ Run the terminal demo with:
 
 ```bash
 unset TOOLCHAINS
-/usr/bin/xcrun --toolchain default swift run gama-demo
+/usr/bin/xcrun --toolchain org.swift.65202608211a swift run gama-demo
 ```
 
 ## Compatibility

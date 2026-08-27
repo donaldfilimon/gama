@@ -42,9 +42,10 @@ the foundation the later work builds on.
 ## Sub-project 1 scope
 
 Adoption (done at spec time), 6.5-dev migration, Qt removal, iCloud-safe
-local gates, CI migration to the main-snapshot family across all six jobs
-(macOS, Linux native+sanitizers+static SDK, WASM, Android+emulator,
-Embedded, Windows). No new framework code.
+local gates, CI migration to the main-snapshot family across five of the six
+jobs (macOS, Linux native+sanitizers+static SDK, WASM, Android+emulator,
+Embedded); Windows stays on 6.4.x per the exception below. No new framework
+code.
 
 ## Platform exception
 

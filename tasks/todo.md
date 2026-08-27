@@ -8,6 +8,17 @@
 - [x] PR #7 matrix green → merged to main (74e77df)
 - [x] Retire ~/dev/active/gama-swift to ~/dev/archive; update ~/CLAUDE.md rows
 
+## Umbrella foundation follow-ups
+- [x] Update Toolchains.toml to the 6.5-dev reality. Done 2026-08-26 (code
+      review of f509e2c..11ef0a9): restructured into [snapshot] (+ .macos /
+      .linux_x86_64), [xcode_default] (6.4, xcodebuild platform gates only),
+      [windows_exception] (6.4.x), and the three 6.5-dev SDK bundles. All
+      URLs/SHA-256 taken from .github/workflows/ci.yml; swift_revision
+      95c5142e84b82c1, llvm_revision 64c3046d94ae7cc and swiftc_sha256
+      dbbd4d7b… measured locally. swiftlang/clang under [xcode_default] left
+      untouched (unverified); [swift_syntax] keeps its revision pin and drops
+      the misleading 6.4.x tag.
+
 ## Later sub-projects (each needs its own spec first)
 - [ ] Sub-project 2: plugin runtime + capability model — DRAFT written
       (docs/superpowers/specs/drafts/2026-08-26-plugin-runtime-draft.md),

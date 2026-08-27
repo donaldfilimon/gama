@@ -12,7 +12,6 @@ The examples exercise the same `GamaCore` semantics through each host:
   input-driven state/frame change in an emulator.
 - `Embedded/main.swift`: portable app used as an Embedded Swift composition
   example; the gate whole-module compiles and relocatably links `GamaCore`.
-- `Adapters/GamaQt/Sources/GamaQtExample`: isolated C++23/Qt host example.
 
 Run every locally provisioned proof with `./scripts/check.sh`. Missing runtime
 or SDK prerequisites fail closed.

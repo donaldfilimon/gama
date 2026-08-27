@@ -4,8 +4,8 @@ set -euo pipefail
 : "${GAMA_SWIFT_64_URL:?exact Swift 6.5 snapshot URL is required}"
 : "${GAMA_SWIFT_64_SHA256:?exact Swift 6.5 snapshot SHA-256 is required}"
 
-archive="${RUNNER_TEMP:-/private/tmp}/gama-swift-6.4.tar.gz"
-install_root="${RUNNER_TEMP:-/private/tmp}/gama-swift-6.4"
+archive="${RUNNER_TEMP:-/private/tmp}/gama-swift-snapshot.tar.gz"
+install_root="${RUNNER_TEMP:-/private/tmp}/gama-swift-snapshot"
 curl --fail --location --retry 3 "$GAMA_SWIFT_64_URL" --output "$archive"
 printf '%s  %s\n' "$GAMA_SWIFT_64_SHA256" "$archive" | sha256sum --check --strict
 mkdir -p "$install_root"

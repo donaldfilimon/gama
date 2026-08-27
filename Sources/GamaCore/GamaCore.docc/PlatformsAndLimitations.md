@@ -4,17 +4,21 @@ Interpret platform support from executed evidence, not source presence.
 
 ## Toolchains
 
-Apple builds use Xcode's default Apple Swift 6.4 toolchain with `TOOLCHAINS`
-unset. Linux, static Linux, WebAssembly, Android, and Embedded checks use the
-exact August 14, 2026 `release/6.4.x` development snapshot and matching Swift
-SDK artifact bundles. URLs, revisions, IDs, and SHA-256 values are pinned in
-`Toolchains.toml`.
+Apple, Linux, static Linux, WebAssembly, Android, and Embedded checks all use
+the exact August 21, 2026 Swift 6.5-dev main development snapshot (toolchain id
+`org.swift.65202608211a`) with `TOOLCHAINS` unset, plus the matching Swift SDK
+artifact bundles. The xcodebuild iOS/tvOS/visionOS gates are the one exception
+and use Xcode's default Apple Swift 6.4 toolchain, which is why the manifest
+stays `swift-tools-version: 6.4`. Windows is a second, deliberate exception:
+swift.org has published no Windows main-development snapshot since May 20,
+2026, so that job stays on the proven `release/6.4.x` August 14, 2026 snapshot
+and is not verified on 6.5-dev. URLs, revisions, IDs, and SHA-256 values are
+pinned in `Toolchains.toml`.
 
 The dated Android Swift runtime requires the libc++ ABI in Android NDK
 30.0.15729638 (an NDK 30 release candidate). That revision is pinned across the
 manifest, Gradle sample, local setup, and CI; older NDK 27/28 libraries fail the
 runtime symbol gate and are not accepted.
-
 
 ## Evidence boundaries
 
