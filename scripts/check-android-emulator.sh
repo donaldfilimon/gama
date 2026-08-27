@@ -8,22 +8,26 @@ PROJECT="$ROOT/Examples/Android"
 # includes snapshot/SDK/NDK installation and cross-compilation; the boot
 # allowance exceeds the observed ~648-second hosted boot. The final four
 # minutes remain job-level headroom rather than being available to this script.
-GAMA_ANDROID_JOB_TIMEOUT_SECONDS="${GAMA_ANDROID_JOB_TIMEOUT_SECONDS:-2700}"
+GAMA_ANDROID_JOB_TIMEOUT_SECONDS="${GAMA_ANDROID_JOB_TIMEOUT_SECONDS:-3300}"
 GAMA_ANDROID_PRE_EMULATOR_ALLOWANCE_SECONDS="${GAMA_ANDROID_PRE_EMULATOR_ALLOWANCE_SECONDS:-900}"
 GAMA_ANDROID_BOOT_ALLOWANCE_SECONDS="${GAMA_ANDROID_BOOT_ALLOWANCE_SECONDS:-720}"
-GAMA_ANDROID_POST_BOOT_CEILING_SECONDS="${GAMA_ANDROID_POST_BOOT_CEILING_SECONDS:-840}"
+GAMA_ANDROID_POST_BOOT_CEILING_SECONDS="${GAMA_ANDROID_POST_BOOT_CEILING_SECONDS:-1440}"
 GAMA_ANDROID_JOB_HEADROOM_SECONDS="${GAMA_ANDROID_JOB_HEADROOM_SECONDS:-240}"
 
-# Every failed readiness or install stage consumes this same
-# non-resetting recovery budget. No stage opens a nested retry window.
+# Failed readiness stages consume this non-resetting shared budget.
+# APK install draws on its OWN budget below: a device that goes offline
+# during an earlier stage must not be able to consume the retries install
+# needs (commit c24b7dd hardened install against exactly that transient,
+# and folding it into the shared budget regressed the gate).
 GAMA_ANDROID_RECOVERY_BUDGET="${GAMA_ANDROID_RECOVERY_BUDGET:-2}"
+GAMA_ANDROID_INSTALL_RECOVERY_BUDGET="${GAMA_ANDROID_INSTALL_RECOVERY_BUDGET:-2}"
 GAMA_ANDROID_GRADLE_TIMEOUT_SECONDS="${GAMA_ANDROID_GRADLE_TIMEOUT_SECONDS:-180}"
 GAMA_ANDROID_READY_PROBE_TIMEOUT_SECONDS="${GAMA_ANDROID_READY_PROBE_TIMEOUT_SECONDS:-5}"
 GAMA_ANDROID_RECONNECT_TIMEOUT_SECONDS="${GAMA_ANDROID_RECONNECT_TIMEOUT_SECONDS:-5}"
-GAMA_ANDROID_WAIT_TIMEOUT_SECONDS="${GAMA_ANDROID_WAIT_TIMEOUT_SECONDS:-20}"
-GAMA_ANDROID_RECOVERY_DELAY_SECONDS="${GAMA_ANDROID_RECOVERY_DELAY_SECONDS:-3}"
+GAMA_ANDROID_WAIT_TIMEOUT_SECONDS="${GAMA_ANDROID_WAIT_TIMEOUT_SECONDS:-30}"
+GAMA_ANDROID_RECOVERY_DELAY_SECONDS="${GAMA_ANDROID_RECOVERY_DELAY_SECONDS:-5}"
 GAMA_ANDROID_SETTINGS_TIMEOUT_SECONDS="${GAMA_ANDROID_SETTINGS_TIMEOUT_SECONDS:-5}"
-GAMA_ANDROID_INSTALL_TIMEOUT_SECONDS="${GAMA_ANDROID_INSTALL_TIMEOUT_SECONDS:-60}"
+GAMA_ANDROID_INSTALL_TIMEOUT_SECONDS="${GAMA_ANDROID_INSTALL_TIMEOUT_SECONDS:-90}"
 GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS="${GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS:-10}"
 GAMA_ANDROID_UI_DUMP_TIMEOUT_SECONDS="${GAMA_ANDROID_UI_DUMP_TIMEOUT_SECONDS:-5}"
 GAMA_ANDROID_OUTPUT_TIMEOUT_SECONDS="${GAMA_ANDROID_OUTPUT_TIMEOUT_SECONDS:-2}"
@@ -35,6 +39,8 @@ GAMA_ANDROID_FIXED_OVERHEAD_SECONDS="${GAMA_ANDROID_FIXED_OVERHEAD_SECONDS:-10}"
 
 ANDROID_RECOVERIES_REMAINING=0
 ANDROID_RECOVERIES_USED=0
+ANDROID_INSTALL_RECOVERIES_REMAINING=0
+ANDROID_INSTALL_RECOVERIES_USED=0
 ANDROID_RECOVERY_BUDGET_INITIAL=0
 ANDROID_READINESS_PROBES=0
 
@@ -70,7 +76,12 @@ calculate_android_post_boot_worst_case_seconds() {
     + GAMA_ANDROID_WAIT_TIMEOUT_SECONDS
     + GAMA_ANDROID_RECOVERY_DELAY_SECONDS
   )))
-  install_max=$((3 * GAMA_ANDROID_INSTALL_TIMEOUT_SECONDS))
+  install_max=$((3 * GAMA_ANDROID_INSTALL_TIMEOUT_SECONDS
+    + GAMA_ANDROID_INSTALL_RECOVERY_BUDGET * (
+      GAMA_ANDROID_RECONNECT_TIMEOUT_SECONDS
+      + GAMA_ANDROID_WAIT_TIMEOUT_SECONDS
+      + GAMA_ANDROID_RECOVERY_DELAY_SECONDS
+    )))
   control_max=$((3 * GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS))
   poll_max=$((GAMA_ANDROID_POLL_ATTEMPTS * (
     GAMA_ANDROID_UI_DUMP_TIMEOUT_SECONDS
@@ -163,6 +174,10 @@ initialize_android_recovery_budget() {
   ANDROID_RECOVERIES_USED=0
   ANDROID_RECOVERY_BUDGET_INITIAL="$budget"
   ANDROID_READINESS_PROBES=0
+  require_nonnegative_integer Android_install_recovery_budget \
+    "$GAMA_ANDROID_INSTALL_RECOVERY_BUDGET"
+  ANDROID_INSTALL_RECOVERIES_REMAINING="$GAMA_ANDROID_INSTALL_RECOVERY_BUDGET"
+  ANDROID_INSTALL_RECOVERIES_USED=0
 }
 
 consume_android_recovery() {
@@ -256,6 +271,10 @@ configure_android_animations() {
   return 0
 }
 
+# Install draws on ANDROID_INSTALL_RECOVERIES_*, never the shared readiness
+# budget: hosted emulators report a completed boot and then drop the first
+# package-manager transport (`Broken pipe`, `device offline`), and install
+# must still get its full attempt count after an earlier stage struggled.
 install_android_apk() {
   local apk="$1" attempt
   for attempt in 1 2 3; do
@@ -266,10 +285,15 @@ install_android_apk() {
 
     echo "warning: adb install attempt $attempt failed" >&2
     if ((attempt < 3)); then
-      if ! recover_until_android_services_ready "APK install"; then
-        echo "error: Android APK install could not recover within the shared recovery budget" >&2
+      if ((ANDROID_INSTALL_RECOVERIES_REMAINING == 0)); then
+        echo "error: Android install recovery budget exhausted while APK install" >&2
         return 1
       fi
+      ANDROID_INSTALL_RECOVERIES_REMAINING=$((ANDROID_INSTALL_RECOVERIES_REMAINING - 1))
+      ANDROID_INSTALL_RECOVERIES_USED=$((ANDROID_INSTALL_RECOVERIES_USED + 1))
+      echo "warning: consuming Android install recovery $ANDROID_INSTALL_RECOVERIES_USED/$GAMA_ANDROID_INSTALL_RECOVERY_BUDGET for APK install" >&2
+      recover_android_connection
+      sleep "$GAMA_ANDROID_RECOVERY_DELAY_SECONDS"
     fi
   done
 

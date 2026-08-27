@@ -37,6 +37,10 @@ fake_adb() {
       case "$*" in
         "service check package")
           probe="$(fake_counter_current readiness-probe)"
+          if [[ "$FAKE_ADB_SCENARIO" == device-offline-then-install ]]; then
+            echo "error: device offline" >&2
+            return 1
+          fi
           if [[ "$FAKE_ADB_SCENARIO" == readiness-exhausted ]] \
             || { [[ "$FAKE_ADB_SCENARIO" == readiness-package-retry ]] && ((probe == 1)); }; then
             echo "Service package: not found"
@@ -197,7 +201,7 @@ wait_for_android_services >"$FAKE_STATE_DIR/output" 2>&1
 assert_equals 2 "$ANDROID_READINESS_PROBES" "package retry probes"
 assert_equals 1 "$ANDROID_RECOVERIES_USED" "package retry recovery consumption"
 assert_log_count 1 '^timeout|5s|adb reconnect$' "package retry reconnect timeout"
-assert_log_count 1 '^timeout|20s|adb wait-for-device$' "package retry wait timeout"
+assert_log_count 1 '^timeout|30s|adb wait-for-device$' "package retry wait timeout"
 
 reset_case readiness-settings-retry 2
 wait_for_android_services >"$FAKE_STATE_DIR/output" 2>&1
@@ -246,29 +250,44 @@ assert_setting_order \
 
 reset_case install-retry 1
 install_android_apk /tmp/gama-fake.apk >"$FAKE_STATE_DIR/output" 2>&1
-assert_equals 1 "$ANDROID_RECOVERIES_USED" "install retry recovery consumption"
+assert_equals 0 "$ANDROID_RECOVERIES_USED" "install retry leaves the shared budget untouched"
+assert_equals 1 "$ANDROID_INSTALL_RECOVERIES_USED" "install retry consumes its own budget"
 assert_equals 2 "$(fake_counter_current install)" "install retry attempts"
-assert_log_count 2 '^timeout|60s|adb install -r /tmp/gama-fake.apk$' "install retry timeout count"
+assert_log_count 2 '^timeout|90s|adb install -r /tmp/gama-fake.apk$' "install retry timeout count"
 
 reset_case install-exhausted 2
 if install_android_apk /tmp/gama-fake.apk >"$FAKE_STATE_DIR/output" 2>&1; then
   echo "error: persistent install failure unexpectedly succeeded" >&2
   exit 1
 fi
-assert_equals 2 "$ANDROID_RECOVERIES_USED" "install exhaustion recovery consumption"
+assert_equals 0 "$ANDROID_RECOVERIES_USED" "install exhaustion leaves the shared budget untouched"
+assert_equals 2 "$ANDROID_INSTALL_RECOVERIES_USED" "install exhaustion consumes its own budget"
 assert_equals 3 "$(fake_counter_current install)" "install exhaustion attempts"
-assert_log_count 3 '^timeout|60s|adb install -r /tmp/gama-fake.apk$' "install exhaustion timeout count"
+assert_log_count 3 '^timeout|90s|adb install -r /tmp/gama-fake.apk$' "install exhaustion timeout count"
+
+# A device that goes offline during an EARLIER stage must not be able to
+# consume the retries install needs — the regression that failed run
+# 33074968908 (best-effort animations, then install starved of budget).
+reset_case device-offline-then-install 2
+if wait_for_android_services >"$FAKE_STATE_DIR/readiness-output" 2>&1; then
+  echo "error: an offline device unexpectedly reported ready" >&2
+  exit 1
+fi
+assert_equals 2 "$ANDROID_RECOVERIES_USED" "offline device exhausted the shared budget"
+assert_equals 0 "$ANDROID_RECOVERIES_REMAINING" "offline device left no shared budget"
+assert_equals 2 "$ANDROID_INSTALL_RECOVERIES_REMAINING" "install budget survives an offline device"
 
 reset_case shared-budget 1
 configure_android_animations >"$FAKE_STATE_DIR/animation-output" 2>&1
 assert_equals 0 "$ANDROID_RECOVERIES_USED" "animation stage left the shared budget untouched"
 if ! install_android_apk /tmp/gama-fake.apk >"$FAKE_STATE_DIR/install-output" 2>&1; then
-  echo "error: install could not use the budget animations must not consume" >&2
+  echo "error: install could not use its own recovery budget" >&2
   exit 1
 fi
-assert_equals 1 "$ANDROID_RECOVERIES_USED" "cross-stage recovery consumption"
-assert_equals 0 "$ANDROID_RECOVERIES_REMAINING" "cross-stage remaining budget"
-assert_equals 2 "$(fake_counter_current install)" "install retried with the preserved budget"
+assert_equals 0 "$ANDROID_RECOVERIES_USED" "install never touches the shared budget"
+assert_equals 1 "$ANDROID_RECOVERIES_REMAINING" "shared budget preserved for readiness"
+assert_equals 1 "$ANDROID_INSTALL_RECOVERIES_USED" "install spent its own budget"
+assert_equals 2 "$(fake_counter_current install)" "install retried on its own budget"
 
 validate_android_time_budget
 post_boot_max="$(calculate_android_post_boot_worst_case_seconds)"
@@ -278,11 +297,11 @@ allocated=$((
   + GAMA_ANDROID_POST_BOOT_CEILING_SECONDS
   + GAMA_ANDROID_JOB_HEADROOM_SECONDS
 ))
-assert_equals 812 "$post_boot_max" "calculated conservative post-boot maximum"
-assert_equals 2700 "$allocated" "45-minute job allocation"
+assert_equals 1030 "$post_boot_max" "calculated conservative post-boot maximum"
+assert_equals 3300 "$allocated" "55-minute job allocation"
 ((post_boot_max < GAMA_ANDROID_POST_BOOT_CEILING_SECONDS))
 assert_equals 240 "$GAMA_ANDROID_JOB_HEADROOM_SECONDS" "job-level headroom"
-assert_equals 28 "$((GAMA_ANDROID_POST_BOOT_CEILING_SECONDS - post_boot_max))" "post-boot ceiling margin"
+assert_equals 410 "$((GAMA_ANDROID_POST_BOOT_CEILING_SECONDS - post_boot_max))" "post-boot ceiling margin"
 
 saved_post_boot_ceiling="$GAMA_ANDROID_POST_BOOT_CEILING_SECONDS"
 GAMA_ANDROID_POST_BOOT_CEILING_SECONDS="$post_boot_max"
@@ -295,6 +314,6 @@ validate_android_time_budget
 
 reset_case ready 2
 run_with_post_boot_ceiling true
-assert_log_count 1 '^timeout|840s|true$' "enforced post-boot ceiling"
+assert_log_count 1 '^timeout|1440s|true$' "enforced post-boot ceiling"
 
-echo "OK — shared Android recovery budget, stage exhaustion, timeout arguments, command order, and 45-minute envelope"
+echo "OK — isolated readiness/install budgets, stage exhaustion, timeout arguments, command order, and 55-minute envelope"
