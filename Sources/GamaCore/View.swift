@@ -156,8 +156,9 @@ public struct EmptyView: View {
 }
 
 /// Fixed-arity group produced by `ViewBuilder` for multi-statement blocks.
-/// Renders as the `.topLeading` overlay sentinel that stacking containers
-/// unpack via `flattenChildren(_:)`.
+/// Renders as the dedicated ``RenderNode/group(children:)`` sentinel that
+/// stacking containers unpack via `flattenChildren(_:)` — never as an
+/// overlay, so it cannot collide with `ZStack`.
 public struct TupleView<each V: View>: View {
     /// Terminates `body` recursion; this view compiles in `render(in:)`.
     public typealias Body = Never_
