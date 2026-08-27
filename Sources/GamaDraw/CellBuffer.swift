@@ -32,6 +32,7 @@ public struct Cell: Hashable, Sendable {
 public struct CellBuffer: Hashable, Sendable {
     /// Defensive ceiling for dimensions received from untrusted hosts.
     public static let maximumCellCount = 16 * 1_024 * 1_024
+    /// Current grid dimensions in cells.
     public private(set) var size: Size
     private var front: [Cell]
     private var back: [Cell]

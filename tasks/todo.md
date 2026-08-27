@@ -143,10 +143,17 @@
 - [x] ADRs: docs/adr/0000-0007 (own-the-rendering, toolchain pinning,
       Swift Testing only, Signal confinement interim, DrawList v1,
       noncopyable hosts, frame pumps Provisional).
-- [ ] check-doc-coverage.sh: deterministic per-module symbol-graph
-      coverage gate (docComment presence, origin-filtered, path-keyed
-      allowlist with justifications); wire into check.sh after check-docs
-      and the macOS boundaries-and-documentation CI step.
+- [x] check-doc-coverage.sh: deterministic per-module symbol-graph
+      coverage gate (docComment presence; origin- and declared-in-module-
+      filtered so re-exports and protocol-synthesized members are not this
+      module's debt; path-keyed allowlist requiring justifications, empty
+      at adoption); wired into check.sh after check-docs and the macOS
+      boundaries-and-documentation CI step; verified deterministic (two
+      identical green runs). Adoption also split the single-line
+      multi-case enum rows (Key, alignments) with per-case docs, fixed 7
+      GamaEmbed doc comments that sat between @_cdecl and their function
+      (compiler-accepted, symbol-graph-invisible), and converted
+      GamaEmbed.h to per-symbol /** */ docs.
 
 ## Later sub-projects (each needs its own spec first)
 - [ ] Sub-project 2: plugin runtime + capability model — DRAFT written
