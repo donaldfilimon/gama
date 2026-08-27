@@ -129,16 +129,16 @@ public struct AppRuntime<A: App, R: Renderer>: ~Copyable {
     /// also the worst-case latency for out-of-band invalidations to become
     /// a frame: on timeout the loop re-checks `needsFrame`.
     public var frameTimeoutMillis: Int
-    private var host: FrameHost
+    private var pump: HostPump
 
-    /// Wraps `app` in a fresh `FrameHost` and pairs it with `renderer`.
+    /// Wraps `app` in a fresh ``HostPump`` and pairs it with `renderer`.
     /// Nothing runs until `run()` is called.
     public init(
         app: A,
         renderer: R,
         frameTimeoutMillis: Int = 250
     ) throws(SceneConfigurationError) {
-        self.host = try FrameHost(app: app)
+        self.pump = HostPump(host: try FrameHost(app: app), size: renderer.size)
         self.renderer = renderer
         self.frameTimeoutMillis = frameTimeoutMillis
     }
@@ -150,19 +150,25 @@ public struct AppRuntime<A: App, R: Renderer>: ~Copyable {
     /// the way out, discarding its error.
     public mutating func run() throws(R.Failure) {
         try renderer.begin()
-        host.handle(.lifecycle(.didLaunch))
+        pump.handleLifecycle(.didLaunch)
+        // `begin()` may have taken the terminal and changed the drawable
+        // extent. Re-sync through the pump so the first frame is laid out
+        // at the real size, under the same eager policy as every later
+        // resize rather than a special case.
+        if renderer.size != pump.size {
+            pump.handle(.resize(renderer.size))
+        }
         defer {
-            host.handle(.lifecycle(.willTerminate))
+            pump.handleLifecycle(.willTerminate)
             try? renderer.end()
         }
 
-        while !host.wantsQuit {
-            if host.needsFrame {
-                let laid = host.pump(size: renderer.size)
-                try renderer.present(laid)
+        while !pump.wantsQuit {
+            if let advanced = pump.advance() {
+                try renderer.present(advanced.frame)
             }
             if let event = try renderer.nextEvent(timeoutMillis: frameTimeoutMillis) {
-                host.handle(event)
+                pump.handle(event)
             }
         }
     }
