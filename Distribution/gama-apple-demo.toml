@@ -1,0 +1,10 @@
+# Identity and branding for the macOS demo bundle. This manifest never
+# changes what gets compiled; build facts live in Package.swift.
+[app]
+id = "com.donaldfilimon.gama.apple-demo"
+name = "Gama Demo"
+version = "0.1.0"
+
+[macos]
+minimum_system = "14.0"
+category = "public.app-category.developer-tools"

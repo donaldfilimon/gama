@@ -192,7 +192,11 @@ let package = Package(
         ),
         .executableTarget(
             name: "GamaAppleDemo",
-            dependencies: ["GamaCore", "GamaAppleShell"],
+            // GamaAppleUI and GamaDraw are direct dependencies because the
+            // --smoke launch gate reads GamaHostView.currentDrawList.commands,
+            // and MemberImportVisibility requires importing each declaring
+            // module.
+            dependencies: ["GamaCore", "GamaAppleShell", "GamaAppleUI", "GamaDraw"],
             swiftSettings: strictCore
         ),
         .executableTarget(

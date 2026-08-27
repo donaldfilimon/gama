@@ -211,8 +211,30 @@
       design at docs/superpowers/specs/2026-08-27-scene-first-app-shell-design.md.
       Scene core/migration and macOS shell are separate green delivery slices;
       packaging's .app slice depends on both.
-- [ ] Sub-project 4: packaging & distribution — APPROVED 2026-08-27
-      (docs/superpowers/specs/2026-08-27-packaging-design.md): Track W (wasm
-      site bundle) and Track M (.app of gama-apple-demo + Distribution/
-      manifest + --smoke + ad-hoc and Developer ID/notarize scripts) in
-      parallel; notarization is V1 (credential-gated, local evidence only).
+- [ ] Sub-project 4: packaging & distribution — APPROVED
+      (docs/superpowers/specs/2026-08-27-packaging-design.md; the 2026-08-26
+      draft is kept for inventory and rejected alternatives). V1 implemented
+      2026-08-27 on feat/packaging-v1:
+      - Landed and locally proven: scripts/lib/manifest.sh (fail-closed
+        flat-TOML reader), Distribution/ manifests + Info.plist.in
+        (com.donaldfilimon.gama.*, 0.1.0), scripts/bundle-web.sh (site
+        assembled to $GAMA_DIST_ROOT/web, browser smoke green against the
+        assembled directory), gama-apple-demo --smoke (offscreen
+        NSApplication launch gate, non-empty DrawList), and
+        scripts/bundle-macos.sh (staged .app outside the iCloud tree,
+        plutil lint, ad-hoc deep-strict codesign, smoke launch, all green).
+      - CI-gated (hosted proof pending the PR matrix): the macOS job's
+        bundle step + mode-preserving macos-app ZIP upload and the wasm job's
+        bundle step + wasm-site upload. PR review hardening validates whole
+        manifest identifiers, canonicalizes the dist root, uses plist-aware
+        branding, applies and browser-verifies `[web].title`, and checks the
+        exact Swift revision.
+      - Credential-gated: scripts/release-macos.sh Developer ID +
+        notarization path is implemented, rebuilds the download ZIP after
+        stapling, and its fail-closed gating is locally proven; no credentialed
+        run has occurred, so the notarized artifact is not claimed.
+      - Deferred per spec: embed SDK dir, Linux static binary, Windows
+        staged dir, Android assembleRelease + keystore, gama CLI veneer,
+        iOS-family .ipa. No icon source exists, so the iconutil path is
+        implemented but unproven. Keep open until the packaging PR and its
+        six-job matrix are green.

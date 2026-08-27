@@ -258,6 +258,33 @@ status: in_progress
   .network, scope subsumption, discovery, persistence, and shell
   teardown of contributed windows on uninstall. Hosted proof is the
   six-job matrix on the PR; merge only when green.
+- Packaging & distribution V1 (2026-08-27): sub-project 4 approved
+  (docs/superpowers/specs/2026-08-27-packaging-design.md) and implemented on
+  feat/packaging-v1. Locally proven with real exit codes: bundle-web.sh
+  (pinned-SDK wasm build, site assembled to /private/tmp/gama-dist/web,
+  headless-Chrome smoke against the assembled directory), gama-apple-demo
+  --smoke (offscreen NSApplication, 36 draw commands, exit 0), and
+  bundle-macos.sh ("Gama Demo.app" staged outside the iCloud tree from the
+  gama-apple-demo manifest, plutil lint, ad-hoc deep-strict codesign verify,
+  smoke launch). release-macos.sh (Developer ID + notarytool + stapler) is
+  implemented with hard credential gating; the gate's fail-closed refusal is
+  locally proven and the credentialed path is deliberately unclaimed until a
+  run with GAMA_CODESIGN_IDENTITY/GAMA_NOTARY_PROFILE passes. CI now stages
+  and uploads both artifacts (macos-app, wasm-site); hosted proof rides on
+  the packaging PR's six-job matrix and must be recorded only when green.
+  Manifests in Distribution/ carry identity only, parsed by the fail-closed
+  scripts/lib/manifest.sh reader.
+- Packaging review hardening (2026-08-27, PR #32): repaired all seven active
+  review findings without weakening a gate. The flat-TOML grammar now validates
+  whole identifiers; macOS staging canonicalizes containment and uses
+  plist-aware branding; the wasm bundler verifies the exact Swift revision and
+  the manifest-configured page title; CI uploads a mode-preserving `ditto` ZIP;
+  and the credentialed release path rebuilds its downloadable ZIP after
+  stapling. Local regression probes, `check-toolchain-pins.sh`, the real macOS
+  app bundle gate, transport extraction/signature verification, and the real
+  wasm browser bundle gate are green. Exact repair head 77e3160 passed all six
+  acceptance jobs plus Devin Review and merged through PR #32 as 3b4c83a;
+  do not infer that result from an earlier head.
 - Plugin runtime post-merge hardening (2026-08-27): PR #33 merged only
   after its original head passed all six acceptance jobs, but a later
   review identified five substantive defects. The follow-up gives each

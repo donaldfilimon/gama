@@ -6,6 +6,7 @@ import { extname, join } from "node:path";
 
 const artifact = process.argv[2];
 const root = process.argv[3];
+const expectedTitle = process.argv[4];
 if (!artifact || !root) {
   throw new Error("usage: browser-runtime-smoke.mjs <gama.wasm> <WebHost>");
 }
@@ -55,6 +56,7 @@ child.stderr.on("data", (chunk) => { errors += chunk; });
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 let socket;
 let marker = "";
+let pageTitle = "";
 const runtimeErrors = [];
 try {
   const activePort = join(profile, "DevToolsActivePort");
@@ -99,6 +101,11 @@ try {
     if (/^OK;frames=[1-9]\d*;keys=[1-9]\d*;pointers=[2-9]\d*;resizes=[1-9]\d*;rendered=true;accessible=true$/.test(marker)) break;
     await delay(100);
   }
+  const titleResult = await command("Runtime.evaluate", {
+    expression: "document.title",
+    returnByValue: true,
+  });
+  pageTitle = titleResult.result?.result?.value ?? "";
 } finally {
   socket?.close();
   const closed = new Promise((resolve) => child.once("close", resolve));
@@ -109,5 +116,8 @@ try {
 }
 if (!/^OK;frames=[1-9]\d*;keys=[1-9]\d*;pointers=[2-9]\d*;resizes=[1-9]\d*;rendered=true;accessible=true$/.test(marker)) {
   throw new Error(`browser event/frame/accessibility marker missing; marker=${marker}; runtime=${runtimeErrors.join(" | ")}; stderr=${errors}`);
+}
+if (expectedTitle !== undefined && pageTitle !== expectedTitle) {
+  throw new Error(`browser title mismatch; expected=${expectedTitle}; actual=${pageTitle}`);
 }
 console.log("OK — browser DOM, keyboard, pointer, resize, rAF, accessibility, and WASM frame smoke");
