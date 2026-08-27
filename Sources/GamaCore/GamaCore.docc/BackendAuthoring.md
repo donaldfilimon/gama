@@ -14,9 +14,21 @@ Terminal implementations should make raw-console ownership noncopyable or
 reference-unique and restore modes, cursor visibility, alternate screen, code
 page, and mouse reporting during teardown.
 
+## Noncopyable hosts
+
+``FrameHost`` and `AppRuntime` are noncopyable (`~Copyable`): a host owns
+live reference state — action tables, the dirty signal, subscriptions — and
+a copy would silently share all of it. Own exactly one per application
+instance: store it in a single property (a class stored property or a local
+`var`), mutate it in place, and never assign it to a second binding. Passing
+one around means `inout`, `borrowing`, or `consuming`; Swift rejects an
+accidental copy at compile time. Requesting a frame out-of-band uses the
+non-mutating ``FrameHost/invalidate()``, so it is callable from a borrowed
+host.
+
 ## Reactor-style hosts
 
-AppKit/UIKit, browser, and foreign-language hosts retain a ``FrameHost``.
+AppKit/UIKit, browser, and foreign-language hosts own a ``FrameHost``.
 
 The dependency-free `WebHost` is a UI demonstration host, not a general WASI
 runtime. It implements the process metadata, clock, random, and output imports

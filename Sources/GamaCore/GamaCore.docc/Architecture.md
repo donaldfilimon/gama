@@ -7,7 +7,14 @@ Understand the retained tree, layout passes, drawing boundary, and event loop.
 An application produces a typed ``View`` hierarchy. A ``BuildContext`` assigns
 stable ``NodeID`` values and renders that hierarchy into a backend-neutral
 ``RenderNode`` tree. ``LayoutEngine`` first measures and then places the tree,
-producing ``LaidOutNode`` values clipped to the host's current bounds.
+producing ``LaidOutNode`` values clipped to the host's current bounds. Both
+tree types are `Hashable`, so frames can be diffed or memoized by value.
+
+Two container cases look similar and are deliberately distinct:
+``RenderNode/group(children:)`` is the flatten sentinel that `ViewBuilder`
+tuples and `ForEach` emit — containers unpack it into their own child list —
+while ``RenderNode/overlay(alignment:children:)`` is the `ZStack` lowering
+and always layers. A `ZStack` therefore never flattens into a parent stack.
 
 ``FrameHost`` owns the mutable runtime state for one application instance:
 actions, key handlers, focus, duplicate-identity diagnostics, dirty state, and

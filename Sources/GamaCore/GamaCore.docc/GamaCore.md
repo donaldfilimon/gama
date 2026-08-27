@@ -46,16 +46,24 @@ process-global invalidation.
 
 - ``App``
 - ``FrameHost``
+- ``AppRuntime``
 - ``Renderer``
 - ``InputEvent``
+- ``InteractiveRegion``
+- ``NodeID``
+- ``BuildContext``
 - ``Signal``
+- ``State``
 - ``Binding``
+- ``SubscriptionContext``
 
 ### Layout and style
 
 - ``LayoutEngine``
+- ``LaidOutNode``
 - ``TextLayout``
 - ``Rect``
 - ``Size``
 - ``TextStyle``
+- ``BorderGlyphs``
 - ``Color``
