@@ -25,6 +25,7 @@ let package = Package(
         .library(name: "Gama", targets: ["Gama"]),
         .library(name: "GamaCore", targets: ["GamaCore"]),
         .library(name: "GamaPlugin", targets: ["GamaPlugin"]),
+        .library(name: "GamaPlatformServices", targets: ["GamaPlatformServices"]),
         .library(name: "GamaMacros", targets: ["GamaMacros"]),
         .library(name: "GamaDraw", targets: ["GamaDraw"]),
         .library(name: "GamaTUI", targets: ["GamaTUI"]),
@@ -68,6 +69,16 @@ let package = Package(
         .target(
             name: "GamaPlugin",
             dependencies: ["GamaCore"],
+            swiftSettings: strictCore
+        ),
+
+        // ── Platform-conditional HostServices implementations (stderr
+        //    log, monotonic clock, real scoped filesystem). May import
+        //    Foundation; never imported by any portable target — the
+        //    inverse grep in check-boundaries.sh enforces it.
+        .target(
+            name: "GamaPlatformServices",
+            dependencies: ["GamaCore", "GamaPlugin"],
             swiftSettings: strictCore
         ),
 
@@ -190,7 +201,8 @@ let package = Package(
         .testTarget(
             name: "GamaTests",
             dependencies: [
-                "Gama", "GamaCore", "GamaPlugin", "GamaMacros", "GamaMLIR",
+                "Gama", "GamaCore", "GamaPlugin", "GamaPlatformServices",
+                "GamaMacros", "GamaMLIR",
                 "GamaTUI", "GamaDraw", "GamaEmbed", "GamaMacrosImpl",
                 "GamaAppleUI", "GamaAppleShell", "GamaWASM",
                 .product(name: "SwiftSyntaxMacroExpansion", package: "swift-syntax"),
