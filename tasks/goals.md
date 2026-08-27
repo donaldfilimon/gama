@@ -197,6 +197,28 @@ status: in_progress
   previously documented `detect_leaks=0` policy while retaining the required
   ASan job. Leak detection remains an open, separately root-caused item in
   `tasks/todo.md`; do not describe the Swift Testing runner as leak-clean.
+  Root cause identified 2026-08-27 (goal-loop session, from PR #24's job
+  log, run 33048676959): 7 indirect leaks / 432 bytes, every stack in the
+  SwiftPM-generated runner's XCTest harness (`XCTestSuiteRun.init`,
+  `XCTMain`, `XCTMainMisc`, plus Foundation `URL.lastPathComponent` under
+  XCTMain), zero Gama frames. The generated entry point runs the XCTest
+  harness even with zero XCTest suites, so the current generated test job
+  cannot be called leak-clean while those allocations persist. A future
+  runner change or a separate harness-free leak test can provide honest
+  coverage. Competing PR #31 used a broad `leak:XCTest` suppression and was
+  closed in favor of #30; that suppression is not coverage-preserving
+  because it can also match a Gama allocation made beneath XCTest.
+- Acceptance-run continuity risk (2026-08-27): main has had no COMPLETED
+  acceptance run since 33044975550 (pre-#19). Post-#22 run 33048024225 was
+  cancelled by the #24 push and post-#24 by the #26 push — ci.yml's
+  concurrency group is `cancel-in-progress: true`, so those closely spaced
+  merges cancelled the previous merge's proof. This is missing evidence,
+  not a structural blocker: a quiet merge interval or the existing
+  `workflow_dispatch` entry point can produce a completed main run. Two
+  optional continuity improvements remain Donald's call: mark the six jobs
+  required (blocks merges until green, also fixes the merged-while-red
+  pattern), and/or exempt `refs/heads/main` from cancel-in-progress so
+  post-merge proofs are less likely to be superseded.
 - Consolidation complete + specs finalized (2026-08-27, Donald's "merge all
   into main / finish all" session): PRs #20 (doc-coverage count), #21
   (macOS shell + gama-apple-demo), and #22 (ledger) merged; local main ==
@@ -223,9 +245,11 @@ status: in_progress
 - Slice C approved in full (2026-08-27, Donald): frame-pump unification with
   a single resize policy (ADR 0007 leaves Provisional), the validated
   non-Sendable Signal redesign (ADR 0003 interim to be superseded), and all
-  remaining Slice C items as gated slices. Scheduled as wave 2 behind the
-  plugin-runtime, packaging, and DocC-catalog branches to avoid GamaCore
-  merge conflicts.
+  remaining Slice C items as gated slices. It remains blocked on actual
+  wave-1 integration: packaging PR #32 is merged, but DocC-catalog PR #28
+  must merge and the plugin-runtime post-merge hardening must be green
+  before Slice C begins. Branch existence and local gates do not satisfy
+  this boundary.
 - Wave-2 structural designs authored (2026-08-27): frame-pump unification
   (HostPump, eager resize policy, per-backend migration slices; supersedes
   ADR 0007 when implemented) and the Signal redesign (non-Sendable with
@@ -280,5 +304,17 @@ status: in_progress
   and the credentialed release path rebuilds its downloadable ZIP after
   stapling. Local regression probes, `check-toolchain-pins.sh`, the real macOS
   app bundle gate, transport extraction/signature verification, and the real
-  wasm browser bundle gate are green. Hosted proof remains the exact PR-head
-  six-job matrix after this repair commit; do not infer it from the earlier run.
+  wasm browser bundle gate are green. Exact repair head 77e3160 passed all six
+  acceptance jobs plus Devin Review and merged through PR #32 as 3b4c83a;
+  do not infer that result from an earlier head.
+- Plugin runtime post-merge hardening (2026-08-27): PR #33 merged only
+  after its original head passed all six acceptance jobs, but a later
+  review identified five substantive defects. The follow-up gives each
+  plugin a stable slot identity retained across peer removal, isolates and
+  cancels plugin-owned observations on failed activation/uninstall,
+  invalidates the host after successful install/uninstall, revokes cached
+  commands at uninstall, and rejects internal empty filesystem components
+  while retaining one trailing separator. Focused evidence is 39 Swift
+  Testing cases in six suites on the pinned toolchain; the follow-up's own
+  exact-head hosted matrix is still required and must not be conflated with
+  PR #33's already-green head.
