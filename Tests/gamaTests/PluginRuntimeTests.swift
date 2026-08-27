@@ -53,6 +53,23 @@ private struct ProbePlugin: GamaPluginProtocol {
     }
 }
 
+/// Observes one signal during activation, with an optional failure after the
+/// observation has been registered to exercise rollback cleanup.
+private struct ObservingPlugin: GamaPluginProtocol {
+    let id: PluginID
+    let signal: Signal<Int>
+    let failAfterObserve: Bool
+
+    var manifest: PluginManifest {
+        PluginManifest(id: id, version: PluginVersion(major: 1, minor: 0, patch: 0))
+    }
+
+    mutating func activate(in context: PluginContext) throws(PluginError) {
+        context.subscriptions.observe(signal)
+        if failAfterObserve { throw .activationFailed(id) }
+    }
+}
+
 private struct HostedApp: App {
     var scenes: some Scene {
         Window("Main", id: "main", role: .primary) { Text("main") }
@@ -244,6 +261,84 @@ struct PluginRuntimeTests {
         runtime.uninstall("test.a")
         #expect(runtime.installed == ["test.b"])
         #expect(recorder.events == ["activate:test.a", "activate:test.b", "deactivate:test.a"])
+    }
+
+    @Test("successful install and uninstall each invalidate the owning host")
+    func lifecycleChangesInvalidateHost() throws {
+        var host = try FrameHost(app: HostedApp())
+        let runtime = PluginRuntime(
+            grants: .denyAll,
+            services: recordedServices(),
+            subscriptions: host.subscriptions
+        )
+        _ = host.pump(size: Size(width: 20, height: 2))
+        let cleanAfterInitialPump = host.needsFrame
+        #expect(!cleanAfterInitialPump)
+
+        try runtime.install(ProbePlugin())
+        let dirtyAfterInstall = host.needsFrame
+        #expect(dirtyAfterInstall)
+        _ = host.pump(size: Size(width: 20, height: 2))
+        let cleanAfterInstallPump = host.needsFrame
+        #expect(!cleanAfterInstallPump)
+
+        runtime.uninstall("test.probe")
+        let dirtyAfterUninstall = host.needsFrame
+        #expect(dirtyAfterUninstall)
+    }
+
+    @Test("uninstall cancels only that plugin's observations")
+    func uninstallCancelsPluginObservations() throws {
+        var host = try FrameHost(app: HostedApp())
+        let hostSignal = Signal(0)
+        let pluginSignal = Signal(0)
+        host.observe(hostSignal)
+        let runtime = PluginRuntime(
+            grants: .denyAll,
+            services: recordedServices(),
+            subscriptions: host.subscriptions
+        )
+        _ = host.pump(size: Size(width: 20, height: 2))
+        try runtime.install(
+            ObservingPlugin(id: "test.observe", signal: pluginSignal, failAfterObserve: false))
+        _ = host.pump(size: Size(width: 20, height: 2))
+
+        pluginSignal.set(1)
+        let dirtyAfterPluginSignal = host.needsFrame
+        #expect(dirtyAfterPluginSignal)
+        _ = host.pump(size: Size(width: 20, height: 2))
+        runtime.uninstall("test.observe")
+        _ = host.pump(size: Size(width: 20, height: 2))
+
+        pluginSignal.set(2)
+        let cleanAfterUninstalledSignal = host.needsFrame
+        #expect(!cleanAfterUninstalledSignal)
+        hostSignal.set(1)
+        let dirtyAfterHostSignal = host.needsFrame
+        #expect(dirtyAfterHostSignal)
+    }
+
+    @Test("failed activation cancels observations and leaves the host clean")
+    func failedActivationCancelsObservations() throws {
+        var host = try FrameHost(app: HostedApp())
+        let signal = Signal(0)
+        let runtime = PluginRuntime(
+            grants: .denyAll,
+            services: recordedServices(),
+            subscriptions: host.subscriptions
+        )
+        _ = host.pump(size: Size(width: 20, height: 2))
+
+        #expect(throws: PluginError.activationFailed("test.fail")) {
+            try runtime.install(
+                ObservingPlugin(id: "test.fail", signal: signal, failAfterObserve: true))
+        }
+        #expect(runtime.installed.isEmpty)
+        let cleanAfterFailedActivation = host.needsFrame
+        #expect(!cleanAfterFailedActivation)
+        signal.set(1)
+        let cleanAfterRolledBackSignal = host.needsFrame
+        #expect(!cleanAfterRolledBackSignal)
     }
 
     @Test("plugin invalidation dirties exactly the host its runtime was built with")

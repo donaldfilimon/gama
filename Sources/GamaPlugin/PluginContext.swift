@@ -97,9 +97,11 @@ public struct PluginContext: Sendable {
     /// Filesystem handle covering every granted scope, or `nil` when no
     /// ``Capability/filesystem(_:)`` scope was granted.
     public let filesystem: FilesystemAccess?
-    /// Host invalidation and signal observation, bounded by the owning
-    /// host's lifetime. A plugin `Signal` observed here dirties exactly
-    /// the one host this runtime was built with.
+    /// Host invalidation and signal observation, bounded by this plugin
+    /// installation's lifetime. A plugin `Signal` observed here dirties
+    /// exactly the one host this runtime was built with; failed activation
+    /// and uninstall cancel these observations without disturbing the
+    /// host's or another plugin's observations.
     public let subscriptions: SubscriptionContext
 
     /// Internal on purpose: contexts are issued by ``PluginRuntime``.

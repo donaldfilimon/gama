@@ -145,6 +145,36 @@ struct PluginSlotTests {
         #expect(secondDuplicates.isEmpty)
     }
 
+    @Test("removing an earlier plugin preserves focused identity and action routing")
+    func removalDoesNotRenumberSurvivors() throws {
+        let box = RuntimeBox()
+        var host = try FrameHost(app: SlotApp(box: box))
+        let runtime = makeAttachedRuntime(box, subscriptions: host.subscriptions)
+        let firstCounter = Signal(0)
+        let secondCounter = Signal(0)
+        let thirdCounter = Signal(0)
+        try runtime.install(CounterPlugin(id: "test.one", counter: firstCounter))
+        try runtime.install(CounterPlugin(id: "test.two", counter: secondCounter))
+        try runtime.install(CounterPlugin(id: "test.three", counter: thirdCounter))
+
+        let firstFrame = host.pump(size: Size(width: 40, height: 8))
+        var before: [InteractiveRegion] = []
+        firstFrame.collectInteractive(into: &before)
+        #expect(before.count == 3)
+        host.handle(.key(.tab))
+
+        runtime.uninstall("test.one")
+        let secondFrame = host.pump(size: Size(width: 40, height: 8))
+        var after: [InteractiveRegion] = []
+        secondFrame.collectInteractive(into: &after)
+        #expect(after.map(\.id) == Array(before.dropFirst()).map(\.id))
+
+        host.handle(.key(.enter))
+        #expect(firstCounter.get() == 0)
+        #expect(secondCounter.get() == 1)
+        #expect(thirdCounter.get() == 0)
+    }
+
     @Test("a plugin Signal observed through the context dirties the host end to end")
     func reactiveSignalPath() throws {
         let box = RuntimeBox()
