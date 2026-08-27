@@ -10,32 +10,30 @@ private protocol AnyEmbedHost: AnyObject {
 }
 
 private final class EmbedHostBox<A: App>: AnyEmbedHost {
-    var host: FrameHost
+    var pump: HostPump
     var buffer: CellBuffer
-    var size: Size
 
     init(app: A, size: Size) throws(SceneConfigurationError) {
-        host = try FrameHost(app: app)
-        self.size = size
+        pump = HostPump(host: try FrameHost(app: app), size: size)
         buffer = CellBuffer(size: size)
     }
 
-    var needsFrame: Bool { host.needsFrame }
+    var needsFrame: Bool { pump.needsFrame }
+
+    var size: Size { pump.size }
 
     func handle(_ event: InputEvent) {
-        if case .resize(let newSize) = event {
-            size = newSize
-            buffer.resize(newSize)
-        }
-        host.handle(event)
+        // Eager resize and the buffer resize both live in the shared pump
+        // now; this backend keeps only its own encoding.
+        pump.handle(event)
     }
 
     func frame() -> [UInt8]? {
-        guard host.needsFrame else { return nil }
-        let laidOut = host.pump(size: size)
-        buffer.clearBack()
-        CellPainter.paint(laidOut, into: &buffer)
-        return DrawList.from(buffer).encode()
+        var encoded: [UInt8]?
+        _ = pump.advance(into: &buffer) { painted in
+            encoded = DrawList.from(painted).encode()
+        }
+        return encoded
     }
 }
 

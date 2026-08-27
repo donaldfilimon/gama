@@ -67,6 +67,38 @@ Emission stays per-backend (ANSI diff, HTML, DrawList bytes, CG) — the
 `emit` closure receives the painted buffer; no backend forks layout, paint
 order, or the dirty gate ever again.
 
+### Implementation note (2026-08-27) — D2 is split across two modules
+
+D2 as written cannot compile. It places `HostPump` in GamaCore while giving
+`advance` an `emit: (borrowing CellBuffer)` closure, but `CellBuffer` lives
+in **GamaDraw**, and `Package.swift` has GamaDraw depending on GamaCore, not
+the reverse. The intent (one dirty gate, one resize policy, one paint order)
+is preserved by splitting the type across the dependency edge:
+
+- **`Sources/GamaCore/HostPump.swift`** — the policy. Owns the consumed
+  `FrameHost` and `size`, implements eager resize in `handle(_:)`, and
+  exposes `advance() -> AdvancedFrame?` carrying the laid-out node and the
+  `followUp` flag. Stdlib-only, so the policy stays inside the Embedded
+  proof — `check-embedded.sh` compiles GamaCore alone, so a pump living in
+  GamaDraw would have fallen outside it entirely.
+- **`Sources/GamaDraw/HostPump+CellBuffer.swift`** — the buffer path, as an
+  extension: `advance(into:emit:) -> AdvanceOutcome` doing
+  resize-if-needed → `clearBack` → `CellPainter.paint` → `emit`.
+
+Rejected alternative: inverting the dependency behind a GamaCore protocol
+that `CellBuffer` conforms to. Its only conformance would live in GamaDraw,
+and it adds existential/generic machinery to a module with a
+"no existentials in hot paths" rule.
+
+**A fifth duplicated fragment, unnamed in the table above, is folded in
+here:** buffer resizing. GamaEmbed resized the buffer on the `.resize`
+event; GamaAppleUI compared `buffer.size` against the grid on every draw.
+Both are now `CellBuffer.resizeIfNeeded(_:)`, which normalizes *before*
+comparing — a plain `size != newSize` check is wrong, because `size` holds
+the normalized extent, so any request above `maximumCellCount` never
+compares equal and would re-allocate and force a full present on every
+frame.
+
 ### D3. Migration (one slice per backend, each gated)
 
 1. Introduce `HostPump` + `HostPumpTests` (portable: eager-resize

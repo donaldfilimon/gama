@@ -4,7 +4,10 @@
 
 /// Build context threaded through the view → RenderNode compilation pass.
 /// Carries identity path and inherited style. Value type, no globals.
-public struct BuildContext: Sendable {
+/// **Not `Sendable`.** A build context carries the host's action and
+/// key-handler registration hooks, which close over host-owned state; it
+/// exists only for the duration of one build pass on one host.
+public struct BuildContext {
     /// Identity of the node being built; children derive theirs through
     /// `child(_:)`, so the path stays stable across rebuilds.
     public var id: NodeID
@@ -15,10 +18,10 @@ public struct BuildContext: Sendable {
     public var environment: EnvironmentValues
     /// Registers an interaction with the `FrameHost` that owns this build.
     /// The default is a no-op so views can still be rendered in isolation.
-    public var registerAction: @Sendable (NodeID, @escaping @Sendable () -> Void) -> Void
+    public var registerAction: (NodeID, @escaping () -> Void) -> Void
     /// Registers focused text/key editing for the owning host.
-    public var registerKeyHandler: @Sendable (
-        NodeID, @escaping @Sendable (Key) -> Bool
+    public var registerKeyHandler: (
+        NodeID, @escaping (Key) -> Bool
     ) -> Void
 
     /// Creates a build context. Every parameter defaults to the isolated
@@ -28,9 +31,9 @@ public struct BuildContext: Sendable {
         id: NodeID = .root,
         inheritedStyle: TextStyle = .plain,
         environment: EnvironmentValues = EnvironmentValues(),
-        registerAction: @escaping @Sendable (NodeID, @escaping @Sendable () -> Void) -> Void = { _, _ in },
-        registerKeyHandler: @escaping @Sendable (
-            NodeID, @escaping @Sendable (Key) -> Bool
+        registerAction: @escaping (NodeID, @escaping () -> Void) -> Void = { _, _ in },
+        registerKeyHandler: @escaping (
+            NodeID, @escaping (Key) -> Bool
         ) -> Void = { _, _ in }
     ) {
         self.id = id
@@ -69,7 +72,7 @@ public struct EnvironmentValues: Sendable {
 /// `body`; primitives use `Never_` as `Body` and compile directly in
 /// `render(in:)`. The protocol stays fully generic — no `any View`
 /// anywhere — which is what keeps the layer Embedded-Swift compatible.
-public protocol View: Sendable {
+public protocol View {
     /// The concrete view type `body` composes.
     associatedtype Body: View
     /// The view's content; primitives instead implement `render(in:)`
@@ -257,10 +260,10 @@ where Data.Index == Int {
     public let data: Data
     /// Produces the view for one element; called once per element per
     /// build pass.
-    public let content: @Sendable (Data.Element) -> Content
+    public let content: (Data.Element) -> Content
 
     /// Creates a per-element rendering of `data`.
-    public init(_ data: Data, @ViewBuilder content: @escaping @Sendable (Data.Element) -> Content) {
+    public init(_ data: Data, @ViewBuilder content: @escaping (Data.Element) -> Content) {
         self.data = data
         self.content = content
     }
@@ -287,17 +290,17 @@ where Data.Index == Int {
     public let data: Data
     /// Maps an element to the stable `NodeID` its subtree renders under —
     /// this replaces positional identity entirely.
-    public let identity: @Sendable (Data.Element) -> NodeID
+    public let identity: (Data.Element) -> NodeID
     /// Produces the view for one element; called once per element per
     /// build pass.
-    public let content: @Sendable (Data.Element) -> Content
+    public let content: (Data.Element) -> Content
 
     /// Creates a per-element rendering of `data` where each element's
     /// subtree is identified by `id(element)` rather than by position.
     public init(
         _ data: Data,
-        id: @escaping @Sendable (Data.Element) -> NodeID,
-        @ViewBuilder content: @escaping @Sendable (Data.Element) -> Content
+        id: @escaping (Data.Element) -> NodeID,
+        @ViewBuilder content: @escaping (Data.Element) -> Content
     ) {
         self.data = data
         self.identity = id
