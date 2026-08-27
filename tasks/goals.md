@@ -226,13 +226,12 @@ status: in_progress
   remaining Slice C items as gated slices. Scheduled as wave 2 behind the
   plugin-runtime, packaging, and DocC-catalog branches to avoid GamaCore
   merge conflicts.
-- DocC catalogs for the backends (2026-08-27, branch
-  docs/docc-catalogs-backends): GamaAppleUI, GamaAppleShell, GamaWASM, and
-  GamaMLIR gained curated .docc catalogs (claim-honest overviews grounded in
-  docs/Capabilities.md and docs/backends/*, plus Topics curation where the
-  host symbol graph has symbols). check-docs.sh required no changes: its
-  generalized loop discovered the new catalogs and the gate now proves seven
-  zero-warning archives. GamaEmbed deliberately has no catalog yet: its
-  source doc comment links ``GamaCore/App``, unresolvable in the per-module
-  docc pass, so that catalog needs a one-line source doc-comment fix in a
-  code-touching change first.
+- Wave-2 structural designs authored (2026-08-27): frame-pump unification
+  (HostPump, eager resize policy, per-backend migration slices; supersedes
+  ADR 0007 when implemented) and the Signal redesign (non-Sendable with
+  unavailable conformance, sending transfer, App drops Sendable; supersedes
+  ADR 0004 when implemented). Specs:
+  docs/superpowers/specs/2026-08-27-frame-pump-unification-design.md,
+  docs/superpowers/specs/2026-08-27-signal-redesign-design.md.
+  Implementation waits for the wave-1 branches (plugin runtime, packaging,
+  DocC catalogs) to land.
