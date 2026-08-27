@@ -35,7 +35,9 @@ public struct DrawList: Hashable, Sendable {
                 return  // fully default blank run — nothing to draw
             }
             if !isBlankText {
-                let leading = TextLayout.displayWidth(of: String(text.prefix { $0 == " " }))
+                // Leading blanks are always the space character (width 1),
+                // so the character count IS the column offset.
+                let leading = text.prefix(while: { $0 == " " }).count
                 let visible = String(
                     text.dropFirst(leading).reversed().drop(while: { $0 == " " }).reversed()
                 )
@@ -60,29 +62,31 @@ public struct DrawList: Hashable, Sendable {
 
     public func encode() -> [UInt8] {
         var out: [UInt8] = []
-        appendU32(&out, 0x414D_4147)
-        appendU32(&out, 1)
-        appendI32(&out, Self.clampedI32(size.width))
-        appendI32(&out, Self.clampedI32(size.height))
-        appendU32(&out, UInt32(commands.count))
+        // Header is 20 bytes; a text command averages well under 40.
+        out.reserveCapacity(20 + commands.count * 40)
+        Self.appendU32(&out, 0x414D_4147)
+        Self.appendU32(&out, 1)
+        Self.appendI32(&out, Self.clampedI32(size.width))
+        Self.appendI32(&out, Self.clampedI32(size.height))
+        Self.appendU32(&out, UInt32(commands.count))
         for c in commands {
             switch c {
             case .fillRect(let r, let color):
                 out.append(0)
-                appendI32(&out, Self.clampedI32(r.minX))
-                appendI32(&out, Self.clampedI32(r.minY))
-                appendI32(&out, Self.clampedI32(r.size.width))
-                appendI32(&out, Self.clampedI32(r.size.height))
-                appendColor(&out, color)
+                Self.appendI32(&out, Self.clampedI32(r.minX))
+                Self.appendI32(&out, Self.clampedI32(r.minY))
+                Self.appendI32(&out, Self.clampedI32(r.size.width))
+                Self.appendI32(&out, Self.clampedI32(r.size.height))
+                Self.appendColor(&out, color)
             case .text(let s, let p, let style):
                 out.append(1)
-                appendI32(&out, Self.clampedI32(p.x))
-                appendI32(&out, Self.clampedI32(p.y))
-                appendColor(&out, style.foreground)
-                appendColor(&out, style.background)
-                appendU16(&out, UInt16(style.attributes.rawValue))
+                Self.appendI32(&out, Self.clampedI32(p.x))
+                Self.appendI32(&out, Self.clampedI32(p.y))
+                Self.appendColor(&out, style.foreground)
+                Self.appendColor(&out, style.background)
+                Self.appendU16(&out, UInt16(style.attributes.rawValue))
                 let bytes = Array(s.utf8)
-                appendU32(&out, UInt32(bytes.count))
+                Self.appendU32(&out, UInt32(bytes.count))
                 out.append(contentsOf: bytes)
             }
         }
@@ -158,13 +162,16 @@ public struct DrawList: Hashable, Sendable {
     /// Strict RFC 3629 validation kept stdlib-only and available at the
     /// package's macOS 14 deployment floor.
     private static func isValidUTF8(_ slice: ArraySlice<UInt8>) -> Bool {
-        let bytes = Array(slice)
+        // Validated in place; ArraySlice shares indices with its base, so
+        // everything is offset from `start`, never from zero.
+        let start = slice.startIndex
+        let count = slice.count
         var index = 0
         func continuation(_ offset: Int) -> Bool {
-            index + offset < bytes.count && (0x80...0xbf).contains(bytes[index + offset])
+            index + offset < count && (0x80...0xbf).contains(slice[start + index + offset])
         }
-        while index < bytes.count {
-            let first = bytes[index]
+        while index < count {
+            let first = slice[start + index]
             if first <= 0x7f { index += 1; continue }
             if (0xc2...0xdf).contains(first) {
                 guard continuation(1) else { return false }
@@ -173,7 +180,7 @@ public struct DrawList: Hashable, Sendable {
             }
             if (0xe0...0xef).contains(first) {
                 guard continuation(1), continuation(2) else { return false }
-                let second = bytes[index + 1]
+                let second = slice[start + index + 1]
                 if first == 0xe0 && second < 0xa0 { return false }
                 if first == 0xed && second > 0x9f { return false }
                 index += 3
@@ -181,7 +188,7 @@ public struct DrawList: Hashable, Sendable {
             }
             if (0xf0...0xf4).contains(first) {
                 guard continuation(1), continuation(2), continuation(3) else { return false }
-                let second = bytes[index + 1]
+                let second = slice[start + index + 1]
                 if first == 0xf0 && second < 0x90 { return false }
                 if first == 0xf4 && second > 0x8f { return false }
                 index += 4
@@ -218,8 +225,4 @@ public struct DrawList: Hashable, Sendable {
         appendU32(&out, UInt32(bitPattern: v))
     }
 
-    private func appendColor(_ out: inout [UInt8], _ c: Color) { Self.appendColor(&out, c) }
-    private func appendU16(_ out: inout [UInt8], _ v: UInt16) { Self.appendU16(&out, v) }
-    private func appendU32(_ out: inout [UInt8], _ v: UInt32) { Self.appendU32(&out, v) }
-    private func appendI32(_ out: inout [UInt8], _ v: Int32) { Self.appendI32(&out, v) }
 }

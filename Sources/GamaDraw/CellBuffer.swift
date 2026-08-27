@@ -22,7 +22,7 @@ public struct Cell: Hashable, Sendable {
     public static let blank = Cell()
 }
 
-public struct CellBuffer {
+public struct CellBuffer: Sendable {
     /// Defensive ceiling for dimensions received from untrusted hosts.
     public static let maximumCellCount = 16 * 1_024 * 1_024
     public private(set) var size: Size
