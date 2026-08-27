@@ -17,7 +17,7 @@ extension HostPump {
     /// keeps sole ownership of the grid between frames. Emission itself
     /// stays per-backend: ANSI diff, HTML, `DrawList` bytes, CoreGraphics.
     ///
-    /// Returns ``AdvanceOutcome/clean`` without touching `buffer` when the
+    /// Returns `AdvanceOutcome.clean` without touching `buffer` when the
     /// host is clean, so an idle backend does no work.
     ///
     /// - Parameters:

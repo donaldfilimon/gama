@@ -12,4 +12,5 @@ are locked until a superseding ADR says otherwise.
 | [0004](0004-signal-confinement.md) | Signal stays `@unchecked Sendable` under executor confinement; Synchronization is banned in GamaCore | Accepted (interim) |
 | [0005](0005-drawlist-wire-format.md) | DrawList binary wire format v1 and its versioning policy | Accepted |
 | [0006](0006-noncopyable-hosts.md) | FrameHost and AppRuntime are noncopyable | Accepted |
-| [0007](0007-frame-pumps.md) | Four per-backend frame pumps remain, pending unification | Provisional |
+| [0007](0007-frame-pumps.md) | Four per-backend frame pumps remain, pending unification | Superseded by 0008 |
+| [0008](0008-one-pump-eager-resize.md) | One canonical HostPump; resize policy is eager on every backend | Accepted |

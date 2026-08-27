@@ -33,8 +33,10 @@ POSIX input is decoded byte-wise from termios (escape sequences, UTF-8,
 mouse); Windows uses `ReadConsoleInputW`, so no ANSI input parsing exists on
 that path. Ctrl-C arrives as a key event (`ISIG` is disabled) and
 `FrameHost` maps Ctrl-C/Ctrl-Q to `wantsQuit`. Resize is observed by
-polling the size after an event timeout; `SIGWINCH` delivery is a ledgered
-Slice C item.
+polling the size after an event timeout and applied through the shared
+`HostPump`, so it takes effect eagerly — the same timing as every other
+backend ([ADR 0008](../adr/0008-one-pump-eager-resize.md)). `SIGWINCH`
+delivery is a ledgered Slice C item.
 
 ## Output
 
