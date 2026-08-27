@@ -178,7 +178,7 @@ jobs:
       - name: Install checksum-pinned Windows snapshot
         shell: pwsh
         run: |
-          $installer = Join-Path $env:RUNNER_TEMP 'swift-6.5.exe'
+          $installer = Join-Path $env:RUNNER_TEMP 'swift-6.4.x-snapshot.exe'
           Invoke-WebRequest -Uri $env:GAMA_SWIFT_64_WINDOWS_URL -OutFile $installer
           $actual = (Get-FileHash -Algorithm SHA256 $installer).Hash.ToLowerInvariant()
           if ($actual -ne $env:GAMA_SWIFT_64_WINDOWS_SHA256) { throw 'Swift installer checksum mismatch.' }

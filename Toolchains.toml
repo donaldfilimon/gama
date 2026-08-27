@@ -1,49 +1,68 @@
 schema = 1
 
-[apple]
+# Single pinned compiler for every gate except the xcodebuild platform gates
+# (which must use Xcode's integrated 6.4 toolchain) and the Windows job (see
+# [windows_exception]). Selected locally by `.swift-version`.
+[snapshot]
+selector = "main-snapshot-2026-08-21"
+version = "Apple Swift version 6.5-dev"
+xctoolchain = "swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a.xctoolchain"
+xctoolchain_id = "org.swift.65202608211a"
+swift_revision = "95c5142e84b82c1"
+llvm_revision = "64c3046d94ae7cc"
+swiftc_sha256 = "dbbd4d7b467ad2f0cc7e451b4f828c76a4ba2ba3cf1b7bb7f5514cee1f9c9188"
+command = "/usr/bin/xcrun --toolchain org.swift.65202608211a swift"
+status = "pinned-installed"
+policy = "compiler and Swift SDK revisions must match exactly"
+
+[snapshot.macos]
+url = "https://download.swift.org/development/xcode/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a-osx.pkg"
+sha256 = "0a2437602704f1ceb6024452b5fa17be7c82bae3cd1d4a3569affd7706e27cbc"
+
+[snapshot.linux_x86_64]
+url = "https://download.swift.org/development/ubuntu2404/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a-ubuntu24.04.tar.gz"
+sha256 = "855d0f63319043e84c8a293ee855703a9b9aa6c18686ecb88f8ee02592e879f0"
+
+# Xcode's integrated toolchain. Not the primary compiler: it is used only by
+# the xcodebuild iOS/tvOS/visionOS gates, which is also why the manifest stays
+# `swift-tools-version: 6.4`.
+[xcode_default]
 channel = "XcodeDefault"
 swift = "6.4"
 swiftlang = "6.4.0.30.4"
 clang = "2100.3.30.1"
 command = "/usr/bin/xcrun --toolchain default swift"
+used_by = "scripts/check-apple-platforms.sh"
 
-[non_apple]
+# Deliberate exception, not drift: swift.org has published no Windows
+# main-development snapshot since 2026-05-20-a (verified 2026-08-26), so the
+# Windows job stays on the newest proven 6.4.x branch snapshot. Windows is NOT
+# verified on 6.5-dev; revisit when Windows main snapshots resume.
+[windows_exception]
 selector = "6.4.x-snapshot-2026-08-14"
-version = "Apple Swift version 6.4-dev"
 swift_revision = "424cae54c1a10da"
-llvm_revision = "a157c5eb1c32510"
-swiftc_sha256 = "f977959cab6c9fe5996134849e223658b936208ba9ea8331aedf39f83740b815"
-toolchain_url = "https://download.swift.org/swift-6.4.x-branch/xcode/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a-osx.pkg"
-toolchain_sha256 = "29f9f4d0eb80662360db8d21900519af753973165f240ddb8dd5974b6f499dff"
-status = "pinned-installed"
-policy = "compiler and Swift SDK revisions must match exactly"
-
-[non_apple.linux_x86_64]
-url = "https://download.swift.org/swift-6.4.x-branch/ubuntu2404/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a-ubuntu24.04.tar.gz"
-sha256 = "dae1f550c6e9132322a3c35b5fa16c925e591879a681733ea9b652534b9c8902"
-
-[non_apple.windows_x86_64]
 url = "https://download.swift.org/swift-6.4.x-branch/windows10/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a-windows10.exe"
 sha256 = "17d5eba8dfdc9e99bf13c0f26169022be2f816b19e66d883a596d3512cfb0a04"
 
 [sdk.static_linux]
-id = "swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a_static-linux-0.1.0"
-sha256 = "60964bf3ed1b25b9a002e2b5bb3fa7ed4f7b686a57816c5ddfa3784eeb0823d5"
-url = "https://download.swift.org/swift-6.4.x-branch/static-sdk/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a_static-linux-0.1.0.artifactbundle.tar.gz"
+id = "swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a_static-linux-0.1.0"
+sha256 = "2787311e738fbda99215e2af82f52fd18ed3bbdd347ccb5c5afc8d3ecb7550db"
+url = "https://download.swift.org/development/static-sdk/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a_static-linux-0.1.0.artifactbundle.tar.gz"
 
 [sdk.wasm]
-id = "swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a_wasm"
-embedded_id = "swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a_wasm-embedded"
-sha256 = "11fabfac6804222569d330fbbb5fa34eef736abda46790e723ac73b256fd1c7a"
-url = "https://download.swift.org/swift-6.4.x-branch/wasm-sdk/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a_wasm.artifactbundle.tar.gz"
+id = "swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a_wasm"
+sha256 = "19cb319e07661625928f43df3fddabfa9ca4821a3215f5f5a7592c06f3d632e3"
+url = "https://download.swift.org/development/wasm-sdk/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a_wasm.artifactbundle.tar.gz"
 
 [sdk.android]
-id = "swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a_android"
-sha256 = "0f0fc710504b1221397b32c4dff6a6360caf385e336c1d96380811459a87cb9b"
-url = "https://download.swift.org/swift-6.4.x-branch/android-sdk/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a_android.artifactbundle.tar.gz"
+id = "swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a_android"
+sha256 = "1c91679aa96ccf51c8d46d1393de8061ac66d45c5899bc6a70068e9f50e6609d"
+url = "https://download.swift.org/development/android-sdk/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a_android.artifactbundle.tar.gz"
 ndk = "r30-rc2"
 ndk_revision = "30.0.15729638"
 
+# Build-time only (macro plugins). The revision is unchanged across the
+# 6.5-dev migration and builds green under it; there is no 6.5-dev-tagged
+# release to move to, so the pin stays revision-only.
 [swift_syntax]
-tag = "swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a"
 revision = "050f1a346fbbac0ca2cfb15a95274f7bd1cf0ccf"

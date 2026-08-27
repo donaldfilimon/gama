@@ -18,6 +18,22 @@ status: done
   f509e2c (2026-08-24). Superseded going forward by the umbrella goal below
   (6.5-dev snapshot, Qt adapter removed 2026-08-26).
 
+## Merge all branches into main locally
+
+status: done
+
+- Verified 2026-08-26: every branch's content is already contained in main;
+  zero merge commits were needed. All remote branches
+  (feat/swift-65-dev-umbrella, pr/tui-embedded-core, swift-refactor-c4c7b,
+  winsdk-wrapper-94d76) are ancestors of main (`git branch -a --merged main`).
+  Local feat/tui-embedded-core (39f1b35) is tree-identical to the already
+  merged origin/pr/tui-embedded-core (e79b279); local
+  pre-remote-main-20260824 (154ff82) differs only by an obsolete
+  .swift-version pin (2026-08-11, superseded by main's 2026-08-21). Both
+  local branches share no merge base with main (pre-remote history); merging
+  them literally would have deleted ~9k lines of the current framework, so
+  they were left as historical snapshots, not merged.
+
 ## Build the Gama umbrella application framework
 
 status: in_progress
@@ -38,6 +54,14 @@ status: in_progress
   Windows main-development snapshot since 2026-05-20-a, so the Windows job
   runs the proven 6.4.x 2026-08-14-a installer. Windows is NOT yet verified
   on 6.5-dev; revisit when swift.org resumes Windows main snapshots.
+  Re-verified 2026-08-26 (late evening): swift.org's newest Windows
+  main-development snapshot is still 2026-05-20-a — blocker stands.
+- Verification 2026-08-26 (evening): `swiftly run swift build` and
+  `swift test` (scratch path /private/tmp/gama-framework-swiftpm) green on the
+  pinned main-snapshot-2026-08-21 — 74 tests (56 XCTest + 18 Swift Testing),
+  0 failures; `check-docs.sh` zero-warning gate green. CLAUDE.md expanded into
+  the full operational guide and opened as PR #8
+  (docs/claude-md-operational-guide branch).
 - Sub-projects 2-4 Proposed: drafts written and committed under
   docs/superpowers/specs/drafts/ (plugin runtime + capability model; app
   shell/windowing/lifecycle; packaging & distribution). Each is DRAFT ONLY —
