@@ -1,30 +1,49 @@
 #ifndef GAMA_TUI_SIGNAL_H
 #define GAMA_TUI_SIGNAL_H
 
-#include <signal.h>
+#if !defined(_WIN32)
 
-/* Flags shared between POSIX signal handlers and ordinary code.
- *
- * Swift has no way to spell C's `volatile sig_atomic_t`: a Swift `static var`
- * typed `sig_atomic_t` gets none of the access semantics the C standard
- * requires, and `nonisolated(unsafe)` only silences actor-isolation checks.
- * Keep handler-shared storage here, where the required semantics are explicit.
- *
- * The implementation requires lock-free atomics for `sig_atomic_t`. Handler
- * stores are therefore allocation-free and lock-free, while the event loop can
- * drain the resize latch with one indivisible exchange instead of a racy
- * read-then-clear pair. */
+#include <termios.h>
 
-/** Records whether terminal rescue handlers currently own the process signals. */
-void gama_tui_set_armed(int value);
+/* Process-global POSIX terminal rescue.
+ *
+ * Signal handlers must not enter Swift: even a closure that appears to touch
+ * only static data can invoke Swift exclusivity, initialization, or runtime
+ * machinery. This target therefore owns every byte reachable from handler
+ * context: terminal descriptors and state, saved signal dispositions, restore
+ * bytes, and the `volatile sig_atomic_t` latches.
+ *
+ * `gama_tui_signal_arm` and `gama_tui_signal_disarm` are ordinary-code
+ * lifecycle calls. The remaining functions are also async-signal-safe. */
+
+/**
+ * Saves the terminal and host dispositions, then installs Gama's handlers.
+ * Returns zero on success or an errno value on failure.
+ */
+int gama_tui_signal_arm(
+    int input_fd,
+    int output_fd,
+    const struct termios *original_termios
+);
+
+/**
+ * Restores every host disposition and releases the saved terminal state.
+ * Returns zero on success or the first errno value observed while restoring.
+ */
+int gama_tui_signal_disarm(void);
 
 /** Returns whether terminal rescue handlers currently own the process signals. */
-int gama_tui_get_armed(void);
+int gama_tui_signal_is_armed(void);
+
+/** Restores termios and terminal presentation at most once. */
+void gama_tui_signal_restore_now(void);
 
 /** Records that the terminal size may have changed. */
-void gama_tui_set_resize_pending(int value);
+void gama_tui_signal_mark_resize_pending(void);
 
 /** Atomically clears and returns the pending terminal-resize flag. */
-int gama_tui_take_resize_pending(void);
+int gama_tui_signal_take_resize_pending(void);
+
+#endif
 
 #endif

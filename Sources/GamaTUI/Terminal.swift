@@ -131,8 +131,14 @@ public struct Terminal {
         isRaw = true
         // Arm the process-global rescue only now that raw mode is really in
         // effect, so a terminal that was never modified is never "restored".
-        TerminalRescue.arm(
-            inputFD: inputFD, outputFD: outputFD, original: originalTermios)
+        do {
+            try TerminalRescue.arm(
+                inputFD: inputFD, outputFD: outputFD, original: originalTermios)
+        } catch {
+            _ = tcsetattr(inputFD, TCSANOW, &originalTermios)
+            isRaw = false
+            throw error
+        }
         // Alternate screen, hide cursor, clear.
         do {
             try write("\u{1B}[?1049h\u{1B}[?25l\u{1B}[2J\u{1B}[H")
@@ -167,7 +173,10 @@ public struct Terminal {
         isRaw = false
         // The session restored the terminal itself; the signal rescue has
         // nothing left to do and must not restore a second time.
-        TerminalRescue.disarm()
+        do { try TerminalRescue.disarm() }
+        catch {
+            if firstError == nil { firstError = error }
+        }
         if let firstError { throw firstError }
     }
 
@@ -239,6 +248,14 @@ public struct Terminal {
                     return nil
                 }
                 throw TerminalError("terminal poll failed")
+            }
+            // Some kernels restart poll despite the handler not requesting
+            // SA_RESTART. Drain after every successful return as well, so a
+            // SIGWINCH delivered during the wait cannot slip to the next
+            // runtime iteration merely because poll eventually timed out or
+            // input became ready.
+            if TerminalRescue.consumePendingResize() {
+                return .resize(size())
             }
             if r == 0 {
                 if pendingBytes.count == 1 && pendingBytes[0] == 0x1B {

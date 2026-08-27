@@ -4,15 +4,59 @@ import GamaCore
 @testable import GamaTUI
 import Testing
 
+private struct ResizePollContext {
+    var terminal: Terminal
+    let readyFD: Int32
+    var receivedSize: Size?
+    var failed = false
+    var elapsedNanoseconds: UInt64 = 0
+}
+
+private func pollForDeliveredResize(
+    _ rawContext: UnsafeMutableRawPointer
+) -> UnsafeMutableRawPointer? {
+    let context = rawContext.assumingMemoryBound(to: ResizePollContext.self)
+    var unblocked = sigset_t()
+    sigemptyset(&unblocked)
+    sigaddset(&unblocked, SIGWINCH)
+    pthread_sigmask(SIG_UNBLOCK, &unblocked, nil)
+
+    var ready: UInt8 = 1
+    _ = write(context.pointee.readyFD, &ready, 1)
+    var start = timespec()
+    var end = timespec()
+    clock_gettime(CLOCK_MONOTONIC, &start)
+    do {
+        let event = try context.pointee.terminal.nextEvent(timeoutMillis: 5_000)
+        if case .resize(let size)? = event {
+            context.pointee.receivedSize = size
+        } else {
+            context.pointee.failed = true
+        }
+    } catch {
+        context.pointee.failed = true
+    }
+    clock_gettime(CLOCK_MONOTONIC, &end)
+    var seconds = end.tv_sec - start.tv_sec
+    var nanoseconds = end.tv_nsec - start.tv_nsec
+    if nanoseconds < 0 {
+        seconds -= 1
+        nanoseconds += 1_000_000_000
+    }
+    context.pointee.elapsedNanoseconds =
+        UInt64(seconds) * 1_000_000_000 + UInt64(nanoseconds)
+    return nil
+}
+
 /// Covers the process-global rescue that restores a terminal on the exit
 /// paths Swift cannot see.
 ///
 /// `RawModeSession.deinit` already handles every path the type system
 /// controls; the gap is `SIGTERM`, `SIGHUP`, and `exit()`, where the process
 /// dies with the tty still raw and the user's shell is left unusable. These
-/// tests drive the rescue against a real PTY rather than asserting on
-/// bookkeeping alone — `restoreNow()` is exactly what the signal handler
-/// calls, so exercising it directly proves the restoration itself.
+/// tests drive the rescue against a real PTY. The resize test sends a real
+/// `SIGWINCH` to the thread blocked in `poll`, and the cleanup tests inspect
+/// the process dispositions after the session closes.
 ///
 /// The suite is serialized: the rescue is process-global by necessity
 /// (signal disposition is process-wide), so two of these running
@@ -58,15 +102,33 @@ extension TerminalProcessGlobalTests {
             }
         }
 
-        @Test("a clean close gives the host back its own signal handlers")
+        @Test("a clean close gives the host back every managed signal disposition")
         func cleanCloseRestoresHostDispositions() throws {
+            let managedSignals = [SIGTERM, SIGHUP, SIGINT, SIGQUIT, SIGWINCH]
             var hostAction = sigaction()
             hostAction.__sigaction_u.__sa_handler = SIG_IGN
             sigemptyset(&hostAction.sa_mask)
-            hostAction.sa_flags = 0
-            var beforeGama = sigaction()
-            try #require(sigaction(SIGWINCH, &hostAction, &beforeGama) == 0)
-            defer { sigaction(SIGWINCH, &beforeGama, nil) }
+            sigaddset(&hostAction.sa_mask, SIGUSR1)
+            hostAction.sa_flags = Int32(SA_RESTART)
+
+            let originalActions = UnsafeMutablePointer<sigaction>.allocate(
+                capacity: managedSignals.count)
+            originalActions.initialize(
+                repeating: sigaction(), count: managedSignals.count)
+            defer {
+                for (index, signalNumber) in managedSignals.enumerated() {
+                    sigaction(signalNumber, originalActions.advanced(by: index), nil)
+                }
+                originalActions.deinitialize(count: managedSignals.count)
+                originalActions.deallocate()
+            }
+            for (index, signalNumber) in managedSignals.enumerated() {
+                try #require(sigaction(
+                    signalNumber,
+                    &hostAction,
+                    originalActions.advanced(by: index)
+                ) == 0)
+            }
 
             try withPTY { slave in
                 var session = try RawModeSession(
@@ -75,13 +137,17 @@ extension TerminalProcessGlobalTests {
                 try session.close()
             }
 
-            var afterDisarm = sigaction()
-            try #require(sigaction(SIGWINCH, nil, &afterDisarm) == 0)
             // C function pointers are not Equatable; compare bit patterns.
-            let restored = unsafeBitCast(
-                afterDisarm.__sigaction_u.__sa_handler, to: UInt.self)
             let expected = unsafeBitCast(SIG_IGN, to: UInt.self)
-            #expect(restored == expected)
+            for signalNumber in managedSignals {
+                var afterDisarm = sigaction()
+                try #require(sigaction(signalNumber, nil, &afterDisarm) == 0)
+                let restored = unsafeBitCast(
+                    afterDisarm.__sigaction_u.__sa_handler, to: UInt.self)
+                #expect(restored == expected, "signal \(signalNumber) was not restored")
+                #expect(afterDisarm.sa_flags & Int32(SA_RESTART) != 0)
+                #expect(sigismember(&afterDisarm.sa_mask, SIGUSR1) == 1)
+            }
         }
 
         @Test("restoreNow puts termios back, which is what the signal path does")
@@ -130,26 +196,76 @@ extension TerminalProcessGlobalTests {
             }
         }
 
-        @Test("a delivered window change becomes exactly one resize event")
+        @Test("SIGWINCH interrupts poll and becomes exactly one resize event")
         func windowChangeBecomesOneResize() throws {
             try withPTY { slave in
-                var terminal = Terminal(inputFD: slave, outputFD: slave)
-                _ = TerminalRescue.consumePendingResize()  // start from a clean latch
+                var desiredSize = winsize(
+                    ws_row: 31,
+                    ws_col: 87,
+                    ws_xpixel: 0,
+                    ws_ypixel: 0
+                )
+                try #require(ioctl(slave, UInt(TIOCSWINSZ), &desiredSize) == 0)
+                var session = try RawModeSession(
+                    terminal: Terminal(inputFD: slave, outputFD: slave))
 
-                TerminalRescue.simulateWindowChangeForTesting()
-                let event = try terminal.nextEvent(timeoutMillis: 0)
-
-                guard case .resize(let size)? = event else {
-                    Issue.record("expected a resize event, got \(String(describing: event))")
-                    return
+                let readyFDs = UnsafeMutablePointer<Int32>.allocate(capacity: 2)
+                readyFDs.initialize(repeating: -1, count: 2)
+                try #require(pipe(readyFDs) == 0)
+                defer {
+                    close(readyFDs[0])
+                    close(readyFDs[1])
+                    readyFDs.deinitialize(count: 2)
+                    readyFDs.deallocate()
                 }
-                #expect(size.width > 0)
-                #expect(size.height > 0)
+
+                let context = UnsafeMutablePointer<ResizePollContext>.allocate(
+                    capacity: 1)
+                context.initialize(to: ResizePollContext(
+                    terminal: Terminal(inputFD: slave, outputFD: slave),
+                    readyFD: readyFDs[1],
+                    receivedSize: nil
+                ))
+                defer {
+                    context.deinitialize(count: 1)
+                    context.deallocate()
+                }
+                var signalThread: pthread_t?
+                try #require(pthread_create(
+                    &signalThread,
+                    nil,
+                    pollForDeliveredResize,
+                    context
+                ) == 0)
+                var joinedSignalThread = false
+                defer {
+                    if let signalThread, !joinedSignalThread {
+                        pthread_join(signalThread, nil)
+                    }
+                }
+
+                var ready: UInt8 = 0
+                try #require(read(readyFDs[0], &ready, 1) == 1)
+                usleep(20_000)
+                let deliveryTarget = try #require(signalThread)
+                let deliveryResult = pthread_kill(deliveryTarget, SIGWINCH)
+                #expect(deliveryResult == 0)
+                if let signalThread {
+                    pthread_join(signalThread, nil)
+                    joinedSignalThread = true
+                }
+
+                #expect(!context.pointee.failed)
+                #expect(context.pointee.receivedSize == Size(width: 87, height: 31))
+                // A restarted five-second poll would finish near its timeout.
+                // Returning well before that pins the intended EINTR path.
+                #expect(context.pointee.elapsedNanoseconds < 2_000_000_000)
 
                 // The latch is edge-triggered: one signal, one event. If it
                 // stuck, the loop would rebuild every frame forever.
-                let second = try terminal.nextEvent(timeoutMillis: 0)
+                let second = try session.nextEvent(timeoutMillis: 0)
                 #expect(second == nil)
+                try session.close()
             }
         }
 

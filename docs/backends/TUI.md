@@ -24,8 +24,8 @@ owning one *is* being in raw mode. Its `deinit` restores termios, cursor
 visibility, and the alternate screen even on early exits. `TUIRenderer.end()`
 clears its session in a `defer`, so a throwing close (for example a dead PTY)
 can never leave the renderer writing to an already-restored terminal.
-`SIGTERM`/`SIGHUP` restoration hooks are a known gap, ledgered under
-Slice C in `tasks/todo.md` (Provisional).
+A clean close also returns all five managed signal dispositions to the host:
+`SIGTERM`, `SIGHUP`, `SIGINT`, `SIGQUIT`, and `SIGWINCH`.
 
 ## Input
 
@@ -43,11 +43,19 @@ It no longer waits for the poll timeout to expire.
 `deinit` covers every path the type system controls; without the rescue a
 supervisor's `SIGTERM` would leave the terminal in raw mode with no echo
 and no cursor. The rescue is process-global by necessity — signal
-disposition is process-wide — and everything reachable from a handler is
-async-signal-safe (`write`, `tcsetattr`, `sigaction`, `raise`), with the
-restore sequence held as a `StaticString` so emitting it allocates
-nothing. Handlers re-raise with the default disposition, so the process
-still dies of the signal it was sent and its exit status stays truthful.
+disposition is process-wide — but the private `GamaTUISignal` C target owns
+every byte reachable from a handler: saved `termios`, file descriptors,
+displaced `sigaction` records, fixed restore bytes, and lock-free
+`sig_atomic_t` latches. Swift performs lifecycle calls only outside handler
+context. Handlers use the async-signal-safe `write`, `tcsetattr`, `sigaction`,
+and `raise` operations, then re-raise with the default disposition so the
+process still dies of the signal it was sent and its exit status stays
+truthful.
+
+The PTY suite delivers `SIGWINCH` to a real pthread blocked in `poll`, proves
+the `EINTR` path returns one resize with the PTY's new extent, and proves the
+latch is drained exactly once. The same serialized suite verifies that clean
+session close restores every host-installed managed disposition.
 
 ## Output
 
