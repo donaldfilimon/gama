@@ -28,6 +28,34 @@ struct GamaDiagnostic: DiagnosticMessage {
     }
 }
 
+// A Fix-It asserts that the edit it offers is the correct one, so only
+// diagnostics with exactly one right answer carry one. `reactive.needs-type`,
+// `rgb.literal-required`, and `rgb.malformed` deliberately have none: the
+// intended type and the intended color cannot be recovered from the syntax,
+// and an editor applying a guess silently is worse than advice.
+struct GamaFixIt: FixItMessage {
+    let message: String
+    let fixItID: MessageID
+
+    init(_ message: String, id: String) {
+        self.message = message
+        self.fixItID = MessageID(domain: "GamaMacros", id: id)
+    }
+}
+
+/// Removes `node` from `attributes`, preserving every other entry.
+private func removingAttribute(
+    _ node: AttributeSyntax,
+    from attributes: AttributeListSyntax
+) -> AttributeListSyntax {
+    AttributeListSyntax(
+        attributes.filter { element in
+            guard case .attribute(let attribute) = element else { return true }
+            return attribute != node
+        }
+    )
+}
+
 // MARK: - @Component
 
 /// `@Component`: synthesizes a memberwise initializer over stored
@@ -60,13 +88,32 @@ public struct ComponentMacro: MemberMacro, ExtensionMacro {
         in context: some MacroExpansionContext
     ) throws -> [DeclSyntax] {
         guard declaration.is(StructDeclSyntax.self) else {
+            // Rewriting `class`/`enum` to `struct` would change reference
+            // semantics or be meaningless, so the offered edit removes the
+            // attribute instead.
             context.diagnose(
                 Diagnostic(
                     node: Syntax(node),
                     message: GamaDiagnostic(
                         "@Component can only be applied to structs",
                         id: "component.struct-only"
-                    )
+                    ),
+                    fixIts: [
+                        FixIt(
+                            message: GamaFixIt(
+                                "remove '@Component'",
+                                id: "component.remove-attribute"
+                            ),
+                            changes: [
+                                .replace(
+                                    oldNode: Syntax(declaration.attributes),
+                                    newNode: Syntax(
+                                        removingAttribute(node, from: declaration.attributes)
+                                    )
+                                )
+                            ]
+                        )
+                    ]
                 )
             )
             return []
@@ -148,13 +195,40 @@ public struct ReactiveMacro: PeerMacro, AccessorMacro {
             let pattern = binding.pattern.as(IdentifierPatternSyntax.self)
         else {
             if diagnose {
+                // `let` -> `var` is the one correct edit, and only when the
+                // declaration really is an immutable stored property. Applied
+                // to a func or subscript there is nothing to rewrite, so that
+                // case gets the diagnostic without a Fix-It.
+                var fixIts: [FixIt] = []
+                if let varDecl = declaration.as(VariableDeclSyntax.self),
+                    varDecl.bindingSpecifier.tokenKind == .keyword(.let)
+                {
+                    let mutableSpecifier = TokenSyntax.keyword(.var)
+                        .with(\.leadingTrivia, varDecl.bindingSpecifier.leadingTrivia)
+                        .with(\.trailingTrivia, varDecl.bindingSpecifier.trailingTrivia)
+                    fixIts.append(
+                        FixIt(
+                            message: GamaFixIt(
+                                "replace 'let' with 'var'",
+                                id: "reactive.let-to-var"
+                            ),
+                            changes: [
+                                .replace(
+                                    oldNode: Syntax(varDecl.bindingSpecifier),
+                                    newNode: Syntax(mutableSpecifier)
+                                )
+                            ]
+                        )
+                    )
+                }
                 context.diagnose(
                     Diagnostic(
                         node: Syntax(node),
                         message: GamaDiagnostic(
                             "@Reactive requires a stored 'var'",
                             id: "reactive.var-only"
-                        )
+                        ),
+                        fixIts: fixIts
                     )
                 )
             }
