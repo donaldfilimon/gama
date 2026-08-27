@@ -103,6 +103,13 @@ status: in_progress
 - Swiftly-run convention (Donald, 2026-08-27): agents run the codebase
   with `unset TOOLCHAINS` then `swiftly run swift <build|run|test|…>`.
   Recorded in AGENTS.md, CLAUDE.md, README.md, docs/Toolchain.md.
+- Dialect validation (2026-08-27, writing-skills session): six fresh-agent
+  baseline scenarios (typed-throws decoder, ~Copyable handle, embedded-safe
+  core, XCTest-free macro tests, C-ABI error surface, no-imports Signal)
+  all reproduced the repo's modern-Swift dialect unprompted — a dedicated
+  "modern Swift 6.5" skill is unwarranted (no failing baseline; recorded in
+  session memory). Reusable finding: the baseline Signal design is the
+  leading Slice C candidate (see tasks/todo.md).
 - Integration repair (2026-08-27): merging the DocC branch after PR #11
   resolved three source conflicts in favor of stale declarations, removing
   RenderNode.group, the Hashable conformances, and the noncopyable
@@ -123,7 +130,10 @@ status: in_progress
   public declarations package-wide, backend guides + CONTRIBUTING + MLIR
   dialect reference + docs index + ADRs 0001-0007, and the deterministic
   check-doc-coverage.sh gate wired into check.sh and CI (empty
-  allowlist). Merge only on a green matrix.
+  allowlist). Outcome: merged as PR #16 (acc2f88) 2026-08-27 06:11Z on a
+  fully green six-job PR matrix (green-before-merge honored); post-merge
+  main acceptance run 33044975550 in progress at merge time, watched by
+  the goal-loop session — record its conclusion here when it finishes.
 - Sub-projects 2-4 Proposed: drafts written and committed under
   docs/superpowers/specs/drafts/ (plugin runtime + capability model; app
   shell/windowing/lifecycle; packaging & distribution). Each is DRAFT ONLY —
