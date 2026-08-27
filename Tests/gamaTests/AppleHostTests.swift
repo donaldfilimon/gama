@@ -17,6 +17,10 @@ struct AppleHostRuntimeTests {
         }
     }
 
+    private struct SecondApp: App {
+        var content: some View { Text("SECOND APP") }
+    }
+
     @Test("host builds, lays out, and invalidates a frame")
     func appKitHostBuildsLaysOutAndInvalidatesAFrame() {
         let view = GamaHostView(frame: NSRect(x: 0, y: 0, width: 420, height: 180))
@@ -28,6 +32,32 @@ struct AppleHostRuntimeTests {
         #expect(view.currentDrawList.size.height > 1)
         #expect(
             view.currentDrawList.commands.contains { command in
+                if case .text(let text, _, _) = command {
+                    return text.contains("Apple runtime")
+                }
+                return false
+            }
+        )
+    }
+
+    @Test("second install replaces the previous session")
+    func secondInstallReplacesPreviousSession() {
+        let view = GamaHostView(frame: NSRect(x: 0, y: 0, width: 420, height: 180))
+        view.install(app: SmokeApp())
+        view.layoutSubtreeIfNeeded()
+        view.invalidate()
+        view.install(app: SecondApp())
+        view.invalidate()
+        #expect(
+            view.currentDrawList.commands.contains { command in
+                if case .text(let text, _, _) = command {
+                    return text.contains("SECOND APP")
+                }
+                return false
+            }
+        )
+        #expect(
+            !view.currentDrawList.commands.contains { command in
                 if case .text(let text, _, _) = command {
                     return text.contains("Apple runtime")
                 }

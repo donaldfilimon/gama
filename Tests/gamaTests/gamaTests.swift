@@ -521,6 +521,17 @@ struct ActionTests {
 
 @Suite("Cell buffer")
 struct CellBufferTests {
+    @Test("equal buffers compare equal")
+    func equalBuffersCompareEqual() {
+        var left = CellBuffer(size: Size(width: 4, height: 1))
+        var right = CellBuffer(size: Size(width: 4, height: 1))
+        left.putText("ab", at: .zero, style: .plain, maxWidth: 4)
+        right.putText("ab", at: .zero, style: .plain, maxWidth: 4)
+        #expect(left == right)
+        right.putText("aB", at: .zero, style: .plain, maxWidth: 4)
+        #expect(left != right)
+    }
+
     @Test("diff only emits changes")
     func diffOnlyEmitsChanges() {
         var buf = CellBuffer(size: Size(width: 4, height: 1))
@@ -564,6 +575,16 @@ struct MLIRTests {
         #expect(mlir.contains("min = 2 : i64"))
         #expect(mlir.contains("\"gama.divider\"()"))
         #expect(mlir.filter { $0 == "{" }.count == mlir.filter { $0 == "}" }.count)
+    }
+
+    @Test("interactive NodeID emits full 64-bit id")
+    func interactiveNodeIDEmitsFull64BitId() {
+        let id = NodeID(raw: 1 << 40)
+        let node = RenderNode.interactive(
+            id: id, focusable: true, child: .text("x", style: .plain))
+        let mlir = GamaLowering.lower(module: node, name: "id64")
+        #expect(mlir.contains("id = \(Int64(bitPattern: id.raw)) : i64"))
+        #expect(!mlir.contains("id = 0 : i64"))
     }
 
     @Test("frame-annotated lowering carries geometry")
@@ -747,6 +768,21 @@ struct FrameHostTests {
         #expect(!cleanAfterPump)
         host.handle(.resize(Size(width: 30, height: 8)))
         let dirtyAfterResize = host.needsFrame
+        #expect(dirtyAfterResize)
+    }
+
+    @Test("resize event records lastSize and dirties")
+    func resizeEventRecordsLastSizeAndDirties() {
+        var host = FrameHost(app: HostProbeApp())
+        _ = host.pump(size: Size(width: 20, height: 6))
+        let sizeAfterPump = host.lastSize
+        let cleanAfterPump = host.needsFrame
+        #expect(sizeAfterPump == Size(width: 20, height: 6))
+        #expect(!cleanAfterPump)
+        host.handle(.resize(Size(width: 30, height: 8)))
+        let sizeAfterResize = host.lastSize
+        let dirtyAfterResize = host.needsFrame
+        #expect(sizeAfterResize == Size(width: 30, height: 8))
         #expect(dirtyAfterResize)
     }
 
