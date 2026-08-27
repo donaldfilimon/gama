@@ -101,13 +101,18 @@ public enum GamaWeb {
 // MARK: - Exports (called from WebHost/gama.js)
 // Explicitly `nonisolated`: these must never acquire actor isolation from a
 // future defaultIsolation/NonisolatedNonsendingByDefault adoption — JS calls
-// them on whatever thread the wasm host runs. Result `0` means accepted;
-// negative values fail closed when installation/configuration did not produce
-// a host (`-1`) or when an input code is invalid (`-2`). JavaScript may ignore
-// successful results, but no configuration failure traps across the ABI.
+// them on whatever thread the wasm host runs. The v1 family preserves its
+// original void-returning WebAssembly signatures. The v2 family returns `0`
+// when accepted and fails closed with `-1` when no host is installed or `-2`
+// when an input code is invalid.
 
 @_cdecl("gama_web_v1_frame")
-nonisolated func gama_web_v1_frame() -> Int32 {
+nonisolated func gama_web_v1_frame() {
+    _ = gama_web_v2_frame()
+}
+
+@_cdecl("gama_web_v2_frame")
+nonisolated func gama_web_v2_frame() -> Int32 {
     guard let host = GamaWeb.current else { return -1 }
     host.frame()
     return 0
@@ -115,6 +120,16 @@ nonisolated func gama_web_v1_frame() -> Int32 {
 
 @_cdecl("gama_web_v1_key")
 nonisolated func gama_web_v1_key(
+    _ code: Int32,
+    _ char: Int32,
+    _ shift: Int32,
+    _ ctrl: Int32
+) {
+    _ = gama_web_v2_key(code, char, shift, ctrl)
+}
+
+@_cdecl("gama_web_v2_key")
+nonisolated func gama_web_v2_key(
     _ code: Int32,
     _ char: Int32,
     _ shift: Int32,
@@ -161,6 +176,15 @@ nonisolated func gama_web_v1_pointer(
     _ col: Int32,
     _ row: Int32,
     _ pressed: Int32
+) {
+    _ = gama_web_v2_pointer(col, row, pressed)
+}
+
+@_cdecl("gama_web_v2_pointer")
+nonisolated func gama_web_v2_pointer(
+    _ col: Int32,
+    _ row: Int32,
+    _ pressed: Int32
 ) -> Int32 {
     guard let host = GamaWeb.current else { return -1 }
     host.handle(.pointer(Point(x: Int(col), y: Int(row)), pressed: pressed != 0))
@@ -168,7 +192,12 @@ nonisolated func gama_web_v1_pointer(
 }
 
 @_cdecl("gama_web_v1_resize")
-nonisolated func gama_web_v1_resize(_ cols: Int32, _ rows: Int32) -> Int32 {
+nonisolated func gama_web_v1_resize(_ cols: Int32, _ rows: Int32) {
+    _ = gama_web_v2_resize(cols, rows)
+}
+
+@_cdecl("gama_web_v2_resize")
+nonisolated func gama_web_v2_resize(_ cols: Int32, _ rows: Int32) -> Int32 {
     guard let host = GamaWeb.current else { return -1 }
     host.handle(.resize(Size(width: max(1, Int(cols)), height: max(1, Int(rows)))))
     return 0
