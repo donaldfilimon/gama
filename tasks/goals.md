@@ -213,7 +213,13 @@ status: in_progress
   main's hosted proof rides on the post-#22 acceptance run 33048024225 —
   record its conclusion here. A local union gate (main + both branches:
   119 tests / 32 suites green, apple + boundaries + docs) provides the
-  local layer.
+  local layer. Recorded 2026-08-27 ~07:25Z: 33048024225 was CANCELLED,
+  superseded by the #24 push (concurrency group), whose own post-merge
+  run was in turn cancelled by the #26 push — main has had no completed
+  acceptance run since 33044975550 (pre-#19). The live proof is the
+  post-#26 run 33048954860, whose Linux job will fail at the ASan step
+  until the harness-leak suppression (PR #31) lands; PRs #25 and #29
+  already show that inherited failure on their own matrices.
 - Sub-projects 2 and 4 APPROVED (2026-08-27): Donald resolved all open
   questions via decision prompt — first-party GamaPlatformServices in
   plugin V1 (.filesystem real); full contribution surface (slots + scenes +
