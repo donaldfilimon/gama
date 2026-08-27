@@ -1,0 +1,9 @@
+# Identity and branding for the deployable wasm site. This manifest never
+# changes what gets compiled; build facts live in Package.swift.
+[app]
+id = "com.donaldfilimon.gama.web-demo"
+name = "Gama Web Demo"
+version = "0.1.0"
+
+[web]
+title = "Gama"

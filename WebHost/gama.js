@@ -3,6 +3,7 @@
 // then forwards DOM events into the exported gama_* entry points.
 
 const root = document.getElementById("gama");
+const configuredTitle = document.title;
 let memory = null;
 let exports = null;
 let framePending = false;
@@ -19,7 +20,7 @@ const gamaImports = {
     root.setAttribute("aria-label", root.innerText.trim() || "Gama application");
     smoke.frames += 1;
   },
-  setTitle(ptr, len) { document.title = str(ptr, len); },
+  setTitle(ptr, len) { document.title = configuredTitle || str(ptr, len); },
   requestFrame() {
     if (framePending) return;
     framePending = true;

@@ -124,6 +124,10 @@ must_contain "$ROOT/scripts/check-embedded.sh" \
   "$swiftc_sha256" "macOS swiftc SHA-256 default"
 must_contain "$ROOT/scripts/check-embedded.sh" \
   "$xctoolchain" "embedded toolchain directory default"
+for script in bundle-macos.sh bundle-web.sh; do
+  must_contain "$ROOT/scripts/$script" \
+    "Swift $swift_revision" "packaging Swift 6.5-dev revision grep"
+done
 
 for script in check-apple.sh check-docs.sh check-c-abi.sh check-mlir.sh; do
   must_contain "$ROOT/scripts/$script" "$xctoolchain_id" "GAMA_TOOLCHAIN_ID default"
