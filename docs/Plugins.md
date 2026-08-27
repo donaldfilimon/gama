@@ -1,9 +1,12 @@
 # Plugins and the capability model
 
-Status: Tier 1 (static plugins) is implemented and locally proven by the
-Swift Testing plugin suites and the demo slot; hosted proof rides on the
-six-job acceptance matrix of the integrating PR. Tiers 2 and 3 are
-Proposed and not implemented. See
+Status: Tier 1 (static plugins) is implemented. Its original integrating
+head merged through PR #33 after all six acceptance jobs passed. A
+post-merge review then found five lifecycle, identity, and lexical-path
+defects; the hardening follow-up is locally proven by 39 focused Swift
+Testing cases, while hosted proof for that follow-up remains separate and
+must be green at its exact head. Tiers 2 and 3 are Proposed and not
+implemented. See
 [Capabilities.md](Capabilities.md#status-vocabulary) for the vocabulary.
 
 Design authority:
@@ -54,11 +57,14 @@ call the OS at all; Embedded has no OS).
 - `PluginRuntime` is the per-host owner (executor-confined, like
   `FrameHost`). Install is all-or-nothing over `requires`; a required
   capability with no backing service fails closed
-  (`serviceUnavailable`). Deinitializing the runtime deactivates every
-  installed plugin. Two hosts, two runtimes: nothing is shared.
+  (`serviceUnavailable`). Successful install and uninstall invalidate
+  the owning host. Deinitializing the runtime deactivates every installed
+  plugin. Two hosts, two runtimes: nothing is shared.
 - `PluginContext` carries the granted, unforgeable handles plus the
-  owning host's `SubscriptionContext`, so a plugin `Signal` change or
-  `invalidate()` dirties exactly one host.
+  plugin installation's observation context. That context forwards a
+  plugin `Signal` change or `invalidate()` to exactly one owning host,
+  but has its own cancellation lifetime: failed activation and uninstall
+  detach only that plugin's observations.
 
 ## Contribution surface
 
@@ -66,9 +72,10 @@ call the OS at all; Embedded has no OS).
   ordinary view content. Plugins implement
   `render(slot:in:)` returning `RenderNode` (the framework's own value
   erasure boundary; plugins never hand the host a `some View`). Each
-  plugin renders under a positional child identity from its install
-  index, so node IDs are stable and the existing `duplicateIDs`
-  diagnostic keeps working.
+  plugin renders under a runtime-assigned child identity retained for
+  that plugin ID. Removing an earlier peer therefore cannot renumber a
+  surviving contribution or redirect focus/actions, while the existing
+  `duplicateIDs` diagnostic keeps working.
 - **Scenes**: plugins return `PluginSceneContribution`s from
   `scenes(in:)`. Contributed scene IDs are namespaced
   `plugin/<pluginID>/<name>`; the role may never be `.primary` (typed
@@ -81,7 +88,8 @@ call the OS at all; Embedded has no OS).
   `PluginRuntime.commands` exposes them in deterministic
   install-then-declaration order, each bound to its owning plugin's
   context; presentation (menu, palette, key binding) is the app's
-  choice, and dispatch runs on the host's executor.
+  choice, and dispatch runs on the host's executor. A command value
+  cached by an app becomes inert after its plugin is uninstalled.
 
 ## Service implementations
 
@@ -100,7 +108,8 @@ interface-only and required filesystem grants fail closed at install.
 Path checks are exact prefix containment on the absolute path as given:
 no symlink resolution (a symlink inside a granted prefix can point
 outside it: documented limitation), `.` and `..` components refused,
-relative paths refused, empty prefixes deny everything, and containment
+relative paths refused, internal empty components refused (one trailing
+separator is accepted), empty prefixes deny everything, and containment
 stops at path-component boundaries (a prefix `/a` never covers `/ab`).
 `FilesystemAccess` checks before calling the provider, and
 `FilesystemProvider.standard` re-checks before any I/O.
