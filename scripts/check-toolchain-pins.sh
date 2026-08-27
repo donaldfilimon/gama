@@ -5,6 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TOML="$ROOT/Toolchains.toml"
 CI="$ROOT/.github/workflows/ci.yml"
+PAGES="$ROOT/.github/workflows/pages.yml"
 
 toml_get() {
   local section="$1" key="$2"
@@ -115,6 +116,14 @@ must_contain "$CI" "Swift $swift_revision" "Swift 6.5-dev revision grep"
 must_contain "$CI" "$windows_url" "Windows toolchain URL"
 must_contain "$CI" "$windows_sha" "Windows toolchain SHA-256"
 must_contain "$CI" "Swift $windows_revision" "Windows Swift revision grep"
+
+# Pages independently builds the deployable WASM site, so its compiler and
+# SDK pins must drift-fail alongside the primary acceptance workflow.
+must_contain "$PAGES" "$linux_url" "Pages Linux toolchain URL"
+must_contain "$PAGES" "$linux_sha" "Pages Linux toolchain SHA-256"
+must_contain "$PAGES" "$wasm_sdk_id" "Pages WASM SDK id"
+must_contain "$PAGES" "$wasm_sdk_url" "Pages WASM SDK URL"
+must_contain "$PAGES" "$wasm_sdk_sha" "Pages WASM SDK SHA-256"
 
 must_contain "$ROOT/scripts/ci-install-swift-snapshot.sh" \
   "Swift $swift_revision" "Swift 6.5-dev revision grep"

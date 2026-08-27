@@ -45,4 +45,8 @@ open it. It is a UI demonstration host, not a general WASI runtime — it
 implements only the reactor's process-metadata/clock/random/output imports
 and returns explicit WASI errors otherwise (no filesystem). Build via
 `scripts/check-wasm.sh` (requires the pinned WASM SDK from
-`Toolchains.toml`).
+`Toolchains.toml`). `scripts/bundle-web.sh` assembles those host files with
+`gama-web-demo.wasm` and runs the browser-runtime smoke against the assembled
+directory. `.github/workflows/pages.yml` repeats that exact pinned build and
+publishes the verified directory from `main`; Pages deployment and a live
+browser load are separate hosted evidence from the acceptance artifact upload.
