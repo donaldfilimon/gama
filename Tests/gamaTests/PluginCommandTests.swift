@@ -102,4 +102,18 @@ struct PluginCommandTests {
         #expect(dirtyAfter.0)
         #expect(!dirtyAfter.1)
     }
+
+    @Test("a cached command becomes inert when its plugin is uninstalled")
+    func cachedCommandIsRevoked() throws {
+        let recorder = CommandLogRecorder()
+        let runtime = makeRuntime(recorder: recorder, plugins: ["dev.a"])
+        try runtime.install(CommandPlugin(id: "dev.a", commandNames: ["cached"]))
+        let cached = try #require(runtime.commands.first)
+
+        cached.perform()
+        #expect(recorder.lines.map(\.1) == ["ran:cached"])
+        runtime.uninstall("dev.a")
+        cached.perform()
+        #expect(recorder.lines.map(\.1) == ["ran:cached"])
+    }
 }
