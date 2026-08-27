@@ -138,7 +138,7 @@ jobs:
   android-swift-64:
     name: Android / Swift 6.5-dev embedding and emulator
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 55
     env:
       GAMA_SWIFT_64_URL: https://download.swift.org/development/ubuntu2404/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a-ubuntu24.04.tar.gz
       GAMA_SWIFT_64_SHA256: 855d0f63319043e84c8a293ee855703a9b9aa6c18686ecb88f8ee02592e879f0
@@ -158,13 +158,14 @@ jobs:
           gradle-version: '9.5.0'
       - name: Cross-compile GamaEmbed
         run: ANDROID_NDK_HOME="$ANDROID_HOME/ndk/30.0.15729638" ./scripts/check-android.sh
+      - name: Verify emulator readiness recovery policy
+        run: ./scripts/test-android-emulator-readiness.sh
       - name: Required emulator input/frame round trip
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 36
           arch: x86_64
           profile: pixel_2
-          disable-animations: true
           script: ./scripts/check-android-emulator.sh
 
   embedded-swift-64:
