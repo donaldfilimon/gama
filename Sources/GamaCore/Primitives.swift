@@ -135,11 +135,10 @@ public struct HStack<Content: View>: View {
 }
 
 /// Layers children back to front in shared bounds; later children draw on
-/// top and win pointer hit-tests. Caveat: with `.topLeading` alignment the
-/// stack lowers to the same overlay shape `flattenChildren` uses as its
-/// tuple sentinel, so inside a `VStack`/`HStack`/`List` its children are
-/// flattened into the parent's child list and laid out separately instead
-/// of layered.
+/// top and win pointer hit-tests. Every alignment (including `.topLeading`)
+/// stays layered: the ViewBuilder flatten sentinel is the distinct
+/// ``RenderNode/group(children:)`` case, so `flattenChildren` never unpacks
+/// a `ZStack`.
 public struct ZStack<Content: View>: View {
     /// Terminates `body` recursion; this view compiles in `render(in:)`.
     public typealias Body = Never_

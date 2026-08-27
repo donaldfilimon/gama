@@ -83,36 +83,22 @@
 
 ## Modern-Swift sweep (audited 2026-08-27, three parallel audits; execute in
 ## gated slices — slice A avoids PR #10's files until that PR merges)
-- [ ] Slice A (non-GamaCore/TUI/AppleUI): Package.swift — strictCore on the
-      GamaMacrosImpl macro target (only target outside strict mode),
-      GamaWebDemo wasmSettings→strictCore (no @_extern there), add GamaWASM
-      to test target deps. check-boundaries.sh — tighten the import regex
-      (currently blind to `public import Darwin`, submodule imports,
-      indentation) BEFORE any import refactor. GamaWASM — move HTMLSerializer
-      (grid/css/escape, pure String) out of `#if arch(wasm32)` and test it;
-      escape-invariant comment. GamaDraw — Sendable+Equatable on CellBuffer;
-      typed throws on DrawList.decode (9 failure modes currently one nil);
-      delete dead forwarders; reserveCapacity in encode; isValidUTF8 without
-      the Array(slice) copy (rebase indices!); fix width-vs-character unit
-      mismatch in DrawList.from leading-trim. GamaEmbed — initialize→update
-      (fromContentsOf:) UB fix; clamp gama_embed_v1_resize upper bound;
-      distinct error for the >Int32.max truncation path; explicit
-      `nonisolated` on all @_cdecl entry points (incl. WASM + Android demo);
-      header: opaque struct pointer typedef, error enum, abi_version().
-      GamaMLIR — MLIRBuilder/MLIRAttr/renderAttrs → internal (zero external
-      consumers); MLIRAttr.i64(Int)→i64(Int64) (wasm32 NodeID truncation).
-      gama — real @_exported umbrella, retire deprecated hello().
-- [ ] Slice B (after PR #10 merges): GamaCore — FrameHost shared-reference-
-      in-struct fix (actions/dirty); dirty→let, invalidate() non-mutating;
-      named InteractiveRegion struct replacing (NodeID, Rect, focusable:)
-      tuples; BorderGlyphs struct replacing the 8-tuple; Equatable on
-      RenderNode/LaidOutNode; exhaustive switches (RenderNode.flexPriority,
-      flexMinimum); use-or-drop InputEvent.resize payload. GamaTUI —
-      defer-cleanup in TUIRenderer.end(); canImport(Musl)/canImport(Android)
-      branches (latent whole-package SDK build break); hoist 64-byte read
-      buffer; array-literal compare fix; `_ =` on WinSDK BOOLs. GamaAppleUI —
-      defaultForeground/Background var→let; @MainActor-typed closures; guard
-      double install; NSFontManager→NSFontDescriptor(.italic).
+- [x] Slice A (non-GamaCore/TUI/AppleUI): Package.swift — strictCore on
+      GamaMacrosImpl and GamaWebDemo; GamaWASM on GamaTests; Extern only on
+      GamaWASM. check-boundaries.sh import regex tightened. HTMLSerializer
+      off wasm32 and tested. CellBuffer Hashable/Sendable; DrawList.decode
+      typed throws; encode reserveCapacity; UTF-8 validated in-place;
+      leading-trim uses space width 1. Embed raw-buffer reuse, resize
+      clamp, FRAME_TOO_LARGE, nonisolated @_cdecl (incl. Android), opaque
+      context + abi_version. MLIR internals internal; i64 is Int64 for
+      NodeIDs. Gama @_exported; hello() retired.
+- [x] Slice B: FrameHost ~Copyable + HostActionStore; dirty is let;
+      invalidate() non-mutating; InteractiveRegion; BorderGlyphs;
+      RenderNode/LaidOutNode Hashable; exhaustive flexPriority/flexMinimum;
+      .resize payload stored as lastSize. TUIRenderer.end defer-clears
+      session; Musl/Android write imports; hoisted readBuffer; 1-byte ESC
+      compare; WinSDK BOOL `_ =`. AppleUI let colors, @MainActor closures,
+      reinstall tears down previous session, italic via NSFontDescriptor.
 - [ ] Slice C (needs Donald's sign-off / design decisions — Proposed only):
       unify the four divergent frame pumps + pick one resize policy (audit's
       top structural item; changes observable resize semantics); Signal
