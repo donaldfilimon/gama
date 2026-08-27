@@ -30,6 +30,22 @@ public macro Component() =
 ///             Button("count: \(count)") { count += 1 }
 ///         }
 ///     }
+///
+/// The state lives in the component *instance*, which must outlive the
+/// frame. Scene content is rebuilt on every frame, so a component
+/// constructed inside a `Window` or `WindowGroup` closure is replaced —
+/// state included — before the next frame paints, and every mutation is
+/// silently discarded. Store the instance where it survives instead:
+///
+///     struct CounterApp: App {
+///         private let counter = Counter()   // not `{ Counter() }` below
+///         var scenes: some Scene {
+///             Window("Counter", id: "main", role: .primary) { counter }
+///         }
+///     }
+///
+/// App-level ``GamaCore/Signal`` values captured by the closure have the
+/// same lifetime and work equally well.
 @attached(peer, names: prefixed(`_`))
 @attached(accessor, names: named(init), named(get), named(set))
 public macro Reactive() =
