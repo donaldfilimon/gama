@@ -48,6 +48,17 @@
       generalized to build every module catalog (was: GamaCore-only with
       hardcoded paths; closed 2026-08-27 by the scene-first consolidation,
       merged via PR #19).
+      EXTENDED 2026-08-27 (branch docs/docc-catalogs-backends): curated
+      catalogs added for GamaAppleUI, GamaAppleShell, GamaWASM, and
+      GamaMLIR; check-docs.sh needed no further changes (its discovery
+      loop already builds every Sources/*/*.docc catalog) and now gates
+      seven zero-warning archives. Honest residuals: GamaEmbed is
+      deliberately skipped because its CInterface.swift doc comment links
+      ``GamaCore/App``, which cannot resolve in the per-module docc pass,
+      so a GamaEmbed catalog requires a one-line source doc-comment fix
+      first (out of scope for the docs-only branch); GamaWASM's catalog
+      is prose-only because its entire public API is arch(wasm32)-gated
+      and absent from the host symbol graph.
 - [x] check-docs.sh's Capabilities.md grep is tautological (matches the
       table header "Current evidence"); tighten if a stronger claim-honesty
       check is wanted. CLOSED 2026-08-27 by the docs overhaul: the grep now
@@ -68,9 +79,30 @@
       goals.md), repaired forward by PR #14 on a fully green six-job
       matrix. Main's current proof rides on the post-#16 acceptance run
       (33044975550, watched 2026-08-27).
-- [ ] Linux ASan: re-enable `detect_leaks=1` once a hosted run proves the
-      Swift Testing runner is leak-clean (CI still sets detect_leaks=0 at
-      ci.yml:83)
+- [ ] Linux ASan: re-enable `detect_leaks=1`. ROOT-CAUSED 2026-08-27, still
+      open by choice. The premise of this item was wrong: the runner is not
+      leak-clean and moving every suite to Swift Testing did not make it so.
+      Evidence — PR #24's Linux job (run 33048676959) under detect_leaks=1
+      reports exactly 7 indirect leaks / 432 bytes, every stack rooted in
+      `libXCTest.so` (`XCTestSuiteRun.init`, `XCTMain`, `XCTMainMisc`) or
+      reached only through those frames (Foundation
+      `URL.lastPathComponent` called by XCTMain). ZERO Gama frames.
+      SwiftPM's generated test entry point still runs the XCTest harness
+      even with no XCTest suites, and that harness allocates
+      process-lifetime suite metadata it never frees before exit. So a
+      "hosted trial green under detect_leaks=1" is unreachable while the
+      generated runner keeps its XCTest half — waiting for one is waiting
+      forever.
+      Two honest directions, neither urgent:
+      (a) keep detect_leaks=0 (current policy, PR #30) and accept no leak
+          coverage for Gama code; or
+      (b) add a harness-free leak test, or first prove a suppression pattern
+          unique to the known runner allocations. A broad `leak:XCTest`
+          suppression is not acceptable evidence: LeakSanitizer suppresses
+          any allocation whose stack contains XCTest, so it can also hide a
+          Gama allocation made beneath that harness. Closed PR #31 preserves
+          that rejected experiment, not a coverage-preserving solution.
+      Do not re-run the bare experiment; it will fail the same way.
 - [x] MemberImportVisibility spike on strictCore (direct-import fallout in
       tests); keep off until Apple + Embedded stay green. CLOSED
       2026-08-27: enabled in strictCore (Package.swift:13, hygiene-flags
@@ -116,8 +148,10 @@
       unify frame pumps now (finish ADR 0007); adopt the validated
       non-Sendable Signal design (supersedes ADR 0003's interim); execute
       every remaining item in gated slices, measure-first where noted.
-      Sequencing: wave 2, after feat/plugin-runtime-v1, feat/packaging-v1,
-      and docs/docc-catalogs-backends land (shared GamaCore files).
+      BLOCKED ON INTEGRATION: do not begin wave 2 until DocC-catalog PR
+      #28 is actually merged and the plugin-runtime post-merge hardening
+      follow-up is green. Packaging PR #32 and plugin PR #33 are merged;
+      an open branch or a locally green gate is not integration.
       Original scope list:
       unify the four divergent frame pumps + pick one resize policy (audit's
       top structural item; changes observable resize semantics); Signal
@@ -188,10 +222,15 @@
       offscreen shell test included), GamaPlatformServices
       (HostServices.standard + scoped filesystem with hostile-path
       tests), demo status-line slot, extended check-boundaries.sh, and
-      docs/Plugins.md; 34 Swift Testing cases green locally with the
-      full local gate set. Keep open until the PR's six-job matrix is
-      green and merged. Deferred inside sub-project 2: Tier 2 (dylib
-      loading), Tier 3 (out-of-process ABI), `.network`, scope
+      docs/Plugins.md. PR #33 merged after its exact-head six-job matrix
+      passed. Post-merge review found five substantive defects: unstable
+      survivor slot identity, host-wide plugin observation ownership,
+      missing lifecycle invalidation, callable cached commands after
+      uninstall, and internal empty filesystem components. The hardening
+      follow-up fixes those contracts and has 39 focused Swift Testing
+      cases green locally; keep this item open until that follow-up's own
+      exact-head six-job matrix is green. Deferred inside sub-project 2:
+      Tier 2 (dylib loading), Tier 3 (out-of-process ABI), `.network`, scope
       subsumption/path normalization, manifest macros,
       discovery/scanning, plugin persistence, and shell teardown of
       contributed windows on uninstall (uninstall stops future graph
