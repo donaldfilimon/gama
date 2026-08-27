@@ -64,6 +64,8 @@ public enum InputEvent: Hashable, Sendable {
     /// A timer pulse a backend may emit to wake its loop; the host itself
     /// takes no action on it.
     case tick
+    /// A portable application or surface lifecycle transition.
+    case lifecycle(LifecycleEvent)
 }
 
 // MARK: - Renderer protocol
@@ -93,18 +95,23 @@ public protocol Renderer {
 
 // MARK: - App
 
-/// The application root: a value whose `content` describes the entire view
-/// tree, rebuilt from current state on every frame pump. `Sendable` because
-/// hosts may live on a backend-owned executor.
+/// The application root: a value whose scene graph declares every surface.
+/// The shell creates one app value, while each live surface owns an
+/// independent ``FrameHost``.
 public protocol App: Sendable {
-    /// The concrete root view type `content` produces.
-    associatedtype Content: View
-    /// The root of the view tree; evaluated afresh each pump so it always
-    /// reflects current model state.
-    @ViewBuilder var content: Content { get }
+    associatedtype Scenes: Scene
+    /// Declarative scene graph evaluated once when the application launches.
+    @SceneBuilder var scenes: Scenes { get }
     /// Apps are constructed with no arguments, which is what lets
     /// `main(renderer:)` instantiate one on the caller's behalf.
     init()
+    /// Receives application-level events once and addressed window events for
+    /// their affected surface. Reference-backed models may mutate here.
+    func handleLifecycle(_ event: LifecycleEvent)
+}
+
+extension App {
+    public func handleLifecycle(_ event: LifecycleEvent) {}
 }
 
 // MARK: - Runtime
@@ -120,12 +127,16 @@ public struct AppRuntime<A: App, R: Renderer>: ~Copyable {
     /// also the worst-case latency for out-of-band invalidations to become
     /// a frame: on timeout the loop re-checks `needsFrame`.
     public var frameTimeoutMillis: Int
-    private var host: FrameHost<A>
+    private var host: FrameHost
 
     /// Wraps `app` in a fresh `FrameHost` and pairs it with `renderer`.
     /// Nothing runs until `run()` is called.
-    public init(app: A, renderer: R, frameTimeoutMillis: Int = 250) {
-        self.host = FrameHost(app: app)
+    public init(
+        app: A,
+        renderer: R,
+        frameTimeoutMillis: Int = 250
+    ) throws(SceneConfigurationError) {
+        self.host = try FrameHost(app: app)
         self.renderer = renderer
         self.frameTimeoutMillis = frameTimeoutMillis
     }
@@ -137,7 +148,11 @@ public struct AppRuntime<A: App, R: Renderer>: ~Copyable {
     /// the way out, discarding its error.
     public mutating func run() throws(R.Failure) {
         try renderer.begin()
-        defer { try? renderer.end() }
+        host.handle(.lifecycle(.didLaunch))
+        defer {
+            host.handle(.lifecycle(.willTerminate))
+            try? renderer.end()
+        }
 
         while !host.wantsQuit {
             if host.needsFrame {
@@ -153,8 +168,27 @@ public struct AppRuntime<A: App, R: Renderer>: ~Copyable {
 
 extension App {
     /// Convenience entry: `MyApp.main(renderer:)` from any backend.
-    public static func main<R: Renderer>(renderer: R) throws(R.Failure) {
-        var runtime = AppRuntime(app: Self(), renderer: renderer)
-        try runtime.run()
+    public static func main<R: Renderer>(
+        renderer: R
+    ) throws(AppLaunchError<R.Failure>) {
+        let runtime: AppRuntime<Self, R>
+        do {
+            runtime = try AppRuntime(app: Self(), renderer: renderer)
+        } catch {
+            throw .sceneConfiguration(error)
+        }
+        do {
+            var runtime = consume runtime
+            try runtime.run()
+        } catch {
+            throw .renderer(error)
+        }
     }
+}
+
+/// Typed error from the convenience launch path, preserving the distinction
+/// between scene validation and the renderer's declared failure.
+public enum AppLaunchError<RendererFailure: Error>: Error {
+    case sceneConfiguration(SceneConfigurationError)
+    case renderer(RendererFailure)
 }

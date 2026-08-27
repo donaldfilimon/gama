@@ -261,7 +261,7 @@ registration of actions and key handlers. Wiring:
 
 ```swift
 // Application code. Explicit, per-host, no globals anywhere:
-var host = FrameHost(app: MyApp())        // note: constructed directly; the
+var host = try FrameHost(app: MyApp())    // scene validation is typed; the
                                           // App.main(renderer:) convenience
                                           // stays plugin-free
 let plugins = PluginRuntime(
@@ -271,14 +271,16 @@ let plugins = PluginRuntime(
 )
 try plugins.install(StatsPlugin())
 
-// Inside the app's content, the app OPTS IN to a slot:
+// Inside the app's explicit primary scene, the app OPTS IN to a slot:
 struct MyApp: App {
     ...
-    var content: some View {
-        VStack {
-            Header()
-            PluginSlot("sidebar", runtime: plugins)   // a plain View
-            Footer()
+    var scenes: some Scene {
+        Window("Main", id: "main", role: .primary) {
+            VStack {
+                Header()
+                PluginSlot("sidebar", runtime: plugins)   // a plain View
+                Footer()
+            }
         }
     }
 }

@@ -35,11 +35,13 @@ private final class HostActionStore: @unchecked Sendable {
 /// Noncopyable: the host owns live reference state (action tables, the
 /// dirty signal, subscriptions); a copy would silently share all of it.
 /// Single ownership is a compile-time guarantee.
-public struct FrameHost<A: App>: ~Copyable {
-    /// The application value whose `content` is rebuilt on every pump.
-    /// Replacing or mutating it does not mark the host dirty by itself —
-    /// call `invalidate()` to schedule a rebuild.
-    public var app: A
+public struct FrameHost: ~Copyable {
+    /// Scene and live-surface identities owned by this host.
+    public let sceneID: SceneID
+    public let windowInstanceID: WindowInstanceID
+    private let renderScene: @Sendable (BuildContext) -> RenderNode
+    private let deliverLifecycle: @Sendable (LifecycleEvent) -> Void
+    private let windowContext: WindowContext
 
     /// Every interactive node — the pointer hit-test set.
     private var interactive: [InteractiveRegion] = []
@@ -66,8 +68,18 @@ public struct FrameHost<A: App>: ~Copyable {
     /// Creates a host born dirty — the first `needsFrame` check is true —
     /// whose `SubscriptionContext` funnels every observed signal change
     /// into that same dirty flag.
-    public init(app: A) {
-        self.app = app
+    public init<A: App>(app: A) throws(SceneConfigurationError) {
+        let graph = try compileSceneGraph(app)
+        let surface = try graph.makePrimarySurface()
+        self.init(surface: surface)
+    }
+
+    package init(surface: SceneSurface) {
+        self.sceneID = surface.sceneID
+        self.windowInstanceID = surface.instanceID
+        self.renderScene = surface.render
+        self.deliverLifecycle = surface.handleLifecycle
+        self.windowContext = surface.windowContext
         let dirty = Signal(true)
         self.dirty = dirty
         self.subscriptions = SubscriptionContext { dirty.set(true) }
@@ -101,6 +113,7 @@ public struct FrameHost<A: App>: ~Copyable {
         actions.beginBuildPass()
         var env = EnvironmentValues()
         env.focusedID = focusedID
+        env.windowContext = windowContext
         let actionStore = actions
         let ctx = BuildContext(
             id: .root,
@@ -109,7 +122,7 @@ public struct FrameHost<A: App>: ~Copyable {
             registerAction: { id, action in actionStore.register(id, action: action) },
             registerKeyHandler: { id, handler in actionStore.registerKey(id, handler: handler) }
         )
-        let ir = app.content.render(in: ctx)
+        let ir = renderScene(ctx)
         var laid = LayoutEngine.layout(ir, in: Rect(origin: .zero, size: size))
 
         interactive.removeAll(keepingCapacity: true)
@@ -134,7 +147,7 @@ public struct FrameHost<A: App>: ~Copyable {
                 registerAction: { id, action in actionStore.register(id, action: action) },
                 registerKeyHandler: { id, handler in actionStore.registerKey(id, handler: handler) }
             )
-            let focusedIR = app.content.render(in: focusedContext)
+            let focusedIR = renderScene(focusedContext)
             laid = LayoutEngine.layout(focusedIR, in: Rect(origin: .zero, size: size))
             interactive.removeAll(keepingCapacity: true)
             laid.collectInteractive(into: &interactive)
@@ -171,7 +184,18 @@ public struct FrameHost<A: App>: ~Copyable {
     public mutating func handle(_ event: InputEvent) {
         switch event {
         case .key(.ctrl("c")), .key(.ctrl("q")):
+            deliverLifecycle(
+                .windowCloseRequested(scene: sceneID, instance: windowInstanceID))
             wantsQuit = true
+
+        case .lifecycle(let lifecycle):
+            if let target = lifecycle.windowTarget,
+                (target.scene != sceneID || target.instance != windowInstanceID)
+            {
+                break
+            }
+            deliverLifecycle(lifecycle)
+            dirty.set(true)
 
         case .key(.tab):
             moveFocus(by: 1)

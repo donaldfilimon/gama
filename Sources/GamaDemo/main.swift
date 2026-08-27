@@ -87,8 +87,10 @@ struct CounterPanel {
 
 struct DemoApp: App {
     init() {}
-    var content: some View {
-        ZStack(alignment: .center) { CounterPanel() }
+    var scenes: some Scene {
+        Window("Gama Demo", id: "main", role: .primary) {
+            ZStack(alignment: .center) { CounterPanel() }
+        }
     }
 }
 
@@ -100,8 +102,9 @@ let wantsMLIR =
 
 if wantsMLIR {
     // Structural + frame-annotated lowering of the demo tree at 80×24.
-    let ctx = BuildContext(id: .root)
-    let ir = DemoApp().content.render(in: ctx)
+    let graph = try compileSceneGraph(DemoApp())
+    let surface = try graph.makePrimarySurface()
+    let ir = surface.render(BuildContext(id: .root))
     print("// ── gama dialect · structural ─────────────────────────────")
     print(GamaLowering.lower(module: ir, name: "demo"))
     let laid = LayoutEngine.layout(ir, in: Rect(x: 0, y: 0, width: 80, height: 24))
@@ -123,4 +126,3 @@ enum ProcessEnvLookup {
         #endif
     }
 }
-

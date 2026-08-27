@@ -5,8 +5,8 @@
 //  Entire target is @MainActor — UIKit/AppKit isolation is enforced by
 //  the compiler, not convention.
 //
-//  macOS:  window.contentView = GamaHostView(app: MyApp())
-//  iOS:    view.addSubview(GamaHostView(app: MyApp(), frame: view.bounds))
+//  macOS:  window.contentView = try GamaHostView(app: MyApp())
+//  iOS:    view.addSubview(try GamaHostView(app: MyApp()))
 
 #if canImport(AppKit) || canImport(UIKit)
 
@@ -58,9 +58,9 @@ public final class GamaHostView: GamaPlatformView {
 
     /// Creates a zero-frame view with `app` installed — one-step shorthand
     /// for `init(frame:)` followed by `install(app:)`.
-    public convenience init<A: App>(app: A) {
+    public convenience init<A: App>(app: A) throws(SceneConfigurationError) {
         self.init(frame: .zero)
-        install(app: app)
+        try install(app: app)
     }
 
     #if canImport(AppKit)
@@ -101,7 +101,7 @@ public final class GamaHostView: GamaPlatformView {
     /// Attaches `app`: creates its `FrameHost` and back buffer sized to
     /// the current cell grid, wires the frame pump and event routing, and
     /// pumps the first frame. Installing again replaces the previous app.
-    public func install<A: App>(app: A) {
+    public func install<A: App>(app: A) throws(SceneConfigurationError) {
         // `driver` and `handleEvent` are separately-stored, type-erased
         // closures (the view can't be generic over A without breaking the
         // two-phase init this class exposes), yet both must read and
@@ -114,7 +114,7 @@ public final class GamaHostView: GamaPlatformView {
         // its model subscriptions instead of silently orphaning them.
         tearDownSession?()
 
-        let session = Session<A>(app: app, size: gridSize())
+        let session = try Session(app: app, size: gridSize())
         tearDownSession = {
             session.host.cancelSubscriptions()
         }
@@ -146,15 +146,15 @@ public final class GamaHostView: GamaPlatformView {
         driver?()
     }
 
-    /// Owns one app instance's live FrameHost + back buffer. Non-Sendable
+    /// Owns one primary-scene FrameHost + back buffer. Non-Sendable
     /// by design — it's only ever touched from `driver`/`handleEvent`,
     /// which are themselves MainActor-isolated because they're stored on
     /// this @MainActor class.
-    private final class Session<A: App> {
-        var host: FrameHost<A>
+    private final class Session {
+        var host: FrameHost
         var buffer: CellBuffer
-        init(app: A, size: Size) {
-            host = FrameHost<A>(app: app)
+        init<A: App>(app: A, size: Size) throws(SceneConfigurationError) {
+            host = try FrameHost(app: app)
             buffer = CellBuffer(size: size)
         }
     }

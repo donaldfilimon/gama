@@ -39,12 +39,12 @@ private protocol AnyWASMHost: AnyObject {
 }
 
 private final class WASMHostBox<A: App>: AnyWASMHost {
-    var host: FrameHost<A>
+    var host: FrameHost
     var buffer: CellBuffer
     var size: Size
 
-    init(app: A, size: Size) {
-        self.host = FrameHost(app: app)
+    init(app: A, size: Size) throws(SceneConfigurationError) {
+        self.host = try FrameHost(app: app)
         self.size = size
         self.buffer = CellBuffer(size: size)
     }
@@ -84,8 +84,12 @@ public enum GamaWeb {
     /// Install the app. Call from the module's `main` (wasi reactor runs
     /// top-level code once at `_initialize`). A second call replaces the
     /// previous host wholesale (its subscriptions and state are dropped).
-    public static func install<A: App>(app: A, columns: Int = 100, rows: Int = 30) {
-        installed = WASMHostBox(app: app, size: Size(width: columns, height: rows))
+    public static func install<A: App>(
+        app: A,
+        columns: Int = 100,
+        rows: Int = 30
+    ) throws(SceneConfigurationError) {
+        installed = try WASMHostBox(app: app, size: Size(width: columns, height: rows))
         let title = Array("Gama".utf8)
         title.withUnsafeBufferPointer { gama_js_setTitle($0.baseAddress, Int32($0.count)) }
         gama_js_requestFrame()
@@ -97,15 +101,25 @@ public enum GamaWeb {
 // MARK: - Exports (called from WebHost/gama.js)
 // Explicitly `nonisolated`: these must never acquire actor isolation from a
 // future defaultIsolation/NonisolatedNonsendingByDefault adoption — JS calls
-// them on whatever thread the wasm host runs.
+// them on whatever thread the wasm host runs. Result `0` means accepted;
+// negative values fail closed when installation/configuration did not produce
+// a host (`-1`) or when an input code is invalid (`-2`). JavaScript may ignore
+// successful results, but no configuration failure traps across the ABI.
 
 @_cdecl("gama_web_v1_frame")
-nonisolated func gama_web_v1_frame() {
-    GamaWeb.current?.frame()
+nonisolated func gama_web_v1_frame() -> Int32 {
+    guard let host = GamaWeb.current else { return -1 }
+    host.frame()
+    return 0
 }
 
 @_cdecl("gama_web_v1_key")
-nonisolated func gama_web_v1_key(_ code: Int32, _ char: Int32, _ shift: Int32, _ ctrl: Int32) {
+nonisolated func gama_web_v1_key(
+    _ code: Int32,
+    _ char: Int32,
+    _ shift: Int32,
+    _ ctrl: Int32
+) -> Int32 {
     // code: JS KeyboardEvent mapping done host-side (see gama.js):
     //   1=up 2=down 3=left 4=right 5=enter 6=escape 7=tab 8=backspace
     //   9=delete 10=home 11=end 12=pageUp 13=pageDown 100+n=Fn
@@ -136,17 +150,28 @@ nonisolated func gama_web_v1_key(_ code: Int32, _ char: Int32, _ shift: Int32, _
     default:
         key = nil
     }
-    if let key { GamaWeb.current?.handle(.key(key)) }
+    guard let key else { return -2 }
+    guard let host = GamaWeb.current else { return -1 }
+    host.handle(.key(key))
+    return 0
 }
 
 @_cdecl("gama_web_v1_pointer")
-nonisolated func gama_web_v1_pointer(_ col: Int32, _ row: Int32, _ pressed: Int32) {
-    GamaWeb.current?.handle(.pointer(Point(x: Int(col), y: Int(row)), pressed: pressed != 0))
+nonisolated func gama_web_v1_pointer(
+    _ col: Int32,
+    _ row: Int32,
+    _ pressed: Int32
+) -> Int32 {
+    guard let host = GamaWeb.current else { return -1 }
+    host.handle(.pointer(Point(x: Int(col), y: Int(row)), pressed: pressed != 0))
+    return 0
 }
 
 @_cdecl("gama_web_v1_resize")
-nonisolated func gama_web_v1_resize(_ cols: Int32, _ rows: Int32) {
-    GamaWeb.current?.handle(.resize(Size(width: max(1, Int(cols)), height: max(1, Int(rows)))))
+nonisolated func gama_web_v1_resize(_ cols: Int32, _ rows: Int32) -> Int32 {
+    guard let host = GamaWeb.current else { return -1 }
+    host.handle(.resize(Size(width: max(1, Int(cols)), height: max(1, Int(rows)))))
+    return 0
 }
 
 #endif  // arch(wasm32)
