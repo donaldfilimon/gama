@@ -163,12 +163,16 @@ jobs:
             .build/artifacts/GamaCore.embedded.linked.o
 
   windows-swift-64:
-    name: Windows / native console Swift 6.5-dev
+    name: Windows / native console Swift 6.4.x (main-snapshot unavailable)
     runs-on: windows-2025
     timeout-minutes: 40
     env:
-      GAMA_SWIFT_64_WINDOWS_URL: https://download.swift.org/development/windows10/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a-windows10.exe
-      GAMA_SWIFT_64_WINDOWS_SHA256: c87fbf6db0f01f31c28476614678d3e406a29842182172840f8d9eaee00fa929
+      # Deliberate exception: swift.org has published no Windows main-development
+      # snapshot since 2026-05-20-a (verified 2026-08-26 via the install API), so
+      # Windows stays on the newest proven 6.4.x branch snapshot until Windows
+      # main-snapshot publishing resumes. Every other job runs swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a.
+      GAMA_SWIFT_64_WINDOWS_URL: https://download.swift.org/swift-6.4.x-branch/windows10/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a/swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-08-14-a-windows10.exe
+      GAMA_SWIFT_64_WINDOWS_SHA256: 17d5eba8dfdc9e99bf13c0f26169022be2f816b19e66d883a596d3512cfb0a04
     steps:
       - uses: actions/checkout@v4
       - name: Install checksum-pinned Windows snapshot
@@ -202,7 +206,7 @@ jobs:
         shell: pwsh
         run: |
           swift --version | Tee-Object -FilePath swift-version.txt
-          Select-String -Path swift-version.txt -Pattern 'Swift version 6.5' -Quiet | ForEach-Object { if (-not $_) { throw 'Wrong Swift version.' } }
-          Select-String -Path swift-version.txt -Pattern 'Swift 95c5142e84b82c1' -Quiet | ForEach-Object { if (-not $_) { throw 'Wrong Swift snapshot.' } }
+          Select-String -Path swift-version.txt -Pattern 'Swift version 6.4' -Quiet | ForEach-Object { if (-not $_) { throw 'Wrong Swift version.' } }
+          Select-String -Path swift-version.txt -Pattern 'Swift 424cae54c1a10da' -Quiet | ForEach-Object { if (-not $_) { throw 'Wrong Swift snapshot.' } }
           swift test
           swift run gama-windows-console-smoke

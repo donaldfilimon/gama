@@ -46,6 +46,13 @@ local gates, CI migration to the main-snapshot family across all six jobs
 (macOS, Linux native+sanitizers+static SDK, WASM, Android+emulator,
 Embedded, Windows). No new framework code.
 
+## Platform exception
+
+Windows: swift.org has published no Windows main-development snapshot since
+2026-05-20-a, so the Windows CI job stays on the newest proven 6.4.x branch
+snapshot (2026-08-14-a) until main-snapshot publishing resumes. All other
+jobs run the pinned main snapshot.
+
 ## Risks
 
 - swift.org snapshot artifact availability differs per platform per date;
