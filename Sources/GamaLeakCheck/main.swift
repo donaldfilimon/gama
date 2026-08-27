@@ -1,5 +1,9 @@
 import GamaCore
 
+#if os(Linux)
+import Glibc
+#endif
+
 /// A small but real retained tree for lifecycle leak coverage. This target is
 /// an executable, not a test target: its process never loads Swift Testing or
 /// XCTest, so LeakSanitizer reports only the runtime and Gama path below.
@@ -42,6 +46,22 @@ private func deliberatelyLeakGamaSignal() {
     _ = Unmanaged.passRetained(signal)
 }
 
+/// Linux writes evidence markers to stderr and flushes immediately because
+/// LeakSanitizer may terminate with `_exit`, which is not required to flush a
+/// redirected stdout buffer. Other platforms use ordinary output because they
+/// run this executable only as a functional smoke.
+private func emitEvidence(_ message: String) {
+    #if os(Linux)
+    message.withCString { pointer in
+        _ = fputs(pointer, stderr)
+        _ = fputc(10, stderr)
+        _ = fflush(stderr)
+    }
+    #else
+    print(message)
+    #endif
+}
+
 let arguments = CommandLine.arguments.dropFirst()
 let runsNegativeControl = arguments.elementsEqual(["--deliberate-leak"])
 
@@ -54,8 +74,8 @@ try exerciseGamaLifetime()
 if runsNegativeControl {
     // The script requires both this marker and LeakSanitizer's diagnostic,
     // which distinguishes the intended control from an unrelated crash.
-    print("GAMA_LEAK_NEGATIVE_CONTROL_ARMED")
+    emitEvidence("GAMA_LEAK_NEGATIVE_CONTROL_ARMED")
     deliberatelyLeakGamaSignal()
 } else {
-    print("GAMA_LEAK_CHECK_CLEAN_PATH_COMPLETE")
+    emitEvidence("GAMA_LEAK_CHECK_CLEAN_PATH_COMPLETE")
 }

@@ -64,4 +64,7 @@ fi
 grep -Fq 'GAMA_LEAK_NEGATIVE_CONTROL_ARMED' "$NEGATIVE_LOG"
 grep -Fq 'LeakSanitizer: detected memory leaks' "$NEGATIVE_LOG"
 
+echo "clean-path exit=0 marker=GAMA_LEAK_CHECK_CLEAN_PATH_COMPLETE"
+echo "negative-control exit=$negative_status marker=GAMA_LEAK_NEGATIVE_CONTROL_ARMED"
+grep -Fm1 'LeakSanitizer: detected memory leaks' "$NEGATIVE_LOG"
 echo "OK — harness-free Linux LeakSanitizer clean path and failing negative control"

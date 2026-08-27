@@ -40,7 +40,7 @@ let package = Package(
         .executable(name: "gama-web-demo", targets: ["GamaWebDemo"]),
         .executable(name: "gama-apple-demo", targets: ["GamaAppleDemo"]),
         .executable(name: "gama-windows-console-smoke", targets: ["GamaWindowsConsoleSmoke"]),
-        // CI-only lifecycle probe: runs as a plain process so Linux
+        // Acceptance lifecycle probe: runs as a plain process so Linux
         // LeakSanitizer observes Gama without SwiftPM's XCTest harness.
         .executable(name: "gama-leak-check", targets: ["GamaLeakCheck"]),
     ],
