@@ -18,11 +18,27 @@ EXECUTABLE="gama-apple-demo"
 MANIFEST="$ROOT/Distribution/gama-apple-demo.toml"
 
 version="$("${SWIFT[@]}" --version)"
-grep -q 'Swift version 6.5' <<<"$version" || {
+grep -q 'Swift version 6.5' <<<"$version" &&
+  grep -q 'Swift 95c5142e84b82c1' <<<"$version" || {
   echo "error: macOS bundle gate requires the pinned Swift 6.5-dev snapshot" >&2
   echo "$version" >&2
   exit 1
 }
+
+# Resolve relative paths, `..`, and symlinks before any bundle is removed or
+# staged. Creating the output root itself is harmless; the containment check
+# still runs before a signed artifact or other content is written there.
+case "$DIST" in
+  /*) ;;
+  *) DIST="$PWD/$DIST" ;;
+esac
+case "$DIST" in
+  "$ROOT"|"$ROOT"/*)
+    echo "error: GAMA_DIST_ROOT ($DIST) is inside the repo tree; codesigned bundles must stage outside iCloud" >&2
+    exit 1 ;;
+esac
+mkdir -p "$DIST"
+DIST="$(cd "$DIST" && pwd -P)"
 
 case "$DIST" in
   "$ROOT"|"$ROOT"/*)
@@ -36,6 +52,10 @@ NAME="$(manifest_get "$MANIFEST" app name)"
 APP_VERSION="$(manifest_get "$MANIFEST" app version)"
 MINIMUM_SYSTEM="$(manifest_get "$MANIFEST" macos minimum_system)"
 CATEGORY="$(manifest_get "$MANIFEST" macos category)"
+[[ -n "$NAME" && "$NAME" != */* && "$NAME" != '.' && "$NAME" != '..' ]] || {
+  echo "error: manifest app name must be a non-path bundle name" >&2
+  exit 1
+}
 
 "${SWIFT[@]}" build -c release --package-path "$ROOT" --scratch-path "$SCRATCH" --product "$EXECUTABLE"
 BIN_DIR="$("${SWIFT[@]}" build -c release --package-path "$ROOT" --scratch-path "$SCRATCH" --product "$EXECUTABLE" --show-bin-path | tail -1)"
@@ -44,18 +64,16 @@ BIN_DIR="$("${SWIFT[@]}" build -c release --package-path "$ROOT" --scratch-path 
 APP="$DIST/$NAME.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-sed \
-  -e "s|@BUNDLE_ID@|$BUNDLE_ID|g" \
-  -e "s|@NAME@|$NAME|g" \
-  -e "s|@VERSION@|$APP_VERSION|g" \
-  -e "s|@MINIMUM_SYSTEM@|$MINIMUM_SYSTEM|g" \
-  -e "s|@CATEGORY@|$CATEGORY|g" \
-  -e "s|@EXECUTABLE@|$EXECUTABLE|g" \
-  "$ROOT/Distribution/macos/Info.plist.in" > "$APP/Contents/Info.plist"
-if grep -q '@[A-Z_]*@' "$APP/Contents/Info.plist"; then
-  echo "error: unsubstituted placeholder left in generated Info.plist" >&2
-  exit 1
-fi
+PLIST="$APP/Contents/Info.plist"
+command cp -f "$ROOT/Distribution/macos/Info.plist.in" "$PLIST"
+plutil -replace CFBundleIdentifier -string "$BUNDLE_ID" "$PLIST"
+plutil -replace CFBundleName -string "$NAME" "$PLIST"
+plutil -replace CFBundleDisplayName -string "$NAME" "$PLIST"
+plutil -replace CFBundleShortVersionString -string "$APP_VERSION" "$PLIST"
+plutil -replace CFBundleVersion -string "$APP_VERSION" "$PLIST"
+plutil -replace LSMinimumSystemVersion -string "$MINIMUM_SYSTEM" "$PLIST"
+plutil -replace LSApplicationCategoryType -string "$CATEGORY" "$PLIST"
+plutil -replace CFBundleExecutable -string "$EXECUTABLE" "$PLIST"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 command cp -f "$BIN_DIR/$EXECUTABLE" "$APP/Contents/MacOS/$EXECUTABLE"
 
@@ -72,14 +90,14 @@ if [[ -f "$ICON_SOURCE" ]]; then
     sips -z "$double" "$double" "$ICON_SOURCE" --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
   done
   iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
-  /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" "$APP/Contents/Info.plist"
+  plutil -insert CFBundleIconFile -string AppIcon "$PLIST"
   rm -rf "$ICONSET"
 else
   echo "notice: no Distribution/macos/icon.png — staging the bundle without an .icns"
 fi
 
 # Verification gates; all must pass for the bundle claim to be real.
-plutil -lint "$APP/Contents/Info.plist"
+plutil -lint "$PLIST"
 codesign --force -s - "$APP"
 codesign --verify --deep --strict "$APP"
 "$APP/Contents/MacOS/$EXECUTABLE" --smoke

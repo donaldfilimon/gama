@@ -16,6 +16,7 @@ DIST="${GAMA_DIST_ROOT:-/private/tmp/gama-dist}"
 # Manifest identity (fail-closed parse; branding only, never build facts).
 APP_ID="$(manifest_get "$ROOT/Distribution/gama-web-demo.toml" app id)"
 APP_VERSION="$(manifest_get "$ROOT/Distribution/gama-web-demo.toml" app version)"
+WEB_TITLE="$(manifest_get "$ROOT/Distribution/gama-web-demo.toml" web title)"
 
 # Prerequisites fail closed with explicit messages: an absent pinned
 # toolchain or WASM SDK is a missing prerequisite, not a product failure.
@@ -24,8 +25,11 @@ APP_VERSION="$(manifest_get "$ROOT/Distribution/gama-web-demo.toml" app version)
   echo "prerequisite-gated, not broken: install the pinned snapshot (Toolchains.toml) or set GAMA_SWIFT_64" >&2
   exit 1
 }
-"$SWIFT" --version | grep -q 'Swift version 6.5' || {
+version="$("$SWIFT" --version)"
+grep -q 'Swift version 6.5' <<<"$version" &&
+  grep -q 'Swift 95c5142e84b82c1' <<<"$version" || {
   echo "error: web bundle gate requires the pinned Swift 6.5-dev snapshot" >&2
+  echo "$version" >&2
   exit 1
 }
 "$SWIFT" sdk list | grep -Fxq "$SDK" || {
@@ -45,9 +49,11 @@ artifact="$(find "$SCRATCH" -type f -name 'gama-web-demo.wasm' -print -quit)"
 mkdir -p "$DIST/web"
 command cp -f "$ROOT/WebHost/index.html" "$ROOT/WebHost/gama.js" "$DIST/web/"
 command cp -f "$artifact" "$DIST/web/gama-web-demo.wasm"
+node "$ROOT/scripts/set-web-title.mjs" "$DIST/web/index.html" "$WEB_TITLE"
 
 # The site claim is only real when the assembled directory itself passes the
 # browser smoke (DOM, keyboard, pointer, resize, rAF, accessibility, frames).
-node "$ROOT/scripts/browser-runtime-smoke.mjs" "$DIST/web/gama-web-demo.wasm" "$DIST/web"
+node "$ROOT/scripts/browser-runtime-smoke.mjs" \
+  "$DIST/web/gama-web-demo.wasm" "$DIST/web" "$WEB_TITLE"
 
 echo "OK — wasm site $APP_ID $APP_VERSION assembled at $DIST/web and browser-smoke verified"

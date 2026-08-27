@@ -48,4 +48,10 @@ xcrun notarytool submit "$ZIP" --keychain-profile "$GAMA_NOTARY_PROFILE" --wait
 xcrun stapler staple "$APP"
 xcrun stapler validate "$APP"
 
-echo "OK — $APP Developer ID signed, notarized, and stapled"
+# Stapling mutates the bundle after the upload submitted above. Rebuild the
+# distributable archive so users receive the stapled app, not the pre-staple
+# notarization payload.
+rm -f "$ZIP"
+ditto -c -k --keepParent "$APP" "$ZIP"
+
+echo "OK — $APP Developer ID signed, notarized, stapled, and archived at $ZIP"

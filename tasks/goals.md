@@ -272,3 +272,13 @@ status: in_progress
   the packaging PR's six-job matrix and must be recorded only when green.
   Manifests in Distribution/ carry identity only, parsed by the fail-closed
   scripts/lib/manifest.sh reader.
+- Packaging review hardening (2026-08-27, PR #32): repaired all seven active
+  review findings without weakening a gate. The flat-TOML grammar now validates
+  whole identifiers; macOS staging canonicalizes containment and uses
+  plist-aware branding; the wasm bundler verifies the exact Swift revision and
+  the manifest-configured page title; CI uploads a mode-preserving `ditto` ZIP;
+  and the credentialed release path rebuilds its downloadable ZIP after
+  stapling. Local regression probes, `check-toolchain-pins.sh`, the real macOS
+  app bundle gate, transport extraction/signature verification, and the real
+  wasm browser bundle gate are green. Hosted proof remains the exact PR-head
+  six-job matrix after this repair commit; do not infer it from the earlier run.

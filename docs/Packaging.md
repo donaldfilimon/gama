@@ -12,12 +12,13 @@ below names its gate, and a claim is only as strong as its last passing run.
 | --- | --- | --- |
 | Deployable wasm site | `scripts/bundle-web.sh` | `$GAMA_DIST_ROOT/web/` with `index.html`, `gama.js`, `gama-web-demo.wasm`; deployable to any static host |
 | macOS app bundle (ad-hoc) | `scripts/bundle-macos.sh` | `$GAMA_DIST_ROOT/<name>.app` staging `gama-apple-demo`; runs on the building machine only |
-| macOS app bundle (Developer ID, notarized) | `scripts/release-macos.sh` | The same `.app` re-signed with a Developer ID identity, notarized, and stapled |
+| macOS app bundle (Developer ID, notarized) | `scripts/release-macos.sh` | The same `.app` re-signed with a Developer ID identity, notarized, stapled, and re-archived as `$GAMA_DIST_ROOT/<name>.zip` |
 
 `GAMA_DIST_ROOT` defaults to `/private/tmp/gama-dist`. Bundles are never
 staged inside the repo tree: the canonical checkout is FileProvider-managed
 and codesign rejects bundles staged there (measured failure, `CLAUDE.md`);
-`bundle-macos.sh` refuses a dist root inside the repo.
+`bundle-macos.sh` canonicalizes relative paths, `..`, and symlinks before it
+refuses a dist root inside the repo.
 
 ## Identity manifests
 
@@ -27,9 +28,13 @@ and codesign rejects bundles staged there (measured failure, `CLAUDE.md`);
 bundler fills. The manifests carry identity and branding only; anything that
 changes what gets compiled belongs in `Package.swift`. The reader,
 `scripts/lib/manifest.sh` (`manifest_get <file> <section> <key>`), recognizes
-only blank lines, comments, `[section]` headers, and `key = "value"` pairs,
-and fails closed on anything else, which is the guard against the manifest
-growing into a second build system.
+only blank lines, comments, `[section]` headers, and `key = "value"` pairs
+whose complete section and key identifiers match `[A-Za-z0-9_]+`. It fails
+closed on anything else, which is the guard against the manifest growing into
+a second build system. The macOS bundler sets plist values through `plutil`,
+so branding characters are encoded as plist data rather than interpreted as
+text-replacement syntax. The web bundler HTML-escapes `[web].title`, applies it
+to the assembled page, and makes the browser smoke assert the resulting title.
 
 An `.icns` is built with `sips` + `iconutil` when `Distribution/macos/icon.png`
 exists. No icon source is committed today, so the bundle ships icon-less and
@@ -39,10 +44,11 @@ the icon path is implemented but unproven.
 
 | Claim | Gate | State (2026-08-27) |
 | --- | --- | --- |
-| wasm site directory works in a browser | `node scripts/browser-runtime-smoke.mjs "$DIST/web/gama-web-demo.wasm" "$DIST/web"` run by `bundle-web.sh` against the assembled directory (headless Chrome: DOM, key, pointer, resize, rAF, accessibility, frames) | Locally proven; hosted proof rides on the wasm CI job's bundle step |
+| wasm site directory works in a browser | `node scripts/browser-runtime-smoke.mjs "$DIST/web/gama-web-demo.wasm" "$DIST/web" "$WEB_TITLE"` run by `bundle-web.sh` against the assembled directory (headless Chrome: title branding, DOM, key, pointer, resize, rAF, accessibility, frames) | Locally proven; hosted proof rides on the wasm CI job's bundle step |
 | `.app` is well formed | `plutil -lint` on the generated `Info.plist` | Locally proven |
 | `.app` signature is intact | `codesign --verify --deep --strict` after ad-hoc signing | Locally proven (ad-hoc identity) |
 | `.app` launches and renders | `Contents/MacOS/gama-apple-demo --smoke`: boots `NSApplication` offscreen, hosts the primary scene, requires a non-empty `DrawList`, exits 0 | Locally proven; hosted proof rides on the macOS CI job's bundle step |
+| CI download preserves `.app` modes | `ditto` archive before `actions/upload-artifact`; extract, require the payload executable bit, and re-run deep-strict signature verification | Locally proven; hosted proof rides on the macOS job's archive + upload steps |
 | Notarized `.app` | `notarytool submit --wait` exit status + `stapler validate` in `release-macos.sh` | Credential-gated: implemented but unproven (see below) |
 | Finder double-click on another machine | Manual; `spctl -a` is expected to reject the ad-hoc build | Not claimed for ad-hoc output |
 
@@ -58,8 +64,9 @@ Application identity in the keychain) and `GAMA_NOTARY_PROFILE` (a
 explicit credential-gated, not broken message and exits nonzero; it never
 silently skips and never falls back to ad-hoc. CI has no signing credentials
 and runs only the ad-hoc path. The credentialed path (Developer ID signing
-with the hardened runtime, `ditto` zip, `notarytool submit --wait`,
-`stapler staple`, `stapler validate`) is implemented; its first passing
+with the hardened runtime, `ditto` submission zip, `notarytool submit --wait`,
+`stapler staple`, `stapler validate`, and a final post-staple archive rebuild)
+is implemented; its first passing
 credentialed run must be recorded in `Capabilities.md` as locally proven
 evidence before the notarized artifact is described as real. Enrolling in the
 developer program, creating the certificate, and the one-time

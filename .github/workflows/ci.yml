@@ -48,10 +48,16 @@ jobs:
           PATH="$(brew --prefix llvm)/bin:$PATH" ./scripts/check-mlir.sh
       - name: Stage and verify the macOS app bundle
         run: GAMA_DIST_ROOT="$RUNNER_TEMP/gama-dist" ./scripts/bundle-macos.sh
+      - name: Archive the macOS app bundle for transport
+        run: |
+          source scripts/lib/manifest.sh
+          name="$(manifest_get Distribution/gama-apple-demo.toml app name)"
+          ditto -c -k --keepParent \
+            "$RUNNER_TEMP/gama-dist/$name.app" "$RUNNER_TEMP/macos-app.zip"
       - uses: actions/upload-artifact@v4
         with:
           name: macos-app
-          path: ${{ runner.temp }}/gama-dist
+          path: ${{ runner.temp }}/macos-app.zip
       - uses: actions/upload-artifact@v4
         if: always()
         with:
