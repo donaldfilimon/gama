@@ -68,7 +68,8 @@ let package = Package(
             dependencies: [
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
-            ]
+            ],
+            swiftSettings: strictCore
         ),
 
         // ── Draw: platform-free rasterizer shared by every backend —
@@ -141,10 +142,12 @@ let package = Package(
             dependencies: ["GamaCore", "GamaMacros", "GamaTUI", "GamaMLIR"],
             swiftSettings: strictCore
         ),
+        // strictCore, not wasmSettings: the demo has no @_extern of its own,
+        // and the experimental Extern feature stays scoped to GamaWASM.
         .executableTarget(
             name: "GamaWebDemo",
             dependencies: ["GamaCore", "GamaWASM"],
-            swiftSettings: wasmSettings
+            swiftSettings: strictCore
         ),
         .executableTarget(
             name: "GamaWindowsConsoleSmoke",
@@ -157,7 +160,7 @@ let package = Package(
             dependencies: [
                 "Gama", "GamaCore", "GamaMacros", "GamaMLIR",
                 "GamaTUI", "GamaDraw", "GamaEmbed", "GamaMacrosImpl",
-                "GamaAppleUI",
+                "GamaAppleUI", "GamaWASM",
                 .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax")
             ],
             path: "Tests/gamaTests",
