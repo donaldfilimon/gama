@@ -47,11 +47,14 @@ struct MLIRBuilder {
 
 /// MLIR attribute value rendering.
 enum MLIRAttr {
-    case i64(Int)
+    /// Always 64-bit so NodeIDs and geometry survive wasm32 `Int`.
+    case i64(Int64)
     case str(String)
     case bool(Bool)
     case color(Color)
     case unit
+
+    static func i64(_ value: Int) -> MLIRAttr { .i64(Int64(value)) }
 
     var rendered: String {
         switch self {

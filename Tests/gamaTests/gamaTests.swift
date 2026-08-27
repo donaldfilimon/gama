@@ -18,9 +18,11 @@ private final class TestBox<T>: @unchecked Sendable {
 
 @Suite("Geometry")
 struct GeometryTests {
-    @Test("legacy greeting compatibility")
-    func legacyGreetingCompatibility() {
-        #expect(hello() == "Hello, world!")
+    @Test("umbrella re-exports the core")
+    func umbrellaReExportsCore() {
+        // `import Gama` alone must surface GamaCore's API (via @_exported).
+        let size: Gama.Size = Size(width: 2, height: 1)
+        #expect(size.width == 2)
     }
 
     @Test("rect inset")

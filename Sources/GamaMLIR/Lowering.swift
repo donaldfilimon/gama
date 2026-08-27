@@ -164,7 +164,7 @@ public enum GamaLowering {
         case .interactive(let id, let focusable, let child):
             let attrs: [(String, MLIRAttr)] =
                 [
-                    ("id", .i64(Int(bitPattern: UInt(truncatingIfNeeded: id.raw)))),
+                    ("id", .i64(Int64(bitPattern: id.raw))),
                     ("focusable", .bool(focusable)),
                 ] + frameAttrs
             b.open("\"gama.interactive\"() ({")
@@ -267,7 +267,7 @@ public enum GamaLowering {
             region(
                 "interactive",
                 [
-                    ("id", .i64(Int(bitPattern: UInt(truncatingIfNeeded: id.raw)))),
+                    ("id", .i64(Int64(bitPattern: id.raw))),
                     ("focusable", .bool(focusable)),
                 ]
             )

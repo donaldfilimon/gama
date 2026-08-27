@@ -91,7 +91,7 @@ let package = Package(
         ),
 
         // ── WASM backend: browser reactor. Compiles to inert stubs off
-        //    wasm32; build with `--swift-sdk wasm32-unknown-wasi`.
+        //    wasm32; build with the pinned WASM Swift SDK in Toolchains.toml.
         .target(
             name: "GamaWASM",
             dependencies: ["GamaCore", "GamaDraw"],

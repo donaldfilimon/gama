@@ -49,6 +49,8 @@ public struct FrameHost<A: App>: ~Copyable {
     public let subscriptions: SubscriptionContext
     /// Set when the host wants to stop (Ctrl-C on TUI; hosts may ignore).
     public private(set) var wantsQuit = false
+    /// Last size applied by `pump(size:)` or a `.resize` event.
+    public private(set) var lastSize: Size = .zero
 
     public init(app: A) {
         self.app = app
@@ -73,6 +75,7 @@ public struct FrameHost<A: App>: ~Copyable {
     /// Build + lay out one frame at `size`, reconciling focus.
     /// Pure with respect to the renderer: callers paint the result.
     public mutating func pump(size: Size) -> LaidOutNode {
+        lastSize = size
         dirty.set(false)
 
         actions.beginBuildPass()
@@ -171,7 +174,8 @@ public struct FrameHost<A: App>: ~Copyable {
                 dirty.set(true)
             }
 
-        case .resize:
+        case .resize(let size):
+            lastSize = size
             dirty.set(true)
 
         case .key(let key):

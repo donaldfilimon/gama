@@ -32,9 +32,13 @@ public final class TUIRenderer: Renderer {
 
     public func end() throws(TerminalError) {
         guard began else { return }
+        // Clear the session even when close() throws (dead PTY): a wedged
+        // renderer must not keep writing to an already-restored terminal.
+        defer {
+            session = nil
+            began = false
+        }
         try session?.close()
-        session = nil
-        began = false
     }
 
     public func present(_ root: LaidOutNode) throws(TerminalError) {
