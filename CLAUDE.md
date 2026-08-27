@@ -56,7 +56,7 @@ Everyday local gates (fast, macOS-only prerequisites):
 ```bash
 unset TOOLCHAINS
 ./scripts/check-apple.sh        # debug build + tests + release build
-./scripts/check-boundaries.sh   # portable-core import/ownership greps
+./scripts/check-boundaries.sh   # portable imports/ownership + emitted-symbol scan
 ./scripts/check-docs.sh         # symbol graph + docc, zero-warning
 ./scripts/check-doc-coverage.sh # every public decl needs a doc comment
 ```

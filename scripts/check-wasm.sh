@@ -7,6 +7,21 @@ SCRATCH_ROOT="${GAMA_SCRATCH_ROOT:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}}"
 SCRATCH="$SCRATCH_ROOT/gama-wasm-swiftpm"
 "$SWIFT" --version | grep -q 'Swift version 6.5'
 "$SWIFT" sdk list | grep -Fxq "$SDK" || { echo "error: missing WASM SDK $SDK" >&2; exit 1; }
+# Compile and inspect the portable objects before asking SwiftPM to link the
+# executable. This makes an accidental libm dependency fail at its source
+# target instead of surfacing later as an opaque wasm-ld error.
+"$SWIFT" build --package-path "$ROOT" --scratch-path "$SCRATCH" --swift-sdk "$SDK" --target GamaWASM
+for target in GamaCore GamaDraw GamaWASM; do
+  objects=()
+  while IFS= read -r -d '' object; do objects+=("$object"); done < <(
+    find "$SCRATCH" -type f \
+      \( -path "*/${target}-t.build/Objects-normal/*/*.o" \
+         -o -path "*/${target}.build/*.o" \) -print0
+  )
+  [[ ${#objects[@]} -gt 0 ]] || { echo "error: no WASM objects produced for $target" >&2; exit 1; }
+  GAMA_LLVM_NM="${GAMA_LLVM_NM:-$(dirname "$SWIFT")/llvm-nm}" \
+    "$ROOT/scripts/check-portable-symbols.sh" "$target (WASM)" "${objects[@]}"
+done
 "$SWIFT" build --package-path "$ROOT" --scratch-path "$SCRATCH" --swift-sdk "$SDK" --product gama-web-demo \
   -Xlinker --export=gama_web_v1_frame \
   -Xlinker --export=gama_web_v1_key \
