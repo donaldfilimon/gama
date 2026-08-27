@@ -10,8 +10,10 @@ permissions:
   contents: read
 
 concurrency:
-  group: gama-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # PR revisions share a cancellable group; every other event gets a unique
+  # group so queued main-push evidence cannot be replaced by a later push.
+  group: gama-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   macos-swift-64:
