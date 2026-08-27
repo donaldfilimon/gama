@@ -122,7 +122,9 @@ public enum LayoutEngine {
             return flexMinimum(of: c, axis: axis) + 2
         case .background(_, let c), .styled(_, let c), .interactive(_, _, let c):
             return flexMinimum(of: c, axis: axis)
-        default:
+        // Exhaustive on purpose: a new case must choose its minimum here
+        // instead of silently contributing zero.
+        case .empty, .text, .stack, .overlay, .group, .divider, .frame:
             return 0
         }
     }

@@ -341,13 +341,17 @@ struct SignalTests {
         second.observe(model)
         _ = first.pump(size: Size(width: 10, height: 1))
         _ = second.pump(size: Size(width: 10, height: 1))
-        #expect(!first.needsFrame)
-        #expect(!second.needsFrame)
+        // Bind before #expect: the macro's property-access form needs a
+        // Copyable base, and FrameHost is deliberately noncopyable.
+        let pumpedStates = (first.needsFrame, second.needsFrame)
+        #expect(!pumpedStates.0)
+        #expect(!pumpedStates.1)
 
         first.cancelSubscriptions()
         model.set(1)
-        #expect(!first.needsFrame)
-        #expect(second.needsFrame)
+        let cancelledStates = (first.needsFrame, second.needsFrame)
+        #expect(!cancelledStates.0)
+        #expect(cancelledStates.1)
     }
 
     @Test("binding can receive explicit subscription context")
@@ -474,9 +478,9 @@ struct ActionTests {
             ]
         )
         let laid = LayoutEngine.layout(node, in: Rect(x: 0, y: 0, width: 10, height: 4))
-        var out: [(NodeID, Rect, focusable: Bool)] = []
+        var out: [InteractiveRegion] = []
         laid.collectInteractive(into: &out)
-        #expect(out.map(\.0) == [NodeID.root.child(1), NodeID.root.child(2)])
+        #expect(out.map(\.id) == [NodeID.root.child(1), NodeID.root.child(2)])
     }
 
     @Test("disabled button does not register and is not focusable")
@@ -712,11 +716,16 @@ struct FrameHostTests {
         var host = FrameHost(app: HostProbeApp())
         _ = host.pump(size: Size(width: 20, height: 6))
         host.handle(.key(.tab))
-        #expect(host.needsFrame)
+        // Bound before #expect throughout this suite: the macro's
+        // property-access form needs a Copyable base, and FrameHost is
+        // deliberately noncopyable.
+        let dirtyAfterTab = host.needsFrame
+        #expect(dirtyAfterTab)
         _ = host.pump(size: Size(width: 20, height: 6))
         host.handle(.key(.tab))
         _ = host.pump(size: Size(width: 20, height: 6))
-        #expect(!host.wantsQuit)
+        let quitRequested = host.wantsQuit
+        #expect(!quitRequested)
     }
 
     @Test("ctrl-C requests quit")
@@ -724,16 +733,19 @@ struct FrameHostTests {
         var host = FrameHost(app: HostProbeApp())
         _ = host.pump(size: Size(width: 20, height: 6))
         host.handle(.key(.ctrl("c")))
-        #expect(host.wantsQuit)
+        let quitRequested = host.wantsQuit
+        #expect(quitRequested)
     }
 
     @Test("resize marks dirty")
     func resizeMarksDirty() {
         var host = FrameHost(app: HostProbeApp())
         _ = host.pump(size: Size(width: 20, height: 6))
-        #expect(!host.needsFrame)
+        let cleanAfterPump = host.needsFrame
+        #expect(!cleanAfterPump)
         host.handle(.resize(Size(width: 30, height: 8)))
-        #expect(host.needsFrame)
+        let dirtyAfterResize = host.needsFrame
+        #expect(dirtyAfterResize)
     }
 
     @Test("hosts keep actions and dirty state isolated")
@@ -749,7 +761,8 @@ struct FrameHostTests {
 
         #expect(leftValue.get() == 1)
         #expect(rightValue.get() == 0)
-        #expect(left.needsFrame)
-        #expect(!right.needsFrame)
+        let dirtyStates = (left.needsFrame, right.needsFrame)
+        #expect(dirtyStates.0)
+        #expect(!dirtyStates.1)
     }
 }
