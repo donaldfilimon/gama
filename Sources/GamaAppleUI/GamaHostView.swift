@@ -12,11 +12,14 @@
 
 #if canImport(AppKit)
     import AppKit
+    /// The platform view class `GamaHostView` extends — `NSView` on macOS.
     public typealias GamaPlatformView = NSView
     typealias PlatformFont = NSFont
     typealias PlatformColor = NSColor
 #else
     import UIKit
+    /// The platform view class `GamaHostView` extends — `UIView` on
+    /// iOS/tvOS/visionOS.
     public typealias GamaPlatformView = UIView
     typealias PlatformFont = UIFont
     typealias PlatformColor = UIColor
@@ -25,6 +28,13 @@
 import GamaCore
 import GamaDraw
 
+/// A native AppKit/UIKit view hosting one Gama app: it pumps the app's
+/// `FrameHost`, paints the shared `DrawList` through CoreGraphics as a
+/// monospaced character grid, and translates platform keyboard, mouse, and
+/// touch input into `InputEvent`s. Like every backend it only carries
+/// events in and frames out — interaction semantics stay in GamaCore.
+/// `@MainActor` end to end, so AppKit/UIKit isolation is enforced by the
+/// compiler rather than convention.
 @MainActor
 public final class GamaHostView: GamaPlatformView {
     private var driver: (() -> Void)?  // erased frame pump
@@ -41,23 +51,31 @@ public final class GamaHostView: GamaPlatformView {
 
     // MARK: Init
 
+    /// Creates a zero-frame view with `app` installed — one-step shorthand
+    /// for `init(frame:)` followed by `install(app:)`.
     public convenience init<A: App>(app: A) {
         self.init(frame: .zero)
         install(app: app)
     }
 
     #if canImport(AppKit)
+        /// Creates an empty host view measuring its monospaced cell size;
+        /// call `install(app:)` to attach an app.
         public override init(frame: NSRect) {
             super.init(frame: frame)
             commonInit()
         }
     #else
+        /// Creates an empty host view measuring its monospaced cell size;
+        /// call `install(app:)` to attach an app.
         public override init(frame: CGRect) {
             super.init(frame: frame)
             commonInit()
         }
     #endif
 
+    /// Restores an empty host view from an archive; call `install(app:)`
+    /// to attach an app.
     public required init?(coder: NSCoder) {
         super.init(coder: coder)
         commonInit()
@@ -75,6 +93,9 @@ public final class GamaHostView: GamaPlatformView {
         #endif
     }
 
+    /// Attaches `app`: creates its `FrameHost` and back buffer sized to
+    /// the current cell grid, wires the frame pump and event routing, and
+    /// pumps the first frame. Installing again replaces the previous app.
     public func install<A: App>(app: A) {
         // `driver` and `handleEvent` are separately-stored, type-erased
         // closures (the view can't be generic over A without breaking the
@@ -150,24 +171,37 @@ public final class GamaHostView: GamaPlatformView {
     // MARK: Layout / resize
 
     #if canImport(AppKit)
+        /// Forwards each AppKit layout pass to the host as a `.resize`
+        /// event and pumps a frame at the new grid size.
         public override func layout() {
             super.layout()
             handleEvent?(.resize(gridSize()))
             driver?()
         }
+        /// Accepts first-responder status so keyboard events reach the
+        /// view directly.
         public override var acceptsFirstResponder: Bool { true }
+        /// Uses a top-left origin so view coordinates match the cell grid.
         public override var isFlipped: Bool { true }  // y-down, like the grid
+        /// Claims first-responder status as soon as the view lands in a
+        /// window, so keys flow without an extra click.
         public override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             if window != nil { window?.makeFirstResponder(self) }
         }
     #else
+        /// Forwards each UIKit layout pass to the host as a `.resize`
+        /// event and pumps a frame at the new grid size.
         public override func layoutSubviews() {
             super.layoutSubviews()
             handleEvent?(.resize(gridSize()))
             driver?()
         }
+        /// Accepts first-responder status so hardware key presses reach
+        /// the view.
         public override var canBecomeFirstResponder: Bool { true }
+        /// Becomes first responder as soon as the view lands in a window,
+        /// so hardware keys flow immediately.
         public override func didMoveToWindow() {
             super.didMoveToWindow()
             if window != nil { becomeFirstResponder() }
@@ -176,6 +210,12 @@ public final class GamaHostView: GamaPlatformView {
 
     // MARK: Drawing
 
+    /// Replays the current `DrawList` through CoreGraphics: fills the
+    /// background, then draws each command — rectangle fills and styled
+    /// text runs — at cell-grid positions scaled by the measured cell
+    /// size. Bold and italic map to font traits, underline and
+    /// strikethrough to string attributes, dim to reduced alpha, and
+    /// inverse swaps foreground and background.
     public override func draw(_ dirtyRect: CGRect) {
         #if canImport(AppKit)
             guard let ctx = NSGraphicsContext.current?.cgContext else { return }
@@ -253,15 +293,21 @@ public final class GamaHostView: GamaPlatformView {
     // MARK: Events — macOS
 
     #if canImport(AppKit)
+        /// Translates an AppKit key event into a Gama `Key` and routes it
+        /// to the host; keys with no mapping are ignored.
         public override func keyDown(with event: NSEvent) {
             guard let key = Self.key(from: event) else { return }
             handleEvent?(.key(key))
         }
 
+        /// Routes a left-button press to the host as a pressed pointer
+        /// event at the clicked cell.
         public override func mouseDown(with event: NSEvent) {
             handleEvent?(.pointer(gridPoint(event.locationInWindow), pressed: true))
         }
 
+        /// Routes a left-button release to the host as a released pointer
+        /// event at the clicked cell.
         public override func mouseUp(with event: NSEvent) {
             handleEvent?(.pointer(gridPoint(event.locationInWindow), pressed: false))
         }
@@ -301,21 +347,30 @@ public final class GamaHostView: GamaPlatformView {
 
         // MARK: Events — iOS/tvOS/visionOS
 
+        /// Routes the first touch's landing to the host as a pressed
+        /// pointer event at the touched cell.
         public override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
             guard let t = touches.first else { return }
             handleEvent?(.pointer(gridPoint(t.location(in: self)), pressed: true))
         }
 
+        /// Routes the first touch's lift to the host as a released pointer
+        /// event at the touched cell.
         public override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
             guard let t = touches.first else { return }
             handleEvent?(.pointer(gridPoint(t.location(in: self)), pressed: false))
         }
 
+        /// Treats a cancelled touch like a release, so a pressed pointer
+        /// never sticks.
         public override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
             guard let t = touches.first else { return }
             handleEvent?(.pointer(gridPoint(t.location(in: self)), pressed: false))
         }
 
+        /// Translates hardware key presses (`UIPress.key`) into Gama keys
+        /// and routes them to the host, forwarding any press it cannot
+        /// translate to the superclass.
         public override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
             var handled = false
             for press in presses {
@@ -333,6 +388,9 @@ public final class GamaHostView: GamaPlatformView {
         }
 
         // Hardware keyboard (iPad etc.)
+        /// Key commands capturing arrow, Enter, Tab, Shift-Tab, and Escape
+        /// presses from a hardware keyboard, each routed to the host as
+        /// the matching `Key`.
         public override var keyCommands: [UIKeyCommand]? {
             [
                 UIKeyCommand(input: UIKeyCommand.inputUpArrow, modifierFlags: [], action: #selector(kUp)),
