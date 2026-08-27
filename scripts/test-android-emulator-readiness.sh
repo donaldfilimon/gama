@@ -215,7 +215,8 @@ assert_equals 0 "$ANDROID_RECOVERIES_REMAINING" "readiness exhaustion remaining 
 
 reset_case animation-retry 1
 configure_android_animations >"$FAKE_STATE_DIR/output" 2>&1
-assert_equals 1 "$ANDROID_RECOVERIES_USED" "animation retry recovery consumption"
+assert_equals 0 "$ANDROID_RECOVERIES_USED" "animation retry stays budget-free"
+assert_equals 1 "$ANDROID_RECOVERIES_REMAINING" "animation retry preserves the budget"
 assert_setting_order \
   'shell settings put global window_animation_scale 0' \
   'shell settings put global transition_animation_scale 0' \
@@ -231,13 +232,15 @@ assert_setting_timeout_order \
 assert_log_count 5 '^timeout|5s|adb shell settings put global ' "animation timeout count"
 
 reset_case animation-exhausted 1
-if configure_android_animations >"$FAKE_STATE_DIR/output" 2>&1; then
-  echo "error: persistent animation failure unexpectedly succeeded" >&2
+if ! configure_android_animations >"$FAKE_STATE_DIR/output" 2>&1; then
+  echo "error: persistent animation failure was fatal; animations are best-effort" >&2
   exit 1
 fi
-assert_equals 1 "$ANDROID_RECOVERIES_USED" "animation exhaustion recovery consumption"
-assert_equals 0 "$ANDROID_RECOVERIES_REMAINING" "animation exhaustion remaining budget"
+assert_equals 0 "$ANDROID_RECOVERIES_USED" "persistent animation failure stays budget-free"
+assert_equals 1 "$ANDROID_RECOVERIES_REMAINING" "persistent animation failure preserves the budget"
+grep -q 'continuing WITH animations after 3 attempts' "$FAKE_STATE_DIR/output"
 assert_setting_order \
+  'shell settings put global window_animation_scale 0' \
   'shell settings put global window_animation_scale 0' \
   'shell settings put global window_animation_scale 0'
 
@@ -258,14 +261,14 @@ assert_log_count 3 '^timeout|60s|adb install -r /tmp/gama-fake.apk$' "install ex
 
 reset_case shared-budget 1
 configure_android_animations >"$FAKE_STATE_DIR/animation-output" 2>&1
-if install_android_apk /tmp/gama-fake.apk >"$FAKE_STATE_DIR/install-output" 2>&1; then
-  echo "error: install reopened a recovery window after animation consumed the shared budget" >&2
+assert_equals 0 "$ANDROID_RECOVERIES_USED" "animation stage left the shared budget untouched"
+if ! install_android_apk /tmp/gama-fake.apk >"$FAKE_STATE_DIR/install-output" 2>&1; then
+  echo "error: install could not use the budget animations must not consume" >&2
   exit 1
 fi
 assert_equals 1 "$ANDROID_RECOVERIES_USED" "cross-stage recovery consumption"
 assert_equals 0 "$ANDROID_RECOVERIES_REMAINING" "cross-stage remaining budget"
-assert_equals 1 "$(fake_counter_current install)" "cross-stage install attempts before exhaustion"
-grep -q 'shared Android recovery budget exhausted while APK install' "$FAKE_STATE_DIR/install-output"
+assert_equals 2 "$(fake_counter_current install)" "install retried with the preserved budget"
 
 validate_android_time_budget
 post_boot_max="$(calculate_android_post_boot_worst_case_seconds)"
@@ -275,11 +278,11 @@ allocated=$((
   + GAMA_ANDROID_POST_BOOT_CEILING_SECONDS
   + GAMA_ANDROID_JOB_HEADROOM_SECONDS
 ))
-assert_equals 756 "$post_boot_max" "calculated conservative post-boot maximum"
+assert_equals 812 "$post_boot_max" "calculated conservative post-boot maximum"
 assert_equals 2700 "$allocated" "45-minute job allocation"
 ((post_boot_max < GAMA_ANDROID_POST_BOOT_CEILING_SECONDS))
 assert_equals 240 "$GAMA_ANDROID_JOB_HEADROOM_SECONDS" "job-level headroom"
-assert_equals 84 "$((GAMA_ANDROID_POST_BOOT_CEILING_SECONDS - post_boot_max))" "post-boot ceiling margin"
+assert_equals 28 "$((GAMA_ANDROID_POST_BOOT_CEILING_SECONDS - post_boot_max))" "post-boot ceiling margin"
 
 saved_post_boot_ceiling="$GAMA_ANDROID_POST_BOOT_CEILING_SECONDS"
 GAMA_ANDROID_POST_BOOT_CEILING_SECONDS="$post_boot_max"

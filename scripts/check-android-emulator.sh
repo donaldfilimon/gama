@@ -14,7 +14,7 @@ GAMA_ANDROID_BOOT_ALLOWANCE_SECONDS="${GAMA_ANDROID_BOOT_ALLOWANCE_SECONDS:-720}
 GAMA_ANDROID_POST_BOOT_CEILING_SECONDS="${GAMA_ANDROID_POST_BOOT_CEILING_SECONDS:-840}"
 GAMA_ANDROID_JOB_HEADROOM_SECONDS="${GAMA_ANDROID_JOB_HEADROOM_SECONDS:-240}"
 
-# Every failed readiness, animation, or install stage consumes this same
+# Every failed readiness or install stage consumes this same
 # non-resetting recovery budget. No stage opens a nested retry window.
 GAMA_ANDROID_RECOVERY_BUDGET="${GAMA_ANDROID_RECOVERY_BUDGET:-2}"
 GAMA_ANDROID_GRADLE_TIMEOUT_SECONDS="${GAMA_ANDROID_GRADLE_TIMEOUT_SECONDS:-180}"
@@ -63,7 +63,13 @@ calculate_android_post_boot_worst_case_seconds() {
     + GAMA_ANDROID_RECOVERY_DELAY_SECONDS
     + probe_max
   )))
-  animation_max=$(((GAMA_ANDROID_RECOVERY_BUDGET + 1) * 3 * GAMA_ANDROID_SETTINGS_TIMEOUT_SECONDS))
+  # Animations are best-effort: 3 bounded attempts of 3 settings each,
+  # with 2 budget-free reconnect/wait/delay recoveries between attempts.
+  animation_max=$((3 * 3 * GAMA_ANDROID_SETTINGS_TIMEOUT_SECONDS + 2 * (
+    GAMA_ANDROID_RECONNECT_TIMEOUT_SECONDS
+    + GAMA_ANDROID_WAIT_TIMEOUT_SECONDS
+    + GAMA_ANDROID_RECOVERY_DELAY_SECONDS
+  )))
   install_max=$((3 * GAMA_ANDROID_INSTALL_TIMEOUT_SECONDS))
   control_max=$((3 * GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS))
   poll_max=$((GAMA_ANDROID_POLL_ATTEMPTS * (
@@ -228,20 +234,26 @@ set_android_animation_scales_once() {
 }
 
 configure_android_animations() {
-  local attempt=1
-  while true; do
+  # Best-effort: animations only add input/frame latency, and the strict
+  # gate is the input/frame round trip below. Retries are bounded and do
+  # NOT consume the shared recovery budget, which stays reserved for the
+  # load-bearing readiness and install stages (a hosted run exhausted the
+  # budget here during a slow settings-provider settle and failed the job
+  # before the real test ran).
+  local attempt
+  for attempt in 1 2 3; do
     if set_android_animation_scales_once; then
       echo "Android emulator animations disabled"
       return 0
     fi
-
     echo "warning: Android animation settings failed on attempt $attempt" >&2
-    if ! recover_until_android_services_ready "animation settings"; then
-      echo "error: failed to disable Android emulator animations within the shared recovery budget" >&2
-      return 1
+    if ((attempt < 3)); then
+      recover_android_connection
+      sleep "$GAMA_ANDROID_RECOVERY_DELAY_SECONDS"
     fi
-    attempt=$((attempt + 1))
   done
+  echo "warning: continuing WITH animations after 3 attempts; the input/frame round trip remains the strict gate" >&2
+  return 0
 }
 
 install_android_apk() {
