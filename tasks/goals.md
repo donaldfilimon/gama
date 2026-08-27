@@ -33,6 +33,18 @@ status: done
   local branches share no merge base with main (pre-remote history); merging
   them literally would have deleted ~9k lines of the current framework, so
   they were left as historical snapshots, not merged.
+- Branch cleanup 2026-08-26 (late evening, Donald's explicit instruction):
+  after PRs #8 and #9 merged, deleted every branch except main, remote and
+  local. Verified before deleting: six tips ancestors of main
+  (docs/claude-md-operational-guide 610c06c, docs/toolchain-accuracy-sweep
+  a52a273, feat/swift-65-dev-umbrella a1aa305, pr/tui-embedded-core e79b279,
+  swift-refactor-c4c7b 98e7c59, winsdk-wrapper-94d76 74f2648);
+  feat/tui-embedded-core 39f1b35 tree-identical to merged e79b279; the
+  historical snapshot pre-remote-main-20260824 154ff82 deleted on explicit
+  instruction, SHA recorded here for recovery (objects persist; gc is
+  forbidden in this tree). Honest residual: PR #9 was merged while its
+  matrix was still running (WASM + Embedded green at cleanup time, four
+  jobs in progress); Autofix watches for post-merge failures.
 
 ## Build the Gama umbrella application framework
 
