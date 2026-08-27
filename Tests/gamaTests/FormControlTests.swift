@@ -20,7 +20,7 @@ private struct FormApp: App {
 
 @Suite("Form controls and identity")
 struct FormControlTests {
-    @Test("progress rounds midpoint values away from zero")
+    @Test("progress renders a sub-cell fraction with a partial boundary glyph")
     func progressRounding() {
         let rendered = ProgressView(value: 1, total: 8, label: "Load")
             .render(in: BuildContext())
@@ -29,7 +29,9 @@ struct FormControlTests {
             Issue.record("ProgressView did not render text")
             return
         }
-        #expect(text == "Load [███░░░░░░░░░░░░░░░░░] 13%")
+        // 1/8 = 2.5 of 20 cells: two full cells plus a half-block
+        // boundary glyph, not three whole cells rounded away from zero.
+        #expect(text == "Load [██▌░░░░░░░░░░░░░░░░░] 13%")
     }
 
     @Test("focused text input edits and toggle activates")

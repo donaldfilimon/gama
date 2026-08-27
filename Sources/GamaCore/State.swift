@@ -18,15 +18,19 @@ public struct SubscriptionToken: Hashable, Sendable {
 /// host cannot leave observers that invalidate a different host. Like
 /// `FrameHost` and `Signal`, it is confined to the backend's owning executor;
 /// no global registry or platform lock is involved.
-public final class SubscriptionContext: @unchecked Sendable {
-    private let invalidateHost: @Sendable () -> Void
+/// **Not `Sendable`.** The invalidation hook necessarily captures the
+/// host's dirty ``Signal``, so a `@Sendable` hook could only be honored by
+/// a signal that lied about its own Sendability — the exact laundering
+/// this redesign removes. Confinement is now compiler-checked.
+public final class SubscriptionContext {
+    private let invalidateHost: () -> Void
     private var observedSignals: Set<ObjectIdentifier> = []
     private var cancellations: [() -> Void] = []
 
     /// Creates a context that funnels every observed signal's change
     /// into the one callback — typically the owning host's dirty-flag
     /// setter.
-    public init(invalidate: @escaping @Sendable () -> Void) {
+    public init(invalidate: @escaping () -> Void) {
         self.invalidateHost = invalidate
     }
 
@@ -67,12 +71,19 @@ public final class SubscriptionContext: @unchecked Sendable {
 /// mutating the list mid-iteration; observers added during a pass are
 /// not called until the next change.
 ///
-/// `@unchecked Sendable` because GamaCore cannot import Synchronization.
-/// Confined to the owning host's executor; do not share one `Signal`
-/// across concurrent `FrameHost`s.
-public final class Signal<Value: Sendable>: @unchecked Sendable {
+/// **Not `Sendable`, and unavailably so.** A signal belongs to exactly one
+/// host at a time. That was previously an `@unchecked Sendable` class with
+/// the rule written in this comment and enforced by nobody; it is now a
+/// fact the compiler checks. The unavailable conformance below is
+/// load-bearing: it stops any consumer from "fixing" the conformance
+/// retroactively and quietly reintroducing cross-host sharing.
+///
+/// Moving a signal between contexts is still possible — use `sending`
+/// parameters, which transfer the region instead of sharing it. See
+/// [ADR 0009](../../docs/adr/0009-noncopyable-signal-confinement.md).
+public final class Signal<Value: Sendable> {
     private var value: Value
-    private var observers: [(UInt64, @Sendable () -> Void)] = []
+    private var observers: [(UInt64, () -> Void)] = []
     private var nextID: UInt64 = 0
     private var notifying = false
 
@@ -120,7 +131,7 @@ public final class Signal<Value: Sendable>: @unchecked Sendable {
     /// the only way to detach it. An observer added mid-notification is
     /// not called until the next change.
     @discardableResult
-    public func observe(_ fn: @escaping @Sendable () -> Void) -> SubscriptionToken {
+    public func observe(_ fn: @escaping () -> Void) -> SubscriptionToken {
         nextID += 1
         observers.append((nextID, fn))
         return SubscriptionToken(id: nextID)
@@ -158,17 +169,32 @@ extension Signal where Value: Equatable {
     }
 }
 
+/// Signals are single-host by construction; see ``Signal``.
+///
+/// Spelled `@available(*, unavailable)` rather than simply omitted so the
+/// conformance cannot be added retroactively by a consumer module, which
+/// is what makes single-host confinement a compiler-checked fact instead
+/// of a documented convention.
+@available(*, unavailable)
+extension Signal: @unchecked Sendable {}
+
 /// A get/set pair decoupled from Signal — pass mutable access into child
 /// components without exposing the storage. Mirrors SwiftUI's Binding.
-public struct Binding<Value: Sendable>: Sendable {
-    private let getter: @Sendable () -> Value
-    private let setter: @Sendable (Value) -> Void
+///
+/// **Not `Sendable`.** A binding travels *into child components*, which is
+/// movement within one host's build pass, not across isolation domains.
+/// Its accessors were previously `@Sendable` and the struct `Sendable`,
+/// which was the same laundering ``Signal`` used to do: the only way to
+/// honor it was to capture a signal that claimed a Sendability it did not
+/// have. Bindings are host-confined for the same reason signals are.
+public struct Binding<Value: Sendable> {
+    private let getter: () -> Value
+    private let setter: (Value) -> Void
 
-    /// Creates a binding from arbitrary accessors; both must be
-    /// `@Sendable` because bindings travel into child components.
+    /// Creates a binding from arbitrary accessors.
     public init(
-        get: @escaping @Sendable () -> Value,
-        set: @escaping @Sendable (Value) -> Void
+        get: @escaping () -> Value,
+        set: @escaping (Value) -> Void
     ) {
         self.getter = get
         self.setter = set
@@ -184,8 +210,8 @@ public struct Binding<Value: Sendable>: Sendable {
 
     /// Derive a binding to a part of this value.
     public func map<T: Sendable>(
-        get: @escaping @Sendable (Value) -> T,
-        set: @escaping @Sendable (inout Value, T) -> Void
+        get: @escaping (Value) -> T,
+        set: @escaping (inout Value, T) -> Void
     ) -> Binding<T> {
         Binding<T>(
             get: { [self] in get(wrappedValue) },
@@ -214,7 +240,7 @@ public struct Binding<Value: Sendable>: Sendable {
 ///
 /// The projected value exposes the Signal for binding-style pass-down.
 @propertyWrapper
-public struct State<Value: Sendable>: Sendable {
+public struct State<Value: Sendable> {
     private let signal: Signal<Value>
 
     /// Allocates the backing `Signal`. The wrapper stores only that

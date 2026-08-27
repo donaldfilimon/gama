@@ -39,37 +39,35 @@ private protocol AnyWASMHost: AnyObject {
 }
 
 private final class WASMHostBox<A: App>: AnyWASMHost {
-    var host: FrameHost
+    var pump: HostPump
     var buffer: CellBuffer
-    var size: Size
 
     init(app: A, size: Size) throws(SceneConfigurationError) {
-        self.host = try FrameHost(app: app)
-        self.size = size
+        self.pump = HostPump(host: try FrameHost(app: app), size: size)
         self.buffer = CellBuffer(size: size)
     }
 
+    var size: Size { pump.size }
+
     func handle(_ event: InputEvent) {
-        if case .resize(let s) = event {
-            size = s
-            buffer.resize(s)
-        }
-        host.handle(event)
-        if host.needsFrame { gama_js_requestFrame() }
+        // Eager resize and the buffer resize are the shared pump's job now.
+        pump.handle(event)
+        if pump.needsFrame { gama_js_requestFrame() }
     }
 
     func frame() {
-        guard host.needsFrame else { return }
-        let laid = host.pump(size: size)
-        buffer.clearBack()
-        CellPainter.paint(laid, into: &buffer)
-        let html = HTMLSerializer.grid(from: buffer)
-        let bytes = Array(html.utf8)
-        bytes.withUnsafeBufferPointer { buf in
-            gama_js_setHTML(buf.baseAddress, Int32(buf.count))
+        // `followUp` is the generalized form of this backend's old
+        // focus-reconciliation special case: the pump reports that the
+        // host is still dirty, and every backend now honors it the same
+        // way. Here that means one more rAF.
+        let outcome = pump.advance(into: &buffer) { painted in
+            let html = HTMLSerializer.grid(from: painted)
+            let bytes = Array(html.utf8)
+            bytes.withUnsafeBufferPointer { buf in
+                gama_js_setHTML(buf.baseAddress, Int32(buf.count))
+            }
         }
-        // Focus reconciliation may need one follow-up frame.
-        if host.needsFrame { gama_js_requestFrame() }
+        if outcome.followUp { gama_js_requestFrame() }
     }
 }
 

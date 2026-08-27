@@ -1,6 +1,8 @@
 # 0004 — Signal confinement and the Synchronization ban
 
-Status: Accepted (interim) — a redesign is a ledgered Slice C proposal.
+Status: **Superseded** by [0009](0009-signal-is-not-sendable.md)
+(2026-08-27). `Signal` is no longer `@unchecked Sendable`; confinement is
+compiler-checked. Kept for the history of why the interim stance existed.
 
 ## Context
 
