@@ -59,6 +59,23 @@ public struct CellBuffer: Hashable, Sendable {
         forceFull = true
     }
 
+    /// Resizes only when `newSize` would actually change the grid.
+    ///
+    /// Every backend used to carry its own version of this check, and a
+    /// naive `size != newSize` comparison is wrong: ``size`` holds the
+    /// *normalized* extent, so a request above ``maximumCellCount`` never
+    /// compares equal and would re-allocate — and force a full present —
+    /// on every single frame. Normalizing before comparing keeps a clamped
+    /// surface on the cheap ANSI diff instead.
+    ///
+    /// - Returns: `true` when the grid was actually resized.
+    @discardableResult
+    public mutating func resizeIfNeeded(_ newSize: Size) -> Bool {
+        guard Self.normalized(newSize).size != size else { return false }
+        resize(newSize)
+        return true
+    }
+
     /// Clears the back plane to blank cells before a paint pass.
     public mutating func clearBack() {
         for i in back.indices { back[i] = .blank }

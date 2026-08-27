@@ -64,7 +64,8 @@ unset TOOLCHAINS
 `check-doc-coverage.sh` fails on any undocumented public declaration;
 baseline exceptions live in `scripts/doc-coverage-allowlist.txt` with a
 written justification. Adding a public symbol means adding its `///`, not an
-allowlist entry.
+allowlist entry. CI's macOS job runs boundaries, docs, and doc-coverage
+together.
 
 Full acceptance matrix: `./scripts/check.sh` runs every `check-*.sh` gate in
 order — twelve as of 2026-08-27 (apple, apple-platforms, boundaries, c-abi,
@@ -120,6 +121,7 @@ One retained render pipeline, many backends:
 
 ```text
 App → @SceneBuilder → one explicit primary + auxiliary Window/WindowGroup
+          → per-surface content closure, re-evaluated every frame
 App state → @ViewBuilder / macros → RenderNode (value IR, GamaCore)
           → LayoutEngine → LaidOutNode
           → CellPainter → CellBuffer → DrawList (GamaDraw)
@@ -138,23 +140,28 @@ with typed throws, so hosts are moved, never shared.
 Target layering (all under `Sources/`, single test target `GamaTests` at
 `Tests/gamaTests`):
 
-- **GamaCore** — views, identity, state, layout, events, and `FrameHost`.
-  Embedded-Swift-safe: stdlib only. `check-boundaries.sh` rejects platform or
-  runtime imports in both GamaCore and GamaPlugin, and rejects process-global
-  registries anywhere. Each `FrameHost` owns focus, actions, subscriptions,
-  dirty state, and frames; out-of-band changes go through the host's
-  `SubscriptionContext` or explicit `invalidate()`.
+- **GamaCore** — scenes, views, identity, state, layout, events, and
+  `FrameHost`. Embedded-Swift-safe: stdlib only. `check-boundaries.sh`
+  rejects any import of Foundation, AppKit, UIKit, Darwin, Glibc, WinSDK, or
+  Synchronization in GamaCore *and* GamaPlugin, and rejects process-global
+  registries anywhere. `FrameHost` and `AppRuntime` are `~Copyable`: each
+  host uniquely owns focus, actions, subscriptions, dirty state, and frames;
+  out-of-band changes go through the host's `SubscriptionContext` or explicit
+  `invalidate()`.
+- **Gama** — compatibility umbrella (`@_exported import GamaCore`) only.
 - **GamaPlugin** — stdlib-only Tier-1 static plugin and capability model:
-  manifests, deny-by-default grants, unforgeable host-service handles,
-  per-host `PluginRuntime`, and opt-in slot/scene/command contributions. It
-  depends on GamaCore and defines service interfaces only; in-process plugins
-  are cooperative code, not a sandbox. Read `docs/Plugins.md` before changing
+  manifests, deny-by-default grants, unforgeable host-service handles
+  (internal initializers), per-host `PluginRuntime`/`PluginSlot`, and opt-in
+  slot/scene/command contributions. It depends on GamaCore and defines
+  service interfaces only. Tier 1 is capability-based *design*, not a
+  sandbox: in-process plugins are cooperative code — never describe it as
+  isolation. Tiers 2/3 are Proposed. Read `docs/Plugins.md` before changing
   its tier, capability, lifecycle, or contribution contracts.
 - **GamaPlatformServices** — Foundation-backed implementations for the
-  `HostServices` interfaces, including standard logging, monotonic time, and
-  contained filesystem access. It is the platform-capability layer, not a
-  portable framework dependency: only applications, demos, examples, and
-  tests may import it. `check-boundaries.sh` rejects imports from every
+  `HostServices` interfaces (standard logging, monotonic time, contained
+  filesystem access). It is the platform-capability layer, not a portable
+  framework dependency: only applications, demos, examples, and tests may
+  import it. `check-boundaries.sh` rejects imports from every
   portable/framework target, routing OS-backed services outward through this
   target instead.
 - **GamaMacros / GamaMacrosImpl** — optional `@Component`, `@Reactive`, `#rgb`
@@ -183,6 +190,25 @@ Target layering (all under `Sources/`, single test target `GamaTests` at
   `Android` (JNI/Gradle, built as the `GamaAndroidDemo` product), plus
   `AppleHost`, `CEmbed`, and `Embedded` consumer samples.
 
+## State lifetime trap (`@Reactive`)
+
+A scene's content closure runs **on every frame**, so a component value built
+inside it is a fresh instance each frame — and `@Reactive` stores its
+`Signal` in the component instance. Build a component inline in a `Window`
+body and its state resets before the next pump: keypresses appear to do
+nothing while the focus ring still moves. Hoist the instance so it outlives
+the closure (`Sources/GamaDemo/main.swift:132` does this).
+
+Hoisting stores state **per scene declaration, not per surface**: every
+window of a `WindowGroup` captures the same closure, so a hoisted instance or
+an app-level `Signal` is one shared instance behind all of them (`Signal`
+also requires one host at a time, never concurrent hosts). That is right for
+deliberately shared model state and wrong for per-window state, which has no
+framework-provided storage today — the gap is tracked in
+`docs/superpowers/specs/drafts/2026-08-27-view-state-identity-draft.md`.
+`ReactiveStateLifetimeTests` (in `Tests/gamaTests/MacroUsageTests.swift`)
+pins the behavior.
+
 ## Evidence policy
 
 Implementation presence is not platform proof. `docs/Capabilities.md` is the
@@ -200,9 +226,10 @@ only merge after required checks are green. Design specs live in
 the running goal ledger is `tasks/goals.md` + `tasks/todo.md`.
 
 Before changing a backend or a settled design, read its record rather than
-re-deriving it: `docs/README.md` is the index, `docs/adr/` holds the seven
+re-deriving it: `docs/README.md` is the index, `docs/adr/` holds the nine
 decision records (own-the-rendering, toolchain pinning, Swift-Testing-only,
-signal confinement, DrawList wire format, noncopyable hosts, frame pumps),
+signal confinement, DrawList wire format, noncopyable hosts, frame pumps,
+one-pump eager resize, Signal-is-not-Sendable),
 `docs/Plugins.md` defines the plugin tiers and capability model,
 `docs/backends/<Backend>.md` the per-backend guides, and
 `Sources/GamaCore/GamaCore.docc/` the symbol-level articles built by

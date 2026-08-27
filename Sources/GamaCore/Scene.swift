@@ -73,7 +73,7 @@ public struct WindowConfiguration: Hashable, Sendable {
 /// A declarative application surface. Gama's public scene vocabulary is
 /// intentionally closed in practice to the types emitted by ``SceneBuilder``;
 /// compilation stays package-private and never exposes erased payloads.
-public protocol Scene: Sendable {
+public protocol Scene {
     /// Internal builder hook. The collector's erased representation remains
     /// package-private; scene values only append their declarations.
     func _collectScenes(into collector: inout _SceneCollector) throws(
@@ -174,7 +174,7 @@ public struct Window<Content: View>: Scene {
     public let launchBehavior: SceneLaunchBehavior
     /// Native-window preferences for shell-owned instances.
     public let configuration: WindowConfiguration
-    package let content: @Sendable () -> Content
+    package let content: () -> Content
 
     /// Declares a singleton scene and its view-building closure.
     public init(
@@ -184,7 +184,7 @@ public struct Window<Content: View>: Scene {
         launchBehavior: SceneLaunchBehavior? = nil,
         initialCellSize: Size = Size(width: 100, height: 30),
         isResizable: Bool = true,
-        @ViewBuilder content: @escaping @Sendable () -> Content
+        @ViewBuilder content: @escaping () -> Content
     ) {
         self.id = id
         self.role = role
@@ -233,7 +233,7 @@ public struct WindowGroup<Value: Hashable & Sendable, Content: View>: Scene {
     /// Native-window preferences shared by instances of this group.
     public let configuration: WindowConfiguration
     private let initial: InitialGroupValue<Value>
-    package let content: @Sendable (Value) -> Content
+    package let content: (Value) -> Content
 
     /// Declares an on-demand group without an initial payload.
     public init(
@@ -243,7 +243,7 @@ public struct WindowGroup<Value: Hashable & Sendable, Content: View>: Scene {
         launchBehavior: SceneLaunchBehavior? = nil,
         initialCellSize: Size = Size(width: 100, height: 30),
         isResizable: Bool = true,
-        @ViewBuilder content: @escaping @Sendable (Value) -> Content
+        @ViewBuilder content: @escaping (Value) -> Content
     ) {
         self.key = key
         self.role = role
@@ -268,7 +268,7 @@ public struct WindowGroup<Value: Hashable & Sendable, Content: View>: Scene {
         initialValue: Value,
         initialCellSize: Size = Size(width: 100, height: 30),
         isResizable: Bool = true,
-        @ViewBuilder content: @escaping @Sendable (Value) -> Content
+        @ViewBuilder content: @escaping (Value) -> Content
     ) {
         self.key = key
         self.role = role
@@ -470,10 +470,10 @@ public struct WindowContextReader<Content: View>: View {
     public typealias Body = Never_
     /// Unused primitive body required by ``View``.
     public var body: Never_ { Never_() }
-    private let content: @Sendable (WindowContext) -> Content
+    private let content: (WindowContext) -> Content
 
     /// Creates a reader whose closure receives the current window context.
-    public init(@ViewBuilder content: @escaping @Sendable (WindowContext) -> Content) {
+    public init(@ViewBuilder content: @escaping (WindowContext) -> Content) {
         self.content = content
     }
 
@@ -492,7 +492,7 @@ package struct CompiledSceneDescriptor: @unchecked Sendable {
     package let configuration: WindowConfiguration
     package let payloadType: ObjectIdentifier?
     package let initialPayload: ScenePayload?
-    package let makeRender: @Sendable (ScenePayload?) -> (@Sendable (BuildContext) -> RenderNode)?
+    package let makeRender: (ScenePayload?) -> ((BuildContext) -> RenderNode)?
 
     package var isGroup: Bool { payloadType != nil }
 }
@@ -500,7 +500,7 @@ package struct CompiledSceneDescriptor: @unchecked Sendable {
 package struct CompiledSceneGraph: @unchecked Sendable {
     package let scenes: [CompiledSceneDescriptor]
     package let primaryIndex: Int
-    package let handleLifecycle: @Sendable (LifecycleEvent) -> Void
+    package let handleLifecycle: (LifecycleEvent) -> Void
 
     package var primary: CompiledSceneDescriptor { scenes[primaryIndex] }
 
@@ -543,8 +543,8 @@ package struct SceneSurface: @unchecked Sendable {
     package let sceneID: SceneID
     package let instanceID: WindowInstanceID
     package let windowContext: WindowContext
-    package let render: @Sendable (BuildContext) -> RenderNode
-    package let handleLifecycle: @Sendable (LifecycleEvent) -> Void
+    package let render: (BuildContext) -> RenderNode
+    package let handleLifecycle: (LifecycleEvent) -> Void
 }
 
 package func compileSceneGraph<A: App>(_ app: A) throws(

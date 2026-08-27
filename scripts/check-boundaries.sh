@@ -25,6 +25,43 @@ if grep -R -n -E --include='*.swift' \
   "$ROOT/Sources/GamaMLIR"; then
   echo "error: a portable/framework target imported GamaPlatformServices" >&2; exit 1
 fi
+# Confinement negatives: Signal is non-Sendable. These fixtures live
+# outside every SwiftPM target (ADR 0009).
+#   error.*  -> must FAIL to compile
+#   warn.*   -> must compile but emit #UnavailableSendableConformance
+# A retroactive @unchecked conformance is only a warning on the pinned
+# toolchain, so the gate pins the diagnostic rather than pretending the
+# conformance is impossible.
+if [[ -d "$ROOT/Tests/Fixtures/Confinement" ]]; then
+  swiftc_bin="${GAMA_SWIFTC_64:-$(xcrun --toolchain "${GAMA_TOOLCHAIN_ID:-org.swift.65202608211a}" --find swiftc)}"
+  conf_scratch="${GAMA_CONFINEMENT_SCRATCH_PATH:-$(mktemp -d)/spm}"
+  xcrun --toolchain "${GAMA_TOOLCHAIN_ID:-org.swift.65202608211a}" swift build \
+    --package-path "$ROOT" --scratch-path "$conf_scratch" --target GamaCore >/dev/null
+  conf_inc="$(dirname "$(find "$conf_scratch" -name 'GamaCore.swiftmodule' -print -quit)")"
+  conf_n=0
+  for fixture in "$ROOT"/Tests/Fixtures/Confinement/*.swift; do
+    base="$(basename "$fixture")"
+    out="$("$swiftc_bin" -typecheck -swift-version 6 -I "$conf_inc" "$fixture" 2>&1)" && rc=0 || rc=$?
+    case "$base" in
+      error.*)
+        if [[ $rc -eq 0 ]]; then
+          echo "error: confinement negative compiled but must not: $base" >&2; exit 1
+        fi
+        ;;
+      warn.*)
+        if [[ $rc -ne 0 ]]; then
+          echo "error: confinement fixture failed to compile, expected a warning: $base" >&2; exit 1
+        fi
+        if ! grep -q 'UnavailableSendableConformance' <<<"$out"; then
+          echo "error: expected #UnavailableSendableConformance from $base" >&2; exit 1
+        fi
+        ;;
+    esac
+    conf_n=$((conf_n + 1))
+  done
+  echo "OK — Signal confinement negatives ($conf_n fixtures)"
+fi
+
 grep -q 'swift-tools-version: 6.4' "$ROOT/Package.swift"
 "$ROOT/scripts/check-toolchain-pins.sh"
 echo "OK — portable-core and explicit-ownership boundaries"

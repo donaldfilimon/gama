@@ -318,3 +318,33 @@ status: in_progress
   Testing cases in six suites on the pinned toolchain; the follow-up's own
   exact-head hosted matrix is still required and must not be conflated with
   PR #33's already-green head.
+- Slice C wave 2, structural half (2026-08-27, /goal continue): the two
+  headline items of the audit's top structural row landed on branch
+  slice-c/wave-2-frame-pump-and-signal — frame-pump unification (ADR 0008
+  supersedes 0007) and the non-Sendable Signal redesign (ADR 0009
+  supersedes 0004). Both approved specs needed correction against reality
+  and both corrections are recorded rather than absorbed: the pump spec's
+  D2 signature could not compile (CellBuffer lives in GamaDraw, which
+  depends on GamaCore), and the Signal spec's claim that an unavailable
+  conformance "prevents" retroactive re-conformance is false — measured on
+  the pinned snapshot it is a warning (#UnavailableSendableConformance),
+  so what it actually buys is a named, attributable diagnostic. Proposed,
+  NOT Current: local gates are green (167 tests, boundaries incl. two new
+  confinement negative fixtures, c-abi, wasm, docs, doc-coverage) but no
+  PR is open and no hosted six-job matrix has run on this work.
+- Ledger truth-up (2026-08-27): sub-projects 2, 3, and 4 were closed after
+  verifying their own stated conditions were already met — PR #37 head
+  b11297d, PR #21 head ca95b220, and PR #32 head 77e3160 each passed all
+  six hosted jobs. The ledger, not the work, was stale. Sub-project 3
+  carries a named residual: its literal post-merge run was cancelled by
+  the concurrency group, so proof rides on green descendant main runs.
+- Full local acceptance matrix (2026-08-27): `./scripts/check.sh` was run
+  end to end on this machine for the first time, exit 0, 17 OK lines,
+  including the three gates the docs describe as CI-or-hardware-only. Two
+  environment facts made that possible and correct two stale notes in
+  ~/CLAUDE.md: check-linux.sh needs no Linux (it cross-compiles with the
+  installed static-linux SDK, ~1s), and `timeout` IS installed
+  (/opt/homebrew/bin, coreutils) which check-android-emulator.sh depends
+  on. The emulator gate additionally needs ANDROID_HOME, adb on PATH, and
+  an already-booted device — it does not boot one itself.
+

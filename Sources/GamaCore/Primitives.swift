@@ -230,10 +230,10 @@ public struct Button<Label: View>: View {
     public var label: Label
     /// Invoked by the owning host each time the button is activated;
     /// typically mutates observed state, which marks the host dirty.
-    public var action: @Sendable () -> Void
+    public var action: () -> Void
 
     /// Creates a button from an action and a label subtree.
-    public init(action: @escaping @Sendable () -> Void, @ViewBuilder label: () -> Label) {
+    public init(action: @escaping () -> Void, @ViewBuilder label: () -> Label) {
         self.action = action
         self.label = label()
     }
@@ -273,7 +273,7 @@ public struct Button<Label: View>: View {
 extension Button where Label == Text {
     /// Creates a button whose label is `title` padded with one space on
     /// each side, so the focus highlight reads as a block.
-    public init(_ title: String, action: @escaping @Sendable () -> Void) {
+    public init(_ title: String, action: @escaping () -> Void) {
         self.init(action: action) { Text(" \(title) ") }
     }
 }
@@ -386,38 +386,97 @@ public struct Toggle: View {
 /// `Toggle` under its checkbox name — the rendered control is identical.
 public typealias Checkbox = Toggle
 
-/// Read-only progress indicator: a fixed 20-cell bar plus a percentage.
-/// Finite fractions clamp to 0...1; a non-finite `value` degrades to the
-/// empty 0% bar.
+/// Read-only progress indicator: a `width`-cell bar plus a percentage.
+/// Finite fractions clamp to 0...1; the bar fills at eighth-cell
+/// resolution (Unicode partial block glyphs) so a value like 0.99 is
+/// visibly distinct from 1.0 even at narrow widths — whole-cell
+/// quantization alone would round both to the same filled cell count.
 public struct ProgressView: View {
     /// Terminates `body` recursion; this view compiles in `render(in:)`.
     public typealias Body = Never_
     /// Never invoked; present only to satisfy `View`.
     public var body: Never_ { Never_() }
     /// Progress in the same units as `total`; finite out-of-range values
-    /// clamp to the 0%/100% ends, and non-finite values render as 0%.
+    /// clamp to the 0%/100% ends. Non-finite values clamp toward the
+    /// nearest end: `+infinity` and NaN behave like an out-of-range
+    /// value (NaN specifically renders as 0%, since it carries no sign
+    /// to clamp toward).
     public var value: Double
     /// The amount that maps to 100%; non-positive totals render as 0%.
     public var total: Double
     /// Optional prefix drawn before the bar.
     public var label: String?
+    /// Bar width in cells. Values below 1 degrade to an empty bar
+    /// (`[]`) rather than crashing or producing out-of-bounds cells.
+    public var width: Int
 
     /// Creates a progress bar showing `value` out of `total` (a fraction
-    /// of 1 by default).
-    public init(value: Double, total: Double = 1, label: String? = nil) {
+    /// of 1 by default), rendered across `width` cells (20 by default).
+    public init(value: Double, total: Double = 1, label: String? = nil, width: Int = 20) {
         self.value = value
         self.total = total
         self.label = label
+        self.width = width
     }
 
     /// Compiles to a single `.text` node — bar, glyphs, and percentage are
     /// all plain characters in the inherited style.
     public func render(in context: BuildContext) -> RenderNode {
-        let fraction = total > 0 ? min(1, max(0, value / total)) : 0
-        let filled = Int(fraction * 20 + 0.5)
-        let bar = String(repeating: "█", count: filled) + String(repeating: "░", count: 20 - filled)
-        let percent = Int(fraction * 100 + 0.5)
+        let fraction = Self.clampedFraction(value: value, total: total)
+        let bar = Self.bar(fraction: fraction, width: width)
+        // Mirror the bar's own "almost full is not full" guarantee in the
+        // percentage: a fraction that isn't exactly 1 must never print
+        // 100%, or the two halves of the rendered string would disagree.
+        let percent = fraction >= 1 ? 100 : min(99, Int(fraction * 100 + 0.5))
         return .text("\(label.map { "\($0) " } ?? "")[\(bar)] \(percent)%", style: context.inheritedStyle)
+    }
+
+    /// Reduces `value`/`total` to a finite 0...1 fraction. Non-positive
+    /// totals and NaN ratios both fall to 0; `+infinity` (an
+    /// out-of-range ratio, same family as a finite value over 1) clamps
+    /// to 1 like any other overflow.
+    private static func clampedFraction(value: Double, total: Double) -> Double {
+        guard total > 0 else { return 0 }
+        let ratio = value / total
+        guard ratio.isFinite else { return ratio > 0 ? 1 : 0 }
+        return min(1, max(0, ratio))
+    }
+
+    /// Eighth-cell partial glyphs, indexed by eighths filled in the
+    /// boundary cell (`partialGlyphs[0]` is unused — a remainder of 0
+    /// means no partial cell is drawn at all).
+    private static let partialGlyphs: [Character] = [
+        " ", "\u{258F}", "\u{258E}", "\u{258D}", "\u{258C}", "\u{258B}", "\u{258A}", "\u{2589}",
+    ]
+
+    /// Renders `fraction` (already clamped to 0...1) as a `width`-cell
+    /// bar with one boundary cell at eighth resolution. `width <= 0`
+    /// renders as an empty string rather than indexing anything.
+    private static func bar(fraction: Double, width: Int) -> String {
+        guard width > 0 else { return "" }
+        let eighthsPerCell = 8
+        let totalEighths = width * eighthsPerCell
+        // Round-half-up without `.rounded()`: that call lowers to libm
+        // (round/rint/trunc/ceil/floor), and GamaCore must stay stdlib-only
+        // so it links on the static-Linux, wasm, and Embedded targets.
+        // `Int(_: Double)` truncates via an intrinsic, so adding 0.5 first
+        // gives the same result for the non-negative values used here.
+        let scaled = fraction * Double(totalEighths)
+        var filledEighths = scaled <= 0 ? 0 : Int(scaled + 0.5)
+        filledEighths = min(max(filledEighths, 0), totalEighths)
+        // Rounding a fraction just under 1 (e.g. 0.99) up to the last
+        // eighth would make it indistinguishable from an exact 1.0 bar;
+        // only a fraction that is truly 1 may fill the final eighth.
+        if fraction < 1, filledEighths == totalEighths {
+            filledEighths = totalEighths - 1
+        }
+        let fullCells = filledEighths / eighthsPerCell
+        let remainder = filledEighths % eighthsPerCell
+        let emptyCells = width - fullCells - (remainder > 0 ? 1 : 0)
+        var result = String(repeating: "█", count: fullCells)
+        if remainder > 0 { result.append(partialGlyphs[remainder]) }
+        result += String(repeating: "░", count: emptyCells)
+        return result
     }
 }
 
@@ -662,13 +721,13 @@ public struct _EnvTransformed<Content: View>: View {
 
     /// Applied to a copy of the environment before the subtree builds;
     /// enclosing scopes are unaffected.
-    public var transform: @Sendable (inout EnvironmentValues) -> Void
+    public var transform: (inout EnvironmentValues) -> Void
     /// The subtree that builds under the mutated environment.
     public var content: Content
 
     /// Wraps `content` so it builds under the transformed environment.
     public init(
-        transform: @escaping @Sendable (inout EnvironmentValues) -> Void,
+        transform: @escaping (inout EnvironmentValues) -> Void,
         content: Content
     ) {
         self.transform = transform
@@ -693,7 +752,7 @@ extension View {
 
     /// Arbitrary environment mutation for a subtree.
     public func environment(
-        _ transform: @escaping @Sendable (inout EnvironmentValues) -> Void
+        _ transform: @escaping (inout EnvironmentValues) -> Void
     ) -> _EnvTransformed<Self> {
         _EnvTransformed(transform: transform, content: self)
     }
