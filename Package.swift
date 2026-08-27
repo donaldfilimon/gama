@@ -24,6 +24,8 @@ let package = Package(
     products: [
         .library(name: "Gama", targets: ["Gama"]),
         .library(name: "GamaCore", targets: ["GamaCore"]),
+        .library(name: "GamaPlugin", targets: ["GamaPlugin"]),
+        .library(name: "GamaPlatformServices", targets: ["GamaPlatformServices"]),
         .library(name: "GamaMacros", targets: ["GamaMacros"]),
         .library(name: "GamaDraw", targets: ["GamaDraw"]),
         .library(name: "GamaTUI", targets: ["GamaTUI"]),
@@ -59,6 +61,26 @@ let package = Package(
         //    views in hot paths. No weak refs. Pure value render IR.
         //    Owns FrameHost — the backend-shared event/focus engine.
         .target(name: "GamaCore", swiftSettings: strictCore),
+
+        // ── Plugin runtime: Tier-1 capability model (manifest, grants,
+        //    unforgeable handles, per-host PluginRuntime, PluginSlot).
+        //    Stdlib-only like GamaCore; interfaces only — service
+        //    implementations live in GamaPlatformServices or the app.
+        .target(
+            name: "GamaPlugin",
+            dependencies: ["GamaCore"],
+            swiftSettings: strictCore
+        ),
+
+        // ── Platform-conditional HostServices implementations (stderr
+        //    log, monotonic clock, real scoped filesystem). May import
+        //    Foundation; never imported by any portable target — the
+        //    inverse grep in check-boundaries.sh enforces it.
+        .target(
+            name: "GamaPlatformServices",
+            dependencies: ["GamaCore", "GamaPlugin"],
+            swiftSettings: strictCore
+        ),
 
         // ── Macro declarations (what user code imports)
         .target(
@@ -155,7 +177,10 @@ let package = Package(
 
         .executableTarget(
             name: "GamaDemo",
-            dependencies: ["GamaCore", "GamaMacros", "GamaTUI", "GamaMLIR"],
+            dependencies: [
+                "GamaCore", "GamaMacros", "GamaTUI", "GamaMLIR",
+                "GamaPlugin", "GamaPlatformServices",
+            ],
             swiftSettings: strictCore
         ),
         // strictCore, not wasmSettings: the demo has no @_extern of its own,
@@ -167,7 +192,11 @@ let package = Package(
         ),
         .executableTarget(
             name: "GamaAppleDemo",
-            dependencies: ["GamaCore", "GamaAppleShell"],
+            // GamaAppleUI and GamaDraw are direct dependencies because the
+            // --smoke launch gate reads GamaHostView.currentDrawList.commands,
+            // and MemberImportVisibility requires importing each declaring
+            // module.
+            dependencies: ["GamaCore", "GamaAppleShell", "GamaAppleUI", "GamaDraw"],
             swiftSettings: strictCore
         ),
         .executableTarget(
@@ -179,7 +208,8 @@ let package = Package(
         .testTarget(
             name: "GamaTests",
             dependencies: [
-                "Gama", "GamaCore", "GamaMacros", "GamaMLIR",
+                "Gama", "GamaCore", "GamaPlugin", "GamaPlatformServices",
+                "GamaMacros", "GamaMLIR",
                 "GamaTUI", "GamaDraw", "GamaEmbed", "GamaMacrosImpl",
                 "GamaAppleUI", "GamaAppleShell", "GamaWASM",
                 .product(name: "SwiftSyntaxMacroExpansion", package: "swift-syntax"),

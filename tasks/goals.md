@@ -258,3 +258,50 @@ status: in_progress
   docs/superpowers/specs/2026-08-27-signal-redesign-design.md.
   Implementation waits for the wave-1 branches (plugin runtime, packaging,
   DocC catalogs) to land.
+- Plugin runtime + capability model V1 (2026-08-27): sub-project 2
+  implemented on feat/plugin-runtime-v1 per the approved spec
+  (docs/superpowers/specs/2026-08-27-plugin-runtime-design.md). Delivered:
+  stdlib-only GamaPlugin (manifest/grants/typed errors/unforgeable
+  handles/executor-confined PluginRuntime/PluginSlot), the full
+  contribution surface (namespaced scene contributions with typed
+  primary-role rejection, PluginScenes scene integration consumed by the
+  existing scene graph and AppKit shell, deterministic host-bound
+  commands), GamaPlatformServices (HostServices.standard: stderr log,
+  monotonic clock, real scoped FilesystemProvider with lexical
+  containment, no symlink resolution), a demo status-line slot in
+  gama-demo, extended check-boundaries.sh greps (GamaPlugin held to the
+  GamaCore rules; inverse grep fencing GamaPlatformServices out of
+  portable targets), docs/Plugins.md with the Tier-1 enforcement-honesty
+  stance, and 34 Swift Testing cases. Evidence at delivery time: local
+  check-apple.sh, check-boundaries.sh, check-docs.sh,
+  check-doc-coverage.sh green plus a full swift test run (record exact
+  results in the PR). Deferred, recorded in tasks/todo.md: Tier 2/3,
+  .network, scope subsumption, discovery, persistence, and shell
+  teardown of contributed windows on uninstall. Hosted proof is the
+  six-job matrix on the PR; merge only when green.
+- Packaging & distribution V1 (2026-08-27): sub-project 4 approved
+  (docs/superpowers/specs/2026-08-27-packaging-design.md) and implemented on
+  feat/packaging-v1. Locally proven with real exit codes: bundle-web.sh
+  (pinned-SDK wasm build, site assembled to /private/tmp/gama-dist/web,
+  headless-Chrome smoke against the assembled directory), gama-apple-demo
+  --smoke (offscreen NSApplication, 36 draw commands, exit 0), and
+  bundle-macos.sh ("Gama Demo.app" staged outside the iCloud tree from the
+  gama-apple-demo manifest, plutil lint, ad-hoc deep-strict codesign verify,
+  smoke launch). release-macos.sh (Developer ID + notarytool + stapler) is
+  implemented with hard credential gating; the gate's fail-closed refusal is
+  locally proven and the credentialed path is deliberately unclaimed until a
+  run with GAMA_CODESIGN_IDENTITY/GAMA_NOTARY_PROFILE passes. CI now stages
+  and uploads both artifacts (macos-app, wasm-site); hosted proof rides on
+  the packaging PR's six-job matrix and must be recorded only when green.
+  Manifests in Distribution/ carry identity only, parsed by the fail-closed
+  scripts/lib/manifest.sh reader.
+- Packaging review hardening (2026-08-27, PR #32): repaired all seven active
+  review findings without weakening a gate. The flat-TOML grammar now validates
+  whole identifiers; macOS staging canonicalizes containment and uses
+  plist-aware branding; the wasm bundler verifies the exact Swift revision and
+  the manifest-configured page title; CI uploads a mode-preserving `ditto` ZIP;
+  and the credentialed release path rebuilds its downloadable ZIP after
+  stapling. Local regression probes, `check-toolchain-pins.sh`, the real macOS
+  app bundle gate, transport extraction/signature verification, and the real
+  wasm browser bundle gate are green. Hosted proof remains the exact PR-head
+  six-job matrix after this repair commit; do not infer it from the earlier run.

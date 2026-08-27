@@ -92,6 +92,10 @@ extension View {
 public struct Never_: View {
     /// Self-referential terminator: `Never_` is its own `Body`.
     public typealias Body = Never_
+    /// Creates the terminator value. Public so primitives outside
+    /// GamaCore (backends, the plugin layer) can declare `Body = Never_`
+    /// and satisfy `body` the same way core primitives do.
+    public init() {}
     /// Never invoked; present only to satisfy `View`.
     public var body: Never_ { Never_() }
     /// Compiles to `.empty`; unreachable for well-formed primitives, which
