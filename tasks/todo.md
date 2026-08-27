@@ -190,12 +190,24 @@
       GamaEmbed.h to per-symbol /** */ docs.
 
 ## Later sub-projects (each needs its own spec first)
-- [ ] Sub-project 2: plugin runtime + capability model — APPROVED 2026-08-27
-      (docs/superpowers/specs/2026-08-27-plugin-runtime-design.md): first-party
-      GamaPlatformServices in V1, full contribution surface (slots + scenes +
-      commands), Tier 2/3 deferred. Implement in gated slices: A (types/
-      grants/lifecycle), B (slots), C (scenes+commands), D (platform
-      services).
+- [ ] Sub-project 2: plugin runtime + capability model — APPROVED
+      (docs/superpowers/specs/2026-08-27-plugin-runtime-design.md; the
+      2026-08-26 draft holds rationale). V1 IMPLEMENTED 2026-08-27 on
+      feat/plugin-runtime-v1: GamaPlugin (stdlib-only capability core,
+      PluginRuntime, PluginSlot), scene + command contribution surface
+      (PluginScenes consumed by the scene graph and the AppKit shell,
+      offscreen shell test included), GamaPlatformServices
+      (HostServices.standard + scoped filesystem with hostile-path
+      tests), demo status-line slot, extended check-boundaries.sh, and
+      docs/Plugins.md; 34 Swift Testing cases green locally with the
+      full local gate set. Keep open until the PR's six-job matrix is
+      green and merged. Deferred inside sub-project 2: Tier 2 (dylib
+      loading), Tier 3 (out-of-process ABI), `.network`, scope
+      subsumption/path normalization, manifest macros,
+      discovery/scanning, plugin persistence, and shell teardown of
+      contributed windows on uninstall (uninstall stops future graph
+      compiles from contributing; a live window stays open until closed
+      through window actions — next slice if wanted).
 - [ ] Sub-project 3: scene-first app shell, windowing, lifecycle — APPROVED;
       scene core integrated on main and the macOS shell is implemented/local-
       proven on its delivery branch. Keep open until the shell PR and its
@@ -203,8 +215,30 @@
       design at docs/superpowers/specs/2026-08-27-scene-first-app-shell-design.md.
       Scene core/migration and macOS shell are separate green delivery slices;
       packaging's .app slice depends on both.
-- [ ] Sub-project 4: packaging & distribution — APPROVED 2026-08-27
-      (docs/superpowers/specs/2026-08-27-packaging-design.md): Track W (wasm
-      site bundle) and Track M (.app of gama-apple-demo + Distribution/
-      manifest + --smoke + ad-hoc and Developer ID/notarize scripts) in
-      parallel; notarization is V1 (credential-gated, local evidence only).
+- [ ] Sub-project 4: packaging & distribution — APPROVED
+      (docs/superpowers/specs/2026-08-27-packaging-design.md; the 2026-08-26
+      draft is kept for inventory and rejected alternatives). V1 implemented
+      2026-08-27 on feat/packaging-v1:
+      - Landed and locally proven: scripts/lib/manifest.sh (fail-closed
+        flat-TOML reader), Distribution/ manifests + Info.plist.in
+        (com.donaldfilimon.gama.*, 0.1.0), scripts/bundle-web.sh (site
+        assembled to $GAMA_DIST_ROOT/web, browser smoke green against the
+        assembled directory), gama-apple-demo --smoke (offscreen
+        NSApplication launch gate, non-empty DrawList), and
+        scripts/bundle-macos.sh (staged .app outside the iCloud tree,
+        plutil lint, ad-hoc deep-strict codesign, smoke launch, all green).
+      - CI-gated (hosted proof pending the PR matrix): the macOS job's
+        bundle step + mode-preserving macos-app ZIP upload and the wasm job's
+        bundle step + wasm-site upload. PR review hardening validates whole
+        manifest identifiers, canonicalizes the dist root, uses plist-aware
+        branding, applies and browser-verifies `[web].title`, and checks the
+        exact Swift revision.
+      - Credential-gated: scripts/release-macos.sh Developer ID +
+        notarization path is implemented, rebuilds the download ZIP after
+        stapling, and its fail-closed gating is locally proven; no credentialed
+        run has occurred, so the notarized artifact is not claimed.
+      - Deferred per spec: embed SDK dir, Linux static binary, Windows
+        staged dir, Android assembleRelease + keystore, gama CLI veneer,
+        iOS-family .ipa. No icon source exists, so the iconutil path is
+        implemented but unproven. Keep open until the packaging PR and its
+        six-job matrix are green.
