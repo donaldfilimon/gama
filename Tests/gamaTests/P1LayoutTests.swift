@@ -62,17 +62,22 @@ struct TextFieldControlTests {
     private struct FieldApp: App {
         let text = Signal("ab")
         init() {}
-        var content: some View { TextField("Name", text: text.binding()) }
+        var scenes: some Scene {
+            Window("Field", id: "main", role: .primary) {
+                TextField("Name", text: text.binding())
+            }
+        }
     }
 
     @Test("newline from a character event is consumed and not inserted")
-    func newlineIsNotInserted() {
-        var host = FrameHost(app: FieldApp())
+    func newlineIsNotInserted() throws {
+        let app = FieldApp()
+        var host = try FrameHost(app: app)
         _ = host.pump(size: Size(width: 20, height: 3))
         host.handle(.key(.tab))
         _ = host.pump(size: Size(width: 20, height: 3))
         host.handle(.key(.character("\n")))
-        let value = host.app.text.get()
+        let value = app.text.get()
         #expect(value == "ab")
         #expect(!value.contains("\n"))
     }
@@ -90,14 +95,16 @@ struct TextLayoutEmojiTests {
 @Suite("Button focus vs label")
 struct ButtonFocusStyleTests {
     private struct ColoredButtonApp: App {
-        var content: some View {
-            Button(action: {}) { Text("go").foregroundColor(.red) }
+        var scenes: some Scene {
+            Window("Button", id: "main", role: .primary) {
+                Button(action: {}) { Text("go").foregroundColor(.red) }
+            }
         }
     }
 
     @Test("focus wrap wins over a custom-colored label")
-    func focusWrapWinsOverLabelColor() {
-        var host = FrameHost(app: ColoredButtonApp())
+    func focusWrapWinsOverLabelColor() throws {
+        var host = try FrameHost(app: ColoredButtonApp())
         _ = host.pump(size: Size(width: 12, height: 3))
         host.handle(.key(.tab))
         let laid = host.pump(size: Size(width: 12, height: 3))
