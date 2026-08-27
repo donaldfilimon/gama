@@ -375,13 +375,12 @@ Rationale: the manifest/grant/handle machinery is the part every later tier
 reuses verbatim, and it is fully verifiable with pure in-memory tests on the
 default platform — no new CI jobs, no platform gates, no blocked claims.
 
-## 5. Testing strategy (swift-testing, `Tests/gamaTests`)
+## 5. Testing strategy (Swift Testing, `Tests/gamaTests`)
 
-Following house style: `@Suite`/`@Test` with behavior-named cases
-(`EmbedTests.swift`), hostile-input coverage, and per-host isolation proofs.
-Run through the existing gates only (`./scripts/check-apple.sh` etc.);
-remember this checkout's iCloud rule — tests execute via the check scripts or
-`--scratch-path` outside iCloud, never bare `swift test` in place.
+House style is Swift Testing only: `@Suite`/`@Test` with behavior-named
+cases, hostile-input coverage, and per-host isolation proofs. Invoke with
+`swiftly run swift test --scratch-path /private/tmp/gama-framework-swiftpm`
+or `./scripts/check-apple.sh`. See `docs/Testing.md`.
 
 **Slice A — manifest/grants/lifecycle (`PluginRuntimeTests.swift`):**
 

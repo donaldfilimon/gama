@@ -24,6 +24,7 @@ process-global invalidation.
 - <doc:BackendAuthoring>
 - <doc:EmbeddingAndDrawList>
 - <doc:PlatformsAndLimitations>
+- <doc:Testing>
 - <doc:Migration>
 
 ### Composition

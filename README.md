@@ -63,26 +63,29 @@ are scheduled explicitly with the host/backend's `invalidate()` API.
 ## Build and verify
 
 Apple development uses the pinned Swift 6.5-dev main snapshot
-(`.swift-version`: `main-snapshot-2026-08-21`); the check scripts select it
-explicitly via `xcrun --toolchain org.swift.65202608211a`. Only the xcodebuild
-iOS/tvOS/visionOS gates use Xcode's default 6.4 toolchain.
+(`.swift-version`: `main-snapshot-2026-08-21`). Everyday invocation is
+`swiftly run` (it reads `.swift-version`). Check scripts additionally pin
+`xcrun --toolchain org.swift.65202608211a`. Only the xcodebuild
+iOS/tvOS/visionOS gates use Xcode's default 6.4 toolchain. Tests are Swift
+Testing only.
 
 ```bash
 unset TOOLCHAINS
+swiftly run swift --version
 ./scripts/check-apple.sh
 ./scripts/check-boundaries.sh
 ```
 
 `./scripts/check.sh` is the complete acceptance matrix. It intentionally fails
 when an exact pinned prerequisite or required runtime proof is unavailable.
-See `Toolchains.toml` and
-[`docs/Capabilities.md`](docs/Capabilities.md) for the evidence boundary.
+See [`docs/Toolchain.md`](docs/Toolchain.md), [`docs/Testing.md`](docs/Testing.md),
+`Toolchains.toml`, and [`docs/Capabilities.md`](docs/Capabilities.md).
 
 Run the terminal demo with:
 
 ```bash
 unset TOOLCHAINS
-/usr/bin/xcrun --toolchain org.swift.65202608211a swift run gama-demo
+swiftly run swift run gama-demo
 ```
 
 ## Compatibility

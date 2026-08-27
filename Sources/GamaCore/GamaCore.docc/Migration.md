@@ -21,3 +21,10 @@ Renderers implement the lifecycle-based ``Renderer`` contract and receive a
 Terminal output now flows through `GamaDraw.CellBuffer` and its differential
 presentation. Other backends consume the coalesced `GamaDraw.DrawList`, so
 visual semantics and the foreign-host wire format no longer diverge.
+
+## Testing
+
+Tests migrated from XCTest to Swift Testing. New tests import `Testing` and
+follow `docs/Testing.md`. Macro expansion tests no longer depend on
+`SwiftSyntaxMacrosTestSupport` (XCTest); they use
+`SwiftSyntaxMacrosGenericTestSupport`.

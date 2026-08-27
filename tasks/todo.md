@@ -46,13 +46,27 @@
       table header "Current evidence"); tighten if a stronger claim-honesty
       check is wanted.
 
+## Swift 6.5-dev refresh (2026-08-27)
+- [x] Pin-consistency gate: `scripts/check-toolchain-pins.sh` fails if CI,
+      check-script defaults, or `.swift-version` drift from Toolchains.toml
+- [x] Everyday invocation: `swiftly run` documented in AGENTS.md / CLAUDE.md /
+      README.md / docs/Toolchain.md
+- [x] XCTest → Swift Testing globally (gamaTests, AppleHost, POSIX, macros)
+- [x] Macro tests: SwiftSyntaxMacrosGenericTestSupport, no XCTest product
+- [x] `RenderNode.group` flatten sentinel; ZStack(.topLeading) stays overlay
+- [x] Docs: docs/Testing.md, docs/Toolchain.md, Capabilities remaining column,
+      GamaCore.docc/Testing.md
+- [ ] Hosted matrix green on the refresh PR before merge
+- [ ] Linux ASan: re-enable `detect_leaks=1` once a hosted run proves the
+      Swift Testing runner is leak-clean (CI still sets detect_leaks=0)
+- [ ] MemberImportVisibility spike on strictCore (direct-import fallout in
+      tests); keep off until Apple + Embedded stay green
+
 ## Code follow-ups from Codex review of PR #10 (docs narrowed in f0078dc;
 ## behavior itself unchanged — each needs a code PR with tests)
-- [ ] P1: ZStack(.topLeading) lowers to the exact overlay shape
-      flattenChildren uses as its tuple sentinel, so stack/List parents
-      flatten its children instead of layering. Needs a distinct sentinel
-      or discriminator. (Primitives.swift ZStack.render / View.swift
-      flattenChildren)
+- [x] P1: ZStack(.topLeading) flatten sentinel — fixed via `RenderNode.group`
+      (View.swift flattenChildren / TupleView / ForEach). Regression in
+      BuilderTests.zStackTopLeadingLayersInsteadOfFlattening.
 - [ ] Border title: measure reserves displayWidth+4 but painter requires
       strictly-wider frame — natural-size bordered views reserve blank
       space and drop the caption (CellPainter.drawBorder).
@@ -104,10 +118,9 @@
       top structural item; changes observable resize semantics); Signal
       @unchecked Sendable redesign (Synchronization is banned in GamaCore —
       options are per-field nonisolated(unsafe), non-Sendable + drop
-      App: Sendable, or documented confinement); full XCTest→Swift Testing
-      migration (spec drafts currently say XCTest files stay; payoff is
-      removing the Linux ASAN leak suppression) + MacroSpec-based macro
-      tests (2 roles + 2 diagnostics untested) + FixIts; VoiceOver
+      App: Sendable, or documented confinement — confinement comments landed
+      2026-08-27; redesign still Proposed); MacroSpec FixIts for untested
+      diagnostic roles; VoiceOver
       accessibility from currentDrawList; SIGTERM/SIGHUP/atexit terminal
       restore + SIGWINCH; presentDiff/forEachRun allocation work (measure
       first); ~Copyable on CellBuffer/Terminal (two-part deinit rework);

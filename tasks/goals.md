@@ -92,6 +92,16 @@ status: in_progress
   (DocC member coverage) must merge first for GamaCore/TUI/AppleUI files
   (its Android emulator job flaked with the same adb-offline infra failure
   as PR #9; rerun started 2026-08-27 ~00:15).
+- Swift Testing globally (Donald, 2026-08-27): every XCTest suite moved to
+  Swift Testing. Macro expansion uses SwiftSyntaxMacrosGenericTestSupport
+  (no XCTest). Invocation is `swiftly run`. Pin-consistency gate added.
+  `ZStack(.topLeading)` no longer flattens into parent stacks (group
+  sentinel). Docs expanded: `docs/Testing.md`, `docs/Toolchain.md`,
+  Capabilities remaining-column honesty, GamaCore DocC Testing article.
+  Do not mark this umbrella goal done; sub-projects 2–4 remain Proposed.
+- Swiftly-run convention (Donald, 2026-08-27): agents run the codebase
+  with `unset TOOLCHAINS` then `swiftly run swift <build|run|test|…>`.
+  Recorded in AGENTS.md, CLAUDE.md, README.md, docs/Toolchain.md.
 - Sub-projects 2-4 Proposed: drafts written and committed under
   docs/superpowers/specs/drafts/ (plugin runtime + capability model; app
   shell/windowing/lifecycle; packaging & distribution). Each is DRAFT ONLY —

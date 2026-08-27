@@ -326,10 +326,8 @@ V1 contents (in order; all Proposed):
 
 ## 6. Testing strategy (Proposed)
 
-Follow the repo's current split: new tests use swift-testing
-(`import Testing`, as `EmbedTests.swift` and `FormControlTests.swift`
-already do); the XCTest files (`gamaTests.swift`, `AppleHostTests.swift`)
-stay as they are. All tests live in `Tests/gamaTests`.
+All tests use Swift Testing (`import Testing`) in `Tests/gamaTests`.
+There is no XCTest suite. New suites follow `docs/Testing.md`.
 
 1. **Portable spine tests (pure, no platform, run everywhere):**
    - `FrameHost.handle(.lifecycle(...))`: `.windowCloseRequested` sets
