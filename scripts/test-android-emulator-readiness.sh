@@ -297,11 +297,11 @@ allocated=$((
   + GAMA_ANDROID_POST_BOOT_CEILING_SECONDS
   + GAMA_ANDROID_JOB_HEADROOM_SECONDS
 ))
-assert_equals 1030 "$post_boot_max" "calculated conservative post-boot maximum"
+assert_equals 1090 "$post_boot_max" "calculated conservative post-boot maximum"
 assert_equals 3300 "$allocated" "55-minute job allocation"
 ((post_boot_max < GAMA_ANDROID_POST_BOOT_CEILING_SECONDS))
 assert_equals 240 "$GAMA_ANDROID_JOB_HEADROOM_SECONDS" "job-level headroom"
-assert_equals 410 "$((GAMA_ANDROID_POST_BOOT_CEILING_SECONDS - post_boot_max))" "post-boot ceiling margin"
+assert_equals 350 "$((GAMA_ANDROID_POST_BOOT_CEILING_SECONDS - post_boot_max))" "post-boot ceiling margin"
 
 saved_post_boot_ceiling="$GAMA_ANDROID_POST_BOOT_CEILING_SECONDS"
 GAMA_ANDROID_POST_BOOT_CEILING_SECONDS="$post_boot_max"
@@ -311,6 +311,19 @@ if validate_android_time_budget >"$test_tmp/invalid-budget.output" 2>&1; then
 fi
 GAMA_ANDROID_POST_BOOT_CEILING_SECONDS="$saved_post_boot_ceiling"
 validate_android_time_budget
+
+reset_case ready 2
+# An inner adb timeout exits 124 too; reporting that as the post-boot ceiling
+# sends the next reader after a time budget that was never the problem.
+if run_with_post_boot_ceiling sh -c 'exit 124' >"$FAKE_STATE_DIR/inner-timeout" 2>&1; then
+  echo "error: an inner timeout was not treated as a failure" >&2
+  exit 1
+fi
+if grep -q 'exceeded its' "$FAKE_STATE_DIR/inner-timeout"; then
+  echo "error: an inner timeout was misreported as the post-boot ceiling" >&2
+  exit 1
+fi
+grep -q 'well inside the' "$FAKE_STATE_DIR/inner-timeout"
 
 reset_case ready 2
 run_with_post_boot_ceiling true

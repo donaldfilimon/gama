@@ -28,7 +28,7 @@ GAMA_ANDROID_WAIT_TIMEOUT_SECONDS="${GAMA_ANDROID_WAIT_TIMEOUT_SECONDS:-30}"
 GAMA_ANDROID_RECOVERY_DELAY_SECONDS="${GAMA_ANDROID_RECOVERY_DELAY_SECONDS:-5}"
 GAMA_ANDROID_SETTINGS_TIMEOUT_SECONDS="${GAMA_ANDROID_SETTINGS_TIMEOUT_SECONDS:-5}"
 GAMA_ANDROID_INSTALL_TIMEOUT_SECONDS="${GAMA_ANDROID_INSTALL_TIMEOUT_SECONDS:-90}"
-GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS="${GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS:-10}"
+GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS="${GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS:-30}"
 GAMA_ANDROID_UI_DUMP_TIMEOUT_SECONDS="${GAMA_ANDROID_UI_DUMP_TIMEOUT_SECONDS:-5}"
 GAMA_ANDROID_OUTPUT_TIMEOUT_SECONDS="${GAMA_ANDROID_OUTPUT_TIMEOUT_SECONDS:-2}"
 GAMA_ANDROID_LOGCAT_TIMEOUT_SECONDS="${GAMA_ANDROID_LOGCAT_TIMEOUT_SECONDS:-2}"
@@ -354,13 +354,23 @@ run_android_post_boot_gate() {
 }
 
 run_with_post_boot_ceiling() {
-  local status
+  local status started elapsed
+  started=$SECONDS
   set +e
   timeout "${GAMA_ANDROID_POST_BOOT_CEILING_SECONDS}s" "$@"
   status=$?
   set -e
+  elapsed=$((SECONDS - started))
+  # 124/137 also propagate up from any INNER run_with_timeout under `set -e`,
+  # so status alone cannot distinguish "the gate ran out of time" from "one
+  # adb call did". Only the elapsed time can, and reporting the wrong one
+  # sends the next reader hunting a time budget that was never the problem.
   if ((status == 124 || status == 137)); then
-    echo "error: Android post-boot gate exceeded its ${GAMA_ANDROID_POST_BOOT_CEILING_SECONDS}s ceiling" >&2
+    if ((elapsed >= GAMA_ANDROID_POST_BOOT_CEILING_SECONDS)); then
+      echo "error: Android post-boot gate exceeded its ${GAMA_ANDROID_POST_BOOT_CEILING_SECONDS}s ceiling" >&2
+    else
+      echo "error: an Android command timed out after ${elapsed}s, well inside the ${GAMA_ANDROID_POST_BOOT_CEILING_SECONDS}s post-boot ceiling — see the last adb step above" >&2
+    fi
     return 1
   fi
   return "$status"
