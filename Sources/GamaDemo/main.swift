@@ -19,6 +19,8 @@
 import GamaTUI
 import GamaMLIR
 import GamaMacros
+import GamaPlugin
+import GamaPlatformServices
 
 let accent = #rgb("FF8800")
 let teal = #rgb("34C9B0")
@@ -85,11 +87,55 @@ struct CounterPanel {
     }
 }
 
+// Fills after the FrameHost exists: scene content closures evaluate
+// lazily, so the slot picks the runtime up on the first pump. Confined
+// to the demo's single-threaded setup.
+final class PluginRuntimeBox: @unchecked Sendable {
+    var runtime: PluginRuntime?
+}
+
+/// Tier-1 demo plugin: renders a status line into the app's "status"
+/// slot using the granted `.log` and `.clock` capabilities.
+struct StatusLinePlugin: GamaPluginProtocol {
+    var manifest: PluginManifest {
+        PluginManifest(
+            id: "dev.gama.demo.status",
+            version: PluginVersion(major: 0, minor: 1, patch: 0),
+            requires: [.log, .clock]
+        )
+    }
+
+    private var clock: ClockAccess?
+
+    mutating func activate(in context: PluginContext) throws(PluginError) {
+        clock = context.clock
+        context.log?.log("status plugin activated")
+    }
+
+    func render(slot: SlotID, in context: BuildContext) -> RenderNode {
+        guard slot == "status" else { return .empty }
+        let seconds = (clock?.nowMillis() ?? 0) / 1000
+        return .text(
+            "plugin: dev.gama.demo.status · host uptime \(seconds)s · log+clock granted",
+            style: TextStyle(foreground: .gray)
+        )
+    }
+}
+
 struct DemoApp: App {
-    init() {}
+    let pluginBox: PluginRuntimeBox
+    init() { pluginBox = PluginRuntimeBox() }
+    init(pluginBox: PluginRuntimeBox) { self.pluginBox = pluginBox }
     var scenes: some Scene {
         Window("Gama Demo", id: "main", role: .primary) {
-            ZStack(alignment: .center) { CounterPanel() }
+            ZStack(alignment: .center) {
+                VStack(spacing: 0) {
+                    CounterPanel()
+                    if let runtime = pluginBox.runtime {
+                        PluginSlot("status", runtime: runtime)
+                    }
+                }
+            }
         }
     }
 }
@@ -112,7 +158,39 @@ if wantsMLIR {
     print(GamaLowering.lower(laidOut: laid, name: "demo_laid"))
     print("// pipe into: mlir-opt --allow-unregistered-dialect")
 } else {
-    try DemoApp.main(renderer: TUIRenderer())
+    try runDemoWithPlugins()
+}
+
+// The plugin runtime needs the host's SubscriptionContext, so the demo
+// builds its FrameHost explicitly and mirrors AppRuntime.run()'s loop
+// instead of using the plugin-free App.main(renderer:) convenience.
+func runDemoWithPlugins() throws {
+    let box = PluginRuntimeBox()
+    var host = try FrameHost(app: DemoApp(pluginBox: box))
+    let plugins = PluginRuntime(
+        grants: CapabilityGrants(table: ["dev.gama.demo.status": [.log, .clock]]),
+        services: .standard,
+        subscriptions: host.subscriptions
+    )
+    try plugins.install(StatusLinePlugin())
+    box.runtime = plugins
+
+    var renderer = TUIRenderer()
+    try renderer.begin()
+    host.handle(.lifecycle(.didLaunch))
+    defer {
+        host.handle(.lifecycle(.willTerminate))
+        try? renderer.end()
+    }
+    while !host.wantsQuit {
+        if host.needsFrame {
+            let laid = host.pump(size: renderer.size)
+            try renderer.present(laid)
+        }
+        if let event = try renderer.nextEvent(timeoutMillis: 250) {
+            host.handle(event)
+        }
+    }
 }
 
 // Foundation-free getenv.

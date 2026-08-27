@@ -177,7 +177,10 @@ let package = Package(
 
         .executableTarget(
             name: "GamaDemo",
-            dependencies: ["GamaCore", "GamaMacros", "GamaTUI", "GamaMLIR"],
+            dependencies: [
+                "GamaCore", "GamaMacros", "GamaTUI", "GamaMLIR",
+                "GamaPlugin", "GamaPlatformServices",
+            ],
             swiftSettings: strictCore
         ),
         // strictCore, not wasmSettings: the demo has no @_extern of its own,
