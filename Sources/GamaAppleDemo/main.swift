@@ -3,6 +3,10 @@ import GamaCore
 
 #if canImport(AppKit)
 
+import AppKit
+import GamaAppleUI
+import GamaDraw
+
 private struct DocumentID: Hashable, Sendable, CustomStringConvertible {
     let rawValue: Int
     var description: String { "Document \(rawValue)" }
@@ -83,7 +87,40 @@ private struct AppleDemoApp: App {
     }
 }
 
-try GamaShell.run(AppleDemoApp.self)
+/// Non-interactive launch gate for the packaged bundle: boots
+/// `NSApplication` without entering the event loop, hosts the primary
+/// scene offscreen through the same coordinator the shell uses, and
+/// requires the first pumped frame to produce a non-empty `DrawList`.
+/// Exits 0 only when that render evidence exists.
+@MainActor
+private func runAppleDemoSmoke() throws(SceneConfigurationError) -> Never {
+    let application = NSApplication.shared
+    application.setActivationPolicy(.accessory)
+    application.finishLaunching()
+    let graph = try compileSceneGraph(AppleDemoApp())
+    let coordinator = GamaShellCoordinator(graph: graph, presentsWindows: false)
+    coordinator.beginApplication()
+    guard let instance = coordinator.liveInstanceIDs.first,
+        let controller = coordinator.controllers[instance]
+    else {
+        print("error: smoke opened no primary window instance")
+        exit(1)
+    }
+    let commandCount = controller.hostView.currentDrawList.commands.count
+    guard commandCount > 0 else {
+        print("error: smoke rendered an empty DrawList")
+        exit(1)
+    }
+    coordinator.emitTerminationIfNeeded()
+    print("OK — gama-apple-demo smoke: primary scene rendered \(commandCount) draw commands offscreen")
+    exit(0)
+}
+
+if CommandLine.arguments.dropFirst().contains("--smoke") {
+    try runAppleDemoSmoke()
+} else {
+    try GamaShell.run(AppleDemoApp.self)
+}
 
 #else
 
