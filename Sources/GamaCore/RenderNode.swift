@@ -43,7 +43,7 @@ public struct NodeID: Hashable, Sendable {
 /// `LayoutEngine` measures and places, and every backend paints.
 /// Wrapper cases (`padding` through `interactive`) carry exactly one
 /// child; `stack` and `overlay` carry ordered children.
-public indirect enum RenderNode: Sendable {
+public indirect enum RenderNode: Hashable, Sendable {
     /// Nothing: measures to `.zero` and paints no cells.
     case empty
     /// One run of text in one style; the style merges over whatever the
@@ -56,6 +56,10 @@ public indirect enum RenderNode: Sendable {
     /// painted in order (later entries over earlier) — the `ZStack`
     /// lowering.
     case overlay(alignment: Alignment, children: [RenderNode])  // ZStack
+    /// View-builder and collection sentinel. Containers unpack this via
+    /// `flattenChildren(_:)`; unlike ``RenderNode/overlay(alignment:children:)``,
+    /// it never represents a layered `ZStack`.
+    case group(children: [RenderNode])
     /// Flexible blank space, at least `minLength` cells on the stack's
     /// main axis; absorbs leftover space with weight 1.
     case spacer(minLength: Int)
@@ -110,7 +114,7 @@ public indirect enum RenderNode: Sendable {
 }
 
 /// Layout output: the same tree shape, annotated with absolute frames.
-public struct LaidOutNode: Sendable {
+public struct LaidOutNode: Hashable, Sendable {
     /// The IR node this entry annotates; painters switch on it to
     /// decide what to draw at `frame`.
     public var node: RenderNode
@@ -153,4 +157,3 @@ public struct InteractiveRegion: Hashable, Sendable {
         self.isFocusable = isFocusable
     }
 }
-

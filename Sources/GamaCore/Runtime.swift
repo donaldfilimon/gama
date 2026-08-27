@@ -86,7 +86,7 @@ public protocol App: Sendable {
 
 /// Blocking event loop for poll-style renderers (terminals). All frame,
 /// focus, and action logic lives in `FrameHost`; this adds only the loop.
-public struct AppRuntime<A: App, R: Renderer> {
+public struct AppRuntime<A: App, R: Renderer>: ~Copyable {
     /// The backend that presents frames and delivers events; owned by
     /// value for the lifetime of the loop.
     public var renderer: R

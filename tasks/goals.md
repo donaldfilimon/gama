@@ -102,6 +102,12 @@ status: in_progress
 - Swiftly-run convention (Donald, 2026-08-27): agents run the codebase
   with `unset TOOLCHAINS` then `swiftly run swift <build|run|test|…>`.
   Recorded in AGENTS.md, CLAUDE.md, README.md, docs/Toolchain.md.
+- Integration repair (2026-08-27): merging the DocC branch after PR #11
+  resolved three source conflicts in favor of stale declarations, removing
+  `RenderNode.group`, `Hashable` conformances, and the intended noncopyable
+  host/runtime declarations. A repair branch restores the PR #11 semantics
+  while preserving all DocC additions. Status remains pending until the
+  repair PR's complete hosted matrix is green.
 - Sub-projects 2-4 Proposed: drafts written and committed under
   docs/superpowers/specs/drafts/ (plugin runtime + capability model; app
   shell/windowing/lifecycle; packaging & distribution). Each is DRAFT ONLY —

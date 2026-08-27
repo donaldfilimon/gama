@@ -32,7 +32,7 @@ private final class HostActionStore: @unchecked Sendable {
 /// `pump(size:)` and `handle(_:)` from their own event sources. Out-of-band
 /// changes reach it only through `subscriptions` or an explicit
 /// `invalidate()`; there is no process-global registry to go around it.
-public struct FrameHost<A: App> {
+public struct FrameHost<A: App>: ~Copyable {
     /// The application value whose `content` is rebuilt on every pump.
     /// Replacing or mutating it does not mark the host dirty by itself —
     /// call `invalidate()` to schedule a rebuild.
@@ -76,7 +76,7 @@ public struct FrameHost<A: App> {
     /// Marks the host dirty so the next `needsFrame` check requests a
     /// frame — the explicit out-of-band path for changes no observed
     /// signal carries.
-    public mutating func invalidate() { dirty.set(true) }
+    public func invalidate() { dirty.set(true) }
 
     /// Observe a model signal for this host. Duplicate connections are
     /// coalesced and all observers can be cancelled as one host-owned lifetime.
