@@ -82,12 +82,16 @@ static void gama_tui_restore_termios(void) {
     ) != 0 && errno == EINTR) {}
 }
 
-void gama_tui_signal_restore_now(void) {
-    if (__atomic_exchange_n(
+static int gama_tui_begin_restore(void) {
+    return __atomic_exchange_n(
         &gama_tui_armed,
         (sig_atomic_t)0,
         __ATOMIC_SEQ_CST
-    ) == 0) {
+    ) != 0;
+}
+
+void gama_tui_signal_restore_now(void) {
+    if (!gama_tui_begin_restore()) {
         return;
     }
 
@@ -95,14 +99,22 @@ void gama_tui_signal_restore_now(void) {
     gama_tui_restore_termios();
 }
 
-static void gama_tui_terminating_handler(int signal_number) {
-    gama_tui_signal_restore_now();
+static int gama_tui_restore_saved_actions(void);
 
-    struct sigaction default_action;
-    memset(&default_action, 0, sizeof(default_action));
-    default_action.sa_handler = SIG_DFL;
-    sigemptyset(&default_action.sa_mask);
-    sigaction(signal_number, &default_action, NULL);
+static void gama_tui_terminating_handler(int signal_number) {
+    // A terminal/PTY output descriptor may be blocking with a full queue.
+    // Fatal-signal rescue prioritizes the bounded termios restore and leaves
+    // presentation escape bytes to ordinary teardown paths.
+    if (gama_tui_begin_restore()) {
+        gama_tui_restore_termios();
+    }
+
+    // Re-raise through the process disposition Gama displaced. Restoring all
+    // managed actions first also ensures that a host handler which returns
+    // does not leave Gama intercepting later signals permanently.
+    if (gama_tui_restore_saved_actions() != 0) {
+        _exit(128 + signal_number);
+    }
     raise(signal_number);
 }
 

@@ -407,7 +407,9 @@ public struct ProgressView: View {
     /// Optional prefix drawn before the bar.
     public var label: String?
     /// Bar width in cells. Values below 1 degrade to an empty bar
-    /// (`[]`) rather than crashing or producing out-of-bounds cells.
+    /// (`[]`); excessively large values clamp to a defensive ceiling rather
+    /// than overflowing the eighth-cell calculation or allocating an
+    /// attacker-sized string.
     public var width: Int
 
     /// Creates a progress bar showing `value` out of `total` (a fraction
@@ -449,13 +451,18 @@ public struct ProgressView: View {
         " ", "\u{258F}", "\u{258E}", "\u{258D}", "\u{258C}", "\u{258B}", "\u{258A}", "\u{2589}",
     ]
 
+    /// Far beyond a practical cell viewport, but small enough to keep a
+    /// malformed public width from becoming an unbounded allocation.
+    private static let maximumBarWidth = 4_096
+
     /// Renders `fraction` (already clamped to 0...1) as a `width`-cell
     /// bar with one boundary cell at eighth resolution. `width <= 0`
     /// renders as an empty string rather than indexing anything.
     private static func bar(fraction: Double, width: Int) -> String {
         guard width > 0 else { return "" }
+        let effectiveWidth = min(width, maximumBarWidth)
         let eighthsPerCell = 8
-        let totalEighths = width * eighthsPerCell
+        let totalEighths = effectiveWidth * eighthsPerCell
         // Round-half-up without `.rounded()`: that call lowers to libm
         // (round/rint/trunc/ceil/floor), and GamaCore must stay stdlib-only
         // so it links on the static-Linux, wasm, and Embedded targets.
@@ -472,7 +479,7 @@ public struct ProgressView: View {
         }
         let fullCells = filledEighths / eighthsPerCell
         let remainder = filledEighths % eighthsPerCell
-        let emptyCells = width - fullCells - (remainder > 0 ? 1 : 0)
+        let emptyCells = effectiveWidth - fullCells - (remainder > 0 ? 1 : 0)
         var result = String(repeating: "█", count: fullCells)
         if remainder > 0 { result.append(partialGlyphs[remainder]) }
         result += String(repeating: "░", count: emptyCells)

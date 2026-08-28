@@ -150,7 +150,7 @@ extension TerminalProcessGlobalTests {
             }
         }
 
-        @Test("restoreNow puts termios back, which is what the signal path does")
+        @Test("restoreNow puts termios back like the bounded signal path")
         func restoreNowRestoresTermios() throws {
             try withPTY { slave in
                 var before = termios()
@@ -162,9 +162,9 @@ extension TerminalProcessGlobalTests {
                 try #require(tcgetattr(slave, &during) == 0)
                 #expect(during.c_lflag & tcflag_t(ECHO | ICANON) == 0)
 
-                // Exactly what the SIGTERM/SIGHUP handler invokes. The session is
-                // deliberately NOT closed first: this models the process dying
-                // with the session still alive.
+                // The full ordinary path and bounded SIGTERM/SIGHUP path share
+                // this termios restoration. The session is deliberately NOT
+                // closed first: this models the process dying while it is alive.
                 TerminalRescue.restoreNow()
 
                 var after = termios()

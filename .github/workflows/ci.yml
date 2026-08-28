@@ -165,6 +165,8 @@ jobs:
           api-level: 36
           arch: x86_64
           profile: pixel_2
+          emulator-boot-timeout: 720
+          disable-animations: false
           script: ./scripts/check-android-emulator.sh
 
   embedded-swift-64:

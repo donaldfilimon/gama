@@ -28,6 +28,18 @@ grep -q 'static struct termios gama_tui_saved_termios' \
 grep -q 'static struct sigaction gama_tui_saved_actions' \
   "$ROOT/Sources/GamaTUISignal/GamaTUISignal.c"
 echo "OK — TUI signal handlers and storage confined to C"
+
+# Exercise the handler itself outside Swift: it must re-raise through the
+# displaced host disposition and must not write to a potentially blocking
+# terminal output descriptor on a fatal signal.
+signal_probe_dir="$(mktemp -d)"
+trap 'rm -rf "$signal_probe_dir"' EXIT
+/usr/bin/xcrun clang -std=c11 -Wall -Wextra -Werror \
+  -I "$ROOT/Sources/GamaTUISignal/include" \
+  "$ROOT/Sources/GamaTUISignal/GamaTUISignal.c" \
+  "$ROOT/Tests/Fixtures/TerminalSignal/TerminalSignalProbe.c" \
+  -o "$signal_probe_dir/terminal-signal-probe"
+"$signal_probe_dir/terminal-signal-probe"
 # Inverse boundary: GamaPlatformServices (Foundation-backed service
 # implementations) must never leak into a portable or framework target.
 # Only demos, examples, and tests may import it.
