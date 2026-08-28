@@ -159,6 +159,20 @@ jobs:
         run: ANDROID_NDK_HOME="$ANDROID_HOME/ndk/30.0.15729638" ./scripts/check-android.sh
       - name: Verify emulator readiness recovery policy
         run: ./scripts/test-android-emulator-readiness.sh
+      - name: Enable KVM group permissions
+        # Without this the hosted runner cannot open /dev/kvm (the kvm group is
+        # empty), so android-emulator-runner silently falls back to TCG software
+        # emulation: measured boots of 380,965 ms on a passing run and 720,220 ms
+        # on a failing one, against a 720 s allowance. The ls/getent line is not
+        # decoration -- if /dev/kvm is absent the udev rule is a no-op, and this
+        # step must fail loudly rather than hand the emulator step a false
+        # promise of acceleration.
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm && getent group kvm
       - name: Required emulator input/frame round trip
         uses: reactivecircus/android-emulator-runner@v2
         with:
