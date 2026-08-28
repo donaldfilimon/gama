@@ -333,13 +333,26 @@
       is already var". A first attempt at that negative test used a `func` and
       never exercised the gate (mutation passed); replaced with a tuple-pattern
       binding that does.
-- [ ] Item 4: VoiceOver accessibility derived from `currentDrawList`.
-      OPEN — verified 2026-08-28: `grep -rn "VoiceOver\|NSAccessibility\|
-      UIAccessibility" Sources --include='*.swift'` returns exactly one hit, and
-      it is the doc comment at GamaHostView.swift:53 promising the adapter, not
-      the adapter. (An earlier probe this session used an unquoted `--include`,
-      which zsh failed to glob and never ran grep at all — that non-result is
-      not evidence.)
+- [x] Item 4: VoiceOver accessibility derived from `currentDrawList`. CLOSED
+      2026-08-28. This entry recorded OPEN earlier the same day on a correct
+      grep that returned one hit — the doc comment at GamaHostView.swift:53
+      promising the adapter. PR #54 (f4c1ebc, merged 591134d) landed the
+      adapter hours later and falsified it. The reading was sound; the tree
+      moved underneath it, which is the failure mode a dated ledger exists to
+      expose rather than hide. (The separate note stands: an earlier probe used
+      an unquoted `--include`, which zsh failed to glob, so grep never ran —
+      that non-result was never evidence.)
+      Evidence now: Sources/GamaDraw/AccessibilitySnapshot.swift derives the
+      snapshot platform-free from the rendered frame;
+      Sources/GamaAppleUI/GamaHostAccessibility.swift is the real
+      NSAccessibilityElement/UIAccessibilityElement adapter and posts
+      .layoutChanged; 25 cases across
+      Tests/gamaTests/{AccessibilitySnapshotTests,AppleHostAccessibilityTests}
+      .swift, including "the published text is the frame's text, not a second
+      model of it". PR #54's head passed all six hosted jobs (run 33141672035).
+      Residual, unchanged and NOT to be upgraded: docs/Capabilities.md:26 keeps
+      UIKit compile-proven only, and no manual VoiceOver/Rotor screen-reader
+      acceptance pass has been performed.
 - [x] Item 5: scale-aware `ProgressView`. Landed; verified 2026-08-28 by
       Tests/gamaTests/ProgressViewTests.swift, which pins the sub-cell
       boundary glyph at 1/8, keeps 0.99 visibly distinct from 1.0, refuses to
@@ -359,7 +372,14 @@
       fixture tests. OPEN.
 
 ## CI findings 2026-08-27 (evidence-backed, not yet fixed)
-- [ ] **Android emulator has never had KVM.** Verified on a GREEN main run
+- [ ] **Android emulator has never had KVM.** STILL OPEN at ledger time; the
+      fix is in flight on PR #52 (`ci/android-readiness-deadline`, commit
+      46a8037) and this box flips only when that PR's own six-job matrix is
+      green. Escalation since this was first written: the consequence is no
+      longer hypothetical — main's acceptance matrix is RED on it (runs
+      33173171147 at 4556226 and 33171217505 at 591134d, Android job failing
+      `adb: failed to install ...: Failure calling service package: Broken pipe
+      (32)` three times). Original evidence, on a GREEN main run
       (33068264814, job 98503691390): `ProbeKVM: This user doesn't have
       permissions to use KVM (/dev/kvm)`, group empty (`kvm:x:993:`), falls back
       to TCG software emulation every run. `grep -ci 'kvm|udev|accel'
