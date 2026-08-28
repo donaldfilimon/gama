@@ -132,6 +132,33 @@ verified.
 - Conformances that require `Copyable` cannot be added to `Terminal` without
   superseding this record.
 - Wave 4C additionally asks for an API diff, a migration guide, and a
-  copy-failure compile fixture for any public ownership change. Those are
-  **outstanding** — this record and the gate evidence above are not a
-  substitute for them.
+  copy-failure compile fixture for any public ownership change. All three
+  are now delivered:
+  - **API diff and migration guide** —
+    [../TerminalOwnershipMigration.md](../TerminalOwnershipMigration.md),
+    whose `## API diff` section is the diff and whose `## Migration` section
+    is the guide. It follows `../SceneMigration.md`, this repository's
+    precedent for a deliberate pre-release break.
+  - **Copy-failure compile fixture** — `Tests/Fixtures/Ownership/`, driven by
+    `scripts/check-boundaries.sh`. `error.TerminalMustNotBeCopied.swift` is
+    the copy failure itself; `error.CopyableStructCannotStoreTerminal.swift`
+    and `error.GlobalTerminalCannotBeConsumed.swift` pin the two derived
+    rules this record relies on; `ok.SupportedTerminalOwnership.swift`
+    compiles the surface the change left working, and exists so a broken
+    include path cannot make the negatives pass vacuously.
+    The gate compiles them with `swiftc -c` and requires each negative to
+    emit the diagnostic named in its own `// EXPECT-DIAGNOSTIC:` line.
+    Measured 2026-08-28 on this committed fixture:
+    `-typecheck` exits 0 with no output, `-c` exits 1 with
+    `'terminal' consumed more than once`. Weakening the gate back to
+    `-typecheck` therefore makes the fixture compile and trips the gate's
+    "compiled but must not" branch, so the false negative cannot be
+    reintroduced silently.
+- **The fixture pins the POSIX declaration only.** It compiles against a
+  macOS-built `GamaTUI`, so the `#else` Windows Console `Terminal:
+  ~Copyable` remains proven by the hosted CI Windows job alone, exactly as
+  the Verification section above states. Nothing about these artifacts
+  changes that.
+- **The Windows compiler is still never run locally.** This remains the one
+  honestly outstanding item of the change as a whole, and no local artifact
+  can close it.
