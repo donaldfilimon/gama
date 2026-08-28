@@ -26,18 +26,18 @@ fake_adb() {
   printf 'adb|%s\n' "$*" >> "$FAKE_COMMAND_LOG"
 
   case "$command_name" in
-    get-state)
-      fake_counter_next readiness-probe >/dev/null
-      echo device
-      ;;
     reconnect | wait-for-device)
       ;;
     shell)
       shift
       case "$*" in
         "service check package")
-          probe="$(fake_counter_current readiness-probe)"
-          if [[ "$FAKE_ADB_SCENARIO" == device-offline-then-install ]]; then
+          probe="$(fake_counter_next readiness-probe)"
+          if [[ "$FAKE_ADB_SCENARIO" == readiness-command-hangs ]]; then
+            exec /bin/sleep 30
+          fi
+          if [[ "$FAKE_ADB_SCENARIO" == device-offline-then-install ]] \
+            || { [[ "$FAKE_ADB_SCENARIO" == readiness-shell-retry ]] && ((probe == 1)); }; then
             echo "error: device offline" >&2
             return 1
           fi
@@ -55,6 +55,14 @@ fake_adb() {
             return 1
           fi
           echo 1
+          ;;
+        true)
+          probe="$(fake_counter_current readiness-probe)"
+          if [[ "$FAKE_ADB_SCENARIO" == device-offline-then-install ]] \
+            || { [[ "$FAKE_ADB_SCENARIO" == readiness-shell-retry ]] && ((probe == 1)); }; then
+            echo "error: shell transport unavailable" >&2
+            return 1
+          fi
           ;;
         "settings put global "*)
           setting="${4:-}"
@@ -100,13 +108,24 @@ case "$(basename "$0")" in
     exit $?
     ;;
   timeout)
+    if [[ "${1:-}" != --signal=KILL ]]; then
+      echo "unexpected timeout policy: ${1:-<missing>}" >&2
+      exit 64
+    fi
+    shift
     duration="${1:?timeout duration is required}"
     shift
     printf 'timeout|%s|%s\n' "$duration" "$*" >> "$FAKE_COMMAND_LOG"
+    if [[ "$FAKE_ADB_SCENARIO" == readiness-command-hangs ]]; then
+      exec "$REAL_TIMEOUT" --signal=KILL "$duration" "$@"
+    fi
     exec "$@"
     ;;
   sleep)
     printf 'sleep|%s\n' "${1:-}" >> "$FAKE_COMMAND_LOG"
+    if [[ "$FAKE_ADB_SCENARIO" == readiness-exhausted ]]; then
+      exec /bin/sleep "$@"
+    fi
     exit 0
     ;;
 esac
@@ -118,10 +137,13 @@ for variable in \
   GAMA_ANDROID_POST_BOOT_CEILING_SECONDS \
   GAMA_ANDROID_JOB_HEADROOM_SECONDS \
   GAMA_ANDROID_RECOVERY_BUDGET \
+  GAMA_ANDROID_INSTALL_RECOVERY_BUDGET \
   GAMA_ANDROID_GRADLE_PROJECT_CACHE_DIR \
   GAMA_ANDROID_GRADLE_BUILD_DIR \
   GAMA_ANDROID_CXX_BUILD_DIR \
   GAMA_ANDROID_GRADLE_TIMEOUT_SECONDS \
+  GAMA_ANDROID_READINESS_DEADLINE_SECONDS \
+  GAMA_ANDROID_READINESS_POLL_DELAY_SECONDS \
   GAMA_ANDROID_READY_PROBE_TIMEOUT_SECONDS \
   GAMA_ANDROID_RECONNECT_TIMEOUT_SECONDS \
   GAMA_ANDROID_WAIT_TIMEOUT_SECONDS \
@@ -141,8 +163,28 @@ done
 
 TEST_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SELF="$TEST_ROOT/scripts/test-android-emulator-readiness.sh"
+REAL_TIMEOUT="$(command -v timeout)"
+export REAL_TIMEOUT
 # shellcheck source=/dev/null
 source "$TEST_ROOT/scripts/check-android-emulator.sh"
+
+# Every GAMA_ANDROID_* knob the gate READS must also be DEFINED in it with a
+# `:-default`. A merge that keeps a new reference while taking the other side's
+# definitions leaves the gate dead under `set -u`, and because each case
+# redirects output into a temp file the EXIT trap deletes, the death is silent:
+# exit 1, zero output, no clue which name was missing. That merge has already
+# happened once. This loop turns it into a named failure at the top of the run.
+gate_script="$TEST_ROOT/scripts/check-android-emulator.sh"
+undefined_knobs=()
+while IFS= read -r knob; do
+  grep -q "^${knob}=\"\${${knob}:-" "$gate_script" || undefined_knobs+=("$knob")
+done < <(grep -oE '\$\{?GAMA_ANDROID_[A-Z_]+' "$gate_script" \
+  | sed -E 's/^\$\{?//' | sort -u)
+if ((${#undefined_knobs[@]} > 0)); then
+  echo "error: referenced but never defaulted in check-android-emulator.sh:" >&2
+  printf '  %s\n' "${undefined_knobs[@]}" >&2
+  exit 1
+fi
 
 for external_path in \
   "$GAMA_ANDROID_GRADLE_PROJECT_CACHE_DIR" \
@@ -211,26 +253,61 @@ wait_for_android_services >"$FAKE_STATE_DIR/output" 2>&1
 assert_equals 1 "$ANDROID_READINESS_PROBES" "immediate readiness probes"
 assert_equals 0 "$ANDROID_RECOVERIES_USED" "immediate readiness recoveries"
 
+# A device that is present but whose services are still starting must be
+# WAITED for, never reconnected: burning the shared budget here is what made
+# a slow-but-healthy emulator fail the gate ~30s after boot.
 reset_case readiness-package-retry 2
 wait_for_android_services >"$FAKE_STATE_DIR/output" 2>&1
 assert_equals 2 "$ANDROID_READINESS_PROBES" "package retry probes"
-assert_equals 1 "$ANDROID_RECOVERIES_USED" "package retry recovery consumption"
-assert_log_count 1 '^timeout|5s|adb reconnect$' "package retry reconnect timeout"
-assert_log_count 1 '^timeout|30s|adb wait-for-device$' "package retry wait timeout"
+assert_equals 0 "$ANDROID_RECOVERIES_USED" "slow services consume no recovery"
+assert_equals 2 "$ANDROID_RECOVERIES_REMAINING" "slow services preserve the budget"
+assert_log_count 0 '^timeout|5s|adb reconnect$' "slow services do not reconnect"
 
 reset_case readiness-settings-retry 2
 wait_for_android_services >"$FAKE_STATE_DIR/output" 2>&1
 assert_equals 2 "$ANDROID_READINESS_PROBES" "settings retry probes"
-assert_equals 1 "$ANDROID_RECOVERIES_USED" "settings retry recovery consumption"
+assert_equals 0 "$ANDROID_RECOVERIES_USED" "slow settings provider consumes no recovery"
 
+# A broken shell transport must reconnect instead of waiting out the full
+# service-readiness deadline.
+reset_case readiness-shell-retry 2
+wait_for_android_services >"$FAKE_STATE_DIR/output" 2>&1
+assert_equals 2 "$ANDROID_READINESS_PROBES" "shell transport retry probes"
+assert_equals 1 "$ANDROID_RECOVERIES_USED" "broken shell transport consumes one recovery"
+assert_log_count 1 '^timeout|5s|adb reconnect$' "broken shell transport reconnects"
+
+# Services that never arrive still fail closed at a real wall-clock deadline.
 reset_case readiness-exhausted 2
-if wait_for_android_services >"$FAKE_STATE_DIR/output" 2>&1; then
+readiness_started_at="$SECONDS"
+if GAMA_ANDROID_READINESS_DEADLINE_SECONDS=2 \
+  GAMA_ANDROID_READINESS_POLL_DELAY_SECONDS=1 \
+  wait_for_android_services >"$FAKE_STATE_DIR/output" 2>&1; then
   echo "error: persistent readiness failure unexpectedly succeeded" >&2
   exit 1
 fi
-assert_equals 3 "$ANDROID_READINESS_PROBES" "readiness exhaustion probes"
-assert_equals 2 "$ANDROID_RECOVERIES_USED" "readiness exhaustion recovery consumption"
-assert_equals 0 "$ANDROID_RECOVERIES_REMAINING" "readiness exhaustion remaining budget"
+readiness_elapsed=$((SECONDS - readiness_started_at))
+assert_equals 0 "$ANDROID_RECOVERIES_USED" "a present-but-dead device spends no reconnects"
+if ((readiness_elapsed < 2 || readiness_elapsed > 4)); then
+  echo "error: readiness wall-clock deadline took ${readiness_elapsed}s; expected 2-4s" >&2
+  exit 1
+fi
+grep -q 'did not' "$FAKE_STATE_DIR/output"
+
+# A readiness command that never returns is killed at the same deadline; the
+# polling test above alone would not catch a timeout wrapper that only sent TERM.
+reset_case readiness-command-hangs 2
+readiness_started_at="$SECONDS"
+if GAMA_ANDROID_READINESS_DEADLINE_SECONDS=2 \
+  wait_for_android_services >"$FAKE_STATE_DIR/output" 2>&1; then
+  echo "error: hanging readiness command unexpectedly succeeded" >&2
+  exit 1
+fi
+readiness_elapsed=$((SECONDS - readiness_started_at))
+if ((readiness_elapsed < 2 || readiness_elapsed > 4)); then
+  echo "error: hanging readiness command took ${readiness_elapsed}s; expected 2-4s" >&2
+  exit 1
+fi
+assert_equals 1 "$ANDROID_READINESS_PROBES" "hanging readiness probes"
 
 reset_case animation-retry 1
 configure_android_animations >"$FAKE_STATE_DIR/output" 2>&1
@@ -312,11 +389,12 @@ allocated=$((
   + GAMA_ANDROID_POST_BOOT_CEILING_SECONDS
   + GAMA_ANDROID_JOB_HEADROOM_SECONDS
 ))
-assert_equals 1090 "$post_boot_max" "calculated conservative post-boot maximum"
+assert_equals 1245 "$post_boot_max" "calculated conservative post-boot maximum"
 assert_equals 3300 "$allocated" "55-minute job allocation"
 ((post_boot_max < GAMA_ANDROID_POST_BOOT_CEILING_SECONDS))
 assert_equals 240 "$GAMA_ANDROID_JOB_HEADROOM_SECONDS" "job-level headroom"
-assert_equals 350 "$((GAMA_ANDROID_POST_BOOT_CEILING_SECONDS - post_boot_max))" "post-boot ceiling margin"
+assert_equals 30 "$GAMA_ANDROID_RECOVERY_DELAY_SECONDS" "service settle delay"
+assert_equals 195 "$((GAMA_ANDROID_POST_BOOT_CEILING_SECONDS - post_boot_max))" "post-boot ceiling margin"
 
 saved_post_boot_ceiling="$GAMA_ANDROID_POST_BOOT_CEILING_SECONDS"
 GAMA_ANDROID_POST_BOOT_CEILING_SECONDS="$post_boot_max"
@@ -325,6 +403,16 @@ if validate_android_time_budget >"$test_tmp/invalid-budget.output" 2>&1; then
   exit 1
 fi
 GAMA_ANDROID_POST_BOOT_CEILING_SECONDS="$saved_post_boot_ceiling"
+validate_android_time_budget
+
+saved_install_recovery_budget="$GAMA_ANDROID_INSTALL_RECOVERY_BUDGET"
+GAMA_ANDROID_INSTALL_RECOVERY_BUDGET=invalid
+if validate_android_time_budget >"$test_tmp/invalid-install-budget.output" 2>&1; then
+  echo "error: timing validation accepted an invalid install recovery budget" >&2
+  exit 1
+fi
+grep -q 'must be a nonnegative integer' "$test_tmp/invalid-install-budget.output"
+GAMA_ANDROID_INSTALL_RECOVERY_BUDGET="$saved_install_recovery_budget"
 validate_android_time_budget
 
 reset_case ready 2

@@ -35,3 +35,8 @@ this module documents the drawing API itself.
 - ``DrawCommand``
 - ``DrawList``
 - ``DrawList/DecodeError``
+
+### Assistive-technology text
+
+- ``AccessibilitySnapshot``
+- ``AccessibilitySnapshot/Line``

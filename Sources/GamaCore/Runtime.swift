@@ -176,6 +176,7 @@ public struct AppRuntime<A: App, R: Renderer>: ~Copyable {
         // a renderer whose `size` property has not caught up yet.
         var lastObservedRendererSize = renderer.size
         while !pump.wantsQuit {
+            var inputTimeoutMillis = frameTimeoutMillis
             if renderer.size != lastObservedRendererSize {
                 lastObservedRendererSize = renderer.size
                 pump.handle(.resize(renderer.size))
@@ -183,10 +184,13 @@ public struct AppRuntime<A: App, R: Renderer>: ~Copyable {
             if let advanced = pump.advance() {
                 try renderer.present(advanced.frame)
                 if advanced.followUp {
-                    continue
+                    // A follow-up frame stays ahead of any blocking wait, but
+                    // a zero-timeout poll still gives quit and resize input a
+                    // chance to break a continuously invalidating render loop.
+                    inputTimeoutMillis = 0
                 }
             }
-            if let event = try renderer.nextEvent(timeoutMillis: frameTimeoutMillis) {
+            if let event = try renderer.nextEvent(timeoutMillis: inputTimeoutMillis) {
                 if case .resize(let size) = event, renderer.size == size {
                     // Avoid presenting the same resize twice when a renderer
                     // updates `size` and emits its explicit event together.
