@@ -16,6 +16,30 @@ fi
 if grep -R -n -E --include='*.swift' 'ActionRegistry|Invalidator\.shared|nonisolated\(unsafe\).*_host' "$ROOT/Sources/GamaCore" "$ROOT/Sources/GamaPlugin" "$ROOT/Sources/GamaEmbed"; then
   echo "error: process-global framework state detected" >&2; exit 1
 fi
+# POSIX handlers must terminate at the C support boundary. A Swift handler
+# closure or Swift-owned signal storage can enter runtime initialization or
+# exclusivity machinery from asynchronous signal context.
+if grep -n -E 'nonisolated\(unsafe\)|@convention\(c\)|sigaction\(|atexit\(' \
+  "$ROOT/Sources/GamaTUI/TerminalRescue.swift"; then
+  echo "error: GamaTUI signal handler state or installation escaped into Swift" >&2; exit 1
+fi
+grep -q 'static struct termios gama_tui_saved_termios' \
+  "$ROOT/Sources/GamaTUISignal/GamaTUISignal.c"
+grep -q 'static struct sigaction gama_tui_saved_actions' \
+  "$ROOT/Sources/GamaTUISignal/GamaTUISignal.c"
+echo "OK — TUI signal handlers and storage confined to C"
+
+# Exercise the handler itself outside Swift: it must re-raise through the
+# displaced host disposition and must not write to a potentially blocking
+# terminal output descriptor on a fatal signal.
+signal_probe_dir="$(mktemp -d)"
+trap 'rm -rf "$signal_probe_dir"' EXIT
+/usr/bin/xcrun clang -std=c11 -Wall -Wextra -Werror \
+  -I "$ROOT/Sources/GamaTUISignal/include" \
+  "$ROOT/Sources/GamaTUISignal/GamaTUISignal.c" \
+  "$ROOT/Tests/Fixtures/TerminalSignal/TerminalSignalProbe.c" \
+  -o "$signal_probe_dir/terminal-signal-probe"
+"$signal_probe_dir/terminal-signal-probe"
 # Inverse boundary: GamaPlatformServices (Foundation-backed service
 # implementations) must never leak into a portable or framework target.
 # Only demos, examples, and tests may import it.

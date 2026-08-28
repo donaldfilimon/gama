@@ -143,6 +143,12 @@ public struct AppRuntime<A: App, R: Renderer>: ~Copyable {
         self.frameTimeoutMillis = frameTimeoutMillis
     }
 
+    /// Invalidates this runtime whenever `signal` changes, for model updates
+    /// that arrive outside the renderer's input callbacks.
+    public func observe<Value>(_ signal: Signal<Value>) {
+        pump.observe(signal)
+    }
+
     /// Blocks in a present/handle loop until the host requests quit
     /// (Ctrl-C / Ctrl-Q by default). Frames are produced only while the
     /// host is dirty; idle iterations just wait on `nextEvent`. Rethrows
@@ -176,6 +182,9 @@ public struct AppRuntime<A: App, R: Renderer>: ~Copyable {
             }
             if let advanced = pump.advance() {
                 try renderer.present(advanced.frame)
+                if advanced.followUp {
+                    continue
+                }
             }
             if let event = try renderer.nextEvent(timeoutMillis: frameTimeoutMillis) {
                 if case .resize(let size) = event, renderer.size == size {

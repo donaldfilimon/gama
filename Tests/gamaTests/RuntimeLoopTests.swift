@@ -21,6 +21,7 @@ struct RuntimeLoopTests {
         var presented: [LaidOutNode] = []
         var beginCount = 0
         var endCount = 0
+        var steps: [String] = []
         var presentedSizes: [Size] { presented.map(\.frame.size) }
     }
 
@@ -40,9 +41,13 @@ struct RuntimeLoopTests {
 
         mutating func begin() { recorder.beginCount += 1 }
         mutating func end() { recorder.endCount += 1 }
-        mutating func present(_ root: LaidOutNode) { recorder.presented.append(root) }
+        mutating func present(_ root: LaidOutNode) {
+            recorder.presented.append(root)
+            recorder.steps.append("present")
+        }
 
         mutating func nextEvent(timeoutMillis: Int) -> InputEvent? {
+            recorder.steps.append("wait")
             guard index < script.count else { return .key(.ctrl("q")) }
             defer { index += 1 }
             return script[index]
@@ -118,6 +123,29 @@ struct RuntimeLoopTests {
         }
     }
 
+    private struct InvalidatingView: View {
+        typealias Body = Never_
+        let signal: Signal<Int>
+        var body: Never_ { Never_() }
+
+        func render(in context: BuildContext) -> RenderNode {
+            let value = signal.get()
+            if value == 0 { signal.set(1) }
+            return .text("frame \(value)", style: context.inheritedStyle)
+        }
+    }
+
+    private struct InvalidatingApp: App {
+        let signal: Signal<Int>
+
+        init() { signal = Signal(0) }
+        init(signal: Signal<Int>) { self.signal = signal }
+
+        var scenes: some Scene {
+            Window("Main", id: "main", role: .primary) { InvalidatingView(signal: signal) }
+        }
+    }
+
     @Test("begin runs once before the first frame and end runs on the way out")
     func acquiresAndReleasesTheSurface() throws {
         let recorder = Recorder()
@@ -149,6 +177,22 @@ struct RuntimeLoopTests {
         runtime.run()
 
         #expect(recorder.presented.count == 1)
+    }
+
+    @Test("a requested follow-up frame is presented before the renderer waits")
+    func followUpFrameSkipsTheInputWait() throws {
+        let recorder = Recorder()
+        let signal = Signal(0)
+        var runtime = try AppRuntime(
+            app: InvalidatingApp(signal: signal),
+            renderer: ScriptedRenderer(
+                size: Size(width: 20, height: 4), recorder: recorder, script: [nil]))
+        runtime.observe(signal)
+
+        runtime.run()
+
+        #expect(Array(recorder.steps.prefix(2)) == ["present", "present"])
+        #expect(recorder.presented.count == 2)
     }
 
     @Test("a resize inside the loop re-lays out at the new extent")

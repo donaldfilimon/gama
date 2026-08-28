@@ -42,7 +42,7 @@ jobs:
       - name: iOS, tvOS, and visionOS compile
         run: ./scripts/check-apple-platforms.sh
       - name: Source boundaries and documentation
-        run: ./scripts/check-boundaries.sh && ./scripts/check-docs.sh && ./scripts/check-doc-coverage.sh
+        run: ./scripts/check-boundaries.sh && ./scripts/check-concurrency-negative.sh && ./scripts/check-docs.sh && ./scripts/check-doc-coverage.sh
       - name: MLIR parse
         run: |
           brew install llvm
@@ -165,6 +165,8 @@ jobs:
           api-level: 36
           arch: x86_64
           profile: pixel_2
+          emulator-boot-timeout: 720
+          disable-animations: false
           script: ./scripts/check-android-emulator.sh
 
   embedded-swift-64:

@@ -82,8 +82,9 @@ public enum GamaWeb {
     /// Install the app. Call from the module's `main` (wasi reactor runs
     /// top-level code once at `_initialize`). A second call replaces the
     /// previous host wholesale (its subscriptions and state are dropped).
+    /// Ownership of the app region transfers into the installed reactor host.
     public static func install<A: App>(
-        app: A,
+        app: sending A,
         columns: Int = 100,
         rows: Int = 30
     ) throws(SceneConfigurationError) {

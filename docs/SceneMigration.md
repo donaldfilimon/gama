@@ -98,7 +98,7 @@ _ = pump.size  // the new extent, before any view code runs
 Embed and WASM are unaffected — they already behaved this way. See
 [ADR 0008](adr/0008-one-pump-eager-resize.md).
 
-## `App`, `View`, and `Scene` are no longer `Sendable` (2026-08-27)
+## Host-confined declarations are no longer `Sendable` (2026-08-27)
 
 `Signal` is now non-`Sendable`, so every type that transitively owns one
 drops the `Sendable` claim it could only satisfy because `Signal` laundered
@@ -108,6 +108,11 @@ never was safe, it was merely unchecked.
 
 Host services (log, clock, filesystem), the window command channel, and
 scene payload values remain `Sendable`; those genuinely cross contexts.
+
+`PluginRuntime` follows the same rule and `PluginRuntime.install` now takes a
+`sending` plugin. App ownership transfer is explicit at the long-lived Apple,
+WASM, and C-embed install boundaries; the synchronous `AppRuntime`,
+`FrameHost`, and scene compiler remain same-executor plumbing.
 
 See [ADR 0009](adr/0009-signal-is-not-sendable.md), which also records a
 measured correction: a retroactive `@unchecked Sendable` conformance still

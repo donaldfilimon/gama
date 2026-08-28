@@ -138,7 +138,7 @@ for script in bundle-macos.sh bundle-web.sh; do
     "Swift $swift_revision" "packaging Swift 6.5-dev revision grep"
 done
 
-for script in check-apple.sh check-docs.sh check-c-abi.sh check-mlir.sh; do
+for script in check-apple.sh check-concurrency-negative.sh check-docs.sh check-c-abi.sh check-mlir.sh; do
   must_contain "$ROOT/scripts/$script" "$xctoolchain_id" "GAMA_TOOLCHAIN_ID default"
 done
 

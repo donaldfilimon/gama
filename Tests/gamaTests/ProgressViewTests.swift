@@ -113,4 +113,11 @@ struct ProgressViewTests {
         #expect(almostFull == "[▉] 99%")
         #expect(almostFull != renderedText(ProgressView(value: 1, total: 1, width: 1)))
     }
+
+    @Test("an untrusted width is bounded before scaling or allocation")
+    func hostileWidthIsBounded() {
+        let text = renderedText(ProgressView(value: 0.5, total: 1, width: .max))
+        #expect(text.count < 10_000)
+        #expect(text.hasSuffix("] 50%"))
+    }
 }

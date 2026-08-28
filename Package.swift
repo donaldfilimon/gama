@@ -114,8 +114,9 @@ let package = Package(
         // ── TUI backend: POSIX terminals (Darwin/Glibc — termios/ioctl
         //    import cleanly) and Windows Console (WinSDK — VT output,
         //    ReadConsoleInputW input). One Renderer, three OS families.
-        // C storage for signal-shared flags: Swift cannot express C's
-        // `volatile sig_atomic_t`, which POSIX requires for handler state.
+        // Private POSIX rescue boundary: handlers, termios, displaced signal
+        // dispositions, restore bytes, and sig_atomic_t latches stay in C so
+        // asynchronous signal context never enters the Swift runtime.
         .target(name: "GamaTUISignal"),
 
         .target(

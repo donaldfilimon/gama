@@ -60,6 +60,11 @@ call the OS at all; Embedded has no OS).
   (`serviceUnavailable`). Successful install and uninstall invalidate
   the owning host. Deinitializing the runtime deactivates every installed
   plugin. Two hosts, two runtimes: nothing is shared.
+- `PluginRuntime` is explicitly non-`Sendable`; its unavailable conformance
+  makes ordinary cross-executor use a compiler error. `install` takes a
+  `sending` plugin because successful installation transfers that plugin's
+  state and callbacks into the runtime. Commands, scenes, and observations
+  remain on the owning host's executor.
 - `PluginContext` carries the granted, unforgeable handles plus the
   plugin installation's observation context. That context forwards a
   plugin `Signal` change or `invalidate()` to exactly one owning host,

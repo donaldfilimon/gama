@@ -6,7 +6,11 @@ SWIFT="${GAMA_SWIFT_64:-/Users/donaldfilimon/Library/Developer/Toolchains/swift-
 SCRATCH_ROOT="${GAMA_SCRATCH_ROOT:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}}"
 "$SWIFT" --version | grep -q 'Swift version 6.5'
 "$SWIFT" sdk list | grep -Fxq "$SDK" || { echo "error: missing Linux SDK $SDK" >&2; exit 1; }
-"$SWIFT" build --package-path "$ROOT" --scratch-path "$SCRATCH_ROOT/gama-linux-swiftpm" --swift-sdk "$SDK" --triple aarch64-swift-linux-musl --target GamaCore
+for target in GamaCore GamaTUI; do
+  "$SWIFT" build --package-path "$ROOT" \
+    --scratch-path "$SCRATCH_ROOT/gama-linux-swiftpm" --swift-sdk "$SDK" \
+    --triple aarch64-swift-linux-musl --target "$target"
+done
 objects=()
 while IFS= read -r -d '' object; do objects+=("$object"); done < <(
   find "$SCRATCH_ROOT/gama-linux-swiftpm" -type f \
@@ -44,4 +48,4 @@ grep -q "reference 'round'.*RoundedRequiresLibm" <<<"$fixture_output" || {
   echo "error: static-Linux fixture failed without naming target and round" >&2; exit 1
 }
 echo "OK — static-Linux portable-symbol negative (RoundedRequiresLibm -> round)"
-echo "OK — Linux SDK build"
+echo "OK — Linux SDK GamaCore + GamaTUI build"

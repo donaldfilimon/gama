@@ -7,17 +7,19 @@
 import GamaCore
 
 /// The per-host plugin registry: install, capability mediation, slot
-/// rendering, and lifecycle. `@unchecked Sendable` because GamaCore
-/// cannot import Synchronization; like ``FrameHost`` itself, a runtime
-/// is confined to its owning host's executor and never shared across
-/// concurrent hosts. Deinitializing a runtime deactivates every
-/// installed plugin, mirroring `SubscriptionContext.deinit`.
-public final class PluginRuntime: @unchecked Sendable {
+/// rendering, and lifecycle. A runtime is confined to its owning host's
+/// executor and never shared across concurrent hosts. Deinitializing a
+/// runtime deactivates every installed plugin, mirroring
+/// `SubscriptionContext.deinit`.
+///
+/// **Not `Sendable`, and unavailably so.** Installation transfers a plugin's
+/// region into the runtime with `sending`; command, scene, and subscription
+/// callbacks then remain on the owning host's executor.
+public final class PluginRuntime {
     /// Revocation state shared by every command value minted for one
     /// installation. Like the runtime itself, access is host-executor
-    /// confined; `@unchecked Sendable` permits capture by command closures
-    /// without claiming cross-executor mutation is safe.
-    private final class Lease: @unchecked Sendable {
+    /// confined.
+    private final class Lease {
         var isActive = true
         func revoke() { isActive = false }
     }
@@ -72,8 +74,9 @@ public final class PluginRuntime: @unchecked Sendable {
     /// to the granted service-backed subset, builds the plugin's
     /// ``PluginContext``, and activates it. All-or-nothing: any failure
     /// leaves the runtime unchanged with nothing partially activated or
-    /// observed. Success invalidates the owning host.
-    public func install(_ plugin: some GamaPluginProtocol) throws(PluginError) {
+    /// observed. Success invalidates the owning host. The `sending` parameter
+    /// transfers ownership of the plugin region into this runtime.
+    public func install(_ plugin: sending some GamaPluginProtocol) throws(PluginError) {
         let manifest = plugin.manifest
         let id = manifest.id
         guard manifest.abi == PluginManifest.currentABI else {
@@ -235,3 +238,9 @@ public final class PluginRuntime: @unchecked Sendable {
         }
     }
 }
+
+/// A plugin runtime owns executor-confined lifecycle and callback state; see
+/// ``PluginRuntime``. The unavailable conformance makes an accidental
+/// `Sendable` use fail with a named compiler diagnostic.
+@available(*, unavailable)
+extension PluginRuntime: @unchecked Sendable {}

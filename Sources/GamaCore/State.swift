@@ -74,13 +74,14 @@ public final class SubscriptionContext {
 /// **Not `Sendable`, and unavailably so.** A signal belongs to exactly one
 /// host at a time. That was previously an `@unchecked Sendable` class with
 /// the rule written in this comment and enforced by nobody; it is now a
-/// fact the compiler checks. The unavailable conformance below is
-/// load-bearing: it stops any consumer from "fixing" the conformance
-/// retroactively and quietly reintroducing cross-host sharing.
+/// fact ordinary `Sendable` use must confront. The unavailable conformance
+/// below is load-bearing: it produces a named diagnostic at the declaration.
+/// A consumer can still add a retroactive `@unchecked` conformance, but only
+/// by accepting the pinned compiler's explicit data-race warning.
 ///
 /// Moving a signal between contexts is still possible — use `sending`
 /// parameters, which transfer the region instead of sharing it. See
-/// [ADR 0009](../../docs/adr/0009-noncopyable-signal-confinement.md).
+/// [ADR 0009](../../docs/adr/0009-signal-is-not-sendable.md).
 public final class Signal<Value: Sendable> {
     private var value: Value
     private var observers: [(UInt64, () -> Void)] = []
@@ -171,10 +172,10 @@ extension Signal where Value: Equatable {
 
 /// Signals are single-host by construction; see ``Signal``.
 ///
-/// Spelled `@available(*, unavailable)` rather than simply omitted so the
-/// conformance cannot be added retroactively by a consumer module, which
-/// is what makes single-host confinement a compiler-checked fact instead
-/// of a documented convention.
+/// Spelled `@available(*, unavailable)` rather than simply omitted so normal
+/// `Sendable` use fails at this declaration and a retroactive `@unchecked`
+/// conformance emits `#UnavailableSendableConformance` instead of silently
+/// overriding the host-confinement contract.
 @available(*, unavailable)
 extension Signal: @unchecked Sendable {}
 

@@ -1,4 +1,4 @@
-# 0009 — Signal is not Sendable; confinement is compiler-checked
+# 0009 — Signal and PluginRuntime are not Sendable
 
 Status: Accepted. Supersedes [0004](0004-signal-confinement.md).
 
@@ -16,18 +16,23 @@ That laundering propagated: every type that transitively held a signal had
 to claim `Sendable` too — `View`, `App`, `Scene`, `BuildContext`,
 `Binding`, `SubscriptionContext`, `GamaPluginProtocol`, plugin scene and
 command contributions — and each of those claims was satisfiable *only*
-because `Signal` lied at the bottom.
+because `Signal` lied at the bottom. Plugin V1 then introduced the same
+executor-confined claim on `PluginRuntime` and its command lease.
 
 ## Decision
 
-**`Signal` is not `Sendable`, and unavailably so.** The confinement the
-comment described is now a fact the compiler checks:
+**`Signal` and `PluginRuntime` are not `Sendable`, and unavailably so.** The
+confinement their comments described now produces a compiler error at ordinary
+`Sendable` use:
 
 ```swift
 public final class Signal<Value: Sendable> { … }
 
 @available(*, unavailable)
 extension Signal: @unchecked Sendable {}
+
+@available(*, unavailable)
+extension PluginRuntime: @unchecked Sendable {}
 ```
 
 The laundering is removed everywhere it had spread. These types drop
@@ -39,11 +44,18 @@ The laundering is removed everywhere it had spread. These types drop
 | `BuildContext` | carries the host's action/key registration hooks |
 | `Binding` | travels into child components within one build pass |
 | `SubscriptionContext` | its invalidation hook captures the host's dirty signal |
-| `GamaPluginProtocol`, `PluginContext`, plugin scene/command contributions | installed into, and run on, exactly one host |
+| `GamaPluginProtocol`, `PluginRuntime`, `PluginContext`, plugin scene/command contributions | installed into, and run on, exactly one host |
+| `HostActionStore`, `CompiledSceneGraph`, `SceneSurface` | hold host-local callbacks and mutable action/lifecycle state |
 
 What stays `@Sendable`, deliberately, because it genuinely crosses
 contexts: `HostServices` (log, clock, filesystem), the AppKit window
 command channel (`enqueue`), and `ScenePayload`'s value operations.
+
+`sending` appears only on public ownership-transfer operations:
+`GamaHostView.init(app:)`, `GamaHostView.install(app:)`, `GamaWeb.install`,
+`GamaEmbed.makeContext`, and `PluginRuntime.install`. Synchronous internal
+plumbing (`AppRuntime`, `FrameHost`, scene compilation, and backend boxes)
+does not pretend to cross an isolation domain.
 
 ## Correction to the spec (measured 2026-08-27)
 
@@ -71,12 +83,16 @@ error (`#SendableClosureCaptures`).
 
 ## Verification
 
-- `Tests/Fixtures/Confinement/` holds negative fixtures outside every
-  SwiftPM target, driven by `scripts/check-boundaries.sh`: `error.*` must
-  fail to compile, `warn.*` must compile *and* emit the named diagnostic.
-  Folded into the existing boundaries gate rather than a new CI job,
-  because the six required status-check contexts are name-pinned in the
-  repository ruleset and adding a job would orphan them.
+- `Tests/CompileFail/SignalSendable.swift` and
+  `Tests/CompileFail/PluginRuntimeSendable.swift` live outside every SwiftPM
+  target. `scripts/check-concurrency-negative.sh` builds the modules and
+  type-checks both with the exact pinned compiler; each must fail, name its
+  type, diagnose the unavailable `Sendable` conformance, and point to the
+  declaration. The gate runs from local `check.sh` and the existing macOS CI
+  job, so no required status-check context changes.
+- The measured retroactive-conformance warning remains pinned separately by
+  `Tests/Fixtures/Confinement/warn.SendableConformanceIsFlagged.swift` in the
+  boundary gate.
 - The concurrent-host isolation suites pass **unchanged** — they proved
   the property behaviorally; the type system now also states it.
 - Zero runtime cost: region isolation and `sending` are language
@@ -88,3 +104,5 @@ error (`#SendableClosureCaptures`).
   or `View: Sendable`. In-repository conformers migrate atomically;
   `../SceneMigration.md` carries the note.
 - `State` is no longer `Sendable`, matching the signal it wraps.
+- `PluginRuntime.install` takes a `sending` plugin because successful install
+  is an ownership transfer; cached commands remain host-local and revocable.

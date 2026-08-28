@@ -485,7 +485,7 @@ public struct WindowContextReader<Content: View>: View {
 
 // MARK: - Package-private scene compilation
 
-package struct CompiledSceneDescriptor: @unchecked Sendable {
+package struct CompiledSceneDescriptor {
     package let id: SceneID
     package let role: SceneRole
     package let launchBehavior: SceneLaunchBehavior
@@ -497,7 +497,7 @@ package struct CompiledSceneDescriptor: @unchecked Sendable {
     package var isGroup: Bool { payloadType != nil }
 }
 
-package struct CompiledSceneGraph: @unchecked Sendable {
+package struct CompiledSceneGraph {
     package let scenes: [CompiledSceneDescriptor]
     package let primaryIndex: Int
     package let handleLifecycle: (LifecycleEvent) -> Void
@@ -539,7 +539,7 @@ package struct CompiledSceneGraph: @unchecked Sendable {
     }
 }
 
-package struct SceneSurface: @unchecked Sendable {
+package struct SceneSurface {
     package let sceneID: SceneID
     package let instanceID: WindowInstanceID
     package let windowContext: WindowContext

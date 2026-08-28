@@ -4,7 +4,7 @@ import Testing
 
 /// Lets the app's scene closure pick up a runtime created after the
 /// host, the same pattern the demo uses.
-private final class RuntimeBox: @unchecked Sendable {
+private final class RuntimeBox {
     var runtime: PluginRuntime?
 }
 
@@ -36,6 +36,14 @@ private struct CounterPlugin: GamaPluginProtocol {
 
     mutating func activate(in context: PluginContext) throws(PluginError) {
         context.subscriptions.observe(counter)
+    }
+
+    func commands() -> [PluginCommand] {
+        [
+            PluginCommand(id: "increment", title: "Increment counter") { _ in
+                counter.update { $0 += 1 }
+            }
+        ]
     }
 
     func render(slot: SlotID, in context: BuildContext) -> RenderNode {
@@ -101,8 +109,7 @@ struct PluginSlotTests {
         let box = RuntimeBox()
         var host = try FrameHost(app: SlotApp(box: box))
         let runtime = makeAttachedRuntime(box, subscriptions: host.subscriptions)
-        let counter = Signal(0)
-        try runtime.install(CounterPlugin(id: "test.one", counter: counter))
+        try runtime.install(CounterPlugin(id: "test.one", counter: Signal(0)))
         let laid = host.pump(size: Size(width: 40, height: 6))
         var regions: [InteractiveRegion] = []
         laid.collectInteractive(into: &regions)
@@ -110,7 +117,6 @@ struct PluginSlotTests {
 
         host.handle(
             .pointer(Point(x: region.frame.minX, y: region.frame.minY), pressed: true))
-        #expect(counter.get() == 1)
         let dirtyAfterPress = host.needsFrame
         #expect(dirtyAfterPress)
         var texts: [String] = []
@@ -150,12 +156,9 @@ struct PluginSlotTests {
         let box = RuntimeBox()
         var host = try FrameHost(app: SlotApp(box: box))
         let runtime = makeAttachedRuntime(box, subscriptions: host.subscriptions)
-        let firstCounter = Signal(0)
-        let secondCounter = Signal(0)
-        let thirdCounter = Signal(0)
-        try runtime.install(CounterPlugin(id: "test.one", counter: firstCounter))
-        try runtime.install(CounterPlugin(id: "test.two", counter: secondCounter))
-        try runtime.install(CounterPlugin(id: "test.three", counter: thirdCounter))
+        try runtime.install(CounterPlugin(id: "test.one", counter: Signal(0)))
+        try runtime.install(CounterPlugin(id: "test.two", counter: Signal(0)))
+        try runtime.install(CounterPlugin(id: "test.three", counter: Signal(0)))
 
         let firstFrame = host.pump(size: Size(width: 40, height: 8))
         var before: [InteractiveRegion] = []
@@ -170,9 +173,9 @@ struct PluginSlotTests {
         #expect(after.map(\.id) == Array(before.dropFirst()).map(\.id))
 
         host.handle(.key(.enter))
-        #expect(firstCounter.get() == 0)
-        #expect(secondCounter.get() == 1)
-        #expect(thirdCounter.get() == 0)
+        var texts: [String] = []
+        collectTexts(host.pump(size: Size(width: 40, height: 8)), into: &texts)
+        #expect(texts == ["header", "test.two:1", "test.three:0"])
     }
 
     @Test("a plugin Signal observed through the context dirties the host end to end")
@@ -180,17 +183,17 @@ struct PluginSlotTests {
         let box = RuntimeBox()
         var host = try FrameHost(app: SlotApp(box: box))
         let runtime = makeAttachedRuntime(box, subscriptions: host.subscriptions)
-        let counter = Signal(1)
-        try runtime.install(CounterPlugin(id: "test.one", counter: counter))
+        try runtime.install(CounterPlugin(id: "test.one", counter: Signal(1)))
         _ = host.pump(size: Size(width: 40, height: 6))
         let cleanAfterPump = host.needsFrame
         #expect(!cleanAfterPump)
 
-        counter.set(9)
+        let increment = try #require(runtime.commands.first)
+        increment.perform()
         let dirtyAfterSet = host.needsFrame
         #expect(dirtyAfterSet)
         var texts: [String] = []
         collectTexts(host.pump(size: Size(width: 40, height: 6)), into: &texts)
-        #expect(texts == ["header", "test.one:9"])
+        #expect(texts == ["header", "test.one:2"])
     }
 }
