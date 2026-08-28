@@ -1,23 +1,29 @@
 //  Lowering.swift — GamaMLIR
 //  RenderNode → `gama` dialect. Two entry points:
-//   • lower(node:)      — structural lowering (pre-layout)
+//   • lower(module:)    — structural lowering (pre-layout)
 //   • lower(laidOut:)   — frame-annotated lowering (post-layout), the
 //                         form GPU-compositor or AOT-bake pipelines want.
 //
 //  Dialect vocabulary (generic form, unregistered-dialect friendly):
-//   "gama.module"     region-holding root
-//   "gama.text"       leaf; attrs: text, fg, bg, attrs-bitmask
+//   "gama.module"     region-holding root; attr: sym_name
+//   "gama.empty"      leaf; no structural attrs
+//   "gama.text"       leaf; attrs: text, fg, bg, sgr
 //   "gama.stack"      region; attrs: axis, spacing, halign, valign
 //   "gama.overlay"    region; attrs: halign, valign
 //   "gama.group"      region; ViewBuilder flatten sentinel
 //   "gama.spacer"     leaf;  attrs: min
+//   "gama.divider"    leaf;  attrs: fg, bg, sgr, axis?
 //   "gama.padding"    region; attrs: top/leading/bottom/trailing
 //   "gama.border"     region; attrs: style, title, fg
 //   "gama.background" region; attrs: color
-//   "gama.frame"      region; attrs: width?, height?, min*/max*
-//   "gama.styled"     region; attrs: fg, bg, attrs-bitmask
+//   "gama.frame"      region; attrs: dimensions, halign, valign; shared by
+//                       fixed and flex frame nodes
+//   "gama.styled"     region; attrs: fg, bg, sgr
 //   "gama.interactive" region; attrs: id, focusable
 //  Post-layout ops additionally carry x, y, w, h.
+//  Layout rewrites normal groups to top-leading overlays and resolves missing
+//  divider axes; hand-built laid groups still emit gama.group. Attribute order
+//  is dimensions, alignment, then the post-layout frame quad.
 //  Canonical user-facing reference: docs/MLIRDialect.md.
 
 import GamaCore
@@ -69,7 +75,11 @@ public enum GamaLowering {
             b.line("\"gama.spacer\"()\(renderAttrs(attrs + frameAttrs(frame))) : () -> ()")
 
         case .divider(let style, let axis):
-            var attrs: [(String, MLIRAttr)] = [("fg", .color(style.foreground))]
+            var attrs: [(String, MLIRAttr)] = [
+                ("fg", .color(style.foreground)),
+                ("bg", .color(style.background)),
+                ("sgr", .i64(Int(style.attributes.rawValue))),
+            ]
             if let axis {
                 attrs.append(("axis", .str(axis == .horizontal ? "h" : "v")))
             }

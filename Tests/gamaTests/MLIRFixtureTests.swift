@@ -175,13 +175,13 @@ struct MLIRFixtureTests {
             .divider(style: .plain, axis: .horizontal),
             structural: """
             "gama.module"() ({
-              "gama.divider"() {fg = "default", axis = "h"} : () -> ()
+              "gama.divider"() {fg = "default", bg = "default", sgr = 0 : i64, axis = "h"} : () -> ()
             }) {sym_name = "probe"} : () -> ()
 
             """,
             laid: """
             "gama.module"() ({
-              "gama.divider"() {fg = "default", axis = "h", x = 0 : i64, y = 0 : i64, w = 20 : i64, h = 6 : i64} : () -> ()
+              "gama.divider"() {fg = "default", bg = "default", sgr = 0 : i64, axis = "h", x = 0 : i64, y = 0 : i64, w = 20 : i64, h = 6 : i64} : () -> ()
             }) {sym_name = "probe"} : () -> ()
 
             """
@@ -196,7 +196,7 @@ struct MLIRFixtureTests {
         #expect(structural(nilAxisNode) == """
         "gama.module"() ({
           "gama.stack"() ({
-            "gama.divider"() {fg = "default"} : () -> ()
+            "gama.divider"() {fg = "default", bg = "default", sgr = 0 : i64} : () -> ()
           }) {axis = "v", spacing = 0 : i64, halign = "leading", valign = "top"} : () -> ()
         }) {sym_name = "probe"} : () -> ()
 
@@ -204,11 +204,38 @@ struct MLIRFixtureTests {
         #expect(laid(nilAxisNode) == """
         "gama.module"() ({
           "gama.stack"() ({
-            "gama.divider"() {fg = "default", axis = "v", x = 0 : i64, y = 0 : i64, w = 20 : i64, h = 1 : i64} : () -> ()
+            "gama.divider"() {fg = "default", bg = "default", sgr = 0 : i64, axis = "v", x = 0 : i64, y = 0 : i64, w = 20 : i64, h = 1 : i64} : () -> ()
           }) {axis = "v", spacing = 0 : i64, halign = "leading", valign = "top", x = 0 : i64, y = 0 : i64, w = 20 : i64, h = 6 : i64} : () -> ()
         }) {sym_name = "probe"} : () -> ()
 
         """)
+    }
+
+    @Test("divider emits its full text style")
+    func dividerEmitsFullStyle() {
+        let node = RenderNode.divider(
+            style: TextStyle(
+                foreground: .red,
+                background: .blue,
+                attributes: [.bold]
+            ),
+            axis: .horizontal
+        )
+        expect(
+            node,
+            structural: """
+            "gama.module"() ({
+              "gama.divider"() {fg = dense<[224, 64, 64]> : tensor<3xi8>, bg = dense<[80, 128, 255]> : tensor<3xi8>, sgr = 1 : i64, axis = "h"} : () -> ()
+            }) {sym_name = "probe"} : () -> ()
+
+            """,
+            laid: """
+            "gama.module"() ({
+              "gama.divider"() {fg = dense<[224, 64, 64]> : tensor<3xi8>, bg = dense<[80, 128, 255]> : tensor<3xi8>, sgr = 1 : i64, axis = "h", x = 0 : i64, y = 0 : i64, w = 20 : i64, h = 6 : i64} : () -> ()
+            }) {sym_name = "probe"} : () -> ()
+
+            """
+        )
     }
 
     @Test("padding pins asymmetric insets and laid inner bounds")
