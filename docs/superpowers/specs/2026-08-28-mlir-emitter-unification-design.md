@@ -1,7 +1,8 @@
 # MLIR emitter unification
 
-Status: Approved (2026-08-28). Supersedes nothing; closes Roadmap Task 4.2
-item 9.
+Status: Approved (2026-08-28). Supersedes nothing. Implementation continues in
+PR #60; Roadmap Task 4.2 item 9 closes only after the final implementation head
+has the authoritative local and hosted evidence.
 
 ## Problem
 
@@ -27,14 +28,16 @@ The duplication has already produced silent divergence, and nothing in the
 repository can detect it. `gama.frame` emits its attributes in different order
 on the two paths — the structural walker writes
 `width`/`height` before `halign`/`valign` (`:136–158`), the laid walker writes
-`halign`/`valign` first (`:246–263`). Both then append `x`/`y`/`w`/`h`, so the
-divergence is confined to that one pair, but it is invisible because **no test
-asserts the emitter's output bytes**. The `@Suite("MLIR")` tests use
+`halign`/`valign` first (`:246–263`). Both then append `x`/`y`/`w`/`h`. This
+changes two laid outputs: the fixed `.frame` case and the `.flexFrame` case,
+which share the `gama.frame` op but have distinct dimension sets. Before Task 1,
+the divergence was invisible because **no test asserted the emitter's output
+bytes**. The `@Suite("MLIR")` tests use
 `String.contains` (`Tests/gamaTests/gamaTests.swift:567–627`), and
 `scripts/check-mlir.sh` pipes `gama-demo --emit-mlir` into `mlir-opt` and
 discards stdout — it proves the output parses, not what it says.
 
-Three further disagreements exist between the emitter and
+Four further disagreements exist between the emitter and
 `docs/MLIRDialect.md`, which that file declares to be "the canonical
 reference":
 
@@ -44,6 +47,7 @@ reference":
 3. `gama.frame` is documented with `width`/`height` or the
    `min_*`/`max_*` set. Both walkers also emit `halign` and `valign` on every
    frame op; the table has never mentioned them.
+4. `gama.module` is documented with `name`, but the emitter writes `sym_name`.
 
 ## Goals
 
@@ -57,7 +61,8 @@ reference":
 
 - No change to either public signature. `lower(module:name:)` and
   `lower(laidOut:name:)` keep their names, parameters, and return type. This is
-  an internal restructuring with two deliberate output changes.
+  an internal restructuring with three deliberate byte changes: two laid frame
+  order corrections and the divider's new `bg`/`sgr` attributes.
 - No new MLIR ops, no dialect semantics change, no `mlir-opt` version bump.
 - Not a Swift MLIR frontend. `GamaMLIR` stays a deterministic textual emitter,
   per `docs/adr/0001-own-the-rendering.md` and the target's own charter.
@@ -89,9 +94,8 @@ Two small helpers keep the switch readable:
   `x`/`y`/`w`/`h` pairs, or empty when `frame` is nil. It stays appended last,
   which both walkers already do (`:143` and `:206`), so no `x`/`y`/`w`/`h`
   position changes.
-- `children(of node: RenderNode, laid: [LaidOutNode]?) -> …` yields the laid
-  children when present and the node's structural children otherwise. Leaves
-  ignore it.
+- `region(...)` emits laid children with their own frames and children when
+  present, or the supplied structural children without frames otherwise.
 
 `emitLaid` disappears; its leaf/container split is exactly the distinction the
 unified switch already makes.
@@ -108,11 +112,12 @@ grammar.
 
 ### Canonical attribute order
 
-Unification forces one path's bytes to change for `gama.frame`. Note that
+Unification forces two laid expectations to change for `gama.frame`. Note that
 `.frame` and `.flexFrame` share that one op — there is no `gama.flex_frame`;
 the two are distinguished by whether they carry `width`/`height` or the
-`min_*`/`max_*` set (`:143`, `:156`, `:253`, `:263`). So this single decision
-covers both node cases. **The structural order is canonical:** dimensions
+`min_*`/`max_*` set (`:143`, `:156`, `:253`, `:263`). The single ordering
+decision therefore changes both node cases. **The structural order is
+canonical:** dimensions
 first, then alignment, then the frame rectangle.
 
 ```
@@ -132,8 +137,8 @@ existing MLIR tests exercise the structural path and only one exercises
 `lower(laidOut:)`, so it moves the fewest bytes anyone currently asserts on.
 
 Sorting attributes into a fixed order independent of the source was rejected:
-it would change the bytes of every op on both paths rather than one op on one
-path, and it decouples emitted order from source order, making the emitter
+it would change the bytes of every op on both paths rather than these two laid
+ops, and it decouples emitted order from source order, making the emitter
 harder to audit against `docs/MLIRDialect.md`.
 
 ### Resolving the emitter/documentation disagreements
@@ -150,10 +155,12 @@ Both other `TextStyle`-carrying ops emit all three — `gama.text` (`:62–68`) 
 `gama.styled` — so the divider is the outlier and the data it needs is already
 in hand. Emit `bg` as a color and `sgr` as the raw attribute bitmask, in the
 same order and encoding `gama.text` uses. This changes divider bytes on both
-paths.
+paths. A plain divider uses `TextStyle.plain`, so its foreground, background,
+and raw SGR value are `"default"`, `"default"`, and `0`; its foreground is not
+gray.
 
-**`gama.divider`'s `axis` is documented — the emitter is right.** `axis` came
-from a shipped behavioral fix (a `Divider` inside an `HStack` paints
+**`gama.divider`'s `axis` is added to the reference — the emitter is right.**
+`axis` came from a shipped behavioral fix (a `Divider` inside an `HStack` paints
 vertically); the reference was simply never updated. Add it to the table as
 optional, present only when the node carries an axis.
 
@@ -165,12 +172,17 @@ right.** Both walkers have always emitted them. This matters more than a
 missing row: it is the attribute pair whose ordering this design makes
 canonical, so the reference must name it to make the order reviewable.
 
+**`gama.module` documents `sym_name` — the emitter is right.** Generic-form
+module output already carries `sym_name`; the reference's `name` spelling is
+stale.
+
 ### Testing
 
-The fixtures create the first byte-level contract this emitter has had. Because
-two output changes are intended, they cannot be captured mechanically from
-today's output and frozen — each expected value is reviewed, and the two that
-move are moved deliberately.
+The fixtures create the first byte-level contract this emitter has had. Task 1
+is published in PR #60 as 17 tests: fourteen case tests plus escaping, a
+hand-built laid group, and the final-newline contract. Because three byte
+changes are intended, they are reviewed explicitly: the two laid frame
+expectations move in Task 2, and divider style bytes move in Task 3.
 
 Expected output lives **inline in Swift source** as raw multi-line string
 literals (`#"""…"""#`), in a new `Tests/gamaTests/MLIRFixtureTests.swift` under
@@ -186,16 +198,18 @@ Windows, and WebAssembly, and reading via `#filePath` needs Foundation, which
 Coverage:
 
 - All fourteen `RenderNode` cases through `lower(module:)`.
-- All fourteen through `lower(laidOut:)` — four leaves via the frame-carrying
-  path, ten containers via the unified container path.
+- Laid bytes for all fourteen cases. Normal `.group` layout is intentionally
+  observed as `gama.overlay(.topLeading)` because `LayoutEngine` rewrites it;
+  a hand-built `LaidOutNode.group` separately pins the laid `gama.group` branch.
 - Both `Color` renderings: `dense<[r, g, b]> : tensor<3xi8>` and `"default"`.
 - String escaping for `"`, `\`, newline, and tab.
 - A full 64-bit `NodeID` through `gama.interactive`, exercising
   `Int64(bitPattern:)`.
-- `.flexFrame` unbounded encoding, where `.max` becomes `-1` — currently
-  untested on either path.
+- `.flexFrame` unbounded encoding, where `.max` becomes `-1`, on both paths.
 - Nesting and indentation, since `MLIRBuilder`'s layout is now part of the
   contract.
+- A plain divider's `"default"` foreground and a nil-axis divider gaining its
+  vertical axis from stack layout.
 
 The existing `@Suite("MLIR")` `contains` tests stay. They are cheap, and they
 record intent the fixtures do not — `groupSentinelLowersToGamaGroup` exists to
@@ -210,47 +224,54 @@ better case coverage.
 
 ### Gates
 
-`check-apple.sh` is the gate that matters — it is the only one that runs
-`swift test`, so it alone exercises the fixtures. `check-mlir.sh` continues to
-prove `mlir-opt` accepts the output. `check-boundaries.sh` builds `GamaMLIR` as
-a portable target and scans its objects for forbidden libm symbols.
-`check-docs.sh` and `check-doc-coverage.sh` must stay green: `GamaMLIR.docc`
-links the two public entry points, and since neither signature changes, neither
-gate should move.
+Focused development uses the fixture filter, aggregate MLIR filter,
+`check-mlir.sh`, `check-docs.sh`, and `check-doc-coverage.sh`. Final local
+acceptance is `scripts/check.sh`, whose thirteen fail-closed gates are Apple,
+Apple platforms, boundaries, concurrency negatives, C ABI, Embedded, Linux,
+WASM, Android, Android emulator, MLIR, DocC, and documentation coverage. The
+roadmap does not close until that complete driver succeeds and all six
+name-pinned hosted jobs are green at the cited PR head.
 
 ## Delivery
 
-Three commits in one pull request, in this order. The order is the argument:
-landing the unification before the fixtures exist would destroy the evidence
-that it was behavior-preserving.
+Expand the existing PR #60 branch; do not open a replacement PR or rewrite its
+published history. The commit order is the argument: landing the unification
+before the fixtures exist would destroy the evidence that it was
+behavior-preserving.
 
-1. **Pin current bytes.** Add `MLIRFixtureTests.swift` covering every case on
-   both paths against today's output, including the two divergences this design
-   changes. Green on the unmodified emitter.
-2. **Unify.** Collapse the three functions into one emitter. Update only the
+1. **Pin current bytes.** Already published in PR #60: 17 tests covering all
+   fourteen cases on both paths plus escaping, hand-built laid group behavior,
+   and the final newline. Green on the unmodified emitter.
+2. **Correct the execution contract.** Record the published coverage, both
+   laid order changes, plain-divider default, group rewrite, authoritative
+   13-gate matrix, and PR #60 delivery authority.
+3. **Unify.** Collapse the three functions into one emitter. Update only the
    laid-path `gama.frame` fixtures — both the `width`/`height` and
    `min_*`/`max_*` variants — whose attribute order legitimately moves. Every
    other fixture must pass untouched; that is the proof the refactor changed
    nothing else.
-3. **Reconcile emitter and reference.** Add `bg` and `sgr` to `gama.divider`,
-   update the divider fixtures on both paths, and make the four corrections to
-   `docs/MLIRDialect.md` (divider `axis`, `gama.empty` row, `gama.frame`
-   `halign`/`valign`, and the now-emitted divider `bg`/`sgr`).
+4. **Reconcile emitter and reference.** Add one eighteenth full-style divider
+   test, add `bg` and `sgr` to `gama.divider`, update every affected divider
+   expectation, and correct `sym_name`, divider `axis`, `gama.empty`, frame
+   alignment/order, and the group/layout distinctions in the reference.
+5. **Prove and record.** Run the complete 13-gate local matrix, require the six
+   hosted jobs on the exact implementation head, then add the ledger-only
+   completion commit and require the hosted jobs again before merge.
 
-A reviewer reading commit 2 in isolation should see a fixture diff containing
-only frame ops. If it contains anything else, the refactor changed behavior it
-was not supposed to.
+A reviewer reading the unification commit in isolation should see a fixture
+diff containing only frame ops. If it contains anything else, the refactor
+changed behavior it was not supposed to.
 
 ## Risks
 
 **The unified signature carries two notions of children.** A case that reads
 `laid` when it should read structural children, or vice versa, produces wrong
-nesting. Caught by the commit-1 fixtures, which pin nesting and indentation for
+nesting. Caught by the Task 1 fixtures, which pin nesting and indentation for
 every container on both paths.
 
 **Adding `bg`/`sgr` to `gama.divider` changes bytes on both paths at once.**
-Isolated in commit 3 so its fixture diff is reviewable on its own, and it
-touches only divider ops.
+Isolated in the divider commit so its fixture diff is reviewable on its own,
+and it touches only divider ops.
 
 **`docs/MLIRDialect.md` drifts again.** This design does not add a mechanism
 that forces the reference to track the emitter; it only makes them agree today.
