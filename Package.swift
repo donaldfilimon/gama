@@ -43,6 +43,9 @@ let package = Package(
         // Acceptance lifecycle probe: runs as a plain process so Linux
         // LeakSanitizer observes Gama without SwiftPM's XCTest harness.
         .executable(name: "gama-leak-check", targets: ["GamaLeakCheck"]),
+        // Measurement harness, not a gate: it prints numbers and asserts no
+        // threshold, so it cannot fail a build on a loaded machine.
+        .executable(name: "gama-bench", targets: ["GamaBench"]),
     ],
     dependencies: [
         // Build-time ONLY: macro plugins execute on the host compiler.
@@ -215,6 +218,12 @@ let package = Package(
         .executableTarget(
             name: "GamaLeakCheck",
             dependencies: ["GamaCore"],
+            swiftSettings: strictCore
+        ),
+
+        .executableTarget(
+            name: "GamaBench",
+            dependencies: ["GamaCore", "GamaDraw"],
             swiftSettings: strictCore
         ),
 
