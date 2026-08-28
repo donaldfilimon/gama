@@ -30,6 +30,13 @@ GAMA_ANDROID_READY_PROBE_TIMEOUT_SECONDS="${GAMA_ANDROID_READY_PROBE_TIMEOUT_SEC
 GAMA_ANDROID_RECONNECT_TIMEOUT_SECONDS="${GAMA_ANDROID_RECONNECT_TIMEOUT_SECONDS:-5}"
 GAMA_ANDROID_WAIT_TIMEOUT_SECONDS="${GAMA_ANDROID_WAIT_TIMEOUT_SECONDS:-30}"
 GAMA_ANDROID_RECOVERY_DELAY_SECONDS="${GAMA_ANDROID_RECOVERY_DELAY_SECONDS:-5}"
+# A hosted emulator reports a completed boot before its package manager and
+# settings provider accept calls. That is not a dropped transport, and
+# reconnecting does not speed it up — only waiting does. Initial readiness
+# therefore polls to this deadline, and spends the shared recovery budget
+# only when the DEVICE itself goes away.
+GAMA_ANDROID_READINESS_DEADLINE_SECONDS="${GAMA_ANDROID_READINESS_DEADLINE_SECONDS:-180}"
+GAMA_ANDROID_READINESS_POLL_DELAY_SECONDS="${GAMA_ANDROID_READINESS_POLL_DELAY_SECONDS:-5}"
 GAMA_ANDROID_SETTINGS_TIMEOUT_SECONDS="${GAMA_ANDROID_SETTINGS_TIMEOUT_SECONDS:-5}"
 GAMA_ANDROID_INSTALL_TIMEOUT_SECONDS="${GAMA_ANDROID_INSTALL_TIMEOUT_SECONDS:-90}"
 GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS="${GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS:-30}"
@@ -65,14 +72,8 @@ require_nonnegative_integer() {
 }
 
 calculate_android_post_boot_worst_case_seconds() {
-  local probe_max recovery_max animation_max install_max control_max poll_max
+  local probe_max animation_max install_max control_max poll_max
   probe_max=$((3 * GAMA_ANDROID_READY_PROBE_TIMEOUT_SECONDS))
-  recovery_max=$((GAMA_ANDROID_RECOVERY_BUDGET * (
-    GAMA_ANDROID_RECONNECT_TIMEOUT_SECONDS
-    + GAMA_ANDROID_WAIT_TIMEOUT_SECONDS
-    + GAMA_ANDROID_RECOVERY_DELAY_SECONDS
-    + probe_max
-  )))
   # Animations are best-effort: 3 bounded attempts of 3 settings each,
   # with 2 budget-free reconnect/wait/delay recoveries between attempts.
   animation_max=$((3 * 3 * GAMA_ANDROID_SETTINGS_TIMEOUT_SECONDS + 2 * (
@@ -94,10 +95,13 @@ calculate_android_post_boot_worst_case_seconds() {
     + GAMA_ANDROID_POLL_DELAY_SECONDS
   )))
 
+  # Readiness is bounded by its own deadline (its recoveries happen inside
+  # that window), plus the probes that confirm the final state.
+  local readiness_max=$((GAMA_ANDROID_READINESS_DEADLINE_SECONDS + probe_max))
+
   echo $((
     GAMA_ANDROID_GRADLE_TIMEOUT_SECONDS
-    + probe_max
-    + recovery_max
+    + readiness_max
     + animation_max
     + install_max
     + control_max
@@ -116,6 +120,8 @@ validate_android_time_budget() {
     GAMA_ANDROID_POST_BOOT_CEILING_SECONDS \
     GAMA_ANDROID_JOB_HEADROOM_SECONDS \
     GAMA_ANDROID_GRADLE_TIMEOUT_SECONDS \
+    GAMA_ANDROID_READINESS_DEADLINE_SECONDS \
+    GAMA_ANDROID_READINESS_POLL_DELAY_SECONDS \
     GAMA_ANDROID_READY_PROBE_TIMEOUT_SECONDS \
     GAMA_ANDROID_RECONNECT_TIMEOUT_SECONDS \
     GAMA_ANDROID_WAIT_TIMEOUT_SECONDS \
@@ -216,6 +222,15 @@ android_services_ready() {
     adb shell settings get global window_animation_scale >/dev/null 2>&1
 }
 
+# True when adb still sees the device, regardless of whether its services
+# answer yet. This is the difference between a transport failure (reconnect)
+# and a boot still in progress (wait).
+android_device_present() {
+  local state
+  state="$(run_with_timeout "$GAMA_ANDROID_READY_PROBE_TIMEOUT_SECONDS" adb get-state 2>/dev/null)" || return 1
+  [[ "$state" == device ]]
+}
+
 recover_until_android_services_ready() {
   local stage="$1"
   while true; do
@@ -236,11 +251,34 @@ wait_for_android_services() {
     return 0
   fi
 
-  echo "warning: Android services not initially ready" >&2
-  if ! recover_until_android_services_ready "initial service readiness"; then
-    echo "error: Android adb, package manager, and settings provider did not become ready" >&2
-    return 1
-  fi
+  echo "warning: Android services not initially ready; waiting up to" \
+    "${GAMA_ANDROID_READINESS_DEADLINE_SECONDS}s" >&2
+  # Bounded by poll count rather than wall clock so the behavior is
+  # deterministic and testable; the product of the two is the deadline.
+  local attempts=$((
+    GAMA_ANDROID_READINESS_DEADLINE_SECONDS / GAMA_ANDROID_READINESS_POLL_DELAY_SECONDS
+  ))
+  local attempt
+  for ((attempt = 0; attempt < attempts; attempt++)); do
+    if android_device_present; then
+      # Device is up and its services are still coming online. Waiting is the
+      # only remedy; spending a reconnect here is what let a slow-but-healthy
+      # emulator exhaust the budget in ~30s and fail the gate.
+      sleep "$GAMA_ANDROID_READINESS_POLL_DELAY_SECONDS"
+    else
+      consume_android_recovery "initial service readiness" || return 1
+      recover_android_connection
+      sleep "$GAMA_ANDROID_RECOVERY_DELAY_SECONDS"
+    fi
+    if android_services_ready; then
+      echo "Android adb, package manager, and settings provider ready"
+      return 0
+    fi
+  done
+
+  echo "error: Android adb, package manager, and settings provider did not" \
+    "become ready within ${GAMA_ANDROID_READINESS_DEADLINE_SECONDS}s" >&2
+  return 1
 }
 
 set_android_animation_scales_once() {

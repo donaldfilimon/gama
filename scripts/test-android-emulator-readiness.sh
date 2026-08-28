@@ -28,6 +28,12 @@ fake_adb() {
   case "$command_name" in
     get-state)
       fake_counter_next readiness-probe >/dev/null
+      # A genuinely absent device: the only case where reconnecting is the
+      # right remedy, and therefore the only case that may spend the budget.
+      if [[ "$FAKE_ADB_SCENARIO" == device-offline-then-install ]]; then
+        echo offline
+        return 1
+      fi
       echo device
       ;;
     reconnect | wait-for-device)
@@ -211,26 +217,33 @@ wait_for_android_services >"$FAKE_STATE_DIR/output" 2>&1
 assert_equals 1 "$ANDROID_READINESS_PROBES" "immediate readiness probes"
 assert_equals 0 "$ANDROID_RECOVERIES_USED" "immediate readiness recoveries"
 
+# A device that is present but whose services are still starting must be
+# WAITED for, never reconnected: burning the shared budget here is what made
+# a slow-but-healthy emulator fail the gate ~30s after boot.
 reset_case readiness-package-retry 2
 wait_for_android_services >"$FAKE_STATE_DIR/output" 2>&1
 assert_equals 2 "$ANDROID_READINESS_PROBES" "package retry probes"
-assert_equals 1 "$ANDROID_RECOVERIES_USED" "package retry recovery consumption"
-assert_log_count 1 '^timeout|5s|adb reconnect$' "package retry reconnect timeout"
-assert_log_count 1 '^timeout|30s|adb wait-for-device$' "package retry wait timeout"
+assert_equals 0 "$ANDROID_RECOVERIES_USED" "slow services consume no recovery"
+assert_equals 2 "$ANDROID_RECOVERIES_REMAINING" "slow services preserve the budget"
+assert_log_count 0 '^timeout|5s|adb reconnect$' "slow services do not reconnect"
 
 reset_case readiness-settings-retry 2
 wait_for_android_services >"$FAKE_STATE_DIR/output" 2>&1
 assert_equals 2 "$ANDROID_READINESS_PROBES" "settings retry probes"
-assert_equals 1 "$ANDROID_RECOVERIES_USED" "settings retry recovery consumption"
+assert_equals 0 "$ANDROID_RECOVERIES_USED" "slow settings provider consumes no recovery"
 
-reset_case readiness-exhausted 2
-if wait_for_android_services >"$FAKE_STATE_DIR/output" 2>&1; then
+# Services that never arrive still fail closed, bounded by the deadline.
+GAMA_ANDROID_READINESS_DEADLINE_SECONDS=15 \
+GAMA_ANDROID_READINESS_POLL_DELAY_SECONDS=5 \
+  reset_case readiness-exhausted 2
+if GAMA_ANDROID_READINESS_DEADLINE_SECONDS=15 \
+  GAMA_ANDROID_READINESS_POLL_DELAY_SECONDS=5 \
+  wait_for_android_services >"$FAKE_STATE_DIR/output" 2>&1; then
   echo "error: persistent readiness failure unexpectedly succeeded" >&2
   exit 1
 fi
-assert_equals 3 "$ANDROID_READINESS_PROBES" "readiness exhaustion probes"
-assert_equals 2 "$ANDROID_RECOVERIES_USED" "readiness exhaustion recovery consumption"
-assert_equals 0 "$ANDROID_RECOVERIES_REMAINING" "readiness exhaustion remaining budget"
+assert_equals 0 "$ANDROID_RECOVERIES_USED" "a present-but-dead device spends no reconnects"
+grep -q 'did not' "$FAKE_STATE_DIR/output"
 
 reset_case animation-retry 1
 configure_android_animations >"$FAKE_STATE_DIR/output" 2>&1
@@ -312,11 +325,11 @@ allocated=$((
   + GAMA_ANDROID_POST_BOOT_CEILING_SECONDS
   + GAMA_ANDROID_JOB_HEADROOM_SECONDS
 ))
-assert_equals 1090 "$post_boot_max" "calculated conservative post-boot maximum"
+assert_equals 1160 "$post_boot_max" "calculated conservative post-boot maximum"
 assert_equals 3300 "$allocated" "55-minute job allocation"
 ((post_boot_max < GAMA_ANDROID_POST_BOOT_CEILING_SECONDS))
 assert_equals 240 "$GAMA_ANDROID_JOB_HEADROOM_SECONDS" "job-level headroom"
-assert_equals 350 "$((GAMA_ANDROID_POST_BOOT_CEILING_SECONDS - post_boot_max))" "post-boot ceiling margin"
+assert_equals 280 "$((GAMA_ANDROID_POST_BOOT_CEILING_SECONDS - post_boot_max))" "post-boot ceiling margin"
 
 saved_post_boot_ceiling="$GAMA_ANDROID_POST_BOOT_CEILING_SECONDS"
 GAMA_ANDROID_POST_BOOT_CEILING_SECONDS="$post_boot_max"
