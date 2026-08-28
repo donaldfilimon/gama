@@ -35,23 +35,41 @@ public struct DrawList: Hashable, Sendable {
     public static func from(_ buffer: CellBuffer) -> DrawList {
         var commands: [DrawCommand] = []
         buffer.forEachRun { row, col, width, text, style in
-            let isBlankText = text.allSatisfy { $0 == " " }
+            // One pass, not three. This used to run `allSatisfy`, then
+            // `prefix(while:)`, then `reversed().drop(while:).reversed()` —
+            // walking the run up to three times and materializing two
+            // reversed collections before the final `String`. Locating the
+            // first and last non-space index directly answers all three
+            // questions: blankness is "no first index".
+            var firstVisible: String.Index? = nil
+            var lastVisible: String.Index? = nil
+            // Leading blanks are always the space character (width 1), so the
+            // character count IS the column offset.
+            var leading = 0
+            var scanned = 0
+            var index = text.startIndex
+            while index < text.endIndex {
+                if text[index] != " " {
+                    if firstVisible == nil {
+                        firstVisible = index
+                        leading = scanned
+                    }
+                    lastVisible = index
+                }
+                scanned += 1
+                index = text.index(after: index)
+            }
+            let isBlankText = firstVisible == nil
+
             if !style.background.isDefault {
                 commands.append(
                     .fillRect(Rect(x: col, y: row, width: width, height: 1), style.background))
             } else if isBlankText && style.foreground.isDefault && style.attributes.isEmpty {
                 return  // fully default blank run — nothing to draw
             }
-            if !isBlankText {
-                // Leading blanks are always the space character (width 1),
-                // so the character count IS the column offset.
-                let leading = text.prefix(while: { $0 == " " }).count
-                let visible = String(
-                    text.dropFirst(leading).reversed().drop(while: { $0 == " " }).reversed()
-                )
-                if !visible.isEmpty {
-                    commands.append(.text(visible, at: Point(x: col + leading, y: row), style: style))
-                }
+            if let first = firstVisible, let last = lastVisible {
+                let visible = String(text[first...last])
+                commands.append(.text(visible, at: Point(x: col + leading, y: row), style: style))
             }
         }
         return DrawList(size: buffer.size, commands: commands)
