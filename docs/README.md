@@ -19,6 +19,9 @@ describe a blocked capability as shipped.
   means per tier.
 - [Packaging.md](Packaging.md) — shippable artifacts (wasm site, macOS
   `.app`), their verification gates, and the credential boundary.
+- [Performance.md](Performance.md) — the `gama-bench` measurement harness,
+  the measure-before-optimize rules, and every measurement that has justified
+  a frame-path change.
 - [../CONTRIBUTING.md](../CONTRIBUTING.md) — gates, CI mapping, claim-honesty
   policy, and the gated-slice workflow.
 
