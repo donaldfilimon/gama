@@ -340,3 +340,24 @@ status: in_progress
   (/opt/homebrew/bin, coreutils) which check-android-emulator.sh depends
   on. The emulator gate additionally needs ANDROID_HOME, adb on PATH, and
   an already-booted device — it does not boot one itself.
+- Ledger truth-up round 2 (2026-08-28): re-verified every open checkbox in
+  tasks/todo.md against the tree rather than against the list, because this
+  repo has already been bitten once by "the ledger, not the work, was stale".
+  Five entries were stale and are now closed with the evidence that closes
+  them: the libm/portable-symbol hole (scripts/check-portable-symbols.sh,
+  wired into check-boundaries/check-linux/check-wasm with a compiled negative
+  fixture that must fail and must name `_roundSlowPath`), the Renderer double
+  covering AppRuntime.run(), SIGTERM/SIGHUP/atexit/SIGWINCH terminal restore,
+  macro Fix-Its, and the scale-aware ProgressView. Two entries stay open and
+  honest: the Android-emulator KVM finding is unrefuted but is peer territory
+  (PR #52 is open against that exact job), and VoiceOver is genuinely
+  unimplemented — the only accessibility hit in Sources is the doc comment at
+  GamaHostView.swift:53 promising the adapter. Local baseline at truth-up
+  time: ./scripts/check-apple.sh exit 0, 205 tests in 44 suites.
+- Remaining umbrella scope after the truth-up, in roadmap order: Task 4.2
+  items 4 (VoiceOver), 6 (presentDiff/forEachRun, measure first), 7
+  (~Copyable CellBuffer/Terminal), 8 (StrictMemorySafety +
+  InternalImportsByDefault), 9 (MLIR emitter unification); Task 5 (Apple host
+  file split + trace-backed profiling); Task 6 (GamaSwiftUI / Liquid Glass,
+  spec first — the roadmap's named design spec does not exist yet); Task 7
+  (closeout). Windows-on-6.5-dev remains an external blocker, not a claim.

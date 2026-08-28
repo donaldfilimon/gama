@@ -241,6 +241,29 @@
       lifecycle — not frame production, the dirty gate, resize through
       run(), or renderer error propagation.
 
+      LONG-TAIL STATUS RE-VERIFIED 2026-08-28 against the tree, not against
+      this list. Four of the nine have landed and are now tracked as the
+      numbered Roadmap Task 4.2 items below:
+      - Renderer double: DONE. Tests/gamaTests/RuntimeLoopTests.swift, suite
+        "Runtime loop" — begin/end ordering, the dirty gate, non-blocking
+        follow-up polling, follow-up starvation vs quit, resize through
+        run(), renderer-driven resize with no event, re-sync to begin's
+        extent, renderer failure leaving the surface released, and ctrl-c.
+      - Terminal restore: DONE. Sources/GamaTUISignal/GamaTUISignal.c
+        installs SIGTERM/SIGHUP/SIGWINCH handlers and an atexit hook;
+        Sources/GamaTUI/TerminalRescue.swift is the Swift face (SIGWINCH is
+        edge-triggered once per delivery and has a test seam);
+        Tests/gamaTests/TerminalRescueTests.swift covers it.
+      - MacroSpec Fix-Its: DONE via PR #44 (already its own item below).
+      - Scale-aware ProgressView: DONE.
+        Tests/gamaTests/ProgressViewTests.swift pins the sub-cell boundary
+        glyph, the 0.99-vs-1.0 distinction, an ulp-below-1 value that must
+        not read as full, and NaN/±infinity/out-of-range clamping.
+      STILL OPEN, and the actual remaining scope of this session: VoiceOver
+      from currentDrawList; presentDiff/forEachRun (measure first);
+      ~Copyable CellBuffer/Terminal; StrictMemorySafety +
+      InternalImportsByDefault; MLIR emitter unification.
+
 ## Docs overhaul (planned + largely executed 2026-08-27; see docs/README.md)
 - [x] P0 repair: PR #10 merge-forward reverted sweep hunks on main
       (RenderNode.group + Hashable, ~Copyable hosts, non-mutating
@@ -282,6 +305,24 @@
       GamaEmbed.h to per-symbol /** */ docs.
 
 ## Roadmap Task 4.2 (remaining Slice-C items, land in order)
+- [x] Item 1: in-memory `Renderer` double covering `AppRuntime.run()`.
+      Landed in Tests/gamaTests/RuntimeLoopTests.swift (suite "Runtime loop").
+      Verified 2026-08-28: it covers begin/frame/event/end ordering and every
+      exit path the roadmap named — the dirty gate, non-blocking follow-up
+      polling, quit winning over continuous follow-ups, resize both through
+      `run()` and driven by the renderer with no event, re-sync to the extent
+      `begin` established, renderer-error propagation with the surface still
+      released, and ctrl-c.
+- [x] Item 2: terminal restoration for SIGTERM, SIGHUP, `atexit`, and
+      SIGWINCH. Landed as the `GamaTUISignal` C shim
+      (Sources/GamaTUISignal/GamaTUISignal.c: handlers for SIGTERM/SIGHUP/
+      SIGWINCH plus a once-registered `atexit` restore) behind
+      Sources/GamaTUI/TerminalRescue.swift, which exposes the full ordinary/
+      `atexit` restoration path and an edge-triggered "true exactly once per
+      delivered SIGWINCH" flag with a test seam. Covered by
+      Tests/gamaTests/TerminalRescueTests.swift and
+      Tests/gamaTests/POSIXTerminalIntegrationTests.swift; the C-side probe
+      fixture is Tests/Fixtures/TerminalSignal/TerminalSignalProbe.c.
 - [x] Item 3: macro diagnostic Fix-Its. PR #44 merged 2026-08-27 (8717a8c) with
       its exact-head six-job matrix green. Fix-Its added only where exactly one
       correct edit exists (reactive.var-only let->var, gated on the decl really
@@ -292,6 +333,30 @@
       is already var". A first attempt at that negative test used a `func` and
       never exercised the gate (mutation passed); replaced with a tuple-pattern
       binding that does.
+- [ ] Item 4: VoiceOver accessibility derived from `currentDrawList`.
+      OPEN — verified 2026-08-28: `grep -rn "VoiceOver\|NSAccessibility\|
+      UIAccessibility" Sources --include='*.swift'` returns exactly one hit, and
+      it is the doc comment at GamaHostView.swift:53 promising the adapter, not
+      the adapter. (An earlier probe this session used an unquoted `--include`,
+      which zsh failed to glob and never ran grep at all — that non-result is
+      not evidence.)
+- [x] Item 5: scale-aware `ProgressView`. Landed; verified 2026-08-28 by
+      Tests/gamaTests/ProgressViewTests.swift, which pins the sub-cell
+      boundary glyph at 1/8, keeps 0.99 visibly distinct from 1.0, refuses to
+      read one ulp below 1 as full, and clamps NaN, ±infinity, negatives, and
+      past-total values to the correct end.
+- [ ] Item 6: measure-first optimization of `CellBuffer.presentDiff` and
+      `forEachRun`. OPEN. Baseline capture comes before any edit.
+- [ ] Item 7: `~Copyable` migration for `CellBuffer` and `Terminal`, including
+      deinitialization tests. OPEN — verified 2026-08-28:
+      GamaDraw/CellBuffer.swift:32 is `public struct CellBuffer: Hashable,
+      Sendable` and both `Terminal` declarations in GamaTUI/Terminal.swift
+      (:85 POSIX, :493 Windows) are ordinary copyable structs.
+- [ ] Item 8: `StrictMemorySafety` and `InternalImportsByDefault`. OPEN —
+      verified 2026-08-28: Package.swift enables only `MemberImportVisibility`
+      among the relevant upcoming features.
+- [ ] Item 9: MLIR emitter unification with byte-for-byte deterministic
+      fixture tests. OPEN.
 
 ## CI findings 2026-08-27 (evidence-backed, not yet fixed)
 - [ ] **Android emulator has never had KVM.** Verified on a GREEN main run
@@ -307,13 +372,33 @@
       PR. Consequence if true: much of the 900/720/840/240 partitioning stops
       being load-bearing. CORRECTS the repo's own "adb install flakes are infra,
       not product" framing in docs/Capabilities.md:33.
-- [ ] **check-boundaries.sh cannot catch libm symbol references.** It greps
+      STILL OPEN 2026-08-28, and deliberately not claimed by this session: the
+      Android emulator job is peer territory right now. PR #52
+      (`ci/android-readiness-deadline`, "wait for a booting emulator instead of
+      spending reconnects on it") is open against exactly this code path, and
+      main already carries 4737b6c "ci: let Android services settle after boot".
+      Both attack boot latency; neither adds the udev KVM rule, so the finding
+      above stands unrefuted. Leaving it to the session that owns that job
+      rather than opening a conflicting PR — same call as the PR #41 comment.
+- [x] **check-boundaries.sh cannot catch libm symbol references.** It greps
       `^import (Foundation|AppKit|UIKit|Darwin|Glibc|WinSDK|Synchronization)$`,
       so a bare `Double.rounded()` in GamaCore passes boundaries locally and
       only fails at link on the static-Linux/wasm products ("undefined reference
       to 'round'/'rint'/'trunc'/'ceil'/'floor'"). Hit live on PR #42's wave-2
       head. Closing the hole needs a link-or-symbol check for the portable
       targets, not another import grep.
+      CLOSED 2026-08-28 (verification sweep — the work landed, the ledger was
+      stale): `scripts/check-portable-symbols.sh` (5b945ba) is exactly that
+      symbol check. It resolves `llvm-nm` from the pinned toolchain, scans
+      `--undefined-only` on each portable target's emitted objects, and rejects
+      the whole libm entry-point set plus Swift's `_roundSlowPath` precursor.
+      Wired into three gates, not one: `check-boundaries.sh:85` (host objects),
+      `check-linux.sh:22,42` (static-Linux), and `check-wasm.sh:23`. It ships
+      the negative control the entry asked for —
+      `Tests/Fixtures/PortableSymbols/Sources/RoundedRequiresLibm` is compiled
+      by `check-boundaries.sh:90`, must FAIL the scan, and the failure must name
+      `_roundSlowPath` or the gate errors out. Import-grep-only detection is no
+      longer the boundary story.
 - [x] **PR #43 reopened the rejected `leak:XCTest` suppression.** Its
       lsan-suppressions.supp has exactly one non-comment line, `leak:XCTest` —
       the pattern closed with PR #31 and rejected at todo.md:100, goals.md:208,
