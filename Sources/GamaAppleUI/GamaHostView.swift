@@ -51,10 +51,45 @@ public final class GamaHostView: GamaPlatformView {
     private var tearDownSession: (@MainActor () -> Void)?
     /// Most recently rendered shared draw list, exposed read-only for host
     /// accessibility adapters, diagnostics, and runtime smoke validation.
-    public private(set) var currentDrawList = DrawList(size: Size(width: 0, height: 0))
+    public private(set) var currentDrawList = DrawList(size: Size(width: 0, height: 0)) {
+        didSet {
+            accessibilityCacheIsStale = true
+            refreshAccessibilityIfObserved()
+        }
+    }
+
+    // MARK: Accessibility cache
+    //
+    // The VoiceOver adapter derives everything from `currentDrawList`
+    // (GamaHostAccessibility.swift). Deriving it eagerly every frame would
+    // charge every host for something only an assistive-technology client
+    // reads, so the snapshot is computed lazily, cached until the next
+    // frame, and the change notification is armed only after a client has
+    // actually queried the view.
+    var accessibilityCacheIsStale = true
+    var cachedAccessibilitySnapshot: AccessibilitySnapshot?
+    var cachedAccessibilityElements: [GamaAccessibilityLineElement]?
+    var lastAnnouncedAccessibilitySnapshot: AccessibilitySnapshot?
+    var accessibilityHasBeenQueried = false
+
+    /// Whether an assistive-technology client has queried this host yet, and
+    /// so whether the frame path is doing any accessibility work at all.
+    /// Package-only: it exists so a test can prove the "no cost until
+    /// queried" contract, which is otherwise invisible from outside.
+    package var accessibilityIsObserved: Bool { accessibilityHasBeenQueried }
+
+    /// The snapshot most recently announced to an assistive-technology
+    /// client, or `nil` if none has been. Package-only, for the same reason
+    /// as ``accessibilityIsObserved``.
+    package var accessibilityAnnouncedSnapshot: AccessibilitySnapshot? {
+        lastAnnouncedAccessibilitySnapshot
+    }
 
     private let font = PlatformFont.monospacedSystemFont(ofSize: 14, weight: .regular)
     private var cellSize: CGSize = .zero
+    /// Measured monospaced cell size, for the accessibility adapter's
+    /// grid-to-view rectangle conversion.
+    var accessibilityCellSize: CGSize { cellSize }
     private let defaultForeground: PlatformColor = .white
     private let defaultBackground: PlatformColor = .black
 
@@ -336,6 +371,65 @@ public final class GamaHostView: GamaPlatformView {
                 red: CGFloat(c.r) / 255, green: CGFloat(c.g) / 255,
                 blue: CGFloat(c.b) / 255, alpha: 1)
     }
+
+    // MARK: Accessibility
+    //
+    // The host is a container, not a single element: each non-blank grid row
+    // is published as its own static-text child so VoiceOver can walk the
+    // surface line by line instead of reading it as one opaque blob. Every
+    // accessor also arms change notifications, because a query is the only
+    // reliable signal that an assistive-technology client is attached — the
+    // frame path stays free of accessibility work until then.
+
+    #if canImport(AppKit)
+        /// Reports the host as a container rather than a single element; the
+        /// readable content is its per-row children.
+        public override func isAccessibilityElement() -> Bool {
+            accessibilityHasBeenQueried = true
+            return false
+        }
+
+        /// Exposes the host as a group so assistive technologies descend
+        /// into its per-row children.
+        public override func accessibilityRole() -> NSAccessibility.Role? {
+            accessibilityHasBeenQueried = true
+            return .group
+        }
+
+        /// Names the container itself; the rendered text lives on the
+        /// children, not here.
+        public override func accessibilityLabel() -> String? {
+            accessibilityHasBeenQueried = true
+            return "Gama surface"
+        }
+
+        /// One static-text child per non-blank row of the current frame, in
+        /// top-to-bottom reading order.
+        public override func accessibilityChildren() -> [Any]? {
+            accessibilityHasBeenQueried = true
+            return accessibilityLineElements()
+        }
+    #else
+        /// Reports the host as a container rather than a single element; the
+        /// readable content is its per-row elements.
+        public override var isAccessibilityElement: Bool {
+            get {
+                accessibilityHasBeenQueried = true
+                return false
+            }
+            set { _ = newValue }
+        }
+
+        /// One static-text element per non-blank row of the current frame,
+        /// in top-to-bottom reading order.
+        public override var accessibilityElements: [Any]? {
+            get {
+                accessibilityHasBeenQueried = true
+                return accessibilityLineElements()
+            }
+            set { _ = newValue }
+        }
+    #endif
 
     // MARK: Events — macOS
 
