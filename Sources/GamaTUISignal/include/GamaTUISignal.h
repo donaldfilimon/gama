@@ -13,8 +13,9 @@
  * context: terminal descriptors and state, saved signal dispositions, restore
  * bytes, and the `volatile sig_atomic_t` latches.
  *
- * `gama_tui_signal_arm` and `gama_tui_signal_disarm` are ordinary-code
- * lifecycle calls. The remaining functions are also async-signal-safe. */
+ * `gama_tui_signal_arm`, `gama_tui_signal_disarm`, and
+ * `gama_tui_signal_restore_now` are ordinary/atexit lifecycle calls. The
+ * resize-latch functions are also safe to call from signal context. */
 
 /**
  * Saves the terminal and host dispositions, then installs Gama's handlers.

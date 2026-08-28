@@ -47,10 +47,11 @@ disposition is process-wide — but the private `GamaTUISignal` C target owns
 every byte reachable from a handler: saved `termios`, file descriptors,
 displaced `sigaction` records, fixed restore bytes, and lock-free
 `sig_atomic_t` latches. Swift performs lifecycle calls only outside handler
-context. Handlers use the async-signal-safe `write`, `tcsetattr`, `sigaction`,
-and `raise` operations, then re-raise with the default disposition so the
-process still dies of the signal it was sent and its exit status stays
-truthful.
+context. The terminating handler uses a write-free termios-only restoration,
+restores every displaced host disposition, and re-raises through the action
+that was present before Gama armed rescue. A default action therefore still
+terminates with a truthful signal status, while `SIG_IGN` or a host handler
+that returns resumes the interrupted host code with its entry `errno` intact.
 
 The PTY suite delivers `SIGWINCH` to a real pthread blocked in `poll`, proves
 the `EINTR` path returns one resize with the PTY's new extent, and proves the
