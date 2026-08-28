@@ -66,7 +66,7 @@ enum TerminalRescue {
     }
 
     /// Runs the full ordinary/`atexit` restoration, including presentation
-    /// escape bytes. The C fatal-signal handler deliberately uses its bounded
+    /// escape bytes. The C fatal-signal handler deliberately uses its write-free
     /// termios-only path so a full blocking output queue cannot trap it.
     static func restoreNow() {
         gama_tui_signal_restore_now()

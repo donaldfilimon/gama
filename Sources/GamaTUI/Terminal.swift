@@ -88,6 +88,8 @@ public struct Terminal {
     private var originalTermios = termios()
     private var isRaw = false
     private var pendingBytes: [UInt8] = []
+    private let inputClock = ContinuousClock()
+    private var loneEscapeStartedAt: ContinuousClock.Instant?
     /// Reused read buffer: one heap allocation for the session instead of
     /// one per nextEvent call.
     private var readBuffer = [UInt8](repeating: 0, count: 64)
@@ -232,6 +234,12 @@ public struct Terminal {
             return .resize(size())
         }
         if let event = decodeOne() { return event }
+        let hasLoneEscape = pendingBytes.count == 1 && pendingBytes[0] == 0x1B
+        if hasLoneEscape && loneEscapeGraceExpired() {
+            pendingBytes.removeAll(keepingCapacity: true)
+            loneEscapeStartedAt = nil
+            return .key(.escape)
+        }
         let hasPartialSequence = !pendingBytes.isEmpty
         do {
             var fds = pollfd(fd: inputFD, events: Int16(POLLIN), revents: 0)
@@ -258,8 +266,10 @@ public struct Terminal {
                 return .resize(size())
             }
             if r == 0 {
-                if pendingBytes.count == 1 && pendingBytes[0] == 0x1B {
+                if pendingBytes.count == 1 && pendingBytes[0] == 0x1B
+                    && loneEscapeGraceExpired() {
                     pendingBytes.removeAll(keepingCapacity: true)
+                    loneEscapeStartedAt = nil
                     return .key(.escape)
                 }
                 return nil
@@ -270,8 +280,9 @@ public struct Terminal {
                 }
                 return nil
             }
+            let fd = inputFD
             let n = readBuffer.withUnsafeMutableBytes { raw in
-                read(inputFD, raw.baseAddress, raw.count)
+                read(fd, raw.baseAddress, raw.count)
             }
             if n < 0, errno == EINTR { return nil }
             guard n > 0 else { throw TerminalError("terminal input reached EOF") }
@@ -282,6 +293,9 @@ public struct Terminal {
 
     private mutating func decodeOne() -> InputEvent? {
         guard let first = pendingBytes.first else { return nil }
+        if first != 0x1B || pendingBytes.count > 1 {
+            loneEscapeStartedAt = nil
+        }
 
         // ESC sequences
         if first == 0x1B {
@@ -343,6 +357,17 @@ public struct Terminal {
         }
         guard let ch = decoded.first else { return nil }
         return .key(.character(ch))
+    }
+
+    /// A zero-timeout fairness poll must not turn a freshly buffered ESC into
+    /// a standalone key before the rest of a CSI/SS3/mouse sequence arrives.
+    private mutating func loneEscapeGraceExpired() -> Bool {
+        let now = inputClock.now
+        guard let startedAt = loneEscapeStartedAt else {
+            loneEscapeStartedAt = now
+            return false
+        }
+        return startedAt.duration(to: now) >= .milliseconds(25)
     }
 
     mutating func feedForTesting(_ bytes: [UInt8]) { pendingBytes.append(contentsOf: bytes) }
