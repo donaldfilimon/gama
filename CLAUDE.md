@@ -67,13 +67,26 @@ written justification. Adding a public symbol means adding its `///`, not an
 allowlist entry. CI's macOS job runs boundaries, docs, and doc-coverage
 together.
 
-Full acceptance matrix: `./scripts/check.sh` runs every `check-*.sh` gate in
-order — twelve as of 2026-08-27 (apple, apple-platforms, boundaries, c-abi,
-embedded, linux, wasm, android, android-emulator, mlir, docs, doc-coverage);
-the `gates=(…)` array in `scripts/check.sh` is the authority. Parts require pinned SDKs,
-the NDK, node, or CI/Linux — it intentionally fails when a prerequisite or
-required runtime proof is unavailable. Do not weaken or skip a gate to make
-the matrix green.
+Full acceptance matrix: `./scripts/check.sh` runs every gate in order. **The
+`gates=(…)` array at the top of `scripts/check.sh` is the authority — read it
+rather than any list written down elsewhere, including this file.** It is
+thirteen entries at time of writing. Parts require pinned SDKs, the NDK, node,
+or CI/Linux, and the matrix intentionally fails when a prerequisite or a
+required runtime proof is unavailable. Do not weaken or skip a gate to make it
+green.
+
+One gate is easy to overlook because it owns no source under `Tests/gamaTests`:
+`check-concurrency-negative.sh` `-typecheck`s the fixtures in
+`Tests/CompileFail/` — a directory outside the test target, and therefore
+invisible to `swift test` — failing unless each one is still *rejected* with the
+unavailable-`Sendable` diagnostic. That is the enforcement behind ADR 0009
+keeping `Signal` and `PluginRuntime` non-`Sendable`.
+
+`check-linux-leaks.sh` and `check-portable-symbols.sh` are not in that array:
+the first is a hosted-Linux LeakSanitizer proof (it exits non-zero on macOS by
+design — macOS can build `gama-leak-check` but cannot produce the evidence),
+and the second is a helper the platform gates call to scan emitted objects for
+forbidden libm/libc symbols.
 
 Run tests directly (single test, filtered) — must use a scratch path outside
 iCloud:
@@ -173,7 +186,10 @@ Target layering (all under `Sources/`, single test target `GamaTests` at
   (cells → vector commands + versioned little-endian binary, magic `GAMA`,
   version 1).
 - **Backends** translate events in and present `DrawList` out; they never fork
-  application semantics. GamaTUI (POSIX termios + Windows Console VT),
+  application semantics. GamaTUI (POSIX termios + Windows Console VT; its
+  signal handling lives in the **C-only** `GamaTUISignal` target so that
+  dispositions, restore bytes, and `sig_atomic_t` latches never run Swift
+  runtime code in async-signal context — do not reimplement it in Swift),
   GamaAppleUI (`@MainActor` NSView/UIView via CoreGraphics), GamaAppleShell
   (NSApplication/NSWindow ownership, multi-window and per-shell command
   routing; compiles to an inert target without AppKit — it is the one
@@ -189,6 +205,22 @@ Target layering (all under `Sources/`, single test target `GamaTests` at
 - `Examples/` holds host integrations kept out of the framework targets:
   `Android` (JNI/Gradle, built as the `GamaAndroidDemo` product), plus
   `AppleHost`, `CEmbed`, and `Embedded` consumer samples.
+- `gama-leak-check` is a plain executable, not a test: `check-linux-leaks.sh`
+  builds it with `--sanitize address` and runs the binary directly, because
+  neither Swift Testing nor XCTest may sit above the allocation stacks the
+  gate audits. Adding lifecycle coverage there means editing
+  `Sources/GamaLeakCheck/main.swift`, not `GamaTests`.
+
+## Packaging
+
+`scripts/bundle-macos.sh`, `scripts/bundle-web.sh`, and
+`scripts/release-macos.sh` read identity and branding from the flat manifests
+in `Distribution/` (`gama-apple-demo.toml`, `gama-web-demo.toml`) through
+`scripts/lib/manifest.sh`. That reader accepts only blank lines, `#` comments,
+`[section]` headers, and `key = "value"` — anything else fails the whole read.
+That strictness is the guard keeping manifests identity/branding-only rather
+than a second build system, so extend the manifest schema, never the grammar.
+Rationale is in `docs/Packaging.md`.
 
 ## State lifetime trap (`@Reactive`)
 
