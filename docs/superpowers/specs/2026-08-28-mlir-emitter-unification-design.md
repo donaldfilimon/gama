@@ -132,9 +132,10 @@ x, y, w, h               halign = "leading"
 
 This matches the declaration order of the cases themselves —
 `.frame(w, h, alignment, child)` — so the emitter reads top to bottom against
-the node it is lowering. It is also the cheaper change: three of the four
-existing MLIR tests exercise the structural path and only one exercises
-`lower(laidOut:)`, so it moves the fewest bytes anyone currently asserts on.
+the node it is lowering and stays directly auditable against `RenderNode` and
+the dialect reference. The choice deliberately changes exactly two laid exact
+expectations, `frameBytes` and `flexFrameBytes`; structural fixture bytes remain
+unchanged.
 
 Sorting attributes into a fixed order independent of the source was rejected:
 it would change the bytes of every op on both paths rather than these two laid
@@ -184,10 +185,11 @@ hand-built laid group, and the final-newline contract. Because three byte
 changes are intended, they are reviewed explicitly: the two laid frame
 expectations move in Task 2, and divider style bytes move in Task 3.
 
-Expected output lives **inline in Swift source** as raw multi-line string
-literals (`#"""…"""#`), in a new `Tests/gamaTests/MLIRFixtureTests.swift` under
-`@Suite("MLIR fixtures")`. Raw literals carry the dialect's embedded quotes and
-backslashes without re-escaping, so a fixture reads as the text it pins.
+Expected output lives **inline in Swift source**, primarily as ordinary
+multiline string literals (`"""…"""`), in
+`Tests/gamaTests/MLIRFixtureTests.swift` under `@Suite("MLIR fixtures")`. The
+escaping fixture alone uses a raw multiline literal (`#"""…"""#`), where that
+form keeps the dialect's backslash escapes readable as the bytes it pins.
 
 Loading fixtures from files was rejected. `resources:` plus `Bundle.module`
 would add resource bundling to a test target that CI builds for macOS, Linux,
