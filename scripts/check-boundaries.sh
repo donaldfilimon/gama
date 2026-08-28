@@ -38,6 +38,8 @@ install_line="$(grep -n 'result = gama_tui_install_saved_handlers();' "$signal_s
   echo "error: saved signal actions must be published before handler installation" >&2
   exit 1
 }
+grep -q 'GAMA_TUI_INSTALL_DEFER_PUBLISHING' "$signal_source"
+grep -q '__atomic_compare_exchange_n' "$signal_source"
 echo "OK — TUI signal handlers and storage confined to C"
 
 # Exercise the handler itself outside Swift: it must re-raise through the

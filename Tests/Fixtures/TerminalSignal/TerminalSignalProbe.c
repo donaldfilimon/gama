@@ -75,6 +75,46 @@ static int ignored_host_disposition_survives(int verify_errno) {
     return WIFEXITED(status) && WEXITSTATUS(status) == 0;
 }
 
+static void returning_host_handler(int signal_number) {
+    (void)signal_number;
+    errno = EIO;
+}
+
+static int returning_host_handler_preserves_interrupted_errno(void) {
+    pid_t child = fork();
+    if (child < 0) {
+        perror("fork");
+        return 0;
+    }
+    if (child == 0) {
+        struct sigaction returning;
+        memset(&returning, 0, sizeof(returning));
+        returning.sa_handler = returning_host_handler;
+        sigemptyset(&returning.sa_mask);
+        if (sigaction(SIGTERM, &returning, NULL) != 0) {
+            _exit(10);
+        }
+        int input_fd = open("/dev/null", O_RDONLY);
+        int output_fd = open("/dev/null", O_WRONLY);
+        if (input_fd < 0 || output_fd < 0) {
+            _exit(11);
+        }
+        arm_rescue(input_fd, output_fd);
+        errno = EDOM;
+        raise(SIGTERM);
+        if (errno != EDOM) {
+            _exit(12);
+        }
+        _exit(0);
+    }
+
+    int status = 0;
+    if (waitpid(child, &status, 0) != child) {
+        return 0;
+    }
+    return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+}
+
 static int fatal_signal_does_not_block_on_output(void) {
     pid_t child = fork();
     if (child < 0) {
@@ -123,6 +163,10 @@ int main(void) {
     }
     if (!ignored_host_disposition_survives(1)) {
         fputs("error: terminating rescue changed host errno on return\n", stderr);
+        passed = 0;
+    }
+    if (!returning_host_handler_preserves_interrupted_errno()) {
+        fputs("error: returning host handler changed interrupted errno\n", stderr);
         passed = 0;
     }
     if (!fatal_signal_does_not_block_on_output()) {

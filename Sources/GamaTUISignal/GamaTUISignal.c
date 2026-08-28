@@ -12,6 +12,11 @@
 enum {
     GAMA_TUI_SIGNAL_COUNT = 5,
     GAMA_TUI_TERMINATING_SIGNAL_COUNT = 4,
+    GAMA_TUI_INSTALL_IDLE = 0,
+    GAMA_TUI_INSTALL_IN_PROGRESS = 1,
+    GAMA_TUI_INSTALL_DEFER_PUBLISHING = 2,
+    GAMA_TUI_INSTALL_DEFERRED = 3,
+    GAMA_TUI_INSTALL_COMPLETE = 4,
 };
 
 static const int gama_tui_signals[GAMA_TUI_SIGNAL_COUNT] = {
@@ -33,7 +38,7 @@ static volatile sig_atomic_t gama_tui_has_saved_actions = 0;
 static int gama_tui_atexit_registered = 0;
 static volatile sig_atomic_t gama_tui_armed = 0;
 static volatile sig_atomic_t gama_tui_resize_pending = 0;
-static volatile sig_atomic_t gama_tui_installing_handlers = 0;
+static volatile sig_atomic_t gama_tui_install_state = GAMA_TUI_INSTALL_IDLE;
 static volatile sig_atomic_t gama_tui_pending_termination = 0;
 
 _Static_assert(
@@ -103,6 +108,42 @@ void gama_tui_signal_restore_now(void) {
 
 static int gama_tui_restore_saved_actions(void);
 
+static int gama_tui_defer_termination_during_install(int signal_number) {
+    sig_atomic_t state = __atomic_load_n(
+        &gama_tui_install_state,
+        __ATOMIC_SEQ_CST
+    );
+    if (state == GAMA_TUI_INSTALL_IN_PROGRESS) {
+        sig_atomic_t expected = GAMA_TUI_INSTALL_IN_PROGRESS;
+        if (__atomic_compare_exchange_n(
+            &gama_tui_install_state,
+            &expected,
+            (sig_atomic_t)GAMA_TUI_INSTALL_DEFER_PUBLISHING,
+            0,
+            __ATOMIC_SEQ_CST,
+            __ATOMIC_SEQ_CST
+        )) {
+            __atomic_store_n(
+                &gama_tui_pending_termination,
+                (sig_atomic_t)signal_number,
+                __ATOMIC_SEQ_CST
+            );
+            __atomic_store_n(
+                &gama_tui_install_state,
+                (sig_atomic_t)GAMA_TUI_INSTALL_DEFERRED,
+                __ATOMIC_SEQ_CST
+            );
+            return 1;
+        }
+        state = expected;
+    }
+    // One handler owns the deferred slot. Additional terminating signals in
+    // the same tiny installation window need not replace it: replaying the
+    // claimed signal restores the full displaced disposition set.
+    return state == GAMA_TUI_INSTALL_DEFER_PUBLISHING
+        || state == GAMA_TUI_INSTALL_DEFERRED;
+}
+
 static void gama_tui_terminating_handler(int signal_number) {
     int saved_errno = errno;
 
@@ -110,15 +151,7 @@ static void gama_tui_terminating_handler(int signal_number) {
     // therefore run on another host thread while the remaining handlers are
     // still being installed. Defer that signal until every displaced action
     // is available and the complete set can be restored without recursion.
-    if (__atomic_load_n(
-        &gama_tui_installing_handlers,
-        __ATOMIC_SEQ_CST
-    ) != 0) {
-        __atomic_store_n(
-            &gama_tui_pending_termination,
-            (sig_atomic_t)signal_number,
-            __ATOMIC_SEQ_CST
-        );
+    if (gama_tui_defer_termination_during_install(signal_number)) {
         errno = saved_errno;
         return;
     }
@@ -136,7 +169,28 @@ static void gama_tui_terminating_handler(int signal_number) {
     if (gama_tui_restore_saved_actions() != 0) {
         _exit(128 + signal_number);
     }
-    raise(signal_number);
+    __atomic_store_n(
+        &gama_tui_install_state,
+        (sig_atomic_t)GAMA_TUI_INSTALL_IDLE,
+        __ATOMIC_SEQ_CST
+    );
+
+    // The action's mask includes the current signal. Temporarily unblocking
+    // it makes the restored host disposition run synchronously inside this
+    // handler, so its errno changes can be repaired before interrupted host
+    // code resumes.
+    sigset_t current_signal;
+    sigemptyset(&current_signal);
+    sigaddset(&current_signal, signal_number);
+    if (sigprocmask(SIG_UNBLOCK, &current_signal, NULL) != 0) {
+        _exit(128 + signal_number);
+    }
+    if (raise(signal_number) != 0) {
+        _exit(128 + signal_number);
+    }
+    if (sigprocmask(SIG_BLOCK, &current_signal, NULL) != 0) {
+        _exit(128 + signal_number);
+    }
     // SIG_IGN and host handlers that return resume interrupted host code.
     // Do not leak errno changes from Gama's restoration syscalls into it.
     errno = saved_errno;
@@ -208,8 +262,8 @@ static int gama_tui_install_saved_handlers(void) {
     resize_action.sa_flags = 0;
 
     __atomic_store_n(
-        &gama_tui_installing_handlers,
-        (sig_atomic_t)1,
+        &gama_tui_install_state,
+        (sig_atomic_t)GAMA_TUI_INSTALL_IN_PROGRESS,
         __ATOMIC_SEQ_CST
     );
     int result = 0;
@@ -225,11 +279,31 @@ static int gama_tui_install_saved_handlers(void) {
     if (result == 0) {
         __atomic_store_n(&gama_tui_armed, (sig_atomic_t)1, __ATOMIC_SEQ_CST);
     }
-    __atomic_store_n(
-        &gama_tui_installing_handlers,
-        (sig_atomic_t)0,
+
+    sig_atomic_t expected = GAMA_TUI_INSTALL_IN_PROGRESS;
+    if (!__atomic_compare_exchange_n(
+        &gama_tui_install_state,
+        &expected,
+        (sig_atomic_t)GAMA_TUI_INSTALL_COMPLETE,
+        0,
+        __ATOMIC_SEQ_CST,
         __ATOMIC_SEQ_CST
-    );
+    )) {
+        sig_atomic_t state;
+        do {
+            state = __atomic_load_n(
+                &gama_tui_install_state,
+                __ATOMIC_SEQ_CST
+            );
+        } while (state == GAMA_TUI_INSTALL_DEFER_PUBLISHING);
+        if (state == GAMA_TUI_INSTALL_DEFERRED) {
+            __atomic_store_n(
+                &gama_tui_install_state,
+                (sig_atomic_t)GAMA_TUI_INSTALL_COMPLETE,
+                __ATOMIC_SEQ_CST
+            );
+        }
+    }
     return result;
 }
 
@@ -289,6 +363,11 @@ int gama_tui_signal_arm(
     if (result != 0) {
         __atomic_store_n(&gama_tui_armed, (sig_atomic_t)0, __ATOMIC_SEQ_CST);
         (void)gama_tui_restore_saved_actions();
+        __atomic_store_n(
+            &gama_tui_install_state,
+            (sig_atomic_t)GAMA_TUI_INSTALL_IDLE,
+            __ATOMIC_SEQ_CST
+        );
         gama_tui_saved_input_fd = -1;
         gama_tui_saved_output_fd = -1;
     }
@@ -297,6 +376,11 @@ int gama_tui_signal_arm(
         result = errno;
         __atomic_store_n(&gama_tui_armed, (sig_atomic_t)0, __ATOMIC_SEQ_CST);
         (void)gama_tui_restore_saved_actions();
+        __atomic_store_n(
+            &gama_tui_install_state,
+            (sig_atomic_t)GAMA_TUI_INSTALL_IDLE,
+            __ATOMIC_SEQ_CST
+        );
         gama_tui_saved_input_fd = -1;
         gama_tui_saved_output_fd = -1;
     }
@@ -328,8 +412,8 @@ int gama_tui_signal_disarm(void) {
 
     __atomic_store_n(&gama_tui_armed, (sig_atomic_t)0, __ATOMIC_SEQ_CST);
     __atomic_store_n(
-        &gama_tui_installing_handlers,
-        (sig_atomic_t)0,
+        &gama_tui_install_state,
+        (sig_atomic_t)GAMA_TUI_INSTALL_IDLE,
         __ATOMIC_SEQ_CST
     );
     __atomic_store_n(
