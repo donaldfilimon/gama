@@ -273,3 +273,29 @@ than auto-resolving them.
   addition.
 - Exact local 13-gate and hosted-six evidence at the heads cited by the
   roadmap ledger.
+
+## Completion evidence
+
+Implementation began from `b01e606` and continues in PR #60. The focused
+implementation history is:
+
+- `935f435` — pins the unmodified emitter with 17 fixture tests.
+- `edbfc49` — records the corrected execution contract from PR #58 review.
+- `4309fa1` — unifies structural and laid lowering behind one emitter.
+- `6ac6f84` — emits full divider style and reconciles the dialect reference.
+- `d5729eb` — aligns the fixture rationale with the implemented suite.
+
+Task 2's red step failed exactly `frameBytes` and `flexFrameBytes`; its green
+step passed 17 fixtures and 21 aggregate MLIR tests. Task 3's red step failed
+only the new full-style divider fixture; its green step passed 18 fixtures and
+22 aggregate MLIR tests, plus the MLIR and documentation gates.
+
+At implementation head `d5729eb60ca7a664c1ce42e0b66bcdeddf556fc2`, the
+unmodified `scripts/check.sh` exited zero after all thirteen fail-closed gates,
+including 248 Apple tests in 47 suites and the Android emulator runtime
+assertion, and printed `OK — complete local Gama Framework acceptance matrix`.
+Hosted run
+[33219690659](https://github.com/donaldfilimon/gama/actions/runs/33219690659)
+passed all six ruleset-required jobs at that exact head. The completion-ledger
+commit, its fresh exact-head hosted rerun, and PR merge remain pending at the
+time of this record.

@@ -386,8 +386,29 @@
 - [ ] Item 8: `StrictMemorySafety` and `InternalImportsByDefault`. OPEN —
       verified 2026-08-28: Package.swift enables only `MemberImportVisibility`
       among the relevant upcoming features.
-- [ ] Item 9: MLIR emitter unification with byte-for-byte deterministic
-      fixture tests. OPEN.
+- [x] Item 9: MLIR emitter unification with byte-for-byte deterministic
+      fixture tests. CLOSED 2026-08-28 by PR #60 at implementation head
+      `d5729eb60ca7a664c1ce42e0b66bcdeddf556fc2`; merge remains pending until
+      the ledger-only head passes its own required checks. `GamaLowering` now
+      routes structural and laid trees through one private recursive emitter
+      without changing either public lowering entry point. `MLIRFixtureTests`
+      contains 18 Swift Testing cases in one suite, and `--filter MLIR` matches
+      22 tests across the new fixture suite and the preserved intent-level
+      suite. All fourteen `RenderNode` cases pin structural and laid bytes.
+      Canonicalization changes exactly two laid `gama.frame` expectations:
+      fixed and flex frames now put dimensions before alignment, while
+      structural bytes remain unchanged. `gama.divider` now emits `fg`, `bg`,
+      and raw `sgr`, followed by its optional axis; the plain style remains
+      `"default"`, `"default"`, and `0`. Layout distinctions remain deliberate:
+      normal group layout becomes a top-leading `gama.overlay`, a hand-built
+      laid group pins `gama.group`, and a nil-axis divider gains `axis = "v"`
+      only through vertical-stack layout. The unmodified `scripts/check.sh`
+      passed all thirteen fail-closed gates at that implementation head,
+      including 248 Apple tests in 47 suites and the emulator runtime
+      assertion, and ended with `OK — complete local Gama Framework acceptance
+      matrix`. Hosted run
+      [33219690659](https://github.com/donaldfilimon/gama/actions/runs/33219690659)
+      passed all six ruleset-required jobs at that exact implementation head.
 
 ## CI findings 2026-08-27 (evidence-backed, not yet fixed)
 - [x] **Android emulator has never had KVM.** CLOSED 2026-08-28 by PR #52
