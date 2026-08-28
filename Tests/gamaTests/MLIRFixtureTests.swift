@@ -313,7 +313,7 @@ struct MLIRFixtureTests {
             "gama.module"() ({
               "gama.frame"() ({
                 "gama.text"() {text = "x", fg = "default", bg = "default", sgr = 0 : i64, x = 19 : i64, y = 5 : i64, w = 1 : i64, h = 1 : i64} : () -> ()
-              }) {halign = "trailing", valign = "bottom", width = 10 : i64, height = 3 : i64, x = 10 : i64, y = 3 : i64, w = 10 : i64, h = 3 : i64} : () -> ()
+              }) {width = 10 : i64, height = 3 : i64, halign = "trailing", valign = "bottom", x = 10 : i64, y = 3 : i64, w = 10 : i64, h = 3 : i64} : () -> ()
             }) {sym_name = "probe"} : () -> ()
 
             """
@@ -344,7 +344,7 @@ struct MLIRFixtureTests {
             "gama.module"() ({
               "gama.frame"() ({
                 "gama.text"() {text = "x", fg = "default", bg = "default", sgr = 0 : i64, x = 19 : i64, y = 5 : i64, w = 1 : i64, h = 1 : i64} : () -> ()
-              }) {halign = "trailing", valign = "bottom", min_width = 1 : i64, max_width = -1 : i64, min_height = 2 : i64, max_height = 5 : i64, x = 0 : i64, y = 0 : i64, w = 20 : i64, h = 6 : i64} : () -> ()
+              }) {min_width = 1 : i64, max_width = -1 : i64, min_height = 2 : i64, max_height = 5 : i64, halign = "trailing", valign = "bottom", x = 0 : i64, y = 0 : i64, w = 20 : i64, h = 6 : i64} : () -> ()
             }) {sym_name = "probe"} : () -> ()
 
             """
