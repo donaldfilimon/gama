@@ -358,8 +358,26 @@
       boundary glyph at 1/8, keeps 0.99 visibly distinct from 1.0, refuses to
       read one ulp below 1 as full, and clamps NaN, ±infinity, negatives, and
       past-total values to the correct end.
-- [ ] Item 6: measure-first optimization of `CellBuffer.presentDiff` and
-      `forEachRun`. OPEN. Baseline capture comes before any edit.
+- [x] Item 6: measure-first optimization of `CellBuffer.presentDiff` and
+      `forEachRun`. CLOSED 2026-08-28 by PR #56 (merged f259247), whose exact
+      head passed all six hosted jobs. The ordering held: the `gama-bench`
+      harness and docs/Performance.md landed as commit 84a34b5 BEFORE the
+      optimization in 9173d2f, so the number has a source.
+      Outcome, and the interesting half: only ONE of the two named functions
+      was optimized. `forEachRun` via `DrawList.from` went from ~90,834 ns to
+      ~43,125 ns median (-52%, five alternating baseline/optimized release
+      pairs, docs/Performance.md:94-102). `presentDiff` measured 7,042 ns — the
+      CHEAPEST phase of the four — and was deliberately left untouched under
+      the roadmap's own rule that only a measurement-identified hotspot may be
+      optimized. docs/Performance.md:73-77 states it plainly: "The measurement
+      contradicted the ledger item's own ordering."
+      Read the -52% as "roughly halved under the recorded conditions", not as a
+      constant: the doc's own baseline pairs range from 90,834 to 170,458 ns,
+      and an independent run on the same machine measured 37,167 ns.
+      Residual, unchanged: the harness asserts no threshold and is absent from
+      scripts/check.sh, so it is evidence, not a gate. Allocation counts remain
+      deliberately absent — nothing on Darwin counts them cumulatively, and
+      Instruments is Task 5's tool.
 - [ ] Item 7: `~Copyable` migration for `CellBuffer` and `Terminal`, including
       deinitialization tests. OPEN — verified 2026-08-28:
       GamaDraw/CellBuffer.swift:32 is `public struct CellBuffer: Hashable,
@@ -400,15 +418,8 @@
       PR #41 (whose author owns that job) rather than opened as a conflicting
       PR. Consequence if true: much of the 900/720/840/240 partitioning stops
       being load-bearing. CORRECTS the repo's own "adb install flakes are infra,
-      not product" framing in docs/Capabilities.md:33.
-      STILL OPEN 2026-08-28, and deliberately not claimed by this session: the
-      Android emulator job is peer territory right now. PR #52
-      (`ci/android-readiness-deadline`, "wait for a booting emulator instead of
-      spending reconnects on it") is open against exactly this code path, and
-      main already carries 4737b6c "ci: let Android services settle after boot".
-      Both attack boot latency; neither adds the udev KVM rule, so the finding
-      above stands unrefuted. Leaving it to the session that owns that job
-      rather than opening a conflicting PR — same call as the PR #41 comment.
+      not product" framing in docs/Capabilities.md — that row now carries the
+      retraction rather than the disproven claim.
 - [x] **check-boundaries.sh cannot catch libm symbol references.** It greps
       `^import (Foundation|AppKit|UIKit|Darwin|Glibc|WinSDK|Synchronization)$`,
       so a bare `Double.rounded()` in GamaCore passes boundaries locally and

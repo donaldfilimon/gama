@@ -41,9 +41,21 @@ Never `git gc`, `git prune`, `git fsck`, or `git repack` here.
 
 All library and test targets use `.swiftLanguageMode(.v6)` and
 `ExistentialAny`. `Extern` is experimental and scoped to `GamaWASM` only.
-`MemberImportVisibility` is a candidate upcoming feature, not yet on
-`strictCore` until every test file's direct imports are proven. Do not
-enable `InternalImportsByDefault` or `NonisolatedNonsendingByDefault`.
+`MemberImportVisibility` is enabled on `strictCore` (`Package.swift:13`,
+commit `e038ad6`); the earlier text here said it was not, and was stale.
+
+`InternalImportsByDefault` is **approved and being adopted** (Roadmap Task 4.2
+item 8). It is enabled last, after every target's imports carry an explicit
+access level, so the enabling change is a semantic no-op and revertable on its
+own. Until that flip lands, an unannotated `import` is still the default —
+annotate rather than assume. The adoption reverses this file's previous blanket
+prohibition deliberately: the condition that prohibition waited on, that the
+boundary scripts recognize every import spelling, is met by
+`scripts/check-boundaries.sh:11-15` and `:59-67`, which match plain, indented,
+attributed, and access-scoped forms.
+
+Do not enable `NonisolatedNonsendingByDefault`. That is a separate question and
+the modernization master plan says to assess it, not to assume it.
 
 ## Bump policy
 
