@@ -42,6 +42,8 @@ pre-release migration from `App.content` and typed `WindowGroup` examples.
 | --- | --- |
 | `Gama` | Compatibility umbrella (`@_exported import GamaCore`) |
 | `GamaCore` | Scenes, views, identity, state, layout, events, and `FrameHost` |
+| `GamaPlugin` | Stdlib-only Tier-1 static plugin and capability model |
+| `GamaPlatformServices` | Foundation-backed `HostServices` implementations; applications, demos, examples, and tests only |
 | `GamaMacros` | Optional `@Component`, `@Reactive`, and `#rgb` sugar |
 | `GamaDraw` | Cell buffer, painter, draw list, and versioned binary codec |
 | `GamaTUI` | POSIX and Windows terminal backend |
@@ -56,6 +58,8 @@ pre-release migration from `App.content` and typed `WindowGroup` examples.
 | `gama-web-demo` | Browser reactor demo served from `WebHost/` |
 | `gama-apple-demo` | macOS scene/window lifecycle showcase |
 | `gama-windows-console-smoke` | Windows console acceptance binary |
+| `gama-leak-check` | Harness-free lifecycle probe so Linux LeakSanitizer observes Gama without the XCTest harness |
+| `gama-bench` | Deterministic frame-path measurement harness; reports numbers, asserts no threshold, and is not a gate |
 
 ## Architecture
 
