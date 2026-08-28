@@ -150,7 +150,7 @@ extension TerminalProcessGlobalTests {
             }
         }
 
-        @Test("restoreNow puts termios back like the bounded signal path")
+        @Test("restoreNow puts termios back like the write-free signal path")
         func restoreNowRestoresTermios() throws {
             try withPTY { slave in
                 var before = termios()

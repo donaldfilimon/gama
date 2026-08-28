@@ -22,6 +22,7 @@ struct RuntimeLoopTests {
         var beginCount = 0
         var endCount = 0
         var steps: [String] = []
+        var waitTimeouts: [Int] = []
         var presentedSizes: [Size] { presented.map(\.frame.size) }
     }
 
@@ -48,6 +49,7 @@ struct RuntimeLoopTests {
 
         mutating func nextEvent(timeoutMillis: Int) -> InputEvent? {
             recorder.steps.append("wait")
+            recorder.waitTimeouts.append(timeoutMillis)
             guard index < script.count else { return .key(.ctrl("q")) }
             defer { index += 1 }
             return script[index]
@@ -146,6 +148,31 @@ struct RuntimeLoopTests {
         }
     }
 
+    private struct ContinuouslyInvalidatingView: View {
+        typealias Body = Never_
+        let signal: Signal<Int>
+        var body: Never_ { Never_() }
+
+        func render(in context: BuildContext) -> RenderNode {
+            let value = signal.get()
+            signal.set(value + 1)
+            return .text("frame \(value)", style: context.inheritedStyle)
+        }
+    }
+
+    private struct ContinuouslyInvalidatingApp: App {
+        let signal: Signal<Int>
+
+        init() { signal = Signal(0) }
+        init(signal: Signal<Int>) { self.signal = signal }
+
+        var scenes: some Scene {
+            Window("Main", id: "main", role: .primary) {
+                ContinuouslyInvalidatingView(signal: signal)
+            }
+        }
+    }
+
     @Test("begin runs once before the first frame and end runs on the way out")
     func acquiresAndReleasesTheSurface() throws {
         let recorder = Recorder()
@@ -179,8 +206,8 @@ struct RuntimeLoopTests {
         #expect(recorder.presented.count == 1)
     }
 
-    @Test("a requested follow-up frame is presented before the renderer waits")
-    func followUpFrameSkipsTheInputWait() throws {
+    @Test("a requested follow-up polls input without blocking before the next frame")
+    func followUpFramePollsInputWithoutBlocking() throws {
         let recorder = Recorder()
         let signal = Signal(0)
         var runtime = try AppRuntime(
@@ -191,8 +218,27 @@ struct RuntimeLoopTests {
 
         runtime.run()
 
-        #expect(Array(recorder.steps.prefix(2)) == ["present", "present"])
+        #expect(Array(recorder.steps.prefix(3)) == ["present", "wait", "present"])
+        #expect(recorder.waitTimeouts.first == 0)
         #expect(recorder.presented.count == 2)
+    }
+
+    @Test("continuous follow-ups cannot starve a quit event")
+    func continuousFollowUpsStillServiceInput() throws {
+        let recorder = Recorder()
+        let signal = Signal(0)
+        var runtime = try AppRuntime(
+            app: ContinuouslyInvalidatingApp(signal: signal),
+            renderer: ScriptedRenderer(
+                size: Size(width: 20, height: 4),
+                recorder: recorder,
+                script: [.key(.ctrl("q"))]))
+        runtime.observe(signal)
+
+        runtime.run()
+
+        #expect(recorder.presented.count == 1)
+        #expect(recorder.waitTimeouts == [0])
     }
 
     @Test("a resize inside the loop re-lays out at the new extent")

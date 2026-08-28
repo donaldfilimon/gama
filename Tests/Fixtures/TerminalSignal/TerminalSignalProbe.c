@@ -38,7 +38,7 @@ static int wait_for_child(pid_t child, int *status, int timeout_millis) {
     return 0;
 }
 
-static int preserves_ignored_host_disposition(void) {
+static int ignored_host_disposition_survives(int verify_errno) {
     pid_t child = fork();
     if (child < 0) {
         perror("fork");
@@ -58,7 +58,13 @@ static int preserves_ignored_host_disposition(void) {
             _exit(3);
         }
         arm_rescue(input_fd, output_fd);
+        if (verify_errno) {
+            errno = EDOM;
+        }
         raise(SIGTERM);
+        if (verify_errno && errno != EDOM) {
+            _exit(9);
+        }
         _exit(0);
     }
 
@@ -111,8 +117,12 @@ static int fatal_signal_does_not_block_on_output(void) {
 
 int main(void) {
     int passed = 1;
-    if (!preserves_ignored_host_disposition()) {
+    if (!ignored_host_disposition_survives(0)) {
         fputs("error: terminating rescue replaced the host SIGTERM disposition\n", stderr);
+        passed = 0;
+    }
+    if (!ignored_host_disposition_survives(1)) {
+        fputs("error: terminating rescue changed host errno on return\n", stderr);
         passed = 0;
     }
     if (!fatal_signal_does_not_block_on_output()) {

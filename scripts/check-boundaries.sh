@@ -27,6 +27,17 @@ grep -q 'static struct termios gama_tui_saved_termios' \
   "$ROOT/Sources/GamaTUISignal/GamaTUISignal.c"
 grep -q 'static struct sigaction gama_tui_saved_actions' \
   "$ROOT/Sources/GamaTUISignal/GamaTUISignal.c"
+
+# Saved dispositions must be fully published before the first process-wide
+# handler install. Signals are blocked only on the calling thread, so another
+# host thread may enter a newly installed handler immediately.
+signal_source="$ROOT/Sources/GamaTUISignal/GamaTUISignal.c"
+publish_line="$(grep -n 'result = gama_tui_publish_saved_actions();' "$signal_source" | cut -d: -f1)"
+install_line="$(grep -n 'result = gama_tui_install_saved_handlers();' "$signal_source" | cut -d: -f1)"
+[[ -n "$publish_line" && -n "$install_line" && "$publish_line" -lt "$install_line" ]] || {
+  echo "error: saved signal actions must be published before handler installation" >&2
+  exit 1
+}
 echo "OK — TUI signal handlers and storage confined to C"
 
 # Exercise the handler itself outside Swift: it must re-raise through the
