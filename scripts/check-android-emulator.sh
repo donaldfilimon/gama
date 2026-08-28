@@ -8,7 +8,7 @@ GAMA_ANDROID_GRADLE_PROJECT_CACHE_DIR="${GAMA_ANDROID_GRADLE_PROJECT_CACHE_DIR:-
 GAMA_ANDROID_GRADLE_BUILD_DIR="${GAMA_ANDROID_GRADLE_BUILD_DIR:-$SCRATCH_ROOT/gama-android-gradle-build}"
 GAMA_ANDROID_CXX_BUILD_DIR="${GAMA_ANDROID_CXX_BUILD_DIR:-$SCRATCH_ROOT/gama-android-cxx-build}"
 
-# The 45-minute job budget is partitioned explicitly. The setup allowance
+# The 55-minute job budget is partitioned explicitly. The setup allowance
 # includes snapshot/SDK/NDK installation and cross-compilation; the boot
 # allowance exceeds the observed ~648-second hosted boot. The final four
 # minutes remain job-level headroom rather than being available to this script.
@@ -33,6 +33,13 @@ GAMA_ANDROID_WAIT_TIMEOUT_SECONDS="${GAMA_ANDROID_WAIT_TIMEOUT_SECONDS:-30}"
 # tens of seconds on hosted API 36 emulators. Give each bounded recovery a
 # real service-settle window instead of probing again almost immediately.
 GAMA_ANDROID_RECOVERY_DELAY_SECONDS="${GAMA_ANDROID_RECOVERY_DELAY_SECONDS:-30}"
+# A hosted emulator reports a completed boot before its package manager and
+# settings provider accept calls. That is not a dropped transport, and
+# reconnecting does not speed it up — only waiting does. Initial readiness
+# therefore polls to this deadline, and spends the shared recovery budget
+# only when the shell transport is unavailable.
+GAMA_ANDROID_READINESS_DEADLINE_SECONDS="${GAMA_ANDROID_READINESS_DEADLINE_SECONDS:-180}"
+GAMA_ANDROID_READINESS_POLL_DELAY_SECONDS="${GAMA_ANDROID_READINESS_POLL_DELAY_SECONDS:-5}"
 GAMA_ANDROID_SETTINGS_TIMEOUT_SECONDS="${GAMA_ANDROID_SETTINGS_TIMEOUT_SECONDS:-5}"
 GAMA_ANDROID_INSTALL_TIMEOUT_SECONDS="${GAMA_ANDROID_INSTALL_TIMEOUT_SECONDS:-90}"
 GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS="${GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS:-30}"
@@ -68,8 +75,7 @@ require_nonnegative_integer() {
 }
 
 calculate_android_post_boot_worst_case_seconds() {
-  local probe_max animation_max install_max control_max poll_max
-  probe_max=$((3 * GAMA_ANDROID_READY_PROBE_TIMEOUT_SECONDS))
+  local animation_max install_max control_max poll_max
   # Animations are best-effort: 3 bounded attempts of 3 settings each,
   # with 2 budget-free reconnect/wait/delay recoveries between attempts.
   animation_max=$((3 * 3 * GAMA_ANDROID_SETTINGS_TIMEOUT_SECONDS + 2 * (
@@ -91,13 +97,9 @@ calculate_android_post_boot_worst_case_seconds() {
     + GAMA_ANDROID_POLL_DELAY_SECONDS
   )))
 
-  # Readiness is bounded by its own deadline (its recoveries happen inside
-  # that window), plus the probes that confirm the final state.
-  local readiness_max=$((GAMA_ANDROID_READINESS_DEADLINE_SECONDS + probe_max))
-
   echo $((
     GAMA_ANDROID_GRADLE_TIMEOUT_SECONDS
-    + readiness_max
+    + GAMA_ANDROID_READINESS_DEADLINE_SECONDS
     + animation_max
     + install_max
     + control_max
@@ -131,11 +133,16 @@ validate_android_time_budget() {
     GAMA_ANDROID_DIAGNOSTIC_TIMEOUT_SECONDS \
     GAMA_ANDROID_FIXED_OVERHEAD_SECONDS; do
     value="${!name}"
-    require_positive_integer "$name" "$value"
+    require_positive_integer "$name" "$value" || return
   done
-  require_nonnegative_integer GAMA_ANDROID_RECOVERY_BUDGET "$GAMA_ANDROID_RECOVERY_BUDGET"
-  require_nonnegative_integer GAMA_ANDROID_RECOVERY_DELAY_SECONDS "$GAMA_ANDROID_RECOVERY_DELAY_SECONDS"
-  require_nonnegative_integer GAMA_ANDROID_POLL_DELAY_SECONDS "$GAMA_ANDROID_POLL_DELAY_SECONDS"
+  require_nonnegative_integer GAMA_ANDROID_RECOVERY_BUDGET \
+    "$GAMA_ANDROID_RECOVERY_BUDGET" || return
+  require_nonnegative_integer GAMA_ANDROID_INSTALL_RECOVERY_BUDGET \
+    "$GAMA_ANDROID_INSTALL_RECOVERY_BUDGET" || return
+  require_nonnegative_integer GAMA_ANDROID_RECOVERY_DELAY_SECONDS \
+    "$GAMA_ANDROID_RECOVERY_DELAY_SECONDS" || return
+  require_nonnegative_integer GAMA_ANDROID_POLL_DELAY_SECONDS \
+    "$GAMA_ANDROID_POLL_DELAY_SECONDS" || return
 
   post_boot_max="$(calculate_android_post_boot_worst_case_seconds)"
   if ((post_boot_max >= GAMA_ANDROID_POST_BOOT_CEILING_SECONDS)); then
@@ -168,24 +175,25 @@ describe_android_time_budget() {
 }
 
 run_with_timeout() {
-  local seconds="$1" remaining
+  local seconds="$1"
   shift
-  # wait_for_android_services sets this dynamically scoped local only after
-  # its initial bounded probe. While it is active, no nested adb timeout can
-  # outlive the readiness deadline that the CI budget accounts for.
-  if [[ -n "${ANDROID_READINESS_WALL_CLOCK_DEADLINE:-}" ]]; then
-    remaining=$((ANDROID_READINESS_WALL_CLOCK_DEADLINE - SECONDS))
-    ((remaining > 0)) || return 124
-    if ((seconds > remaining)); then
-      seconds="$remaining"
-    fi
-  fi
-  timeout "${seconds}s" "$@"
+  timeout --signal=KILL "${seconds}s" "$@"
 }
 
-sleep_before_android_readiness_deadline() {
-  local requested="$1" remaining
-  remaining=$((ANDROID_READINESS_WALL_CLOCK_DEADLINE - SECONDS))
+run_before_android_deadline() {
+  local deadline="$1" requested="$2" remaining
+  shift 2
+  remaining=$((deadline - SECONDS))
+  ((remaining > 0)) || return 124
+  if ((requested < remaining)); then
+    remaining="$requested"
+  fi
+  run_with_timeout "$remaining" "$@"
+}
+
+sleep_before_android_deadline() {
+  local deadline="$1" requested="$2" remaining
+  remaining=$((deadline - SECONDS))
   ((remaining > 0)) || return 1
   if ((requested < remaining)); then
     remaining="$requested"
@@ -223,76 +231,66 @@ recover_android_connection() {
 }
 
 android_services_ready() {
-  local state package_status
+  local deadline="$1" package_status
   ANDROID_READINESS_PROBES=$((ANDROID_READINESS_PROBES + 1))
 
-  state="$(run_with_timeout "$GAMA_ANDROID_READY_PROBE_TIMEOUT_SECONDS" adb get-state 2>/dev/null)" || return 1
-  [[ "$state" == device ]] || return 1
-
-  package_status="$(run_with_timeout "$GAMA_ANDROID_READY_PROBE_TIMEOUT_SECONDS" adb shell service check package 2>/dev/null)" || return 1
+  package_status="$(run_before_android_deadline "$deadline" \
+    "$GAMA_ANDROID_READY_PROBE_TIMEOUT_SECONDS" \
+    adb shell service check package 2>/dev/null)" || return 1
   [[ "$package_status" == *"Service package: found"* ]] || return 1
 
   # A non-mutating read proves the same settings-provider path used by
   # `settings put` is alive without changing state during the probe.
-  run_with_timeout "$GAMA_ANDROID_READY_PROBE_TIMEOUT_SECONDS" \
+  run_before_android_deadline "$deadline" \
+    "$GAMA_ANDROID_READY_PROBE_TIMEOUT_SECONDS" \
     adb shell settings get global window_animation_scale >/dev/null 2>&1
 }
 
-# True when adb still sees the device, regardless of whether its services
-# answer yet. This is the difference between a transport failure (reconnect)
-# and a boot still in progress (wait).
-android_device_present() {
-  local state
-  state="$(run_with_timeout "$GAMA_ANDROID_READY_PROBE_TIMEOUT_SECONDS" adb get-state 2>/dev/null)" || return 1
-  [[ "$state" == device ]]
+# `adb get-state` can report `device` while the shell transport is broken.
+# Probe the transport the readiness checks actually use before deciding that
+# waiting, rather than reconnecting, is the right recovery policy.
+android_shell_available() {
+  local deadline="$1"
+  run_before_android_deadline "$deadline" \
+    "$GAMA_ANDROID_READY_PROBE_TIMEOUT_SECONDS" adb shell true >/dev/null 2>&1
 }
 
-recover_until_android_services_ready() {
-  local stage="$1"
-  while true; do
-    consume_android_recovery "$stage" || return 1
-    recover_android_connection
-    sleep "$GAMA_ANDROID_RECOVERY_DELAY_SECONDS"
-    if android_services_ready; then
-      echo "Android adb, package manager, and settings provider recovered"
-      return 0
-    fi
-    echo "warning: Android services still unavailable after recovery" >&2
-  done
+recover_android_connection_before() {
+  local deadline="$1"
+  run_before_android_deadline "$deadline" \
+    "$GAMA_ANDROID_RECONNECT_TIMEOUT_SECONDS" adb reconnect >/dev/null 2>&1 || true
+  run_before_android_deadline "$deadline" \
+    "$GAMA_ANDROID_WAIT_TIMEOUT_SECONDS" adb wait-for-device >/dev/null 2>&1 || true
 }
 
 wait_for_android_services() {
-  if android_services_ready; then
+  local deadline=$((SECONDS + GAMA_ANDROID_READINESS_DEADLINE_SECONDS))
+  if android_services_ready "$deadline"; then
     echo "Android adb, package manager, and settings provider ready"
     return 0
   fi
 
   echo "warning: Android services not initially ready; waiting up to" \
     "${GAMA_ANDROID_READINESS_DEADLINE_SECONDS}s" >&2
-  # This starts after the initial bounded probe, matching readiness_max in
-  # calculate_android_post_boot_worst_case_seconds. Every operation inside the
-  # loop is clipped to the remaining wall-clock time, so the configured
-  # deadline is a real upper bound rather than a poll-count estimate.
-  local ANDROID_READINESS_WALL_CLOCK_DEADLINE=$((
-    SECONDS + GAMA_ANDROID_READINESS_DEADLINE_SECONDS
-  ))
-  while ((SECONDS < ANDROID_READINESS_WALL_CLOCK_DEADLINE)); do
-    if android_device_present; then
-      # Device is up and its services are still coming online. Waiting is the
-      # only remedy; spending a reconnect here is what let a slow-but-healthy
-      # emulator exhaust the budget in ~30s and fail the gate.
-      sleep_before_android_readiness_deadline \
+  # Every operation, including the initial probe, is clipped to this explicit
+  # deadline so the configured duration is a real wall-clock upper bound.
+  while ((SECONDS < deadline)); do
+    if android_shell_available "$deadline"; then
+      # The shell is up and Android services are still coming online. Waiting
+      # is the only remedy; spending a reconnect here is what let a
+      # slow-but-healthy emulator exhaust the budget in ~30s and fail the gate.
+      sleep_before_android_deadline "$deadline" \
         "$GAMA_ANDROID_READINESS_POLL_DELAY_SECONDS" \
         || break
     else
-      ((SECONDS < ANDROID_READINESS_WALL_CLOCK_DEADLINE)) || break
+      ((SECONDS < deadline)) || break
       consume_android_recovery "initial service readiness" || return 1
-      recover_android_connection
-      sleep_before_android_readiness_deadline \
+      recover_android_connection_before "$deadline"
+      sleep_before_android_deadline "$deadline" \
         "$GAMA_ANDROID_RECOVERY_DELAY_SECONDS" \
         || break
     fi
-    if android_services_ready; then
+    if android_services_ready "$deadline"; then
       echo "Android adb, package manager, and settings provider ready"
       return 0
     fi
@@ -429,7 +427,7 @@ run_with_post_boot_ceiling() {
   local status started elapsed
   started=$SECONDS
   set +e
-  timeout "${GAMA_ANDROID_POST_BOOT_CEILING_SECONDS}s" "$@"
+  timeout --signal=KILL "${GAMA_ANDROID_POST_BOOT_CEILING_SECONDS}s" "$@"
   status=$?
   set -e
   elapsed=$((SECONDS - started))
