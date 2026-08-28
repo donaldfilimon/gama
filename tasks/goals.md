@@ -361,3 +361,32 @@ status: in_progress
   file split + trace-backed profiling); Task 6 (GamaSwiftUI / Liquid Glass,
   spec first — the roadmap's named design spec does not exist yet); Task 7
   (closeout). Windows-on-6.5-dev remains an external blocker, not a claim.
+- CI health restored (2026-08-28): main's acceptance matrix was RED on the
+  Android job and had been intermittently so for a long time. Two distinct
+  causes, both closed by PR #52 (merged b0de7d9) on a green exact-head matrix
+  at 46a8037.
+  (1) The emulator has never had KVM. The hosted runner's kvm group is empty,
+  so android-emulator-runner fell back to TCG software emulation on every run
+  this job has ever made — boots of 380,965 ms passing and 720,220 ms failing
+  against a 720 s allowance, i.e. a coin flip, which the repo had been
+  mislabelling as "adb install flakes are infra, not product". The udev rule
+  from the action's own README, added as a STEP in the existing job so the six
+  name-pinned ruleset contexts stay intact, fixed it: the log now shows
+  `crw-rw-rw- ... /dev/kvm` and `disable Linux hardware acceleration: false`,
+  and the job runs in 5m20s instead of ~21 min.
+  (2) The merge at 52e8277 silently deleted two readiness variable definitions
+  while keeping their references, killing the gate in 56 ms with no output at
+  all. Restored, and guarded by a reference-versus-definition assertion that is
+  mutation-verified against the broken script.
+  Evidence: main's post-merge acceptance run 33193668881 at b0de7d9 completed
+  GREEN on all six jobs. That is also the first COMPLETED green main run in a
+  while, which closes the "acceptance-run continuity risk" entry above — its
+  proposed fix landed independently (main-push events now get run_id-unique
+  concurrency groups, so a later merge can no longer cancel an earlier merge's
+  proof), and ruleset 21626078 now has bypass_actors: [] with
+  current_user_can_bypass: never, making the repeatedly-recorded
+  "merged while red" residual structurally impossible rather than a matter of
+  discipline.
+  Umbrella goal stays in_progress: Roadmap items 7 and 8 are untouched
+  multi-session work, and item 9 has an approved design spec (PR #55) but no
+  implementation.

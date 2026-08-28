@@ -372,13 +372,22 @@
       fixture tests. OPEN.
 
 ## CI findings 2026-08-27 (evidence-backed, not yet fixed)
-- [ ] **Android emulator has never had KVM.** STILL OPEN at ledger time; the
-      fix is in flight on PR #52 (`ci/android-readiness-deadline`, commit
-      46a8037) and this box flips only when that PR's own six-job matrix is
-      green. Escalation since this was first written: the consequence is no
-      longer hypothetical — main's acceptance matrix is RED on it (runs
-      33173171147 at 4556226 and 33171217505 at 591134d, Android job failing
-      `adb: failed to install ...: Failure calling service package: Broken pipe
+- [x] **Android emulator has never had KVM.** CLOSED 2026-08-28 by PR #52
+      (merged b0de7d9), which added the android-emulator-runner README's udev
+      rule as a step in the existing job — a step, not a job, so all six
+      name-pinned contexts in ruleset 21626078 stayed intact (verified by
+      diffing the `name:` lines against main). Proof, not inference: the job
+      log now shows `crw-rw-rw- 1 root kvm 10, 232 /dev/kvm` and `disable Linux
+      hardware acceleration: false`, and the `ProbeKVM: This user doesn't have
+      permissions` line is gone. The Android job went from ~21 min and failing
+      to **5m20s** passing. PR #52's exact head 46a8037 passed all six jobs,
+      and main's post-merge acceptance run 33193668881 at b0de7d9 completed
+      **green on all six** — which also closes the "no COMPLETED acceptance
+      run" continuity worry recorded in goals.md.
+      This finding had escalated before it was fixed: main's matrix was RED on
+      its consequence (runs 33173171147 at 4556226 and 33171217505 at 591134d,
+      Android job failing `adb: failed to install ...: Failure calling service
+      package: Broken pipe
       (32)` three times). Original evidence, on a GREEN main run
       (33068264814, job 98503691390): `ProbeKVM: This user doesn't have
       permissions to use KVM (/dev/kvm)`, group empty (`kvm:x:993:`), falls back
@@ -419,6 +428,25 @@
       by `check-boundaries.sh:90`, must FAIL the scan, and the failure must name
       `_roundSlowPath` or the gate errors out. Import-grep-only detection is no
       longer the boundary story.
+- [x] **A merge silently deleted two gate variable definitions and left the
+      Android gate dead.** Found and fixed 2026-08-28. `52e8277` ("Merge branch
+      'main' into ci/android-readiness-deadline") took main's side of the
+      region six lines above two newly added definitions, deleting
+      GAMA_ANDROID_READINESS_DEADLINE_SECONDS and
+      GAMA_ANDROID_READINESS_POLL_DELAY_SECONDS while keeping all five
+      references. Under `set -u` the gate died at the first readiness probe in
+      56 ms with exit 1 and **zero output**, because each test case redirects
+      into a temp file the EXIT trap deletes — the CI log could never name the
+      missing variable. This is the second time a merge on this repo resolved
+      in favour of stale declarations (see the PR #11/#14 entry in goals.md);
+      the difference is that this one was invisible.
+      Fixed in PR #52. The durable part is not the restored defaults but the
+      guard: a reference-versus-definition loop at the top of
+      test-android-emulator-readiness.sh asserts that every GAMA_ANDROID_* name
+      the gate reads is also defaulted in it. Mutation-verified against the
+      broken 52e8277 script — it names both missing variables and exits 1,
+      where the old code produced nothing. No new CI job, so no orphaned
+      context.
 - [x] **PR #43 reopened the rejected `leak:XCTest` suppression.** Its
       lsan-suppressions.supp has exactly one non-comment line, `leak:XCTest` —
       the pattern closed with PR #31 and rejected at todo.md:100, goals.md:208,
