@@ -113,6 +113,9 @@ case "$(basename "$0")" in
     ;;
   sleep)
     printf 'sleep|%s\n' "${1:-}" >> "$FAKE_COMMAND_LOG"
+    if [[ "$FAKE_ADB_SCENARIO" == readiness-exhausted ]]; then
+      exec /bin/sleep "$@"
+    fi
     exit 0
     ;;
 esac
@@ -128,6 +131,8 @@ for variable in \
   GAMA_ANDROID_GRADLE_BUILD_DIR \
   GAMA_ANDROID_CXX_BUILD_DIR \
   GAMA_ANDROID_GRADLE_TIMEOUT_SECONDS \
+  GAMA_ANDROID_READINESS_DEADLINE_SECONDS \
+  GAMA_ANDROID_READINESS_POLL_DELAY_SECONDS \
   GAMA_ANDROID_READY_PROBE_TIMEOUT_SECONDS \
   GAMA_ANDROID_RECONNECT_TIMEOUT_SECONDS \
   GAMA_ANDROID_WAIT_TIMEOUT_SECONDS \
@@ -232,17 +237,23 @@ wait_for_android_services >"$FAKE_STATE_DIR/output" 2>&1
 assert_equals 2 "$ANDROID_READINESS_PROBES" "settings retry probes"
 assert_equals 0 "$ANDROID_RECOVERIES_USED" "slow settings provider consumes no recovery"
 
-# Services that never arrive still fail closed, bounded by the deadline.
-GAMA_ANDROID_READINESS_DEADLINE_SECONDS=15 \
-GAMA_ANDROID_READINESS_POLL_DELAY_SECONDS=5 \
+# Services that never arrive still fail closed at a real wall-clock deadline.
+GAMA_ANDROID_READINESS_DEADLINE_SECONDS=2 \
+GAMA_ANDROID_READINESS_POLL_DELAY_SECONDS=1 \
   reset_case readiness-exhausted 2
-if GAMA_ANDROID_READINESS_DEADLINE_SECONDS=15 \
-  GAMA_ANDROID_READINESS_POLL_DELAY_SECONDS=5 \
+readiness_started_at="$SECONDS"
+if GAMA_ANDROID_READINESS_DEADLINE_SECONDS=2 \
+  GAMA_ANDROID_READINESS_POLL_DELAY_SECONDS=1 \
   wait_for_android_services >"$FAKE_STATE_DIR/output" 2>&1; then
   echo "error: persistent readiness failure unexpectedly succeeded" >&2
   exit 1
 fi
+readiness_elapsed=$((SECONDS - readiness_started_at))
 assert_equals 0 "$ANDROID_RECOVERIES_USED" "a present-but-dead device spends no reconnects"
+if ((readiness_elapsed < 2 || readiness_elapsed > 4)); then
+  echo "error: readiness wall-clock deadline took ${readiness_elapsed}s; expected 2-4s" >&2
+  exit 1
+fi
 grep -q 'did not' "$FAKE_STATE_DIR/output"
 
 reset_case animation-retry 1

@@ -172,9 +172,29 @@ describe_android_time_budget() {
 }
 
 run_with_timeout() {
-  local seconds="$1"
+  local seconds="$1" remaining
   shift
+  # wait_for_android_services sets this dynamically scoped local only after
+  # its initial bounded probe. While it is active, no nested adb timeout can
+  # outlive the readiness deadline that the CI budget accounts for.
+  if [[ -n "${ANDROID_READINESS_WALL_CLOCK_DEADLINE:-}" ]]; then
+    remaining=$((ANDROID_READINESS_WALL_CLOCK_DEADLINE - SECONDS))
+    ((remaining > 0)) || return 124
+    if ((seconds > remaining)); then
+      seconds="$remaining"
+    fi
+  fi
   timeout "${seconds}s" "$@"
+}
+
+sleep_before_android_readiness_deadline() {
+  local requested="$1" remaining
+  remaining=$((ANDROID_READINESS_WALL_CLOCK_DEADLINE - SECONDS))
+  ((remaining > 0)) || return 1
+  if ((requested < remaining)); then
+    remaining="$requested"
+  fi
+  sleep "$remaining"
 }
 
 initialize_android_recovery_budget() {
@@ -253,22 +273,28 @@ wait_for_android_services() {
 
   echo "warning: Android services not initially ready; waiting up to" \
     "${GAMA_ANDROID_READINESS_DEADLINE_SECONDS}s" >&2
-  # Bounded by poll count rather than wall clock so the behavior is
-  # deterministic and testable; the product of the two is the deadline.
-  local attempts=$((
-    GAMA_ANDROID_READINESS_DEADLINE_SECONDS / GAMA_ANDROID_READINESS_POLL_DELAY_SECONDS
+  # This starts after the initial bounded probe, matching readiness_max in
+  # calculate_android_post_boot_worst_case_seconds. Every operation inside the
+  # loop is clipped to the remaining wall-clock time, so the configured
+  # deadline is a real upper bound rather than a poll-count estimate.
+  local ANDROID_READINESS_WALL_CLOCK_DEADLINE=$((
+    SECONDS + GAMA_ANDROID_READINESS_DEADLINE_SECONDS
   ))
-  local attempt
-  for ((attempt = 0; attempt < attempts; attempt++)); do
+  while ((SECONDS < ANDROID_READINESS_WALL_CLOCK_DEADLINE)); do
     if android_device_present; then
       # Device is up and its services are still coming online. Waiting is the
       # only remedy; spending a reconnect here is what let a slow-but-healthy
       # emulator exhaust the budget in ~30s and fail the gate.
-      sleep "$GAMA_ANDROID_READINESS_POLL_DELAY_SECONDS"
+      sleep_before_android_readiness_deadline \
+        "$GAMA_ANDROID_READINESS_POLL_DELAY_SECONDS" \
+        || break
     else
+      ((SECONDS < ANDROID_READINESS_WALL_CLOCK_DEADLINE)) || break
       consume_android_recovery "initial service readiness" || return 1
       recover_android_connection
-      sleep "$GAMA_ANDROID_RECOVERY_DELAY_SECONDS"
+      sleep_before_android_readiness_deadline \
+        "$GAMA_ANDROID_RECOVERY_DELAY_SECONDS" \
+        || break
     fi
     if android_services_ready; then
       echo "Android adb, package manager, and settings provider ready"
