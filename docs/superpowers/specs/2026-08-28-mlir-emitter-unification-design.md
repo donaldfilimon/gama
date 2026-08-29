@@ -1,8 +1,9 @@
 # MLIR emitter unification
 
-Status: Approved (2026-08-28). Supersedes nothing. Implementation continues in
-PR #60; Roadmap Task 4.2 item 9 closes only after the final implementation head
-has the authoritative local and hosted evidence.
+Status: Implemented and merged (2026-08-28) by PR #60 as
+`0deb07792c909b13cf86b68fd937bc3e278e8a2a`. Supersedes nothing. Roadmap Task
+4.2 item 9 is closed with the local, exact-head hosted, and post-merge evidence
+recorded in `tasks/todo.md`.
 
 ## Problem
 
