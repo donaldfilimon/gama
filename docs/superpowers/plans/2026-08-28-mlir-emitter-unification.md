@@ -276,8 +276,9 @@ than auto-resolving them.
 
 ## Completion evidence
 
-Implementation began from `b01e606` and continues in PR #60. The focused
-implementation history is:
+Implementation began from `b01e606` and merged through PR #60 as
+`0deb07792c909b13cf86b68fd937bc3e278e8a2a`. The focused implementation history
+is:
 
 - `935f435` — pins the unmodified emitter with 17 fixture tests.
 - `edbfc49` — records the corrected execution contract from PR #58 review.
@@ -296,6 +297,13 @@ including 248 Apple tests in 47 suites and the Android emulator runtime
 assertion, and printed `OK — complete local Gama Framework acceptance matrix`.
 Hosted run
 [33219690659](https://github.com/donaldfilimon/gama/actions/runs/33219690659)
-passed all six ruleset-required jobs at that exact head. The completion-ledger
-commit, its fresh exact-head hosted rerun, and PR merge remain pending at the
-time of this record.
+passed all six ruleset-required jobs at that exact head. The ledger-only final
+head `f11bff5cc92bbecb5f8514c658e2b631d10a6ab1` then passed all six required
+jobs in hosted run
+[33220775849](https://github.com/donaldfilimon/gama/actions/runs/33220775849).
+PR #60 merged as `0deb07792c909b13cf86b68fd937bc3e278e8a2a`;
+post-merge main run
+[33221629074](https://github.com/donaldfilimon/gama/actions/runs/33221629074)
+passed all six required jobs. Separately, Pages run
+[33221628954](https://github.com/donaldfilimon/gama/actions/runs/33221628954)
+passed the build, browser smoke, artifact upload, and deployment at that merge.
