@@ -4,7 +4,7 @@ import GamaCore
 @testable import GamaTUI
 import Testing
 
-private struct ResizePollContext {
+private struct ResizePollContext: ~Copyable {
     var terminal: Terminal
     let readyFD: Int32
     var receivedSize: Size?
@@ -255,11 +255,18 @@ extension TerminalProcessGlobalTests {
                     joinedSignalThread = true
                 }
 
-                #expect(!context.pointee.failed)
-                #expect(context.pointee.receivedSize == Size(width: 87, height: 31))
+                // `ResizePollContext` is noncopyable (it owns a `Terminal`),
+                // and Swift Testing's `#expect` property-access overload
+                // requires `Copyable`. Bind each field to a local first —
+                // the same accommodation ADR 0006 records for hosts.
+                let pollFailed = context.pointee.failed
+                let observedSize = context.pointee.receivedSize
+                let elapsedNanoseconds = context.pointee.elapsedNanoseconds
+                #expect(!pollFailed)
+                #expect(observedSize == Size(width: 87, height: 31))
                 // A restarted five-second poll would finish near its timeout.
                 // Returning well before that pins the intended EINTR path.
-                #expect(context.pointee.elapsedNanoseconds < 2_000_000_000)
+                #expect(elapsedNanoseconds < 2_000_000_000)
 
                 // The latch is edge-triggered: one signal, one event. If it
                 // stuck, the loop would rebuild every frame forever.

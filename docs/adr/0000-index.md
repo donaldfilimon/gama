@@ -15,3 +15,4 @@ are locked until a superseding ADR says otherwise.
 | [0007](0007-frame-pumps.md) | Four per-backend frame pumps remain, pending unification | Superseded by 0008 |
 | [0008](0008-one-pump-eager-resize.md) | One canonical HostPump; resize policy is eager on every backend | Accepted |
 | [0009](0009-signal-is-not-sendable.md) | Signal and PluginRuntime are not Sendable; host confinement is compiler-checked | Accepted |
+| [0010](0010-noncopyable-terminal-ownership.md) | Terminal is noncopyable; one owner restores the tty | Accepted |
