@@ -19,9 +19,14 @@ the blocking loop.
 
 ## Terminal ownership and restoration
 
-Raw-console ownership is noncopyable: `RawModeSession` is `~Copyable`, and
-owning one *is* being in raw mode. Its `deinit` restores termios, cursor
-visibility, and the alternate screen even on early exits. `TUIRenderer.end()`
+Raw-console ownership is noncopyable end to end: `Terminal` and
+`RawModeSession` are both `~Copyable`, and owning a session *is* being in
+raw mode. A copied terminal would be a second owner restoring the same tty
+([ADR 0010](../adr/0010-noncopyable-terminal-ownership.md); consumers
+migrate per [TerminalOwnershipMigration.md](../TerminalOwnershipMigration.md)).
+The session's
+`deinit` restores termios, cursor visibility, and the alternate screen even
+on early exits. `TUIRenderer.end()`
 clears its session in a `defer`, so a throwing close (for example a dead PTY)
 can never leave the renderer writing to an already-restored terminal.
 A clean close also returns all five managed signal dispositions to the host:
