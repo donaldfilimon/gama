@@ -134,6 +134,89 @@ if [[ -d "$ROOT/Tests/Fixtures/Confinement" ]]; then
   echo "OK — Signal confinement negatives ($conf_n fixtures)"
 fi
 
+# Ownership fixtures: Terminal is ~Copyable (ADR 0010). These live outside
+# every SwiftPM target, like the confinement fixtures.
+#   error.*  -> must FAIL to compile, with the diagnostic its
+#               `// EXPECT-DIAGNOSTIC:` line names
+#   ok.*     -> must compile; this is the harness check, without which a
+#               broken include path would make every negative "fail" for the
+#               wrong reason and the gate would pass vacuously
+#
+# THE `-c` IS LOAD-BEARING AND MUST NOT BE WEAKENED TO `-typecheck`.
+# Move-only enforcement runs in SIL, after type checking. Measured 2026-08-28
+# on the pinned 6.5-dev snapshot and on Xcode's Swift 6.4: a plain
+# use-after-consume of a noncopyable value exits 0 under `swiftc -typecheck`
+# and only fails under `swiftc -c`. A `-typecheck` gate here would prove
+# nothing — the same false negative this repo rejected when it removed the
+# `leak:XCTest` suppression. The gate is self-protecting: reverting to
+# `-typecheck` makes error.TerminalMustNotBeCopied.swift compile, which trips
+# the "compiled but must not" branch below.
+#
+# Unlike the confinement fixtures these import GamaTUI, which imports Darwin
+# and the GamaTUISignal C target — hence the explicit `-sdk` and a module map
+# written here. The module map is generated rather than found inside the
+# SwiftPM scratch so the gate does not couple to build-system layout.
+if [[ -d "$ROOT/Tests/Fixtures/Ownership" ]]; then
+  own_probe_dir="$(mktemp -d)"
+  trap 'rm -rf "$signal_probe_dir" "$own_probe_dir"' EXIT
+  "$swift_bin" build --package-path "$ROOT" --scratch-path "$portable_scratch" \
+    --target GamaTUI >/dev/null
+  # The build writes GamaTUI.swiftmodule in more than one place and `find`
+  # order is not stable, so require the directory that holds *both* modules
+  # the fixtures import rather than taking the first hit.
+  own_inc=""
+  while IFS= read -r candidate; do
+    candidate_dir="$(dirname "$candidate")"
+    if [[ -e "$candidate_dir/GamaCore.swiftmodule" ]]; then
+      own_inc="$candidate_dir"; break
+    fi
+  done < <(find "$portable_scratch" -name 'GamaTUI.swiftmodule')
+  [[ -n "$own_inc" && -d "$own_inc" ]] || {
+    echo "error: no directory holds both GamaTUI.swiftmodule and GamaCore.swiftmodule" >&2
+    exit 1
+  }
+  cat >"$own_probe_dir/module.modulemap" <<MODULEMAP
+module GamaTUISignal {
+    header "$ROOT/Sources/GamaTUISignal/include/GamaTUISignal.h"
+    export *
+}
+MODULEMAP
+  own_sdk="$(xcrun --show-sdk-path)"
+  own_n=0
+  for fixture in "$ROOT"/Tests/Fixtures/Ownership/*.swift; do
+    base="$(basename "$fixture")"
+    out="$("$swiftc_bin" -c -parse-as-library -swift-version 6 \
+      -sdk "$own_sdk" -I "$own_inc" \
+      -Xcc -fmodule-map-file="$own_probe_dir/module.modulemap" \
+      -o /dev/null "$fixture" 2>&1)" && rc=0 || rc=$?
+    case "$base" in
+      error.*)
+        expected="$(sed -n 's|^// EXPECT-DIAGNOSTIC: ||p' "$fixture")"
+        if [[ -z "$expected" ]]; then
+          echo "error: ownership negative has no // EXPECT-DIAGNOSTIC: line: $base" >&2; exit 1
+        fi
+        if [[ $rc -eq 0 ]]; then
+          echo "error: ownership negative compiled but must not: $base" >&2; exit 1
+        fi
+        if ! grep -qF "$expected" <<<"$out"; then
+          echo "error: $base failed without the expected diagnostic: $expected" >&2
+          echo "$out" >&2
+          exit 1
+        fi
+        ;;
+      ok.*)
+        if [[ $rc -ne 0 ]]; then
+          echo "error: ownership positive failed to compile: $base" >&2
+          echo "$out" >&2
+          exit 1
+        fi
+        ;;
+    esac
+    own_n=$((own_n + 1))
+  done
+  echo "OK — Terminal ownership fixtures ($own_n fixtures)"
+fi
+
 grep -q 'swift-tools-version: 6.4' "$ROOT/Package.swift"
 "$ROOT/scripts/check-toolchain-pins.sh"
 echo "OK — portable-core and explicit-ownership boundaries"

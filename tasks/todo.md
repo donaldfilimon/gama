@@ -387,9 +387,9 @@
       verified 2026-08-28: Package.swift enables only `MemberImportVisibility`
       among the relevant upcoming features.
 - [x] Item 9: MLIR emitter unification with byte-for-byte deterministic
-      fixture tests. CLOSED 2026-08-28 by PR #60 at implementation head
-      `d5729eb60ca7a664c1ce42e0b66bcdeddf556fc2`; merge remains pending until
-      the ledger-only head passes its own required checks. `GamaLowering` now
+      fixture tests. CLOSED 2026-08-28 by PR #60, merged as
+      `0deb07792c909b13cf86b68fd937bc3e278e8a2a`. The implementation head was
+      `d5729eb60ca7a664c1ce42e0b66bcdeddf556fc2`. `GamaLowering` now
       routes structural and laid trees through one private recursive emitter
       without changing either public lowering entry point. `MLIRFixtureTests`
       contains 18 Swift Testing cases in one suite, and `--filter MLIR` matches
@@ -409,6 +409,15 @@
       matrix`. Hosted run
       [33219690659](https://github.com/donaldfilimon/gama/actions/runs/33219690659)
       passed all six ruleset-required jobs at that exact implementation head.
+      The ledger-only final head
+      `f11bff5cc92bbecb5f8514c658e2b631d10a6ab1` passed all six required jobs in
+      hosted run
+      [33220775849](https://github.com/donaldfilimon/gama/actions/runs/33220775849).
+      Post-merge main run
+      [33221629074](https://github.com/donaldfilimon/gama/actions/runs/33221629074)
+      passed all six required jobs at the merge. Separately, Pages run
+      [33221628954](https://github.com/donaldfilimon/gama/actions/runs/33221628954)
+      passed the build, browser smoke, artifact upload, and deployment there.
 
 ## CI findings 2026-08-27 (evidence-backed, not yet fixed)
 - [x] **Android emulator has never had KVM.** CLOSED 2026-08-28 by PR #52

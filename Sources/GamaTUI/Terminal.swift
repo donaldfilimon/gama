@@ -82,7 +82,7 @@ public struct RawModeSession: ~Copyable {
 /// reports, control characters, and multi-byte UTF-8 text all become
 /// `InputEvent`s. Output is plain ANSI, so `CellBuffer`'s diff stream is
 /// written verbatim.
-public struct Terminal {
+public struct Terminal: ~Copyable {
     private let inputFD: Int32
     private let outputFD: Int32
     private var originalTermios = termios()
@@ -490,7 +490,7 @@ enum WindowsInputTranslator {
 /// written verbatim; input arrives as structured records via
 /// `ReadConsoleInputW`, so no ANSI input parsing is needed. Presents the
 /// same public surface as the POSIX implementation.
-public struct Terminal {
+public struct Terminal: ~Copyable {
     private var hIn: HANDLE = INVALID_HANDLE_VALUE
     private var hOut: HANDLE = INVALID_HANDLE_VALUE
     private var savedInMode: DWORD = 0

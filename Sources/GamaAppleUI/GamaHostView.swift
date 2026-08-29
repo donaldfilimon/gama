@@ -14,14 +14,19 @@
     import AppKit
     /// The platform view class `GamaHostView` extends — `NSView` on macOS.
     public typealias GamaPlatformView = NSView
-    typealias PlatformFont = NSFont
+    /// The platform font class the host paints with — `NSFont` on macOS.
+    /// Package-visible so the styled-font cache test can name the type.
+    package typealias PlatformFont = NSFont
     typealias PlatformColor = NSColor
 #else
     import UIKit
     /// The platform view class `GamaHostView` extends — `UIView` on
     /// iOS/tvOS/visionOS.
     public typealias GamaPlatformView = UIView
-    typealias PlatformFont = UIFont
+    /// The platform font class the host paints with — `UIFont` on
+    /// iOS/tvOS/visionOS. Package-visible so the styled-font cache test
+    /// can name the type.
+    package typealias PlatformFont = UIFont
     typealias PlatformColor = UIColor
 #endif
 
@@ -86,6 +91,46 @@ public final class GamaHostView: GamaPlatformView {
     }
 
     private let font = PlatformFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+
+    // MARK: Styled-font cache
+    //
+    // `styledFont(for:)` used to build a fresh `monospacedSystemFont` for
+    // every text command of every frame. Driven hard that intermittently
+    // yields a font CoreText cannot resolve: `TAttributes::ApplyFont`
+    // inserts nil into the attribute dictionary and the process aborts
+    // inside `CTLineCreateWithAttributedString`, with `draw(_:)` on the
+    // stack. Measured on branch `perf/apple-host-baseline`, whose
+    // `gama-apple-demo --scenario` harness is NOT on this branch: 15
+    // attempts at 500-2500 frames, exactly one completed, and a diagnostic
+    // build whose only change was a four-entry cache ran 5x2000 frames
+    // clean. Those runs were made there, not here -- reproducing them
+    // requires that harness, and this branch's gates prove correctness and
+    // compilation only, not the crash rate.
+    //
+    // Only two of the six `TextAttributes` bits reach font selection —
+    // `.bold` picks the weight and `.italic` adds a symbolic trait — and
+    // the point size is fixed, so masking the style down to those two bits
+    // bounds the cache at four entries for the life of the view. The miss
+    // path is the original construction verbatim, so a cached font is the
+    // same font the uncached code would have built.
+    //
+    // The class is `@MainActor`, so this is plain unsynchronized state:
+    // every reader reaches it from `draw(_:)`, which the compiler already
+    // isolates to the main actor.
+
+    /// The attribute bits that actually select a different font.
+    private static let fontDefiningAttributes: TextAttributes = [.bold, .italic]
+    /// Fonts built so far, keyed by ``fontDefiningAttributes``; at most four.
+    private var fontCache: [TextAttributes: PlatformFont] = [:]
+    /// How many fonts this view has constructed. Uncached, this grew with
+    /// every text command drawn; cached, it stops at four. Package-only so
+    /// a test can pin the contract, for the same reason as
+    /// ``accessibilityIsObserved``.
+    package private(set) var styledFontConstructionCount = 0
+    /// How many distinct fonts the cache currently retains — the bound the
+    /// same test asserts. Package-only.
+    package var styledFontCacheCount: Int { fontCache.count }
+
     private var cellSize: CGSize = .zero
     /// Measured monospaced cell size, for the accessibility adapter's
     /// grid-to-view rectangle conversion.
@@ -346,11 +391,24 @@ public final class GamaHostView: GamaPlatformView {
             height: CGFloat(r.size.height) * cellSize.height)
     }
 
-    private func styledFont(for style: TextStyle) -> PlatformFont {
+    /// The font for `style`, built once per distinct bold/italic
+    /// combination and reused thereafter. See the styled-font cache note
+    /// above ``fontCache`` for why per-command construction had to stop.
+    /// Package-only so the regression test can exercise it directly.
+    package func styledFont(for style: TextStyle) -> PlatformFont {
+        let key = style.attributes.intersection(Self.fontDefiningAttributes)
+        if let cached = fontCache[key] { return cached }
+        let built = makeStyledFont(for: key)
+        fontCache[key] = built
+        return built
+    }
+
+    private func makeStyledFont(for attributes: TextAttributes) -> PlatformFont {
+        styledFontConstructionCount += 1
         var weight: PlatformFont.Weight = .regular
-        if style.attributes.contains(.bold) { weight = .bold }
+        if attributes.contains(.bold) { weight = .bold }
         var f = PlatformFont.monospacedSystemFont(ofSize: font.pointSize, weight: weight)
-        if style.attributes.contains(.italic) {
+        if attributes.contains(.italic) {
             #if canImport(AppKit)
                 // NSFontDescriptor, not the legacy NSFontManager singleton.
                 let d = f.fontDescriptor.withSymbolicTraits(.italic)
