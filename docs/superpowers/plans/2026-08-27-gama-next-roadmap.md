@@ -1,5 +1,9 @@
 # Gama Stabilization, Wave-2, and Liquid Glass Implementation Plan
 
+**Status:** Superseded execution snapshot. Implemented outcomes are reflected
+in `docs/Capabilities.md`; unimplemented ideas are not commitments and require
+a new accepted design.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: use `superpowers:subagent-driven-development` or `superpowers:executing-plans` to implement this plan task-by-task. Preserve the existing worktrees and active-session edits; never overwrite a branch merely because its local worktree is behind its remote tip.
 
 **Goal:** Safely integrate Gama's active wave-1 work, repair its hosted-evidence process, complete the approved structural modernization, and add an opt-in Apple-family SwiftUI/Liquid Glass layer without weakening the retained-renderer architecture.

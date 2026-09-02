@@ -15,7 +15,7 @@ import GamaCore
 /// **Not `Sendable`, and unavailably so.** Installation transfers a plugin's
 /// region into the runtime with `sending`; command, scene, and subscription
 /// callbacks then remain on the owning host's executor.
-public final class PluginRuntime {
+public final class PluginRuntime: ~Sendable {
     /// Revocation state shared by every command value minted for one
     /// installation. Like the runtime itself, access is host-executor
     /// confined.
@@ -239,8 +239,9 @@ public final class PluginRuntime {
     }
 }
 
-/// A plugin runtime owns executor-confined lifecycle and callback state; see
-/// ``PluginRuntime``. The unavailable conformance makes an accidental
-/// `Sendable` use fail with a named compiler diagnostic.
+/// A plugin runtime explicitly opts out of implicit `Sendable` inference and
+/// owns executor-confined lifecycle and callback state; see ``PluginRuntime``.
+/// The unavailable conformance makes an accidental `Sendable` use fail with a
+/// named compiler diagnostic.
 @available(*, unavailable)
 extension PluginRuntime: @unchecked Sendable {}

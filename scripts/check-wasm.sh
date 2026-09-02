@@ -5,6 +5,12 @@ SDK="${GAMA_WASM_SDK_ID:-swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a_wasm}"
 SWIFT="${GAMA_SWIFT_64:-/Users/donaldfilimon/Library/Developer/Toolchains/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a.xctoolchain/usr/bin/swift}"
 SCRATCH_ROOT="${GAMA_SCRATCH_ROOT:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}}"
 SCRATCH="$SCRATCH_ROOT/gama-wasm-swiftpm"
+command -v python3 >/dev/null || {
+  echo "error: python3 is required for the GamaWASM unsafe-declaration policy gate" >&2
+  exit 1
+}
+python3 "$ROOT/scripts/check-wasm-unsafe-declarations.py" --self-test
+python3 "$ROOT/scripts/check-wasm-unsafe-declarations.py" "$ROOT/Sources/GamaWASM"
 "$SWIFT" --version | grep -q 'Swift version 6.5'
 "$SWIFT" sdk list | grep -Fxq "$SDK" || { echo "error: missing WASM SDK $SDK" >&2; exit 1; }
 # Compile and inspect the portable objects before asking SwiftPM to link the

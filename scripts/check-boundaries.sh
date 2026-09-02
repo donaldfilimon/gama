@@ -42,6 +42,41 @@ grep -q 'GAMA_TUI_INSTALL_DEFER_PUBLISHING' "$signal_source"
 grep -q '__atomic_compare_exchange_n' "$signal_source"
 echo "OK — TUI signal handlers and storage confined to C"
 
+# Host confinement has two deliberately separate declaration layers. The
+# explicit `~Sendable` spelling prevents implicit Sendable inference, while
+# the adjacent unavailable conformance preserves the named diagnostic for a
+# consumer that attempts a retroactive unchecked conformance. Fail before a
+# build if either half is removed from either host-confined type.
+signal_source="$ROOT/Sources/GamaCore/State.swift"
+plugin_runtime_source="$ROOT/Sources/GamaPlugin/PluginRuntime.swift"
+grep -Eq '^public final class Signal<Value: Sendable>[[:space:]]*:[[:space:]]*~Sendable[[:space:]]*\{' \
+  "$signal_source" || {
+    echo "error: Signal must explicitly declare ~Sendable" >&2; exit 1
+  }
+grep -Eq '^public final class PluginRuntime[[:space:]]*:[[:space:]]*~Sendable[[:space:]]*\{' \
+  "$plugin_runtime_source" || {
+    echo "error: PluginRuntime must explicitly declare ~Sendable" >&2; exit 1
+  }
+require_unavailable_sendable_conformance() {
+  local source="$1"
+  local type_name="$2"
+  if ! awk -v expected="extension${type_name}:@uncheckedSendable{}" '
+    {
+      current = $0
+      gsub(/[[:space:]]/, "", current)
+      if (previous == "@available(*,unavailable)" && current == expected) found = 1
+      previous = current
+    }
+    END { exit(found ? 0 : 1) }
+  ' "$source"; then
+    echo "error: ${type_name} must retain its unavailable @unchecked Sendable conformance" >&2
+    exit 1
+  fi
+}
+require_unavailable_sendable_conformance "$signal_source" Signal
+require_unavailable_sendable_conformance "$plugin_runtime_source" PluginRuntime
+echo "OK — explicit ~Sendable plus unavailable-conformance contracts"
+
 # Exercise the handler itself outside Swift: it must re-raise through the
 # displaced host disposition and must not write to a potentially blocking
 # terminal output descriptor on a fatal signal.

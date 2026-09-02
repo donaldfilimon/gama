@@ -15,6 +15,24 @@ class="gama-row">` per row) delivered to JS, which assigns it to the mount
 point and asserts `role="application"` plus an `aria-label` (the
 accessibility contract the browser smoke checks).
 
+## Isolation and lifecycle
+
+Before installation, every v2 event/frame export fails closed with `-1`; the
+v1 compatibility exports remain no-ops because their published signatures
+cannot return status. `GamaWeb.install(app:)` transfers the app region into a
+single host. A successful reinstall replaces that host wholesale, releasing
+its subscriptions, frame state, and component state; a construction failure
+leaves the previously installed host in place.
+
+The current WASI reactor is single-threaded. That is the complete
+justification for the one `nonisolated(unsafe)` declaration: the private
+installed-host slot in `WASMHost.swift`. `scripts/check-wasm.sh` scans Swift
+declarations while ignoring comments and string prose, mutation-tests the
+scanner, and fails unless there is exactly one such declaration and it is that
+exact slot. Threaded WebAssembly, multiple simultaneous hosts, or another
+unsafe global requires a new isolation and versioned ABI design; the existing
+exception does not authorize it.
+
 ## Export/import contract
 
 Swift exports (called from `WebHost/gama.js`):
@@ -45,7 +63,9 @@ open it. It is a UI demonstration host, not a general WASI runtime — it
 implements only the reactor's process-metadata/clock/random/output imports
 and returns explicit WASI errors otherwise (no filesystem). Build via
 `scripts/check-wasm.sh` (requires the pinned WASM SDK from
-`Toolchains.toml`). `scripts/bundle-web.sh` assembles those host files with
+`Toolchains.toml`). The gate first proves the single-private-unsafe-slot source
+policy, then preserves the existing compile, symbol, Node-runtime, and browser
+smokes. `scripts/bundle-web.sh` assembles those host files with
 `gama-web-demo.wasm` and runs the browser-runtime smoke against the assembled
 directory. `.github/workflows/pages.yml` repeats that exact pinned build and
 publishes the verified directory from `main`; Pages deployment and a live

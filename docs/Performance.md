@@ -263,6 +263,107 @@ future `CellBuffer` proposal must first exhibit an executed copy or
 copy-triggered allocation in a representative profile and then clear the
 same 10% / 5% rules above.
 
+### 2026-09-02 — native Apple host rebaseline after the styled-font cache
+
+This reruns the native-host scenario after `dc3f21b` made the four possible
+bold/italic fonts persistent per `GamaHostView`. The measurement checkout was
+local `main` at `613e3fa`; its production sources and package manifest were
+identical to hosted `origin/main` at `1b24690` (the two local-only commits
+changed repository/agent configuration, not the built product).
+
+Every build used the repository pin, with `TOOLCHAINS` unset and release
+scratch at `/private/tmp/gama-apple-rebaseline-20260902-build`:
+
+```text
+Apple Swift version 6.5-dev
+Swift version 6.5-dev (swift-6.5-DEVELOPMENT-SNAPSHOT-2026-08-21-a)
+Target: arm64-apple-macosx27.0.0
+```
+
+The machine ran macOS 27.0 (26A5425a) and Instruments 27.0 (27A5252f).
+That is a later macOS build than the pre-split run's 26A5421a, so this is a
+current-main acceptance comparison, not a single-change microbenchmark.
+
+#### Strict comparison with the pre-split workload
+
+Five bare release runs used the baseline's exact
+`--frames 150 --warmup 30` workload. All five completed on their first
+attempt: **zero aborts**. The frame digest
+`0xa941fc78dc2f96a5` and bitmap digest `0x064d490591e51668`
+were identical across the five runs and identical to the pre-split baseline.
+
+Median nanoseconds per iteration:
+
+| Phase | Run 1 | Run 2 | Run 3 | Run 4 | Run 5 | Median | vs. pre-split median |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| event + pump (`FrameHost` → `DrawList.from`) | 71,333 | 71,459 | 71,584 | 72,083 | 71,791 | 71,584 | −15.2% |
+| draw (CoreGraphics replay, 80×24) | 313,667 | 313,292 | 312,625 | 313,000 | 313,708 | 313,292 | −44.2% |
+| resize (layout + pump + draw) | 1,228,167 | 1,227,375 | 1,215,500 | 1,247,958 | 1,228,209 | 1,228,167 | −77.7% |
+
+Peak resident size was 68,736–68,992 KiB, versus 69,280–69,648 KiB
+pre-split. Live-heap growth was 526,592–533,168 bytes, versus
+713,504–773,920 bytes pre-split. Both are the metrics the scenario actually
+reports; live-heap growth is not an allocation count.
+
+The present host is therefore no worse than the pre-split baseline on any
+measured timing or resident-memory metric, and all three timing medians are
+more than 10% lower. The comparison spans the Apple-host split, the font
+cache, and other intervening `main` changes, however, so it does **not**
+attribute the full improvement to `dc3f21b` alone. The zero-abort result and
+the font-cache regression suite establish the cache's correctness boundary;
+the table establishes only the performance of current `main` as a whole.
+
+#### The 2,000-frame convention and Time Profiler
+
+A second five-run pass used the standing long workload,
+`--frames 2000 --warmup 200`. It also completed 5/5 runs with zero aborts
+and identical digests across runs: frame `0xc52876f4641e7925`, bitmap
+`0xc928d5ec9cb32dfc`. Across the five runs, the median of per-run medians was
+71,292 ns for event + pump, 313,833 ns for draw, and 1,176,333 ns for resize.
+Peak resident size was 68,912–69,024 KiB and live-heap growth was
+628,448–628,528 bytes. These longer-run values agree with the strict
+150-frame comparison rather than exposing a late-run regression.
+
+Time Profiler then recorded the same 2,000-frame release binary. The target
+exited 0 after 1.760 seconds, emitted the same two long-run digests, and
+produced 841 ms of 1 ms CPU samples. Whole-process inclusive attribution:
+
+| Frames present anywhere in the stack | Current `main` | Pre-split |
+| --- | ---: | ---: |
+| `GamaHostView.draw(_:)` | 68.1% | not recorded |
+| `NSStringDrawing` / typesetting | 36.6% | 21.1% |
+| CoreText | 16.9% | 24.9% |
+| `CellPainter` / pump | 15.1% | 8.1% |
+| attributed-string creation | 10.1% | 11.2% |
+| `DrawList.from` | 7.0% | 3.2% |
+| font lookup (`monospacedSystemFont`, `NSFont`) | 3.9% | 12.3% |
+
+The rows nest and the two recordings have different durations, so percentage
+points are a ranking, not additive phase timing. The font-lookup share is
+8.4 percentage points lower after the cache, consistent with the cache
+removing repeated lookup from the hot path. Text drawing remains the dominant
+native-host cost; the larger relative shares for portable work do not
+contradict its lower bare-run time because the CoreGraphics draw path became
+much cheaper and changed the denominator.
+
+#### Allocation counts remain unmeasured
+
+The Allocations template still could not run the scenario. Three documented
+workflow attempts each reached the 120-second recorder limit with
+`Failed to attach to target process`; each target stdout file was empty, so
+no Gama code reported even one scenario sample. The generated trace bundle is
+therefore an Instruments failure artifact, not an allocation recording.
+
+This pass did not obtain a target stack, so it does not freshly prove the
+pre-split pass's `liboainject.dylib` initializer diagnosis. It proves the
+narrower current fact: the Allocations template produced no usable run on
+this machine. **Allocation counts remain explicitly unmeasured**, and the
+roadmap's allocation-regression criterion remains unevaluated. No live-block,
+resident-memory, or Time Profiler value is relabeled as an allocation count.
+
+Raw run logs and uncommitted trace artifacts are under
+`/private/tmp/gama-apple-rebaseline-20260902-{compare,full}`.
+
 ### 2026-08-28 — native Apple host baseline (pre-split)
 
 Baseline for Roadmap Task 5, captured **before** the six-way

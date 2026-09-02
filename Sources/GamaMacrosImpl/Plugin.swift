@@ -57,12 +57,12 @@ private func removingAttribute(
 // MARK: - @Component
 
 /// `@Component`: synthesizes a memberwise initializer over stored
-/// properties (member role) and adds the missing `GamaCore.View`
+/// properties (member role) and adds the missing `GamaCore::View`
 /// conformance (extension role). Structs only.
 public struct ComponentMacro: MemberMacro, ExtensionMacro {
-    // Extension role: add `: GamaCore.View` when the conformance is
+    // Extension role: add `: GamaCore::View` when the conformance is
     // missing (the compiler passes only missing protocols in).
-    /// Extension role: adds `: GamaCore.View` when the compiler reports
+    /// Extension role: adds `: GamaCore::View` when the compiler reports
     /// the conformance missing.
     public static func expansion(
         of node: AttributeSyntax,
@@ -72,7 +72,7 @@ public struct ComponentMacro: MemberMacro, ExtensionMacro {
         in context: some MacroExpansionContext
     ) throws -> [ExtensionDeclSyntax] {
         guard declaration.is(StructDeclSyntax.self), !protocols.isEmpty else { return [] }
-        let ext: DeclSyntax = "extension \(type.trimmed): GamaCore.View {}"
+        let ext: DeclSyntax = "extension \(type.trimmed): GamaCore::View {}"
         guard let extDecl = ext.as(ExtensionDeclSyntax.self) else { return [] }
         return [extDecl]
     }
@@ -178,7 +178,7 @@ public struct ComponentMacro: MemberMacro, ExtensionMacro {
 
 // MARK: - @Reactive
 
-/// `@Reactive`: backs a stored `var` with a `GamaCore.Signal` peer and
+/// `@Reactive`: backs a stored `var` with a `GamaCore::Signal` peer and
 /// accessor set, so reads/writes route through host-observable state.
 public struct ReactiveMacro: PeerMacro, AccessorMacro {
     private static func binding(
@@ -249,7 +249,7 @@ public struct ReactiveMacro: PeerMacro, AccessorMacro {
         return (pattern.identifier.text, type)
     }
 
-    /// Peer role: emits the `_name: GamaCore.Signal<T>` storage (and owns
+    /// Peer role: emits the `_name: GamaCore::Signal<T>` storage (and owns
     /// the diagnostics, so each error reports exactly once).
     public static func expansion(
         of node: AttributeSyntax,
@@ -262,7 +262,7 @@ public struct ReactiveMacro: PeerMacro, AccessorMacro {
             return []
         }
         return [
-            "private let _\(raw: name): GamaCore.Signal<\(type.trimmed)>"
+            "private let _\(raw: name): GamaCore::Signal<\(type.trimmed)>"
         ]
     }
 
@@ -282,7 +282,7 @@ public struct ReactiveMacro: PeerMacro, AccessorMacro {
             """
             @storageRestrictions(initializes: _\(raw: name))
             init(initialValue) {
-                _\(raw: name) = GamaCore.Signal(initialValue)
+                _\(raw: name) = GamaCore::Signal(initialValue)
             }
             """,
             "get { _\(raw: name).get() }",
@@ -297,7 +297,7 @@ public struct ReactiveMacro: PeerMacro, AccessorMacro {
 /// optional leading `#`); malformed input diagnoses and expands to
 /// `Color.default` so the expression stays recoverable.
 public struct RGBMacro: ExpressionMacro {
-    /// Parses the literal and expands to a `GamaCore.Color` constructor.
+    /// Parses the literal and expands to a `GamaCore::Color` constructor.
     public static func expansion(
         of node: some FreestandingMacroExpansionSyntax,
         in context: some MacroExpansionContext
@@ -316,7 +316,7 @@ public struct RGBMacro: ExpressionMacro {
                     )
                 )
             )
-            return "GamaCore.Color.default"
+            return "GamaCore::Color.default"
         }
 
         var hex = segment.content.text
@@ -332,7 +332,7 @@ public struct RGBMacro: ExpressionMacro {
                     )
                 )
             )
-            return "GamaCore.Color.default"
+            return "GamaCore::Color.default"
         }
 
         if hex.count == 3 {
@@ -348,6 +348,6 @@ public struct RGBMacro: ExpressionMacro {
         }
         guard bytes.count == 3 else { return fail() }
 
-        return "GamaCore.Color(r: \(raw: bytes[0]), g: \(raw: bytes[1]), b: \(raw: bytes[2]))"
+        return "GamaCore::Color(r: \(raw: bytes[0]), g: \(raw: bytes[1]), b: \(raw: bytes[2]))"
     }
 }

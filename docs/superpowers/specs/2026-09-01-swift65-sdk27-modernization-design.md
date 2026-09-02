@@ -1,8 +1,8 @@
 # Swift 6.5-dev and SDK 27 modernization
 
-Status: Accepted for implementation on 2026-09-01. This design is a bounded
-modernization of Gama and the explicitly requested local Swift/SwiftUI skills;
-it is not a framework rewrite.
+Status: Implemented and locally verified in Gama on 2026-09-02. This design
+is a bounded modernization of Gama; external Swift/SwiftUI skill packages
+remain outside the repository and are not a framework-delivery claim.
 
 ## Problem
 

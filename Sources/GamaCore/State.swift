@@ -82,7 +82,7 @@ public final class SubscriptionContext {
 /// Moving a signal between contexts is still possible — use `sending`
 /// parameters, which transfer the region instead of sharing it. See
 /// [ADR 0009](../../docs/adr/0009-signal-is-not-sendable.md).
-public final class Signal<Value: Sendable> {
+public final class Signal<Value: Sendable>: ~Sendable {
     private var value: Value
     private var observers: [(UInt64, () -> Void)] = []
     private var nextID: UInt64 = 0
@@ -170,7 +170,8 @@ extension Signal where Value: Equatable {
     }
 }
 
-/// Signals are single-host by construction; see ``Signal``.
+/// Signals explicitly opt out of implicit `Sendable` inference because they
+/// are single-host by construction; see ``Signal``.
 ///
 /// Spelled `@available(*, unavailable)` rather than simply omitted so normal
 /// `Sendable` use fails at this declaration and a retroactive `@unchecked`

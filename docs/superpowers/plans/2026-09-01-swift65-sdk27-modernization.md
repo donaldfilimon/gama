@@ -1,5 +1,9 @@
 # Swift 6.5-dev and SDK 27 Modernization Implementation Plan
 
+**Status:** Implemented and locally verified on 2026-09-02. Exact-commit
+hosted proof is reported by the acceptance workflow; external skill changes
+remain outside this repository.
+
 > **For agentic workers:** Execute each task in order in the assigned
 > worktree. Keep commits focused, preserve external skill ownership, and use
 > repository-selected toolchains and scratch paths.

@@ -48,7 +48,7 @@ struct MacroExpansionTests {
     func rgbShorthandAndSixDigitExpansion() {
         expectExpansion(
             "let a = #rgb(\"F80\")\nlet b = #rgb(\"12ABef\")",
-            expanded: "let a = GamaCore.Color(r: 255, g: 136, b: 0)\nlet b = GamaCore.Color(r: 18, g: 171, b: 239)"
+            expanded: "let a = GamaCore::Color(r: 255, g: 136, b: 0)\nlet b = GamaCore::Color(r: 18, g: 171, b: 239)"
         )
     }
 
@@ -56,7 +56,7 @@ struct MacroExpansionTests {
     func rgbAcceptsLeadingHash() {
         expectExpansion(
             "let a = #rgb(\"#F80\")",
-            expanded: "let a = GamaCore.Color(r: 255, g: 136, b: 0)"
+            expanded: "let a = GamaCore::Color(r: 255, g: 136, b: 0)"
         )
     }
 
@@ -64,7 +64,7 @@ struct MacroExpansionTests {
     func rgbMalformedLiteralHasActionableDiagnostic() {
         expectExpansion(
             "let color = #rgb(\"oops\")",
-            expanded: "let color = GamaCore.Color.default",
+            expanded: "let color = GamaCore::Color.default",
             diagnostics: [
                 DiagnosticSpec(
                     message: "invalid hex color 'oops': expected RGB or RRGGBB hex digits",
@@ -79,7 +79,7 @@ struct MacroExpansionTests {
     func rgbRejectsNonLiteralArgument() {
         expectExpansion(
             "let color = #rgb(name)",
-            expanded: "let color = GamaCore.Color.default",
+            expanded: "let color = GamaCore::Color.default",
             diagnostics: [
                 DiagnosticSpec(
                     message: "#rgb requires a plain string literal like #rgb(\"FF8800\")",
@@ -173,7 +173,7 @@ struct MacroExpansionTests {
                   var value: Int {
                       @storageRestrictions(initializes: _value)
                       init(initialValue) {
-                          _value = GamaCore.Signal(initialValue)
+                          _value = GamaCore::Signal(initialValue)
                       }
                       get {
                           _value.get()
@@ -183,7 +183,7 @@ struct MacroExpansionTests {
                       }
                   }
 
-                  private let _value: GamaCore.Signal<Int>
+                  private let _value: GamaCore::Signal<Int>
                 }
                 """
         )
@@ -228,7 +228,7 @@ struct MacroExpansionTests {
                     }
                 }
 
-                extension Badge: GamaCore.View {
+                extension Badge: GamaCore::View {
                 }
                 """,
             macroSpecs: [

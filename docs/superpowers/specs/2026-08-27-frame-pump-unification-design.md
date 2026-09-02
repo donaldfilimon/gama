@@ -1,12 +1,10 @@
 # Gama umbrella — frame-pump unification and resize policy (Slice C, wave 2)
 
-Date: 2026-08-27. Status: **approved** (Donald approved unification and a
-single resize policy on 2026-08-27; this document records the design).
-Delivery evidence is maintained in `docs/Capabilities.md`.
+Date: 2026-08-27. Status: **implemented** by the canonical `HostPump` and ADR
+0008. Delivery evidence is maintained in `docs/Capabilities.md`.
 
-Supersedes the interim decision of `docs/adr/0007-frame-pumps.md` once
-implemented; ADR 0007 is then updated from Provisional to Superseded with a
-pointer here, and a new ADR records the final shape.
+Supersedes the interim decision of `docs/adr/0007-frame-pumps.md`; ADR 0007 is
+Superseded and ADR 0008 records the final shape.
 
 ## Problem (from ADR 0007)
 
