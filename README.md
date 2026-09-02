@@ -106,11 +106,23 @@ decision records under `docs/adr/`, and
 Runnable samples live in `Examples/` (C, Android/JNI, AppleHost, Embedded)
 and `WebHost/` (browser).
 
+For a guided first build and application, start with
+[`docs/GettingStarted.md`](docs/GettingStarted.md). The broader reader paths
+are indexed in [`docs/README.md`](docs/README.md): architecture, state and
+identity, runnable examples, Apple integration, verification boundaries, and
+troubleshooting.
+
 Run the terminal demo with:
 
 ```bash
 unset TOOLCHAINS
 swiftly run swift run gama-demo
+```
+
+For an automated real-TTY smoke with external scratch paths:
+
+```bash
+.agents/skills/run-gama/driver.sh smoke
 ```
 
 Run the macOS multi-window demo with:
@@ -140,3 +152,5 @@ The C declarations and ownership rules live in
 Implementation presence is not platform proof. A backend is Current only when
 its declared compile/runtime gate passes. Embedded Swift is experimental, and
 `GamaMLIR` emits a textual custom dialect; it is not a Swift MLIR frontend.
+Local, hosted, artifact, deployment, and manual proof are separate layers;
+[`docs/Verification.md`](docs/Verification.md) defines the exact boundary.
