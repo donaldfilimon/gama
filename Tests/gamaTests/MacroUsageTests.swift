@@ -3,6 +3,10 @@ import GamaDraw
 import GamaMacros
 import Testing
 
+/// Shadows the imported module for ordinary dotted lookup throughout this
+/// file. Generated `GamaCore::` selectors must still bind to the module.
+private enum GamaCore {}
+
 @Component
 private struct MacroBadge {
     let label: String
@@ -10,6 +14,18 @@ private struct MacroBadge {
 
     var body: some View {
         Text("\(label): \(count)").foregroundColor(#rgb("F80"))
+    }
+}
+
+/// A lexical declaration named after the imported module would capture the
+/// old dotted generated references. Module selectors keep all three macro
+/// roles bound to the intended module instead.
+@Component
+private struct ModuleShadowBadge {
+    @Reactive var count: Int = 0
+
+    var body: some View {
+        Text("shadow: \(count)").foregroundColor(#rgb("12ABEF"))
     }
 }
 
@@ -27,6 +43,20 @@ struct MacroUsageTests {
         }
         #expect(text == "count: 3")
         #expect(style.foreground == Color(r: 255, g: 136, b: 0))
+    }
+
+    @Test("module selectors survive a lexical GamaCore declaration")
+    func moduleSelectorsSurviveModuleShadowing() {
+        let badge = ModuleShadowBadge()
+        badge.count = 4
+        let rendered = badge.render(in: BuildContext())
+        guard case .styled(let style, let child) = rendered,
+              case .text(let text, _) = child else {
+            Issue.record("expected styled text render node")
+            return
+        }
+        #expect(text == "shadow: 4")
+        #expect(style.foreground == Color(r: 18, g: 171, b: 239))
     }
 }
 

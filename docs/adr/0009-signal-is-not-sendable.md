@@ -21,12 +21,18 @@ executor-confined claim on `PluginRuntime` and its command lease.
 
 ## Decision
 
-**`Signal` and `PluginRuntime` are not `Sendable`, and unavailably so.** The
-confinement their comments described now produces a compiler error at ordinary
+**`Signal` and `PluginRuntime` explicitly declare `~Sendable` and are also
+unavailably `Sendable`.** The tilde declaration prevents implicit Sendable
+inference and records the negative-conformance intent on the type itself. The
+unavailable extension keeps the existing named diagnostic for a consumer who
+attempts an unchecked retroactive conformance. Together they make the
+confinement contract visible in source and produce a compiler error at ordinary
 `Sendable` use:
 
 ```swift
-public final class Signal<Value: Sendable> { … }
+public final class Signal<Value: Sendable>: ~Sendable { … }
+
+public final class PluginRuntime: ~Sendable { … }
 
 @available(*, unavailable)
 extension Signal: @unchecked Sendable {}
@@ -93,6 +99,9 @@ error (`#SendableClosureCaptures`).
 - The measured retroactive-conformance warning remains pinned separately by
   `Tests/Fixtures/Confinement/warn.SendableConformanceIsFlagged.swift` in the
   boundary gate.
+- The boundary gate also requires both `~Sendable` declarations and both
+  adjacent unavailable `@unchecked Sendable` conformances, so removing either
+  half of the combined contract fails before behavioral tests run.
 - The concurrent-host isolation suites pass **unchanged** — they proved
   the property behaviorally; the type system now also states it.
 - Zero runtime cost: region isolation and `sending` are language
