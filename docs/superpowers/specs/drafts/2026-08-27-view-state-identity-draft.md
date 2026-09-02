@@ -1,5 +1,17 @@
 # Gama umbrella — identity-keyed view state — DRAFT
 
+> **SUPERSEDED 2026-08-29** by
+> `../2026-08-29-view-state-identity-design.md` (approved). The open questions
+> this draft raised are resolved there: a source break is permitted when argued
+> and documented (the `App.content` precedent), per-window identity is IN scope
+> rather than deferred, and raw `Signal` properties inside components are
+> converted to `@Reactive` rather than gaining a projected value. The draft's
+> biggest unknown — whether per-host keyed storage survives
+> `check-embedded.sh` — is answered by two mechanisms already shipping:
+> `HostActionStore` (`Sources/GamaCore/FrameHost.swift:11-25,52`) and
+> `ScenePayload`'s typed erasure (`Scene.swift:407-437`).
+> Kept for the original investigation and its measurement.
+
 Date: 2026-08-27. Status: **draft for review** (nothing here is approved;
 everything not labeled "exists today" is Proposed). Raised by the
 `gama-demo` keyboard-activation investigation of 2026-08-27, which found no
