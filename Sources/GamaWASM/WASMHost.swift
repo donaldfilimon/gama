@@ -80,9 +80,10 @@ public enum GamaWeb {
     private nonisolated(unsafe) static var installed: (any AnyWASMHost)?
 
     /// Install the app. Call from the module's `main` (wasi reactor runs
-    /// top-level code once at `_initialize`). A second call replaces the
-    /// previous host wholesale (its subscriptions and state are dropped).
-    /// Ownership of the app region transfers into the installed reactor host.
+    /// top-level code once at `_initialize`). A successful second call replaces
+    /// the previous host wholesale (its subscriptions and state are dropped);
+    /// construction failure leaves the previous host installed. Ownership of
+    /// the app region transfers into the installed reactor host.
     public static func install<A: App>(
         app: sending A,
         columns: Int = 100,

@@ -20,8 +20,9 @@ accessibility contract the browser smoke checks).
 Before installation, every v2 event/frame export fails closed with `-1`; the
 v1 compatibility exports remain no-ops because their published signatures
 cannot return status. `GamaWeb.install(app:)` transfers the app region into a
-single host. Reinstalling replaces that host wholesale, releasing its
-subscriptions, frame state, and component state.
+single host. A successful reinstall replaces that host wholesale, releasing
+its subscriptions, frame state, and component state; a construction failure
+leaves the previously installed host in place.
 
 The current WASI reactor is single-threaded. That is the complete
 justification for the one `nonisolated(unsafe)` declaration: the private
