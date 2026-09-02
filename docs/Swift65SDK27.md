@@ -1,11 +1,11 @@
 # Swift 6.5-dev and SDK 27 audit
 
-Status: **Draft evidence report. Local source/interface inspection and
-standalone compiler probes were completed on 2026-09-01; the Gama adoptions
-described below are accepted plan direction but are not implemented on
-`main`.** This document records the bounded modernization decision and its
-evidence limits. It does not by itself establish a Gama build, runtime,
-manual UI, packaging, hosted-CI result, or current external-skill state.
+Status: **Local source/compiler evidence report. Source/interface inspection
+and standalone compiler probes were completed on 2026-09-01; the bounded Gama
+adoptions, focused gates, and complete 13-gate local acceptance matrix passed
+on 2026-09-02.** This document records the modernization decision and its
+evidence limits. It does not by itself establish manual UI, credentialed
+packaging, hosted-CI, or future external-skill state.
 
 ## Why this audit exists
 
@@ -15,7 +15,7 @@ New syntax is adopted only when it solves an existing problem and passes every
 affected supported route. The framework remains a retained, cross-platform UI
 core: this work does not add SwiftUI to Gama or change its renderer.
 
-The accompanying plan also proposes corrections to requested Swift/SwiftUI
+The accompanying plan also covers corrections to requested Swift/SwiftUI
 skills against the installed compiler and public SDK interfaces. Those skills
 live outside this repository, so their current contents and validation must be
 checked where they are installed. Plugin-cache copies are not durable upstream
@@ -40,8 +40,9 @@ Observed from the Gama worktree with `TOOLCHAINS` unset:
 | Windows exception | Swift 6.4.x snapshot selected in `Toolchains.toml`; Windows is not 6.5-dev-proven |
 
 `Toolchains.toml` remains the repository pin and artifact authority. Its
-compiler/SDK URLs, revisions, checksums, SwiftSyntax revision, deployment
-targets, products, and CI policy are unchanged by this modernization.
+main-development compiler/SDK URLs, revisions, checksums, SwiftSyntax
+revision, deployment targets, products, and CI policy are unchanged by this
+modernization; the Xcode metadata was refreshed to the installed 27.0 build.
 
 ## Sources and method
 
@@ -98,24 +99,33 @@ both compilers reject that spelling. The interface instead exposes
 `toolbarMinimizationBehavior(_:for:)`. Re-probe a later SDK before changing
 examples.
 
-## Planned, not-yet-implemented Gama adoption
+## Adopted Gama changes
 
-### Accepted direction; implementation pending
+### Compiler-proven bounded adoption
 
-- Macro-generated references would use defensive module selectors:
+- Macro-generated references use defensive module selectors:
   `GamaCore::View`, `GamaCore::Signal`, and `GamaCore::Color`. This
   prevents a client declaration named `GamaCore` from changing lookup.
   Macro roles, arguments, products, and the pinned build-time-only SwiftSyntax
   dependency remain unchanged.
-- `Signal` and `PluginRuntime` would explicitly declare `~Sendable`. Their
+- `Signal` and `PluginRuntime` explicitly declare `~Sendable`. Their
   existing unavailable `@unchecked Sendable` extensions remain: the tilde
   spelling documents/prevents implicit Sendability, while the unavailable
   conformance preserves Gama's actionable diagnostic contract.
+- The Wasm backend gate requires exactly one `nonisolated(unsafe)` declaration
+  under `Sources/GamaWASM`, and requires it to remain the private installed-host
+  slot. The scanner ignores comments and string prose and self-tests removal,
+  renaming, visibility widening, and duplicate-declaration mutations.
 
-These are plan decisions, not current-source claims. Exact macro
-expansion/real-use tests plus the boundary and concurrency-negative gates are
-required acceptance proof when implemented; this document does not replace
-those results.
+The exact macro expansion and real-use suites passed 16 tests on 2026-09-02,
+including a file-scoped declaration that shadows the `GamaCore` module name.
+The boundary and concurrency-negative gates passed the same source and retain
+the named retroactive-conformance diagnostic. The full local driver then
+passed all 13 fail-closed gates, including 254 Apple tests in 48 suites, Apple
+platform compilation, C/Embedded/Linux/Wasm/Android/MLIR paths, the API 36
+emulator input-to-frame assertion, DocC, and public documentation coverage.
+These are local results, not hosted or manual proof, and this document does
+not replace their output.
 
 ### Documented but deliberately not adopted
 
@@ -137,6 +147,17 @@ those results.
   full affected matrix.
 - **SwiftUI APIs:** Gama does not adopt SwiftUI. Planned SwiftUI modernization
   applies to the requested local skills, not the framework product graph.
+- **SwiftData:** Gama has no framework-owned persistence model. SwiftData is
+  an Apple application data layer, not storage for portable renderer state;
+  adding it to `GamaCore` or a backend would couple persistence to presentation
+  and exclude supported non-Apple targets. An application may persist its own
+  models and project values into a Gama scene without changing this boundary.
+- **Foundation Models:** Gama has no model-session or generative-AI authority.
+  Foundation Models is an Apple application service, not a rendering primitive
+  or portable host requirement. A future app or explicitly designed host
+  service may use it and feed ordinary values/actions into Gama, but it must
+  not introduce Foundation into stdlib-only framework targets or make model
+  output authoritative over renderer, input, or lifecycle semantics.
 
 ## SwiftUI and macOS 27 corrections recorded
 

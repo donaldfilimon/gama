@@ -2,9 +2,16 @@
 
 Status: Locally runtime proven with the pinned Android Swift SDK
 (arm64-v8a/x86_64 payloads) and hosted proven by the required API 36
-emulator input/frame round trip (`Tapped 0` → `Tapped 1`). adb install
-"Broken pipe" failures on the hosted job are known infra flakes, not
-product failures — rerun the job.
+emulator input/frame round trip (`Tapped 0` → `Tapped 1`).
+
+An APK installation, readiness, or input/frame failure is a product/gate
+failure by default; rerunning it is not acceptance evidence. Classify a
+failure as external transport only when the readiness or emulator diagnostics
+identify a concrete fault such as an unavailable adb shell transport. Slow
+package-manager readiness is not itself a dropped transport. The bounded
+recovery and stage-exhaustion behavior is exercised by
+`scripts/test-android-emulator-readiness.sh`; a persistent failure after those
+diagnostics remains a failed gate.
 
 ## How it fits together
 
@@ -31,3 +38,6 @@ and the demo library for both ABIs with the pinned SDK (ids/SHA-256 in
 `jniLibs` — including the transitive `.so` closure and `libc++_shared.so`,
 which the Swift runtime requires at load time.
 `scripts/check-android-emulator.sh` is the runtime proof CI runs.
+It first exercises the fail-closed readiness policy, enables hosted KVM, and
+then requires the input-driven frame assertion. See
+[`../Capabilities.md`](../Capabilities.md) for the current evidence boundary.
