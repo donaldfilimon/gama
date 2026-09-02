@@ -378,11 +378,12 @@
       scripts/check.sh, so it is evidence, not a gate. Allocation counts remain
       deliberately absent — nothing on Darwin counts them cumulatively, and
       Instruments is Task 5's tool.
-- [ ] Item 7: `~Copyable` migration for `CellBuffer` and `Terminal`. **PARTIAL
-      — the Terminal half is DONE, the CellBuffer half is PROHIBITED.** Do not
-      read this box as one undifferentiated open task; it is one completed task
-      and one deliberately-gated non-task, and the box stays unchecked only
-      because of the second.
+- [x] Item 7: `~Copyable` assessment for `CellBuffer` and `Terminal`.
+      **RESOLVED 2026-09-01 — the Terminal half is DONE for semantic ownership;
+      the CellBuffer migration is DECLINED by measurement.** The original item
+      joined one valid unique-resource migration to one conditional performance
+      proposal. It is closed because that condition has now been measured and
+      did not hold, not because the condition was weakened.
       TERMINAL: done 2026-08-28 via PR #62 (merged d87e011). Both declarations
       are now `public struct Terminal: ~Copyable` — GamaTUI/Terminal.swift:85
       (POSIX) and :493 (Windows). Note the falsification shape, which is worth
@@ -403,18 +404,26 @@
       Residual: nothing local compiles the Windows `#else` branch, so that half
       is proven by the hosted Windows job alone — which passed at PR #62's exact
       head.
-      CELLBUFFER: NOT started, and prohibited rather than merely unscheduled.
+      CELLBUFFER: not migrated. Before measurement it was prohibited rather
+      than merely unscheduled.
       GamaDraw/CellBuffer.swift:32 is still `public struct CellBuffer: Hashable,
       Sendable`. master-plan:363 — "not a candidate until profiling proves
       expensive accidental copies" — and :527 lists it under deliberately
-      deferred modernization. PR #63 (merged) landed the Apple-host profiling
-      harness, which is the tooling that could eventually supply that evidence;
-      it has not been used for a copy-frequency measurement. Note the structural
-      counter-evidence already on record: all four CellBuffer owners are `final
-      class` properties and the frame path is already inout/borrowing via
-      HostPump.advance(into:emit:), so a measurement may well return zero
-      accidental copies — which is a VALID outcome that settles the prohibition
-      with evidence rather than weakening it.
+      deferred modernization.
+      MEASURED 2026-09-01 with the pinned 6.5-dev toolchain: three release
+      `gama-bench` invocations covered 30,000 measured 80x24 frames plus painted
+      160x48 resize cycles; optimized whole-module SIL contained no `copy_value`
+      or `copy_addr` of CellBuffer and passed frame consumers `@inout` or
+      `@guaranteed`; full malloc stack history found zero CellBuffer-copy or
+      cell-array-copy stacks. The only five CellBuffer-named allocation groups
+      totaled 128 bytes and came from `presentDiff` SGR string metadata. The
+      structural counter-evidence is therefore confirmed: the persistent
+      backend owners mutate in place and the shared frame path borrows. A public
+      `~Copyable` change would remove value semantics and Hashable for no
+      measured runtime/allocation benefit. Full commands, timings, the
+      retrospective Terminal A/B, and the decision are in docs/Performance.md.
+      Reopen only if a future representative profile exhibits an executed
+      CellBuffer copy or copy-triggered allocation.
 - [ ] Item 8: `StrictMemorySafety` and `InternalImportsByDefault`. OPEN —
       re-verified 2026-08-29 at 2b87887: Package.swift enables exactly four
       features (:10 ExistentialAny, :13 MemberImportVisibility, :18 Extern

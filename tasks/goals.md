@@ -206,6 +206,14 @@ status: in_progress
   state keyed by (NodeID, slot), staged diagnostic → store → .stateScope).
   Implementation NOT started. Until it is, this remains the most serious known
   correctness gap in the framework, and it is invisible to the box scan.
+- Copyability investigation (2026-09-01): Roadmap item 7 is resolved without a
+  broader migration. `Terminal` remains `~Copyable` for the accepted
+  single-restorer semantic contract in ADR 0010. `CellBuffer` remains copyable
+  and `Hashable`: 30,000 release frames, optimized SIL, and full malloc stack
+  history found no executed buffer copy or copy-triggered allocation in the
+  shared frame path. The historical "remaining scope" list below is therefore
+  superseded for item 7; docs/Performance.md records the timings, allocation
+  attribution, historical Terminal A/B, and reopen condition.
 - Sub-projects 2 and 4 remain Proposed drafts under
   docs/superpowers/specs/drafts/ (plugin runtime + capability model; packaging
   & distribution). Sub-project 3 is approved and split into independently
