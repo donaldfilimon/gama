@@ -119,4 +119,3 @@ Do not restore the retracted blanket infrastructure-flake claim.
 - The Apple gate and the complete local acceptance driver are run without
   weakening; missing external prerequisites remain failures or explicitly
   unproven evidence, never inferred success.
-

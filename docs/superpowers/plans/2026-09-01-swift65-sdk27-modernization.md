@@ -172,4 +172,3 @@ test: enforce backend isolation evidence
   guide no longer dismisses real failures as infrastructure.
 - Local verification results are recorded without upgrading them to hosted,
   live, simulator, accessibility, or packaging proof.
-
