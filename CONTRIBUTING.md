@@ -32,7 +32,7 @@ sequential, fail-closed. Do not weaken or skip a gate to make it green.
 | `check-android.sh` | Android SDK cross-compile + JNI packaging | Android — "Cross-compile GamaEmbed" |
 | `check-android-emulator.sh` | API 36 emulator input/frame round trip | Android — "Required emulator input/frame round trip" |
 | `check-mlir.sh` | Emitted dialect parses under `mlir-opt --allow-unregistered-dialect` | macOS — "MLIR parse" |
-| `check-docs.sh` | DocC builds with zero warnings; Capabilities ledger present with its status legend | macOS — "Source boundaries and documentation" |
+| `check-docs.sh` | Relative Markdown links pass; DocC builds with zero warnings; Capabilities ledger present with its status legend | macOS — "Source boundaries and documentation" |
 | `check-doc-coverage.sh` | Every public declaration has a symbol-graph doc comment, excluding only justified allowlist entries | macOS — "Source boundaries and documentation" |
 
 The Linux job additionally runs the native test suite under Address and
@@ -46,6 +46,25 @@ locally by design — the hosted matrix is their proof.
 (Implemented / Locally proven / Hosted proven / Provisional / Blocked) is
 the only sanctioned wording. Never document unproven capability as shipped,
 and never state a proof a gate does not actually perform.
+
+The reader-facing documentation map is `docs/README.md`. Put current concepts
+and workflows in `docs/`, backend contracts in `docs/backends/`, symbol/API
+navigation in the owning `.docc` catalog, irreversible decisions in
+`docs/adr/`, and proposed designs in `docs/superpowers/specs/`. Dated plans are
+not a second capability ledger.
+
+Before pushing documentation changes:
+
+```bash
+python3 scripts/check-doc-links.py --self-test .
+./scripts/check-docs.sh
+./scripts/check-doc-coverage.sh
+```
+
+The first layer catches broken repository-relative links without a Swift
+build. DocC then checks catalog/symbol resolution with warnings as errors, and
+the coverage gate checks public declaration comments. Passing one layer does
+not imply the others.
 
 ## Workflow
 

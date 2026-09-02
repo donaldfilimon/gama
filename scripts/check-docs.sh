@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# Builds every `Sources/<Module>/<Module>.docc` catalog with DocC,
-# warnings as errors — one unresolved link in any catalog fails the gate.
+# Checks repository Markdown links, then builds every
+# `Sources/<Module>/<Module>.docc` catalog with DocC, warnings as errors.
 # GamaCore's catalog is required; new catalogs are discovered automatically.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SCRATCH="${GAMA_DOCC_SCRATCH_PATH:-/private/tmp/gama-docc-swiftpm}"
 test -f "$ROOT/Sources/GamaCore/GamaCore.docc/GamaCore.md"
 test -f "$ROOT/docs/Capabilities.md"
+python3 "$ROOT/scripts/check-doc-links.py" --self-test "$ROOT"
 unset TOOLCHAINS || true
 /usr/bin/xcrun --toolchain "${GAMA_TOOLCHAIN_ID:-org.swift.65202608211a}" swift package --package-path "$ROOT" dump-package >/dev/null
 (
