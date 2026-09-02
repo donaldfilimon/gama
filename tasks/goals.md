@@ -167,6 +167,45 @@ status: in_progress
   post-#20 main runs pending at ledger time — Current only when they
   land green. Remaining branches: main and feat/apple-multiwindow-shell
   (Remote Control session's active sub-project 3 slice 2).
+- Session close (2026-08-29, main at 2b87887). Six merges landed from two
+  concurrent sessions: PR #60 + #64 (MLIR emitter unification, Roadmap item 9,
+  implemented by a peer session — a local duplicate implementation was compared
+  point-by-point and abandoned as redundant; the peer's had 18 fixtures against
+  12, covered all 14 RenderNode cases on both entry points, caught a fifth
+  MLIRDialect.md error, and had hosted proof), PR #61 (an intermittent NSFont
+  crash in GamaHostView — styledFont built a font per text command per frame,
+  aborting inside CTLineCreateWithAttributedString; 14 of 15 harness runs
+  aborted before the fix), PR #62 (Terminal ~Copyable + ADR 0010 + the four
+  master-plan:364 artifacts), PR #63 (Apple-host profiling baseline and the
+  harness that found the crash).
+  Two honest limits recorded with PR #63 rather than papered over: Instruments
+  Allocations deadlocks in liboainject before main on this machine, so Task 5's
+  "allocations within 5%" criterion is currently UNEVALUABLE here and no numbers
+  were invented; and draw(_:) ignores its dirtyRect, so "dirty-rect handling"
+  has no distinct measurable path today.
+  A measurement-discipline correction worth keeping: this session claimed its
+  MLIR refactor moved "exactly one fixture expectation" and treated that as
+  tight discipline. It was a COVERAGE ARTIFACT — the local suite had no laid
+  flexFrame fixture, so it could not see that the laid flex frame reorders too.
+  Two is the correct count. One is what a less sensitive instrument reports.
+- **View-state identity — a measured correctness defect that NO ledger item
+  tracks.** Recorded here because a checkbox scan of tasks/todo.md cannot see
+  it: `git grep -i 'view-state\|state identity'` across tasks/ returns zero
+  hits. Scene content is a closure the host re-evaluates every render
+  (Sources/GamaCore/Scene.swift:211-214), and @Reactive stores its Signal in the
+  component instance, so a component constructed inline gets fresh signals every
+  frame. A press mutates an instance discarded before paint: measured
+  2026-08-27, the action reports it ran while the painted frame still reads
+  `count 0`. Pointer presses lose state identically. There is no diagnostic, no
+  warning, and no failing test — the control just looks inert. The only
+  mitigation is prose telling authors to hoist, which is itself incomplete
+  because hoisting stores state per scene declaration, so every window of a
+  WindowGroup shares one instance.
+  Design approved and specced 2026-08-29:
+  docs/superpowers/specs/2026-08-29-view-state-identity-design.md (host-owned
+  state keyed by (NodeID, slot), staged diagnostic → store → .stateScope).
+  Implementation NOT started. Until it is, this remains the most serious known
+  correctness gap in the framework, and it is invisible to the box scan.
 - Sub-projects 2 and 4 remain Proposed drafts under
   docs/superpowers/specs/drafts/ (plugin runtime + capability model; packaging
   & distribution). Sub-project 3 is approved and split into independently
@@ -352,7 +391,16 @@ status: in_progress
   honest: the Android-emulator KVM finding is unrefuted but is peer territory
   (PR #52 is open against that exact job), and VoiceOver is genuinely
   unimplemented — the only accessibility hit in Sources is the doc comment at
-  GamaHostView.swift:53 promising the adapter. Local baseline at truth-up
+  GamaHostView.swift:53 promising the adapter.
+  [SUPERSEDED 2026-08-29 — both clauses in the preceding sentence are now
+  FALSE, and are kept rather than edited because how they went stale is the
+  point. KVM closed via PR #52 (b0de7d9). VoiceOver closed via PR #54
+  (591134d): Sources/GamaDraw/AccessibilitySnapshot.swift and
+  Sources/GamaAppleUI/GamaHostAccessibility.swift both exist on main. The
+  VoiceOver clause was CORRECT when written that morning and falsified hours
+  later by a concurrent merge — the same failure mode a truth-up PR is most
+  exposed to, which is why this ledger now runs an evidence audit against the
+  exact tip before it is written.] Local baseline at truth-up
   time: ./scripts/check-apple.sh exit 0, 205 tests in 44 suites.
 - Remaining umbrella scope after the truth-up, in roadmap order: Task 4.2
   items 4 (VoiceOver), 6 (presentDiff/forEachRun, measure first), 7

@@ -378,14 +378,61 @@
       scripts/check.sh, so it is evidence, not a gate. Allocation counts remain
       deliberately absent — nothing on Darwin counts them cumulatively, and
       Instruments is Task 5's tool.
-- [ ] Item 7: `~Copyable` migration for `CellBuffer` and `Terminal`, including
-      deinitialization tests. OPEN — verified 2026-08-28:
-      GamaDraw/CellBuffer.swift:32 is `public struct CellBuffer: Hashable,
-      Sendable` and both `Terminal` declarations in GamaTUI/Terminal.swift
-      (:85 POSIX, :493 Windows) are ordinary copyable structs.
+- [ ] Item 7: `~Copyable` migration for `CellBuffer` and `Terminal`. **PARTIAL
+      — the Terminal half is DONE, the CellBuffer half is PROHIBITED.** Do not
+      read this box as one undifferentiated open task; it is one completed task
+      and one deliberately-gated non-task, and the box stays unchecked only
+      because of the second.
+      TERMINAL: done 2026-08-28 via PR #62 (merged d87e011). Both declarations
+      are now `public struct Terminal: ~Copyable` — GamaTUI/Terminal.swift:85
+      (POSIX) and :493 (Windows). Note the falsification shape, which is worth
+      keeping: this entry previously cited those exact line numbers as
+      "ordinary copyable structs". The line numbers were still right; only the
+      text on them changed. A citation can stay valid while its claim rots.
+      Landed with it: docs/adr/0010-noncopyable-terminal-ownership.md, the API
+      diff and migration guide in docs/TerminalOwnershipMigration.md, and four
+      compile fixtures in Tests/Fixtures/Ownership/ — the four artifacts
+      master-plan:364 requires for any public noncopyability change.
+      The fixtures are driven by **check-boundaries.sh** (:137, :159, :186),
+      not check-concurrency-negative.sh, and they must use `swiftc -c`: move-only
+      enforcement runs in SIL AFTER type checking, so `-typecheck` exits 0 on
+      definitively illegal code and a fixture verified that way proves nothing.
+      That gate is mutation-verified three ways (fixture neutered; gate weakened
+      to -typecheck; EXPECT-DIAGNOSTIC marker deleted) so it cannot be silently
+      reverted to the false-negative mode.
+      Residual: nothing local compiles the Windows `#else` branch, so that half
+      is proven by the hosted Windows job alone — which passed at PR #62's exact
+      head.
+      CELLBUFFER: NOT started, and prohibited rather than merely unscheduled.
+      GamaDraw/CellBuffer.swift:32 is still `public struct CellBuffer: Hashable,
+      Sendable`. master-plan:363 — "not a candidate until profiling proves
+      expensive accidental copies" — and :527 lists it under deliberately
+      deferred modernization. PR #63 (merged) landed the Apple-host profiling
+      harness, which is the tooling that could eventually supply that evidence;
+      it has not been used for a copy-frequency measurement. Note the structural
+      counter-evidence already on record: all four CellBuffer owners are `final
+      class` properties and the frame path is already inout/borrowing via
+      HostPump.advance(into:emit:), so a measurement may well return zero
+      accidental copies — which is a VALID outcome that settles the prohibition
+      with evidence rather than weakening it.
 - [ ] Item 8: `StrictMemorySafety` and `InternalImportsByDefault`. OPEN —
-      verified 2026-08-28: Package.swift enables only `MemberImportVisibility`
-      among the relevant upcoming features.
+      re-verified 2026-08-29 at 2b87887: Package.swift enables exactly four
+      features (:10 ExistentialAny, :13 MemberImportVisibility, :18 Extern
+      experimental, :145 InferIsolatedConformances). Neither named feature
+      appears anywhere in the manifest.
+      Its BLOCKER cleared and this entry did not say so: PR #59 (635a150)
+      reversed docs/Toolchain.md's blanket "Do not enable
+      InternalImportsByDefault", on the recorded ground that
+      check-boundaries.sh:11-15 and :59-67 now match plain, indented,
+      attributed, and access-scoped import spellings — the condition that
+      prohibition was waiting on. The work is unstarted; it is no longer
+      forbidden.
+      One trap to design around rather than discover: `-strict-memory-safety`
+      emits WARNINGS, and no gate passes -warnings-as-errors to `swift build`
+      (the only three occurrences are clang in check-c-abi.sh:18 and
+      check-boundaries.sh:50, and docc in check-docs.sh:40). A PR that merely
+      adds .strictMemorySafety() shows a fully green 13-gate matrix while
+      proving nothing. Any slice must carry .treatWarning(_:as:) promotion.
 - [x] Item 9: MLIR emitter unification with byte-for-byte deterministic
       fixture tests. CLOSED 2026-08-28 by PR #60, merged as
       `0deb07792c909b13cf86b68fd937bc3e278e8a2a`. The implementation head was
