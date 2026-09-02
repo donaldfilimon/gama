@@ -48,12 +48,10 @@ private func removingAttribute(
     _ node: AttributeSyntax,
     from attributes: AttributeListSyntax
 ) -> AttributeListSyntax {
-    AttributeListSyntax(
-        attributes.filter { element in
-            guard case .attribute(let attribute) = element else { return true }
-            return attribute != node
-        }
-    )
+    attributes.filter { element in
+        guard case .attribute(let attribute) = element else { return true }
+        return attribute != node
+    }
 }
 
 // MARK: - @Component

@@ -128,6 +128,141 @@ Taken from the roadmap and not relaxed:
 
 ## Measurements
 
+### 2026-09-01 — `CellBuffer` / `Terminal` copyability investigation
+
+This was a measurement-first review of the proposed `~Copyable` boundary,
+not an implementation pass. The outcome is deliberately narrow:
+
+- **Do not make `CellBuffer` noncopyable.** The representative frame path
+  contains no executed buffer copies to remove, and the allocation history
+  contains no cell-array copy stack.
+- **Do not make another public ownership change for performance.** `Terminal`
+  is already `~Copyable` as of `8b5d260`, for the unique-tty correctness
+  argument in [ADR 0010](adr/0010-noncopyable-terminal-ownership.md). A
+  retrospective release A/B found no material runtime or allocation win.
+  Keeping that existing semantic contract is separate from claiming a
+  performance optimization.
+
+No production source or public API changed in this investigation.
+
+#### Toolchain and workloads
+
+Every build used the repository pin, with `TOOLCHAINS` unset:
+
+```text
+Apple Swift version 6.5-dev
+Swift version 6.5-dev (swift-6.5-DEVELOPMENT-SNAPSHOT-2026-08-21-a)
+Target: arm64-apple-macosx27.0.0
+```
+
+The existing release `gama-bench` scenario already exercises the relevant
+`CellBuffer` lifecycle: paint into one persistent buffer, borrow it into
+`DrawList.from`, emit an ANSI diff, and repeatedly resize 80×24 ↔ 160×48.
+Three independent invocations of 5 runs × 2,000 frames produced 30,000
+measured frames after warm-up:
+
+| Phase | Run 1 median | Run 2 median | Run 3 median |
+| --- | ---: | ---: | ---: |
+| paint (`HostPump` + clear + `CellPainter`) | 31,708 ns | 32,083 ns | 31,625 ns |
+| `forEachRun` via `DrawList.from` | 37,042 ns | 37,416 ns | 38,000 ns |
+| `presentDiff` | 6,791 ns | 6,834 ns | 7,083 ns |
+| painted resize loop | 210,958 ns | 211,584 ns | 208,833 ns |
+
+Peak resident size was 7,904–7,936 KiB. Live-heap growth was
+322,800–322,864 bytes; as elsewhere on this page, that is a live-byte delta,
+not an allocation count.
+
+A separate 40-frame run (10 warm-up frames) enabled full Darwin malloc stack
+history and exported a graph through `leaks --atExit --fullStackHistory`.
+`malloc_history -allByCount` found five allocation stack groups whose symbol
+names included `CellBuffer`, totaling 128 bytes. All five were
+`CellBuffer.presentDiff` → `sgr(for:)` string/protocol metadata. There were:
+
+- zero `DrawList.from` allocation stacks;
+- zero `CellBuffer` copy-named stacks; and
+- zero `_ContiguousArray` copy, `copyArray`, or `copyContents` stacks reached
+  from the buffer path.
+
+Full stack logging perturbs execution, so its timing was discarded; it was
+used only to attribute allocations.
+
+#### Actual `CellBuffer` ownership sites
+
+The source inventory and optimized SIL agree:
+
+| Site | Source-level ownership | Pinned release SIL |
+| --- | --- | --- |
+| backend session/context storage | initialize once, then mutate the stored value | owned initialization followed by `@inout` access |
+| `HostPump.advance(into:emit:)` | `inout` buffer; `borrowing` emitter | `@inout CellBuffer`; emitter receives `@guaranteed CellBuffer` |
+| `CellPainter.paint(_:into:)` | `inout` | `@inout CellBuffer` |
+| `DrawList.from(_:)` | read-only value parameter | `@guaranteed CellBuffer` |
+| `cell`, `forEachRun`, equality, and hashing | read-only | `@guaranteed` / `@in_guaranteed` |
+| initialization and test helpers returning a buffer | ownership transfer | `@owned` result, not duplication |
+
+The optimized whole-module `GamaDraw` SIL contains no `copy_value` or
+`copy_addr` of `CellBuffer`, and the release object has no branch to a
+`CellBuffer` copy helper. Because the type is publicly `Copyable`, its ABI
+still carries three copy value witnesses; they describe what an external
+caller is allowed to do, but no in-repository frame path calls them. Making
+the type `~Copyable` would therefore trade away public value semantics and
+its `Hashable` conformance to remove unused capability, not measured frame
+cost.
+
+#### Retrospective `Terminal` A/B
+
+`Terminal` was not still a proposal at the time of measurement. Commit
+`8b5d260` had already changed both platform declarations to `~Copyable` for
+single-owner restoration semantics. To separate that correctness decision
+from performance, release builds of its parent `b01e606` (copyable) and
+`8b5d260` (noncopyable) were compared. The only production-source difference
+between those builds is the two declaration annotations.
+
+The copyable object contained nine calls to an outlined `Terminal` copy
+helper: one in renderer begin, one in renderer end, two in renderer event
+polling, two on raw-mode-entry cleanup paths, one on checked exit, and two in
+session destruction. It also emitted three copy value witnesses. These are
+real compiler-generated copies even though the source contains no deliberate
+second tty owner. The noncopyable object contains neither the copy-helper
+calls nor the copy witnesses; its object footprint is 32,138 bytes versus
+33,090 bytes (952 bytes smaller, including 888 bytes of text).
+
+That code-size difference did not become a measured frame-path win. A small
+release probe, compiled against each historical module and run inside a PTY,
+called the public `TUIRenderer.nextEvent(timeoutMillis: 0)` path 100,000 times
+per process. Six alternating runs, with order reversed every run, produced
+these medians of per-process mean time:
+
+| Build | Median time per event poll |
+| --- | ---: |
+| copyable `Terminal` (`b01e606`) | 6,725 ns |
+| noncopyable `Terminal` (`8b5d260`) | 6,683 ns |
+| change | −0.6% |
+
+That is far below the 10% optimization threshold and smaller than ordinary
+run-to-run spread. With full malloc stack history enabled for 5,000 polls,
+both builds recorded exactly 113 allocation calls / 5,304 bytes across the
+whole process, zero allocations attributed to `TUIRenderer.nextEvent`, and
+the same 2,912 KiB peak physical footprint. The old helper copies therefore
+amount to retain/release and copy-in/out bookkeeping in this workload, not
+heap duplication.
+
+No new committed benchmark was needed. `gama-bench` already expresses the
+open `CellBuffer` performance question. The `Terminal` comparison is a
+historical two-commit ABI A/B requiring a real PTY, not a standing frame
+benchmark; adding it to the portable harness would couple that harness to a
+platform terminal for a migration that is already complete on independent
+correctness grounds.
+
+#### Decision
+
+The evidence does **not** justify a new or broader move-only migration.
+`CellBuffer` stays copyable and hashable. Existing `Terminal: ~Copyable`
+stays in place because two independent restorers are semantically invalid,
+not because it materially improves per-frame speed or allocations. Any
+future `CellBuffer` proposal must first exhibit an executed copy or
+copy-triggered allocation in a representative profile and then clear the
+same 10% / 5% rules above.
+
 ### 2026-08-28 — native Apple host baseline (pre-split)
 
 Baseline for Roadmap Task 5, captured **before** the six-way

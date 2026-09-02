@@ -8,6 +8,9 @@ describe a blocked capability as shipped.
 
 - [Toolchain.md](Toolchain.md) — the pinned Swift 6.5-dev snapshot, why the
   tools-version stays 6.4, the Windows exception, and `swiftly run` usage.
+- [Swift65SDK27.md](Swift65SDK27.md) — the draft Swift 6.5-dev/macOS 27
+  language and SwiftUI audit, local probe results, planned bounded adoptions,
+  and evidence limits.
 - [Testing.md](Testing.md) — Swift Testing-only policy, suite map, and
   invocation (scratch path rules included).
 - [Capabilities.md](Capabilities.md) — the evidence ledger: what each
