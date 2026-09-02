@@ -1,7 +1,8 @@
 # Gama scene-first application and macOS shell design
 
-Date: 2026-08-27. Status: **approved**. Delivery evidence is maintained in
-`docs/Capabilities.md`; approval alone is not an implementation claim.
+Date: 2026-08-27. Status: **implemented** for the scene-first core and macOS
+shell. Delivery evidence and non-goals are maintained in
+`docs/Capabilities.md`.
 
 This specification supersedes the 2026-08-26 app-shell draft. The earlier
 draft proposed a single-window shell and explicitly deferred scenes; the

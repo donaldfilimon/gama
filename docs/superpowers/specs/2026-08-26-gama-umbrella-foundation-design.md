@@ -1,6 +1,7 @@
 # Gama umbrella — foundation design (sub-project 1)
 
-Date: 2026-08-26. Status: approved (session decisions by Donald).
+Date: 2026-08-26. Status: implemented; current evidence is maintained in
+`docs/Capabilities.md`.
 
 ## Goal
 

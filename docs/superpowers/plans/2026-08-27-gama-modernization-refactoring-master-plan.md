@@ -1,6 +1,7 @@
 # Gama modernization and refactoring master plan
 
-**Status:** Proposed execution plan  
+**Status:** Historical execution plan; delivered items and remaining work are
+reconciled in `tasks/todo.md`.
 **Date:** 2026-08-27  
 **Audience:** Gama maintainers and reviewers  
 **Planning snapshot:** `main` at `4b7986d` when synthesis began; `origin/main` at `e35b3c2`  

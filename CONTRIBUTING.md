@@ -16,7 +16,7 @@ Details and traps (iCloud checkout, Windows exception): `docs/Toolchain.md`.
 
 ## Gate reference
 
-`./scripts/check.sh` runs the full local acceptance matrix — eleven gates,
+`./scripts/check.sh` runs the full local acceptance matrix — thirteen gates,
 sequential, fail-closed. Do not weaken or skip a gate to make it green.
 
 | Gate | Proves | Hosted CI job / step |
@@ -24,6 +24,7 @@ sequential, fail-closed. Do not weaken or skip a gate to make it green.
 | `check-apple.sh` | Debug build, full test suite, release build on the pinned snapshot | macOS — "Core, macros, POSIX TUI, Apple UI" |
 | `check-apple-platforms.sh` | iOS/tvOS/visionOS compile via xcodebuild | macOS — "iOS, tvOS, and visionOS compile" |
 | `check-boundaries.sh` | GamaCore import bans, no process-global state, tools-version pin; chains `check-toolchain-pins.sh` | macOS — "Source boundaries and documentation" |
+| `check-concurrency-negative.sh` | Host-confined types cannot cross `Sendable` boundaries | macOS — "Source boundaries and documentation" |
 | `check-c-abi.sh` | C consumer compiles against `GamaEmbed.h` with -Werror, links `libGamaEmbed.a`, runs | Linux — "C ABI consumer compile, link, and run" |
 | `check-embedded.sh` | Embedded-Swift whole-module compile + relocatable link of GamaCore at the exact snapshot | Embedded job |
 | `check-linux.sh` | Static Linux SDK cross-compile | Linux — "Static Linux SDK" |
@@ -32,6 +33,7 @@ sequential, fail-closed. Do not weaken or skip a gate to make it green.
 | `check-android-emulator.sh` | API 36 emulator input/frame round trip | Android — "Required emulator input/frame round trip" |
 | `check-mlir.sh` | Emitted dialect parses under `mlir-opt --allow-unregistered-dialect` | macOS — "MLIR parse" |
 | `check-docs.sh` | DocC builds with zero warnings; Capabilities ledger present with its status legend | macOS — "Source boundaries and documentation" |
+| `check-doc-coverage.sh` | Every public declaration has a symbol-graph doc comment, excluding only justified allowlist entries | macOS — "Source boundaries and documentation" |
 
 The Linux job additionally runs the native test suite under Address and
 Thread Sanitizer; the Windows job runs the console smoke on Swift 6.4.x (the

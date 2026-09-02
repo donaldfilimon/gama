@@ -8,9 +8,9 @@ describe a blocked capability as shipped.
 
 - [Toolchain.md](Toolchain.md) — the pinned Swift 6.5-dev snapshot, why the
   tools-version stays 6.4, the Windows exception, and `swiftly run` usage.
-- [Swift65SDK27.md](Swift65SDK27.md) — the draft Swift 6.5-dev/macOS 27
-  language and SwiftUI audit, local probe results, planned bounded adoptions,
-  and evidence limits.
+- [Swift65SDK27.md](Swift65SDK27.md) — the Swift 6.5-dev/macOS 27 language
+  and SwiftUI audit, local probe results, bounded adopted features, and
+  evidence limits.
 - [Testing.md](Testing.md) — Swift Testing-only policy, suite map, and
   invocation (scratch path rules included).
 - [Capabilities.md](Capabilities.md) — the evidence ledger: what each
@@ -44,6 +44,11 @@ describe a blocked capability as shipped.
 - [adr/](adr/0000-index.md) — architecture decision records.
 - [superpowers/specs/](superpowers/specs/) — full design specs; `drafts/`
   holds unreviewed proposals with open questions (not commitments).
+
+Dated plans and specs are historical or scoped design records, not a second
+capability ledger. Their status header says whether a record is superseded,
+implemented, or still accepted for implementation. Current work is summarized
+once in [`../tasks/todo.md`](../tasks/todo.md).
 
 Symbol-level API documentation lives in `Sources/GamaCore/GamaCore.docc`
 (built by `scripts/check-docs.sh` with warnings as errors) and as `///`

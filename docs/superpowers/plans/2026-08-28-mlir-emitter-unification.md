@@ -1,5 +1,8 @@
 # MLIR Emitter Unification Implementation Plan
 
+**Status:** Completed by PR #60; retained as the execution record. Current
+evidence lives in `docs/Capabilities.md` and `docs/MLIRDialect.md`.
+
 > **For agentic workers:** Execute each task in order. Preserve the red step,
 > keep commits focused, and use the repository's external SwiftPM scratch path.
 
