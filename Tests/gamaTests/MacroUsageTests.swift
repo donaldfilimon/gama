@@ -102,7 +102,7 @@ struct ReactiveStateLifetimeTests {
         let size = Size(width: 12, height: 2)
         let app = MacroCounterApp()
         var host = try FrameHost(app: app)
-        var first = host.pump(size: size)
+        let first = host.pump(size: size)
         var regions: [InteractiveRegion] = []
         first.collectInteractive(into: &regions)
         let button = try #require(regions.first)
