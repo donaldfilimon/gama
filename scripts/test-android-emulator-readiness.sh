@@ -151,6 +151,7 @@ for variable in \
   GAMA_ANDROID_SETTINGS_TIMEOUT_SECONDS \
   GAMA_ANDROID_INSTALL_TIMEOUT_SECONDS \
   GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS \
+  GAMA_ANDROID_NORMAL_MODE_ALLOWANCE_SECONDS \
   GAMA_ANDROID_UI_DUMP_TIMEOUT_SECONDS \
   GAMA_ANDROID_OUTPUT_TIMEOUT_SECONDS \
   GAMA_ANDROID_LOGCAT_TIMEOUT_SECONDS \
@@ -389,12 +390,12 @@ allocated=$((
   + GAMA_ANDROID_POST_BOOT_CEILING_SECONDS
   + GAMA_ANDROID_JOB_HEADROOM_SECONDS
 ))
-assert_equals 1245 "$post_boot_max" "calculated conservative post-boot maximum"
+assert_equals 1395 "$post_boot_max" "calculated conservative post-boot maximum"
 assert_equals 3300 "$allocated" "55-minute job allocation"
 ((post_boot_max < GAMA_ANDROID_POST_BOOT_CEILING_SECONDS))
 assert_equals 240 "$GAMA_ANDROID_JOB_HEADROOM_SECONDS" "job-level headroom"
 assert_equals 30 "$GAMA_ANDROID_RECOVERY_DELAY_SECONDS" "service settle delay"
-assert_equals 195 "$((GAMA_ANDROID_POST_BOOT_CEILING_SECONDS - post_boot_max))" "post-boot ceiling margin"
+assert_equals 45 "$((GAMA_ANDROID_POST_BOOT_CEILING_SECONDS - post_boot_max))" "post-boot ceiling margin"
 
 saved_post_boot_ceiling="$GAMA_ANDROID_POST_BOOT_CEILING_SECONDS"
 GAMA_ANDROID_POST_BOOT_CEILING_SECONDS="$post_boot_max"

@@ -43,6 +43,7 @@ GAMA_ANDROID_READINESS_POLL_DELAY_SECONDS="${GAMA_ANDROID_READINESS_POLL_DELAY_S
 GAMA_ANDROID_SETTINGS_TIMEOUT_SECONDS="${GAMA_ANDROID_SETTINGS_TIMEOUT_SECONDS:-5}"
 GAMA_ANDROID_INSTALL_TIMEOUT_SECONDS="${GAMA_ANDROID_INSTALL_TIMEOUT_SECONDS:-90}"
 GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS="${GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS:-30}"
+GAMA_ANDROID_NORMAL_MODE_ALLOWANCE_SECONDS="${GAMA_ANDROID_NORMAL_MODE_ALLOWANCE_SECONDS:-120}"
 GAMA_ANDROID_UI_DUMP_TIMEOUT_SECONDS="${GAMA_ANDROID_UI_DUMP_TIMEOUT_SECONDS:-5}"
 GAMA_ANDROID_OUTPUT_TIMEOUT_SECONDS="${GAMA_ANDROID_OUTPUT_TIMEOUT_SECONDS:-2}"
 GAMA_ANDROID_LOGCAT_TIMEOUT_SECONDS="${GAMA_ANDROID_LOGCAT_TIMEOUT_SECONDS:-2}"
@@ -89,7 +90,9 @@ calculate_android_post_boot_worst_case_seconds() {
       + GAMA_ANDROID_WAIT_TIMEOUT_SECONDS
       + GAMA_ANDROID_RECOVERY_DELAY_SECONDS
     )))
-  control_max=$((3 * GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS))
+  # Acceptance mode uses force-stop, log clear, stale-dump removal, and start.
+  # The preceding normal-mode proof has its own enforced wall-clock allowance.
+  control_max=$((4 * GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS))
   poll_max=$((GAMA_ANDROID_POLL_ATTEMPTS * (
     GAMA_ANDROID_UI_DUMP_TIMEOUT_SECONDS
     + GAMA_ANDROID_OUTPUT_TIMEOUT_SECONDS
@@ -104,6 +107,7 @@ calculate_android_post_boot_worst_case_seconds() {
     + install_max
     + control_max
     + poll_max
+    + GAMA_ANDROID_NORMAL_MODE_ALLOWANCE_SECONDS
     + GAMA_ANDROID_DIAGNOSTIC_TIMEOUT_SECONDS
     + GAMA_ANDROID_FIXED_OVERHEAD_SECONDS
   ))
@@ -126,6 +130,7 @@ validate_android_time_budget() {
     GAMA_ANDROID_SETTINGS_TIMEOUT_SECONDS \
     GAMA_ANDROID_INSTALL_TIMEOUT_SECONDS \
     GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS \
+    GAMA_ANDROID_NORMAL_MODE_ALLOWANCE_SECONDS \
     GAMA_ANDROID_UI_DUMP_TIMEOUT_SECONDS \
     GAMA_ANDROID_OUTPUT_TIMEOUT_SECONDS \
     GAMA_ANDROID_LOGCAT_TIMEOUT_SECONDS \
@@ -368,22 +373,25 @@ run_android_runtime_assertion() {
   run_with_timeout "$GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS" adb shell am force-stop com.gama.example
   run_with_timeout "$GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS" adb logcat -c
   run_with_timeout "$GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS" \
-    adb shell am start -W -n com.gama.example/.MainActivity >/dev/null
+    adb shell rm -f /sdcard/gama-acceptance.xml
+  run_with_timeout "$GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS" \
+    adb shell am start -W -n com.gama.example/.MainActivity \
+      --ez com.gama.example.ACCEPTANCE true >/dev/null
 
   for ((attempt = 1; attempt <= GAMA_ANDROID_POLL_ATTEMPTS; attempt++)); do
     # A wedged accessibility service can otherwise make one dump consume minutes.
     run_with_timeout "$GAMA_ANDROID_UI_DUMP_TIMEOUT_SECONDS" \
-      adb shell uiautomator dump /sdcard/gama-window.xml >/dev/null 2>&1 || true
+      adb shell uiautomator dump /sdcard/gama-acceptance.xml >/dev/null 2>&1 || true
     if run_with_timeout "$GAMA_ANDROID_OUTPUT_TIMEOUT_SECONDS" \
-      adb exec-out cat /sdcard/gama-window.xml 2>/dev/null \
-      | grep -q 'GAMA_OK 40 12 CHANGED'; then
-      echo "OK — Android emulator JNI input mutated and rendered a decoded frame"
+      adb exec-out cat /sdcard/gama-acceptance.xml 2>/dev/null \
+      | grep -q 'GAMA_OK 40 12 TAPPED_0_TO_1'; then
+      echo "OK — Android emulator JNI input rendered exactly Tapped 0 to Tapped 1"
       return 0
     fi
     if run_with_timeout "$GAMA_ANDROID_LOGCAT_TIMEOUT_SECONDS" \
       adb logcat -d -s GamaAcceptance:I '*:S' \
-      | grep -q 'GAMA_OK 40 12 CHANGED'; then
-      echo "OK — Android emulator JNI input mutated and rendered a decoded frame"
+      | grep -q 'GAMA_OK 40 12 TAPPED_0_TO_1'; then
+      echo "OK — Android emulator JNI input rendered exactly Tapped 0 to Tapped 1"
       return 0
     fi
     sleep "$GAMA_ANDROID_POLL_DELAY_SECONDS"
@@ -392,6 +400,43 @@ run_android_runtime_assertion() {
   run_with_timeout "$GAMA_ANDROID_DIAGNOSTIC_TIMEOUT_SECONDS" \
     adb logcat -d -t 400 >&2 || true
   echo "error: Android UI never exposed the GAMA_OK runtime assertion" >&2
+  return 1
+}
+
+run_android_normal_mode_assertion() {
+  local attempt deadline normal_log
+  deadline=$((SECONDS + GAMA_ANDROID_NORMAL_MODE_ALLOWANCE_SECONDS))
+  run_before_android_deadline "$deadline" "$GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS" \
+    adb shell am force-stop com.gama.example
+  run_before_android_deadline "$deadline" "$GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS" adb logcat -c
+  run_before_android_deadline "$deadline" "$GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS" \
+    adb shell rm -f /sdcard/gama-normal.xml
+  run_before_android_deadline "$deadline" "$GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS" \
+    adb shell am start -W -n com.gama.example/.MainActivity >/dev/null
+
+  for ((attempt = 1; attempt <= GAMA_ANDROID_POLL_ATTEMPTS; attempt++)); do
+    run_before_android_deadline "$deadline" "$GAMA_ANDROID_UI_DUMP_TIMEOUT_SECONDS" \
+      adb shell uiautomator dump /sdcard/gama-normal.xml >/dev/null 2>&1 || true
+    if run_before_android_deadline "$deadline" "$GAMA_ANDROID_OUTPUT_TIMEOUT_SECONDS" \
+      adb exec-out cat /sdcard/gama-normal.xml 2>/dev/null \
+      | grep -q 'content-desc="Gama Android"'; then
+      normal_log="$(run_before_android_deadline "$deadline" \
+        "$GAMA_ANDROID_LOGCAT_TIMEOUT_SECONDS" \
+        adb logcat -d -s GamaAcceptance:I '*:S' 2>/dev/null || true)"
+      if [[ "$normal_log" == *TAPPED_0_TO_1* ]]; then
+        echo "error: normal Android launch ran the acceptance probe" >&2
+        return 1
+      fi
+      echo "OK — normal Android launch remains outside acceptance mode"
+      return 0
+    fi
+    sleep_before_android_deadline "$deadline" \
+      "$GAMA_ANDROID_POLL_DELAY_SECONDS" || break
+  done
+
+  run_before_android_deadline "$deadline" "$GAMA_ANDROID_DIAGNOSTIC_TIMEOUT_SECONDS" \
+    adb logcat -d -t 400 >&2 || true
+  echo "error: normal Android launch never exposed its ordinary content description" >&2
   return 1
 }
 
@@ -420,6 +465,7 @@ run_android_post_boot_gate() {
   wait_for_android_services
   configure_android_animations
   install_android_apk "$apk"
+  run_android_normal_mode_assertion
   run_android_runtime_assertion
 }
 
