@@ -4,6 +4,7 @@
 # The TUI needs a real tty, so the interactive commands run gama-demo inside
 # a tmux session and read frames back with capture-pane. Every artifact lands
 # under $GAMA_RUN_ARTIFACTS so a caller can inspect what the app actually drew.
+# Each smoke gets a private subdirectory; step-by-step snaps use the root.
 #
 # Usage: .claude/skills/run-gama/driver.sh <command> [args]
 #   build            build the demo products with the pinned 6.5-dev snapshot
@@ -15,7 +16,7 @@
 #   focus            print the focused control's label (reads ANSI attributes)
 #   quit             Ctrl-C the app and kill the session
 #   mlir             direct invocation: emit the gama MLIR dialect (no tty)
-#   smoke            launch, assert it rendered, drive focus with Tab, quit
+#   smoke            launch, assert rendering, move focus, activate, quit
 #   apple            build and launch the AppKit multi-window demo
 #
 # Paths are relative to the repository root. Run from there.
@@ -23,10 +24,17 @@
 set -euo pipefail
 
 SCRATCH="${GAMA_RUN_SCRATCH:-/private/tmp/gama-run-skill}"
-ARTIFACTS="${GAMA_RUN_ARTIFACTS:-/private/tmp/gama-run-artifacts}"
-SESSION="${GAMA_RUN_SESSION:-gama-demo}"
+ARTIFACTS_ROOT="${GAMA_RUN_ARTIFACTS:-/private/tmp/gama-run-artifacts}"
+ARTIFACTS="$ARTIFACTS_ROOT"
+SESSION_PREFIX="${GAMA_RUN_SESSION:-gama-demo}"
+SESSION="$SESSION_PREFIX"
 PANE_WIDTH="${GAMA_RUN_WIDTH:-100}"
 PANE_HEIGHT="${GAMA_RUN_HEIGHT:-30}"
+SMOKE_SESSION_OWNED=0
+SMOKE_PRIVATE_SESSION=0
+SMOKE_RUN_PREPARED=0
+SMOKE_RUN_SEQUENCE=0
+SMOKE_RUN_ID=""
 
 # A stray TOOLCHAINS value overrides both the swiftly shim and the scripts'
 # explicit xcrun pins, so it is cleared for every invocation.
@@ -64,8 +72,18 @@ cmd_launch() {
     local bin
     bin="$(binary)"
     mkdir -p "$ARTIFACTS"
-    tmux kill-session -t "$SESSION" 2>/dev/null || true
+    if [ "$SMOKE_PRIVATE_SESSION" -eq 1 ]; then
+        if tmux has-session -t "$SESSION" 2>/dev/null; then
+            echo "driver: private smoke session name collision: '$SESSION'" >&2
+            exit 1
+        fi
+    else
+        tmux kill-session -t "$SESSION" 2>/dev/null || true
+    fi
     # -x/-y pin the pane: the demo frame is 72x18 and clips in a smaller pane.
+    # Claim the now-vacant name before creation so a signal between tmux and
+    # the following shell command cannot strand a newly created session.
+    SMOKE_SESSION_OWNED=1
     tmux new-session -d -s "$SESSION" -x "$PANE_WIDTH" -y "$PANE_HEIGHT" "$bin"
     sleep 2
     tmux has-session -t "$SESSION" 2>/dev/null || {
@@ -123,7 +141,33 @@ cmd_quit() {
     tmux send-keys -t "$SESSION" C-c 2>/dev/null || true
     sleep 1
     tmux kill-session -t "$SESSION" 2>/dev/null || true
+    SMOKE_SESSION_OWNED=0
     echo "driver: session '$SESSION' stopped"
+}
+
+smoke_cleanup() {
+    local status="$1"
+    trap - EXIT INT TERM HUP
+    if [ "$SMOKE_SESSION_OWNED" -eq 1 ]; then
+        cmd_quit >/dev/null 2>&1 || true
+    fi
+    exit "$status"
+}
+
+smoke_interrupt() {
+    exit "$1"
+}
+
+prepare_smoke_run() {
+    if [ "$SMOKE_RUN_PREPARED" -eq 1 ]; then
+        return
+    fi
+    SMOKE_RUN_SEQUENCE=$((SMOKE_RUN_SEQUENCE + 1))
+    SMOKE_RUN_ID="smoke-$$-${SMOKE_RUN_SEQUENCE}-${RANDOM}-${RANDOM}"
+    SESSION="${SESSION_PREFIX}-${SMOKE_RUN_ID}"
+    ARTIFACTS="${ARTIFACTS_ROOT}/${SMOKE_RUN_ID}"
+    SMOKE_PRIVATE_SESSION=1
+    SMOKE_RUN_PREPARED=1
 }
 
 cmd_mlir() {
@@ -132,7 +176,19 @@ cmd_mlir() {
 }
 
 cmd_smoke() {
+    # A private run ID prevents concurrent smokes from claiming one another's
+    # sessions or mixing evidence. Step-by-step commands retain exact paths.
+    prepare_smoke_run
+    mkdir -p "$ARTIFACTS"
+    rm -f -- \
+        "$ARTIFACTS/before.txt" \
+        "$ARTIFACTS/after.txt" \
+        "$ARTIFACTS/activated.txt"
     cmd_build
+    trap 'smoke_cleanup $?' EXIT
+    trap 'smoke_interrupt 130' INT
+    trap 'smoke_interrupt 143' TERM
+    trap 'smoke_interrupt 129' HUP
     cmd_launch
     local count before after
     count="$(cmd_count || true)"
@@ -140,29 +196,48 @@ cmd_smoke() {
     cmd_snap before >/dev/null
     if [ -z "$count" ]; then
         echo "driver: FAIL - the demo drew no counter on its first frame"
-        cmd_quit
+        exit 1
+    fi
+    if [ "$count" != "0" ]; then
+        echo "driver: FAIL - expected the first frame to show count 0, found '$count'"
         exit 1
     fi
     if [ -z "$before" ]; then
         echo "driver: FAIL - no focus ring in the first frame"
-        cmd_quit
+        exit 1
+    fi
+    if [ "$before" != "−1" ]; then
+        echo "driver: FAIL - expected initial focus on '−1', found '$before'"
         exit 1
     fi
     echo "driver: rendered (count=$count), focus on '$before'"
-    # Tab is the reliable interaction: it moves the focus ring and the pane
-    # repaints live. Keyboard ACTIVATION (Enter/Space) is a known no-op in
-    # this build - see Gotchas in SKILL.md before asserting on it.
+    # Tab moves the focus ring from '−1' to '+1' and the pane repaints live.
     cmd_keys Tab
     after="$(cmd_focus || true)"
     cmd_snap after >/dev/null
     echo "driver: focus after Tab: '$after'"
-    cmd_quit
-    if [ -z "$after" ] || [ "$before" = "$after" ]; then
-        echo "driver: FAIL - Tab did not move the focus ring"
+    if [ "$after" != "+1" ]; then
+        echo "driver: FAIL - expected Tab to focus '+1', found '$after'"
         exit 1
     fi
-    echo "driver: PASS - launched, rendered, and drove focus."
-    echo "driver: frames in $ARTIFACTS (before.txt, after.txt)"
+    # Enter activates the focused '+1' and the next frame must paint the
+    # incremented count. CounterPanel is built inline in the scene closure,
+    # so this is the per-surface @Reactive store (ADR 0011) working end to
+    # end in a real tty, not just in the Swift Testing suite.
+    local activated
+    cmd_keys Enter
+    sleep 0.7
+    activated="$(cmd_count || true)"
+    cmd_snap activated >/dev/null
+    echo "driver: count after Enter on '$after': $activated"
+    cmd_quit
+    trap - EXIT INT TERM HUP
+    if [ "$activated" != "1" ]; then
+        echo "driver: FAIL - Enter on '$after' did not repaint count 0 as 1 (found '$activated')"
+        exit 1
+    fi
+    echo "driver: PASS - launched, rendered, drove focus, and activated a control."
+    echo "driver: frames in $ARTIFACTS (before.txt, after.txt, activated.txt)"
 }
 
 cmd_apple() {
@@ -173,20 +248,26 @@ cmd_apple() {
     swift_run run --scratch-path "$SCRATCH" gama-apple-demo
 }
 
-case "${1:-}" in
-    build) shift; cmd_build "$@" ;;
-    launch) shift; cmd_launch "$@" ;;
-    keys) shift; cmd_keys "$@" ;;
-    snap) shift; cmd_snap "$@" ;;
-    text) shift; cmd_text "$@" ;;
-    count) shift; cmd_count "$@" ;;
-    quit) shift; cmd_quit "$@" ;;
-    focus) shift; cmd_focus "$@" ;;
-    mlir) shift; cmd_mlir "$@" ;;
-    smoke) shift; cmd_smoke "$@" ;;
-    apple) shift; cmd_apple "$@" ;;
-    *)
-        sed -n '2,25p' "$0"
-        exit 1
-        ;;
-esac
+main() {
+    case "${1:-}" in
+        build) shift; cmd_build "$@" ;;
+        launch) shift; cmd_launch "$@" ;;
+        keys) shift; cmd_keys "$@" ;;
+        snap) shift; cmd_snap "$@" ;;
+        text) shift; cmd_text "$@" ;;
+        count) shift; cmd_count "$@" ;;
+        quit) shift; cmd_quit "$@" ;;
+        focus) shift; cmd_focus "$@" ;;
+        mlir) shift; cmd_mlir "$@" ;;
+        smoke) shift; cmd_smoke "$@" ;;
+        apple) shift; cmd_apple "$@" ;;
+        *)
+            sed -n '2,25p' "$0"
+            exit 1
+            ;;
+    esac
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
+fi

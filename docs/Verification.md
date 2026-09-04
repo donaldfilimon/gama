@@ -58,7 +58,7 @@ pinned snapshot. It is used only by the documented xcodebuild platform gates.
 | `check-android.sh` | Android cross-build, JNI and runtime-library packaging |
 | `check-android-emulator.sh` | required API 36 input-to-decoded-frame change |
 | `check-mlir.sh` | emitted dialect parses under `mlir-opt` |
-| `check-docs.sh` | relative links and all DocC catalogs with warnings as errors |
+| `check-docs.sh` | relative links, synchronized run-gama mirrors and cleanup, all DocC catalogs with warnings as errors |
 | `check-doc-coverage.sh` | every public symbol has documentation or a justified exception |
 
 The driver intentionally fails when a required SDK, NDK, emulator, browser,
@@ -99,12 +99,15 @@ when the workflow runs again, report its result separately.
 
 ## Documentation evidence
 
-`check-docs.sh` performs three distinct checks:
+`check-docs.sh` performs four distinct checks:
 
 1. The standard-library-only link scanner rejects broken relative Markdown
    links in root guides, `docs/`, `Examples/`, and DocC articles.
-2. SwiftPM emits public symbol graphs under the pinned toolchain.
-3. Every discovered DocC catalog builds with warnings as errors.
+2. The run-gama checker rejects drift or wrong self-paths between the tracked
+   `.agents` and `.claude` entry points, requires executable drivers, and uses
+   negative controls to prove stale-frame removal and owned-session cleanup.
+3. SwiftPM emits public symbol graphs under the pinned toolchain.
+4. Every discovered DocC catalog builds with warnings as errors.
 
 `check-doc-coverage.sh` separately verifies public symbol comments. Passing
 one does not imply the other.

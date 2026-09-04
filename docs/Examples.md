@@ -12,7 +12,7 @@ host you are integrating.
 
 | Surface | Source | Best command | Evidence produced |
 | --- | --- | --- | --- |
-| Terminal demo | `Sources/GamaDemo/main.swift` | `.agents/skills/run-gama/driver.sh smoke` | Real TTY launch, frame capture, focus input, cleanup |
+| Terminal demo | `Sources/GamaDemo/main.swift` | `.agents/skills/run-gama/driver.sh smoke` | Real TTY launch, frame capture, focus navigation, keyboard activation, cleanup |
 | MLIR demo | same executable with `--emit-mlir` | `.agents/skills/run-gama/driver.sh mlir` | Structural and laid-out dialect text |
 | macOS shell | `Sources/GamaAppleDemo/` | `.agents/skills/run-gama/driver.sh apple` | Real AppKit launch; manual quit required |
 | Minimal AppKit host | `Examples/AppleHost/main.swift` | Apple host tests | Host-view construction pattern, not a standalone app bundle |
@@ -36,9 +36,13 @@ Run the maintained smoke:
 Artifacts:
 
 ```text
-/private/tmp/gama-run-artifacts/before.txt
-/private/tmp/gama-run-artifacts/after.txt
+/private/tmp/gama-run-artifacts/<smoke-run-id>/before.txt
+/private/tmp/gama-run-artifacts/<smoke-run-id>/after.txt
+/private/tmp/gama-run-artifacts/<smoke-run-id>/activated.txt
 ```
+
+The driver prints the exact private directory for each run, so concurrent
+smokes cannot mix or overwrite one another's evidence.
 
 For interactive inspection:
 
@@ -49,11 +53,15 @@ For interactive inspection:
 .agents/skills/run-gama/driver.sh focus
 .agents/skills/run-gama/driver.sh keys Tab
 .agents/skills/run-gama/driver.sh focus
+.agents/skills/run-gama/driver.sh keys Enter
+.agents/skills/run-gama/driver.sh count
 .agents/skills/run-gama/driver.sh quit
 ```
 
 The driver uses a real tmux TTY because raw terminal mode, escape decoding,
-focus attributes, and restoration cannot be proven through a plain pipe.
+focus attributes, keyboard activation, and restoration cannot be proven
+through a plain pipe. The smoke requires `Enter` on the focused `+1` control
+to repaint the inline component's counter from `0` to `1`.
 Plain `capture-pane -p` drops ANSI attributes, so use the driver's `focus`
 command when checking the highlighted control.
 

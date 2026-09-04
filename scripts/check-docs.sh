@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Checks repository Markdown links, then builds every
+# Checks repository Markdown links and the mirrored run-gama skill, then builds every
 # `Sources/<Module>/<Module>.docc` catalog with DocC, warnings as errors.
 # GamaCore's catalog is required; new catalogs are discovered automatically.
 set -euo pipefail
@@ -8,6 +8,7 @@ SCRATCH="${GAMA_DOCC_SCRATCH_PATH:-/private/tmp/gama-docc-swiftpm}"
 test -f "$ROOT/Sources/GamaCore/GamaCore.docc/GamaCore.md"
 test -f "$ROOT/docs/Capabilities.md"
 python3 "$ROOT/scripts/check-doc-links.py" --self-test "$ROOT"
+"$ROOT/scripts/check-run-gama-skill.sh"
 unset TOOLCHAINS || true
 /usr/bin/xcrun --toolchain "${GAMA_TOOLCHAIN_ID:-org.swift.65202608211a}" swift package --package-path "$ROOT" dump-package >/dev/null
 (
