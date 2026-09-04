@@ -164,5 +164,10 @@ to source, and it is deliberate:
 - `State<Value>` is unchanged and instance-local.
 - The Embedded core grows by the store, recorded in `../Capabilities.md`.
 - Evidence level is **Locally proven**. Hosted proof arrives with the
-  hosted matrix on the merged commit; the WASM and Android behavioral proof
-  the spec asks for on a second and third backend has not been added.
+  hosted matrix on the merged commit. The second-backend proof uses the
+  public author-facing form: `gama-web-demo` declares an inline `@Component`
+  with `@Reactive` state, the Node smoke requires the exact `0` to `1`
+  transition after Enter, and the browser smoke requires `state=0->0->1` so
+  only Enter can account for the mutation. The Android demo uses the same
+  macro-authored form; its dual-ABI cross-build and API 36 emulator assertion
+  from `Tapped 0` to `Tapped 1` are the third-backend proof.

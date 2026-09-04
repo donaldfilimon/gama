@@ -2,7 +2,10 @@
 
 Status: Locally runtime proven with the pinned Android Swift SDK
 (arm64-v8a/x86_64 payloads) and hosted proven by the required API 36
-emulator input/frame round trip (`Tapped 0` → `Tapped 1`).
+emulator input/frame round trip (`Tapped 0` → `Tapped 1`). The demo declares
+its inline tap counter with `@Component` and `@Reactive`; that round trip is
+the third-backend per-surface state proof because the macro-authored source,
+dual-ABI cross-build, and API 36 emulator gate pass together (ADR 0011).
 
 An APK installation, readiness, or input/frame failure is a product/gate
 failure by default; rerunning it is not acceptance evidence. Classify a

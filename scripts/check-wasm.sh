@@ -11,6 +11,8 @@ command -v python3 >/dev/null || {
 }
 python3 "$ROOT/scripts/check-wasm-unsafe-declarations.py" --self-test
 python3 "$ROOT/scripts/check-wasm-unsafe-declarations.py" "$ROOT/Sources/GamaWASM"
+node "$ROOT/scripts/wasm-runtime-smoke.mjs" --self-test
+node "$ROOT/scripts/browser-runtime-smoke.mjs" --self-test
 "$SWIFT" --version | grep -q 'Swift version 6.5'
 "$SWIFT" sdk list | grep -Fxq "$SDK" || { echo "error: missing WASM SDK $SDK" >&2; exit 1; }
 # Compile and inspect the portable objects before asking SwiftPM to link the
@@ -28,15 +30,7 @@ for target in GamaCore GamaDraw GamaWASM; do
   GAMA_LLVM_NM="${GAMA_LLVM_NM:-$(dirname "$SWIFT")/llvm-nm}" \
     "$ROOT/scripts/check-portable-symbols.sh" "$target (WASM)" "${objects[@]}"
 done
-"$SWIFT" build --package-path "$ROOT" --scratch-path "$SCRATCH" --swift-sdk "$SDK" --product gama-web-demo \
-  -Xlinker --export=gama_web_v1_frame \
-  -Xlinker --export=gama_web_v1_key \
-  -Xlinker --export=gama_web_v1_pointer \
-  -Xlinker --export=gama_web_v1_resize \
-  -Xlinker --export=gama_web_v2_frame \
-  -Xlinker --export=gama_web_v2_key \
-  -Xlinker --export=gama_web_v2_pointer \
-  -Xlinker --export=gama_web_v2_resize
+"$SWIFT" build --package-path "$ROOT" --scratch-path "$SCRATCH" --swift-sdk "$SDK" --product gama-web-demo
 grep -q -E 'gama_web_v1_(frame|key|pointer|resize)' "$ROOT/WebHost/gama.js"
 artifact="$(find "$SCRATCH" -type f -name 'gama-web-demo.wasm' -print -quit)"
 [[ -n "$artifact" ]] || { echo "error: executable WASM artifact not produced" >&2; exit 1; }

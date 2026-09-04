@@ -196,7 +196,7 @@ let package = Package(
         // Examples/Android and never enter the portable framework targets.
         .target(
             name: "GamaAndroidDemo",
-            dependencies: ["GamaCore", "GamaEmbed"],
+            dependencies: ["GamaCore", "GamaEmbed", "GamaMacros"],
             path: "Examples/Android",
             exclude: ["app", "build.gradle.kts", "settings.gradle.kts", "gradle.properties"],
             sources: ["AndroidDemoBootstrap.swift"],
@@ -215,8 +215,23 @@ let package = Package(
         // and the experimental Extern feature stays scoped to GamaWASM.
         .executableTarget(
             name: "GamaWebDemo",
-            dependencies: ["GamaCore", "GamaWASM"],
-            swiftSettings: strictCore
+            dependencies: ["GamaCore", "GamaMacros", "GamaWASM"],
+            swiftSettings: strictCore,
+            // These are properties of this WASI reactor's public ABI, not
+            // command-global build flags. Keeping them target-local prevents
+            // SwiftPM from forwarding them to the host-side macro plugin.
+            linkerSettings: [
+                .unsafeFlags([
+                    "-Xlinker", "--export=gama_web_v1_frame",
+                    "-Xlinker", "--export=gama_web_v1_key",
+                    "-Xlinker", "--export=gama_web_v1_pointer",
+                    "-Xlinker", "--export=gama_web_v1_resize",
+                    "-Xlinker", "--export=gama_web_v2_frame",
+                    "-Xlinker", "--export=gama_web_v2_key",
+                    "-Xlinker", "--export=gama_web_v2_pointer",
+                    "-Xlinker", "--export=gama_web_v2_resize",
+                ], .when(platforms: [.wasi])),
+            ]
         ),
         .executableTarget(
             name: "GamaAppleDemo",

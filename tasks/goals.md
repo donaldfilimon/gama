@@ -5,10 +5,10 @@
 Keep Gama a portable, retained Swift UI framework whose documentation and
 evidence match the exact source, toolchain, and acceptance matrix.
 
-Current implementation goals are limited to the unchecked items in
-[`todo.md`](todo.md): backend behavioral proof for per-surface view state.
-The accepted designs define scope; neither acceptance nor a dated plan is an
-implementation claim. Extending strict memory safety to the executables and
+There is no open implementation goal: every accepted design has landed and
+[`todo.md`](todo.md) holds only manual and credential-gated acceptance. The
+next implementation slice needs a new accepted design; neither acceptance nor
+a dated plan is an implementation claim. Extending strict memory safety to the executables and
 the test target is not committed work; ADR 0012 records the measured counts
 for whoever re-opens it.
 

@@ -6,12 +6,8 @@ status is authoritative in `docs/Capabilities.md`.
 
 ## Open implementation work
 
-- [ ] Prove per-surface `@Reactive` state on a second and third backend: the
-      [view-state design](../docs/superpowers/specs/2026-08-29-view-state-identity-design.md)
-      asks `check-wasm.sh` and `check-android-emulator.sh` for behavioral proof
-      beyond the Apple suite. The core, macros, diagnostics, Embedded
-      compatibility, and host-less rendering landed under
-      [ADR 0011](../docs/adr/0011-reactive-state-is-per-surface.md).
+None. The next implementation slice needs a new accepted design; see
+"Deferred product scope" below.
 
 ## Manual and credential-gated acceptance
 

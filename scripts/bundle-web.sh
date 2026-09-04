@@ -2,7 +2,7 @@
 # Assembles the deployable wasm site: WebHost/index.html + WebHost/gama.js +
 # gama-web-demo.wasm in one directory, then verifies the assembled directory
 # with the headless-Chrome browser smoke. Build invocation matches
-# scripts/check-wasm.sh (same pinned toolchain, SDK, and export list).
+# scripts/check-wasm.sh; the executable target owns its WASI export list.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # shellcheck source=lib/manifest.sh
@@ -38,15 +38,7 @@ grep -q 'Swift version 6.5' <<<"$version" &&
   exit 1
 }
 
-"$SWIFT" build --package-path "$ROOT" --scratch-path "$SCRATCH" --swift-sdk "$SDK" --product gama-web-demo \
-  -Xlinker --export=gama_web_v1_frame \
-  -Xlinker --export=gama_web_v1_key \
-  -Xlinker --export=gama_web_v1_pointer \
-  -Xlinker --export=gama_web_v1_resize \
-  -Xlinker --export=gama_web_v2_frame \
-  -Xlinker --export=gama_web_v2_key \
-  -Xlinker --export=gama_web_v2_pointer \
-  -Xlinker --export=gama_web_v2_resize
+"$SWIFT" build --package-path "$ROOT" --scratch-path "$SCRATCH" --swift-sdk "$SDK" --product gama-web-demo
 artifact="$(find "$SCRATCH" -type f -name 'gama-web-demo.wasm' -print -quit)"
 [[ -n "$artifact" ]] || { echo "error: executable WASM artifact not produced" >&2; exit 1; }
 

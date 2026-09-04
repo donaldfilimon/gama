@@ -2,7 +2,28 @@ import fs from "node:fs";
 import { randomFillSync } from "node:crypto";
 
 const artifact = process.argv[2];
-if (!artifact) throw new Error("usage: wasm-runtime-smoke.mjs <gama.wasm>");
+
+const renderedCount = (content) => {
+  const match = /\bcount ([0-9]+)\b/.exec(content);
+  return match === null ? null : Number.parseInt(match[1], 10);
+};
+const exactCounterTransition = (initial, activated) => initial === 0 && activated === 1;
+
+// Keep the acceptance parser honest: substring checks make `count 10` look
+// like `count 1`, which would allow a later multi-digit state to pass.
+if (renderedCount("<span>count 0</span>") !== 0
+    || renderedCount("<span>count 1</span>") !== 1
+    || renderedCount("<span>count 10</span>") !== 10
+    || !exactCounterTransition(0, 1)
+    || exactCounterTransition(0, 10)
+    || exactCounterTransition(null, 1)) {
+  throw new Error("counter-state parser self-test did not enforce exact 0 -> 1");
+}
+if (artifact === "--self-test") {
+  console.log("OK — WASM counter-state parser self-test");
+  process.exit(0);
+}
+if (!artifact) throw new Error("usage: wasm-runtime-smoke.mjs <gama.wasm> | --self-test");
 
 let memory;
 let html = "";
@@ -94,4 +115,15 @@ if (title !== "Gama") throw new Error(`unexpected title: ${title}; frames=${fram
 if (!html.includes("Gama Web")) throw new Error("rendered frame did not reach JavaScript host");
 if (frameRequests < 1) throw new Error("reactor never requested a frame");
 
-console.log("OK — WASM event-to-frame runtime smoke");
+// Per-surface @Reactive state (ADR 0011) on this backend: the demo's counter
+// is a component built inline on every frame. Enter activates the focused
+// button, and the rebuilt frame must paint the exact 0 -> 1 transition.
+const initialCount = renderedCount(html);
+instance.exports.gama_web_v1_key(5, 0, 0, 0);
+instance.exports.gama_web_v1_frame();
+const activatedCount = renderedCount(html);
+if (!exactCounterTransition(initialCount, activatedCount)) {
+  throw new Error(`inline @Reactive state transition must be exactly 0 -> 1; actual=${initialCount} -> ${activatedCount}; html=${html}`);
+}
+
+console.log("OK — WASM event-to-frame runtime smoke; state=0->1");
