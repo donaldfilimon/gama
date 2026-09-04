@@ -65,7 +65,7 @@ It pins a 100x30 pseudo-terminal, because the demo's 72x18 frame clips in a
 smaller pane. `capture-pane -p` strips ANSI attributes; use the driver's
 `focus` command to inspect the highlighted control.
 
-If a stale session remains:
+If a step-by-step session remains:
 
 ```bash
 .agents/skills/run-gama/driver.sh quit
