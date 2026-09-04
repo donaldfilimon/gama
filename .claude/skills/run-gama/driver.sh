@@ -149,20 +149,33 @@ cmd_smoke() {
         exit 1
     fi
     echo "driver: rendered (count=$count), focus on '$before'"
-    # Tab is the reliable interaction: it moves the focus ring and the pane
-    # repaints live. Keyboard ACTIVATION (Enter/Space) is a known no-op in
-    # this build - see Gotchas in SKILL.md before asserting on it.
+    # Tab moves the focus ring from '−1' to '+1' and the pane repaints live.
     cmd_keys Tab
     after="$(cmd_focus || true)"
     cmd_snap after >/dev/null
     echo "driver: focus after Tab: '$after'"
-    cmd_quit
     if [ -z "$after" ] || [ "$before" = "$after" ]; then
         echo "driver: FAIL - Tab did not move the focus ring"
+        cmd_quit
         exit 1
     fi
-    echo "driver: PASS - launched, rendered, and drove focus."
-    echo "driver: frames in $ARTIFACTS (before.txt, after.txt)"
+    # Enter activates the focused '+1' and the next frame must paint the
+    # incremented count. CounterPanel is built inline in the scene closure,
+    # so this is the per-surface @Reactive store (ADR 0011) working end to
+    # end in a real tty, not just in the Swift Testing suite.
+    local activated
+    cmd_keys Enter
+    sleep 0.7
+    activated="$(cmd_count || true)"
+    cmd_snap activated >/dev/null
+    echo "driver: count after Enter on '$after': $activated"
+    cmd_quit
+    if [ -z "$activated" ] || [ "$activated" -ne $((count + 1)) ]; then
+        echo "driver: FAIL - Enter on '$after' did not increment the count ($count -> '$activated')"
+        exit 1
+    fi
+    echo "driver: PASS - launched, rendered, drove focus, and activated a control."
+    echo "driver: frames in $ARTIFACTS (before.txt, after.txt, activated.txt)"
 }
 
 cmd_apple() {

@@ -35,9 +35,9 @@ One command builds, launches, drives, asserts, and cleans up:
 .claude/skills/run-gama/driver.sh smoke
 ```
 
-Verified output: `PASS - launched, rendered, and drove focus.` It writes
-`before.txt` and `after.txt` (full text frames) to
-`/private/tmp/gama-run-artifacts`.
+Verified output: `PASS - launched, rendered, drove focus, and activated a
+control.` It writes `before.txt`, `after.txt`, and `activated.txt` (full
+text frames) to `/private/tmp/gama-run-artifacts`.
 
 For step-by-step control:
 
@@ -55,13 +55,18 @@ For step-by-step control:
 `keys` forwards to `tmux send-keys`, so `Tab`, `BTab`, `Enter`, `Space`,
 `C-c`, and `-l "literal text"` all work.
 
-A verified interaction, exactly as observed:
+A verified interaction, exactly as observed on `main` at 1e9fffe
+(2026-09-04):
 
 ```bash
 .claude/skills/run-gama/driver.sh launch
 .claude/skills/run-gama/driver.sh focus        # -> −1
 .claude/skills/run-gama/driver.sh keys Tab
 .claude/skills/run-gama/driver.sh focus        # -> +1
+.claude/skills/run-gama/driver.sh keys Enter
+.claude/skills/run-gama/driver.sh count        # -> 1
+.claude/skills/run-gama/driver.sh keys Space
+.claude/skills/run-gama/driver.sh count        # -> 2
 .claude/skills/run-gama/driver.sh quit
 ```
 
@@ -106,13 +111,14 @@ whole matrix (parts of which need CI or pinned SDKs).
 
 ## Gotchas
 
-- **Keyboard activation is a no-op in the running demo.** `Tab`/`BTab` move
-  the focus ring and the pane repaints live, and `Ctrl-C` quits, so input
-  clearly reaches the app. But `Enter` on the focused `+1` button leaves
-  `count 0`, and `Space` on the focused toggle leaves `[x]` unchanged.
-  Measured 2026-08-27 on `main` at f52e06c. Do not write a smoke test that
-  asserts activation until this is fixed; assert focus movement instead,
-  which is what `driver.sh smoke` does.
+- **Keyboard activation works, and the smoke asserts it.** The 2026-08-27
+  measurement (`Enter` on `+1` left `count 0` at f52e06c) was the inline
+  `@Reactive` state loss that ADR 0011 removed: `CounterPanel` is now built
+  inline in the scene closure and keeps its state per surface. Measured
+  2026-09-04 on `main` at 1e9fffe: `Enter` on `+1` paints `count 1`, `Space`
+  paints `count 2`, `Enter` on `reset` paints `count 0`. If activation ever
+  regresses, `driver.sh smoke` fails on its count assertion; check
+  `FrameHost.transientStateIDs` first.
 - **`capture-pane -p` strips ANSI attributes**, and the focus ring is *only*
   an attribute run (teal `48;2;72;208;208` background). A plain text capture
   therefore cannot tell you what is focused. `driver.sh focus` uses
