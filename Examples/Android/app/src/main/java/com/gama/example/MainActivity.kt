@@ -34,13 +34,27 @@ class MainActivity : Activity() {
         init {
             check(native.resize(40, 12) == 0)
             val before = requireNotNull(native.frame())
+            val beforeFrame = DrawListDecoder.decode(before)
+            check(beforeFrame.columns == 40)
+            val beforeTapLabels = beforeFrame.commands
+                .filterIsInstance<DrawListDecoder.Text>()
+                .map { it.value }
+                .filter { it.startsWith("Tapped ") }
+            check(beforeTapLabels == listOf("Tapped 0")) {
+                "initial tap labels were $beforeTapLabels, expected [Tapped 0]"
+            }
             check(native.pointer(1, 2, true) == 0)
             val after = requireNotNull(native.frame())
             frame = DrawListDecoder.decode(after)
-            check(DrawListDecoder.decode(before).columns == 40)
             check(!before.contentEquals(after)) { "pointer action did not mutate the rendered frame" }
-            check(frame.commands.filterIsInstance<DrawListDecoder.Text>().any { it.value == "Tapped 1" })
-            contentDescription = "GAMA_OK ${frame.columns} ${frame.rows} CHANGED"
+            val afterTapLabels = frame.commands
+                .filterIsInstance<DrawListDecoder.Text>()
+                .map { it.value }
+                .filter { it.startsWith("Tapped ") }
+            check(afterTapLabels == listOf("Tapped 1")) {
+                "post-input tap labels were $afterTapLabels, expected [Tapped 1]"
+            }
+            contentDescription = "GAMA_OK ${frame.columns} ${frame.rows} TAPPED_0_TO_1"
             importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
             Log.i("GamaAcceptance", contentDescription.toString())
         }

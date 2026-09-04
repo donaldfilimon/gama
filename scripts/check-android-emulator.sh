@@ -376,14 +376,14 @@ run_android_runtime_assertion() {
       adb shell uiautomator dump /sdcard/gama-window.xml >/dev/null 2>&1 || true
     if run_with_timeout "$GAMA_ANDROID_OUTPUT_TIMEOUT_SECONDS" \
       adb exec-out cat /sdcard/gama-window.xml 2>/dev/null \
-      | grep -q 'GAMA_OK 40 12 CHANGED'; then
-      echo "OK — Android emulator JNI input mutated and rendered a decoded frame"
+      | grep -q 'GAMA_OK 40 12 TAPPED_0_TO_1'; then
+      echo "OK — Android emulator JNI input rendered exactly Tapped 0 to Tapped 1"
       return 0
     fi
     if run_with_timeout "$GAMA_ANDROID_LOGCAT_TIMEOUT_SECONDS" \
       adb logcat -d -s GamaAcceptance:I '*:S' \
-      | grep -q 'GAMA_OK 40 12 CHANGED'; then
-      echo "OK — Android emulator JNI input mutated and rendered a decoded frame"
+      | grep -q 'GAMA_OK 40 12 TAPPED_0_TO_1'; then
+      echo "OK — Android emulator JNI input rendered exactly Tapped 0 to Tapped 1"
       return 0
     fi
     sleep "$GAMA_ANDROID_POLL_DELAY_SECONDS"

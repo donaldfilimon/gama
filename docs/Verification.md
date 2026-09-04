@@ -56,7 +56,7 @@ pinned snapshot. It is used only by the documented xcodebuild platform gates.
 | `check-linux.sh` | static Linux SDK cross-build |
 | `check-wasm.sh` | WASM build, unsafe-slot policy, Node and browser smokes |
 | `check-android.sh` | Android cross-build, JNI and runtime-library packaging |
-| `check-android-emulator.sh` | required API 36 input-to-decoded-frame change |
+| `check-android-emulator.sh` | required API 36 decoded-frame transition from `Tapped 0` to `Tapped 1` |
 | `check-mlir.sh` | emitted dialect parses under `mlir-opt` |
 | `check-docs.sh` | relative links, synchronized run-gama mirrors and cleanup, all DocC catalogs with warnings as errors |
 | `check-doc-coverage.sh` | every public symbol has documentation or a justified exception |
