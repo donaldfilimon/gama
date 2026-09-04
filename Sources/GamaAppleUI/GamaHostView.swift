@@ -312,7 +312,7 @@ public final class GamaHostView: GamaPlatformView {
         /// window, so keys flow without an extra click.
         public override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            _ = window?.makeFirstResponder(self)
+            _ = unsafe window?.makeFirstResponder(self)
         }
     #else
         /// Forwards each UIKit layout pass to the host as a `.resize`

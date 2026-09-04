@@ -70,7 +70,7 @@ private final class WASMHostBox<A: App>: AnyWASMHost {
             let html = HTMLSerializer.grid(from: painted)
             let bytes = Array(html.utf8)
             bytes.withUnsafeBufferPointer { buf in
-                gama_js_setHTML(buf.baseAddress, Int32(buf.count))
+                unsafe gama_js_setHTML(buf.baseAddress, Int32(buf.count))
             }
         }
         if outcome.followUp { gama_js_requestFrame() }
@@ -95,13 +95,13 @@ public enum GamaWeb {
         columns: Int = 100,
         rows: Int = 30
     ) throws(SceneConfigurationError) {
-        installed = try WASMHostBox(app: app, size: Size(width: columns, height: rows))
+        unsafe installed = try WASMHostBox(app: app, size: Size(width: columns, height: rows))
         let title = Array("Gama".utf8)
-        title.withUnsafeBufferPointer { gama_js_setTitle($0.baseAddress, Int32($0.count)) }
+        title.withUnsafeBufferPointer { unsafe gama_js_setTitle($0.baseAddress, Int32($0.count)) }
         gama_js_requestFrame()
     }
 
-    fileprivate static var current: (any AnyWASMHost)? { installed }
+    fileprivate static var current: (any AnyWASMHost)? { unsafe installed }
 }
 
 // MARK: - Exports (called from WebHost/gama.js)

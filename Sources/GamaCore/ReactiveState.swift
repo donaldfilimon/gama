@@ -74,7 +74,9 @@ package final class HostStateStore: ~Sendable {
     ) -> Signal<Value> {
         let typeID = ObjectIdentifier(Signal<Value>.self)
         if let entry = entries[key], entry.typeID == typeID {
-            let signal = unsafeDowncast(entry.object, to: Signal<Value>.self)
+            // Sound: `entry.typeID` was recorded as `ObjectIdentifier(Signal<Value>.self)`
+            // when the object was stored, so the dynamic type matches exactly.
+            let signal = unsafe unsafeDowncast(entry.object, to: Signal<Value>.self)
             entries[key] = Entry(
                 typeID: typeID, object: signal, cancel: entry.cancel,
                 rebind: { attach(signal) }, marked: true)

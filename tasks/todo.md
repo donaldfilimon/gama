@@ -12,10 +12,6 @@ status is authoritative in `docs/Capabilities.md`.
       beyond the Apple suite. The core, macros, diagnostics, Embedded
       compatibility, and host-less rendering landed under
       [ADR 0011](../docs/adr/0011-reactive-state-is-per-surface.md).
-- [ ] Decide and implement `StrictMemorySafety` and
-      `InternalImportsByDefault` together with warning promotion. Merely
-      enabling strict-memory-safety warnings is insufficient because the
-      ordinary build does not promote them to errors.
 
 ## Manual and credential-gated acceptance
 

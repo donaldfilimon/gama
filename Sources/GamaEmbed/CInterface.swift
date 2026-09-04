@@ -37,6 +37,8 @@ private final class EmbedHostBox<A: App>: AnyEmbedHost {
     }
 }
 
+// `@safe`: the context owns `frameStorage` outright; every touch is spelled `unsafe` at its site.
+@safe
 private final class EmbedContext {
     let host: any AnyEmbedHost
     /// Raw storage deliberately: raw memory has no initialization state to
@@ -52,7 +54,7 @@ private final class EmbedContext {
     }
 
     deinit {
-        frameStorage.deallocate()
+        unsafe frameStorage.deallocate()
     }
 }
 
@@ -92,13 +94,13 @@ public enum GamaEmbed {
             height: min(Int(Int32.max), max(1, rows))
         )
         let context = EmbedContext(host: try EmbedHostBox(app: app, size: size))
-        return Unmanaged.passRetained(context).toOpaque()
+        return unsafe Unmanaged.passRetained(context).toOpaque()
     }
 }
 
 private func context(_ pointer: UnsafeMutableRawPointer?) -> EmbedContext? {
-    guard let pointer else { return nil }
-    return Unmanaged<EmbedContext>.fromOpaque(pointer).takeUnretainedValue()
+    guard let pointer = unsafe pointer else { return nil }
+    return unsafe Unmanaged<EmbedContext>.fromOpaque(pointer).takeUnretainedValue()
 }
 
 private func key(code: Int32, scalar: Int32, shift: Int32, control: Int32) -> Key? {
@@ -140,7 +142,7 @@ public nonisolated func gama_embed_v1_context_create(
     _ columns: Int32,
     _ rows: Int32
 ) -> UnsafeMutableRawPointer? {
-    try? GamaEmbed.makeContext(
+    unsafe try? GamaEmbed.makeContext(
         app: CEmbedDiagnosticApp(),
         columns: Int(columns),
         rows: Int(rows)
@@ -150,8 +152,8 @@ public nonisolated func gama_embed_v1_context_create(
 /// C ABI: releases a context; the pointer must not be reused afterwards.
 @_cdecl("gama_embed_v1_context_destroy")
 public nonisolated func gama_embed_v1_context_destroy(_ pointer: UnsafeMutableRawPointer?) {
-    guard let pointer else { return }
-    Unmanaged<EmbedContext>.fromOpaque(pointer).release()
+    guard let pointer = unsafe pointer else { return }
+    unsafe Unmanaged<EmbedContext>.fromOpaque(pointer).release()
 }
 
 /// C ABI: resizes the grid (dimensions clamped to 1...Int32.max).
@@ -161,7 +163,7 @@ public nonisolated func gama_embed_v1_resize(
     _ columns: Int32,
     _ rows: Int32
 ) -> Int32 {
-    guard let context = context(pointer) else { return -1 }
+    guard let context = unsafe context(pointer) else { return -1 }
     // Same clamp as create: an untrusted host must not drive the grid
     // beyond Int32 bounds (CellBuffer additionally caps total cell count).
     context.host.handle(
@@ -183,7 +185,7 @@ public nonisolated func gama_embed_v1_key(
     _ shift: Int32,
     _ control: Int32
 ) -> Int32 {
-    guard let context = context(pointer) else { return -1 }
+    guard let context = unsafe context(pointer) else { return -1 }
     guard let translated = key(code: code, scalar: scalar, shift: shift, control: control) else {
         return -2
     }
@@ -199,7 +201,7 @@ public nonisolated func gama_embed_v1_pointer(
     _ row: Int32,
     _ pressed: Int32
 ) -> Int32 {
-    guard let context = context(pointer) else { return -1 }
+    guard let context = unsafe context(pointer) else { return -1 }
     context.host.handle(
         .pointer(Point(x: Int(column), y: Int(row)), pressed: pressed != 0)
     )
@@ -209,7 +211,7 @@ public nonisolated func gama_embed_v1_pointer(
 /// C ABI: 1 when state changed since the last frame, 0 when clean.
 @_cdecl("gama_embed_v1_needs_frame")
 public nonisolated func gama_embed_v1_needs_frame(_ pointer: UnsafeMutableRawPointer?) -> Int32 {
-    guard let context = context(pointer) else { return -1 }
+    guard let context = unsafe context(pointer) else { return -1 }
     return context.host.needsFrame ? 1 : 0
 }
 
@@ -221,26 +223,26 @@ public nonisolated func gama_embed_v1_frame(
     _ pointer: UnsafeMutableRawPointer?,
     _ outputLength: UnsafeMutablePointer<Int32>?
 ) -> UnsafePointer<UInt8>? {
-    guard let context = context(pointer) else {
-        outputLength?.pointee = -1
+    guard let context = unsafe context(pointer) else {
+        unsafe outputLength?.pointee = -1
         return nil
     }
     guard let bytes = context.host.frame() else {
-        outputLength?.pointee = 0  // clean frame — nothing to draw
+        unsafe outputLength?.pointee = 0  // clean frame — nothing to draw
         return nil
     }
     guard bytes.count <= Int(Int32.max) else {
-        outputLength?.pointee = -3  // GAMA_EMBED_ERR_FRAME_TOO_LARGE
+        unsafe outputLength?.pointee = -3  // GAMA_EMBED_ERR_FRAME_TOO_LARGE
         return nil
     }
-    if context.frameStorage.count < bytes.count {
-        context.frameStorage.deallocate()
-        context.frameStorage = .allocate(
+    if unsafe context.frameStorage.count < bytes.count {
+        unsafe context.frameStorage.deallocate()
+        unsafe context.frameStorage = .allocate(
             byteCount: bytes.count, alignment: MemoryLayout<UInt8>.alignment)
     }
-    context.frameStorage.copyBytes(from: bytes)
-    outputLength?.pointee = Int32(bytes.count)
-    return context.frameStorage.baseAddress.map {
-        UnsafePointer($0.assumingMemoryBound(to: UInt8.self))
+    unsafe context.frameStorage.copyBytes(from: bytes)
+    unsafe outputLength?.pointee = Int32(bytes.count)
+    return unsafe context.frameStorage.baseAddress.map {
+        unsafe UnsafePointer($0.assumingMemoryBound(to: UInt8.self))
     }
 }

@@ -68,9 +68,9 @@
             guard snapshot != lastAnnouncedAccessibilitySnapshot else { return }
             lastAnnouncedAccessibilitySnapshot = snapshot
             #if canImport(AppKit)
-                NSAccessibility.post(element: self, notification: .layoutChanged)
+                unsafe NSAccessibility.post(element: self, notification: .layoutChanged)
             #else
-                UIAccessibility.post(notification: .layoutChanged, argument: nil)
+                unsafe UIAccessibility.post(notification: .layoutChanged, argument: nil)
             #endif
         }
     }
