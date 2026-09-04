@@ -170,6 +170,9 @@ to source, and it is deliberate:
   browser smokes assert the incremented count after a real key event while
   the Android emulator gate's `Tapped 0` → `Tapped 1` assertion does the same
   on the third backend. Those demos spell the slot out rather than using
-  `@Reactive`, because the pinned SwiftPM links a macro plugin for the
-  cross-compiled target instead of the host; the runtime path is identical
-  to the code `@Component` synthesizes.
+  `@Reactive`: under `check-wasm.sh` the `--export=gama_web_*` linker flags
+  the gate passes for the reactor apply to every link step, including the
+  host-side `GamaMacrosImpl` plugin, which the macOS linker then rejects
+  (measured 2026-09-04; the plugin itself was correctly built for
+  `arm64-apple-macos`). The runtime path is identical to the code
+  `@Component` synthesizes.

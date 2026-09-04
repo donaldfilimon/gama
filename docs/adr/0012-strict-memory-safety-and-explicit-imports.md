@@ -139,8 +139,12 @@ Not compiled locally: the Windows console branch of `GamaTUI` (no Windows
 toolchain here) and the Android SDK cross-compile of `GamaAndroidDemo` (no
 NDK here). Both were annotated by reading, mirroring the spellings the
 compiler accepted on Darwin; the hosted Windows and Android jobs are their
-proof, and until those jobs are green on the merged commit those branches are
-Implemented, not proven.
+proof. Reading was not enough: the first hosted Windows run found three
+C-union member reads in the console branch that need `unsafe` and a
+`gama-bench` call to `exit` that had resolved only through another module's
+import, both fixed in the follow-up commit on the same pull request. Until
+those jobs are green on the merged commit those branches are Implemented,
+not proven.
 
 ## Consequences
 

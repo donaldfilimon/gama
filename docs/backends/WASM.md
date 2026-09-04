@@ -25,8 +25,11 @@ its subscriptions, frame state, and component state; a construction failure
 leaves the previously installed host in place.
 
 `gama-web-demo` builds its counter inline in the scene closure on a
-`ReactiveSlot` (the code `@Component` would synthesize; a macro plugin cannot
-be linked for a cross-compiled target under the pinned SwiftPM), so its state
+`ReactiveSlot` (the code `@Component` would synthesize; a `GamaMacros`
+dependency does not build under this gate because the `--export=` linker
+flags it passes for the reactor also reach the host-side macro-plugin link,
+which the macOS linker rejects — moving those exports into a wasi-conditioned
+linker setting would lift that, and is not done), so its state
 lives in the host's per-surface store (ADR 0011). `scripts/check-wasm.sh`
 proves that on this backend twice: the Node smoke sends Enter through
 `gama_web_v1_key` and requires the next frame to paint `count 1`, and the

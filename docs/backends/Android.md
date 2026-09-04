@@ -4,8 +4,8 @@ Status: Locally runtime proven with the pinned Android Swift SDK
 (arm64-v8a/x86_64 payloads) and hosted proven by the required API 36
 emulator input/frame round trip (`Tapped 0` → `Tapped 1`). The demo builds
 its tap counter inline in the scene closure on a `ReactiveSlot` (the code
-`@Component` would synthesize; a macro plugin cannot be linked for a
-cross-compiled target under the pinned SwiftPM), so that round trip is also
+`@Component` would synthesize, kept identical to the web demo, whose gate
+cannot link a macro-plugin dependency; see `WASM.md`), so that round trip is also
 the third-backend proof of per-surface `@Reactive` state (ADR 0011).
 
 An APK installation, readiness, or input/frame failure is a product/gate

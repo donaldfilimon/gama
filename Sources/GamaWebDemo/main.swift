@@ -7,10 +7,12 @@ import GamaWASM
 /// and browser smokes press the button and assert the next frame paints the
 /// incremented count, which is the second-backend proof of that store.
 ///
-/// The slot is spelled out instead of written as `@Reactive` because the
-/// pinned SwiftPM links a macro plugin for the cross-compiled target rather
-/// than the host, so `GamaMacros` cannot be a dependency of a wasm32 or
-/// Android product. This is exactly the code `@Component` would synthesize.
+/// The slot is spelled out instead of written as `@Reactive` because a
+/// `GamaMacros` dependency does not build under `check-wasm.sh`: the
+/// `--export=gama_web_*` linker flags the gate passes for the reactor apply
+/// to every link step, including the host-side `GamaMacrosImpl` plugin, and
+/// the macOS linker rejects them. This is exactly the code `@Component`
+/// would synthesize.
 struct WebCounter: View {
     private let _count = ReactiveSlot(0)
     private var count: Int { _count.get() }

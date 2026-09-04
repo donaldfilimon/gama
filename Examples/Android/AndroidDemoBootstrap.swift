@@ -6,10 +6,12 @@ import GamaEmbed
 /// emulator gate taps it and asserts the frame changed, which is the
 /// third-backend proof of that store.
 ///
-/// The slot is spelled out instead of written as `@Reactive` because the
-/// pinned SwiftPM links a macro plugin for the cross-compiled target rather
-/// than the host, so `GamaMacros` cannot be a dependency of an Android
-/// product. This is exactly the code `@Component` would synthesize.
+/// The slot is spelled out instead of written as `@Reactive` so the Android
+/// and web demos share one shape: a `GamaMacros` dependency does not build
+/// under `check-wasm.sh` (its `--export=` linker flags reach the host-side
+/// macro plugin link), and the Android product was kept identical rather
+/// than proven separately. This is exactly the code `@Component` would
+/// synthesize.
 private struct TapCounter: View {
     private let _taps = ReactiveSlot(0)
     private var taps: Int { _taps.get() }
