@@ -32,7 +32,7 @@ sequential, fail-closed. Do not weaken or skip a gate to make it green.
 | `check-android.sh` | Android SDK cross-compile + JNI packaging | Android — "Cross-compile GamaEmbed" |
 | `check-android-emulator.sh` | API 36 emulator input/frame round trip | Android — "Required emulator input/frame round trip" |
 | `check-mlir.sh` | Emitted dialect parses under `mlir-opt --allow-unregistered-dialect` | macOS — "MLIR parse" |
-| `check-docs.sh` | Relative Markdown links pass; DocC builds with zero warnings; Capabilities ledger present with its status legend | macOS — "Source boundaries and documentation" |
+| `check-docs.sh` | Relative Markdown links pass; run-gama mirrors, paths, modes, and failure cleanup agree; DocC builds with zero warnings; Capabilities ledger present with its status legend | macOS — "Source boundaries and documentation" |
 | `check-doc-coverage.sh` | Every public declaration has a symbol-graph doc comment, excluding only justified allowlist entries | macOS — "Source boundaries and documentation" |
 
 The Linux job additionally runs the native test suite under Address and

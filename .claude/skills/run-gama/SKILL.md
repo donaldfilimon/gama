@@ -37,7 +37,8 @@ One command builds, launches, drives, asserts, and cleans up:
 
 Verified output: `PASS - launched, rendered, drove focus, and activated a
 control.` It writes `before.txt`, `after.txt`, and `activated.txt` (full
-text frames) to `/private/tmp/gama-run-artifacts`.
+text frames) to a private run directory under
+`/private/tmp/gama-run-artifacts` and prints that exact path.
 
 For step-by-step control:
 
@@ -72,7 +73,9 @@ A verified interaction, exactly as observed on `main` at 1e9fffe
 
 Override `GAMA_RUN_SCRATCH`, `GAMA_RUN_ARTIFACTS`, `GAMA_RUN_SESSION`,
 `GAMA_RUN_WIDTH`, or `GAMA_RUN_HEIGHT` when the defaults collide with
-another session.
+another session. The smoke treats `GAMA_RUN_SESSION` and
+`GAMA_RUN_ARTIFACTS` as prefixes and adds a private per-run suffix; the
+step-by-step commands use their exact values.
 
 ## Run: direct invocation (no tty)
 

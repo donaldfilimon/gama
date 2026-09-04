@@ -36,10 +36,13 @@ Run the maintained smoke:
 Artifacts:
 
 ```text
-/private/tmp/gama-run-artifacts/before.txt
-/private/tmp/gama-run-artifacts/after.txt
-/private/tmp/gama-run-artifacts/activated.txt
+/private/tmp/gama-run-artifacts/<smoke-run-id>/before.txt
+/private/tmp/gama-run-artifacts/<smoke-run-id>/after.txt
+/private/tmp/gama-run-artifacts/<smoke-run-id>/activated.txt
 ```
+
+The driver prints the exact private directory for each run, so concurrent
+smokes cannot mix or overwrite one another's evidence.
 
 For interactive inspection:
 
