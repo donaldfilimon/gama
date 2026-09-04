@@ -44,7 +44,8 @@ The terminal demo is the fastest interactive route:
 ```
 
 The driver builds with the pin, launches `gama-demo` in a real 100x30 TTY,
-captures its frame, moves focus, asserts the repaint, and cleans up. Text
+captures its frames, moves focus, activates the focused `+1`, requires the
+inline component's counter to repaint from `0` to `1`, and cleans up. Text
 artifacts are written to `/private/tmp/gama-run-artifacts`.
 
 The same application can emit the `gama` MLIR dialect without a TTY:

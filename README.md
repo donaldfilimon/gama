@@ -119,7 +119,8 @@ unset TOOLCHAINS
 swiftly run swift run gama-demo
 ```
 
-For an automated real-TTY smoke with external scratch paths:
+For an automated real-TTY focus-and-activation smoke with external scratch
+paths:
 
 ```bash
 .agents/skills/run-gama/driver.sh smoke

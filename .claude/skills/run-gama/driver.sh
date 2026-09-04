@@ -15,7 +15,7 @@
 #   focus            print the focused control's label (reads ANSI attributes)
 #   quit             Ctrl-C the app and kill the session
 #   mlir             direct invocation: emit the gama MLIR dialect (no tty)
-#   smoke            launch, assert it rendered, drive focus with Tab, quit
+#   smoke            launch, assert rendering, move focus, activate, quit
 #   apple            build and launch the AppKit multi-window demo
 #
 # Paths are relative to the repository root. Run from there.
