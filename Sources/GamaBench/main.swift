@@ -28,6 +28,16 @@ import GamaDraw
     import Darwin
 #elseif canImport(Glibc)
     import Glibc
+#elseif os(Windows)
+    // `exit` lives in the C runtime. Before InternalImportsByDefault it
+    // leaked into this file through another module's import; now every
+    // module's imports are internal, so the bench names its own.
+    #if canImport(CRT)
+        import CRT
+    #elseif canImport(ucrt)
+        import ucrt
+    #endif
+    import WinSDK
 #endif
 
 // MARK: Scenario

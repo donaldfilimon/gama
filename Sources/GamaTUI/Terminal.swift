@@ -647,12 +647,13 @@ enum WindowsInputTranslator {
 
         switch Int32(record.EventType) {
         case KEY_EVENT:
-            let k = record.Event.KeyEvent
+            // `Event` is a C union; reading a member is an unsafe access.
+            let k = unsafe record.Event.KeyEvent
             guard k.bKeyDown.boolValue else { return nil }
             return translate(key: k)
 
         case MOUSE_EVENT:
-            let m = record.Event.MouseEvent
+            let m = unsafe record.Event.MouseEvent
             return WindowsInputTranslator.pointer(
                 x: m.dwMousePosition.X, y: m.dwMousePosition.Y,
                 buttonState: m.dwButtonState, eventFlags: m.dwEventFlags)
@@ -666,7 +667,8 @@ enum WindowsInputTranslator {
     }
 
     private func translate(key k: KEY_EVENT_RECORD) -> InputEvent? {
-        WindowsInputTranslator.key(
+        // `uChar` is a C union; reading `UnicodeChar` is an unsafe access.
+        unsafe WindowsInputTranslator.key(
             virtualKey: k.wVirtualKeyCode,
             scalar: k.uChar.UnicodeChar,
             controlState: k.dwControlKeyState)
