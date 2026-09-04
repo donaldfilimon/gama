@@ -164,15 +164,10 @@ to source, and it is deliberate:
 - `State<Value>` is unchanged and instance-local.
 - The Embedded core grows by the store, recorded in `../Capabilities.md`.
 - Evidence level is **Locally proven**. Hosted proof arrives with the
-  hosted matrix on the merged commit. The second- and third-backend proof the
-  spec asks for followed the same day: `gama-web-demo` and the Android demo
-  build their counters inline on `ReactiveSlot`, and the WASM runtime and
-  browser smokes assert the incremented count after a real key event while
-  the Android emulator gate's `Tapped 0` → `Tapped 1` assertion does the same
-  on the third backend. Those demos spell the slot out rather than using
-  `@Reactive`: under `check-wasm.sh` the `--export=gama_web_*` linker flags
-  the gate passes for the reactor apply to every link step, including the
-  host-side `GamaMacrosImpl` plugin, which the macOS linker then rejects
-  (measured 2026-09-04; the plugin itself was correctly built for
-  `arm64-apple-macos`). The runtime path is identical to the code
-  `@Component` synthesizes.
+  hosted matrix on the merged commit. The second-backend proof uses the
+  public author-facing form: `gama-web-demo` declares an inline `@Component`
+  with `@Reactive` state, the Node smoke requires the exact `0` to `1`
+  transition after Enter, and the browser smoke requires `state=0->0->1` so
+  only Enter can account for the mutation. The Android demo uses the same
+  macro-authored form; its dual-ABI cross-build and API 36 emulator assertion
+  from `Tapped 0` to `Tapped 1` are the third-backend proof.

@@ -24,17 +24,13 @@ single host. A successful reinstall replaces that host wholesale, releasing
 its subscriptions, frame state, and component state; a construction failure
 leaves the previously installed host in place.
 
-`gama-web-demo` builds its counter inline in the scene closure on a
-`ReactiveSlot` (the code `@Component` would synthesize; a `GamaMacros`
-dependency does not build under this gate because the `--export=` linker
-flags it passes for the reactor also reach the host-side macro-plugin link,
-which the macOS linker rejects — moving those exports into a wasi-conditioned
-linker setting would lift that, and is not done), so its state
-lives in the host's per-surface store (ADR 0011). `scripts/check-wasm.sh`
-proves that on this backend twice: the Node smoke sends Enter through
-`gama_web_v1_key` and requires the next frame to paint `count 1`, and the
-browser smoke dispatches a real `keydown` and requires the `state=` marker to
-carry the incremented count.
+`gama-web-demo` declares its inline counter with `@Component` and
+`@Reactive`, so its state lives in the host's per-surface store (ADR 0011).
+`scripts/check-wasm.sh` proves that author-facing path twice: the Node smoke
+sends Enter through `gama_web_v1_key` and requires an exact `0` to `1`
+transition, while the browser smoke dispatches real DOM events and requires
+`state=0->0->1`. The middle zero proves that Tab, pointer, and resize coverage
+did not activate the counter; the final one is attributable to Enter.
 
 The current WASI reactor is single-threaded. That is the complete
 justification for the one `nonisolated(unsafe)` declaration: the private
@@ -62,7 +58,8 @@ family instead: it returns `0` when accepted, `-1` when no app host is
 installed, and `-2` from `gama_web_v2_key` for an invalid key code. Changing
 the result type of a published symbol is an ABI break even when JavaScript
 callers ignore the result, so new result contracts require a new symbol
-family.
+family. `GamaWebDemo` owns all eight exports as WASI-conditioned target-local
+linker settings; build commands do not apply reactor exports to host tools.
 
 JS imports the module provides to Swift (module `"gama"`): `setHTML`,
 `setTitle`, `requestFrame`.

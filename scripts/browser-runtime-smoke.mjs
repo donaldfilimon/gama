@@ -5,10 +5,24 @@ import { tmpdir } from "node:os";
 import { extname, join } from "node:path";
 
 const artifact = process.argv[2];
+const successMarker = /^OK;frames=[1-9]\d*;keys=[2-9]\d*;pointers=[2-9]\d*;resizes=[1-9]\d*;rendered=true;accessible=true;state=0->0->1$/;
+
+// Pin the exact state sequence. In particular, a later multi-digit state of
+// 10 must not satisfy the expected final state of 1.
+const markerExample = "OK;frames=1;keys=2;pointers=2;resizes=1;rendered=true;accessible=true;state=0->0->1";
+if (!successMarker.test(markerExample)
+    || successMarker.test(markerExample.replace("state=0->0->1", "state=0->1->1"))
+    || successMarker.test(markerExample.replace(/1$/, "10"))) {
+  throw new Error("browser state-marker parser self-test did not enforce exact 0->0->1");
+}
+if (artifact === "--self-test") {
+  console.log("OK — browser state-marker parser self-test");
+  process.exit(0);
+}
 const root = process.argv[3];
 const expectedTitle = process.argv[4];
 if (!artifact || !root) {
-  throw new Error("usage: browser-runtime-smoke.mjs <gama.wasm> <WebHost>");
+  throw new Error("usage: browser-runtime-smoke.mjs <gama.wasm> <WebHost> | --self-test");
 }
 
 const chromeCandidates = [
@@ -98,7 +112,7 @@ try {
       returnByValue: true,
     });
     marker = result.result?.result?.value ?? "";
-    if (/^OK;frames=[1-9]\d*;keys=[2-9]\d*;pointers=[2-9]\d*;resizes=[1-9]\d*;rendered=true;accessible=true;state=[1-9]\d*$/.test(marker)) break;
+    if (successMarker.test(marker)) break;
     await delay(100);
   }
   const titleResult = await command("Runtime.evaluate", {
@@ -114,8 +128,8 @@ try {
   server.close();
   rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
-if (!/^OK;frames=[1-9]\d*;keys=[2-9]\d*;pointers=[2-9]\d*;resizes=[1-9]\d*;rendered=true;accessible=true;state=[1-9]\d*$/.test(marker)) {
-  throw new Error(`browser event/frame/accessibility/state marker missing (state must be the incremented inline count); marker=${marker}; runtime=${runtimeErrors.join(" | ")}; stderr=${errors}`);
+if (!successMarker.test(marker)) {
+  throw new Error(`browser event/frame/accessibility/state marker missing (state must be exactly 0->0->1, with only Enter activating the inline counter); marker=${marker}; runtime=${runtimeErrors.join(" | ")}; stderr=${errors}`);
 }
 if (expectedTitle !== undefined && pageTitle !== expectedTitle) {
   throw new Error(`browser title mismatch; expected=${expectedTitle}; actual=${pageTitle}`);

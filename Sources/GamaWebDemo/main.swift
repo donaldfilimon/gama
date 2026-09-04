@@ -1,36 +1,25 @@
 #if arch(wasm32)
 import GamaCore
+import GamaMacros
 import GamaWASM
 
 /// Built inline in the scene closure on every frame; its count lives in the
 /// browser host's per-surface `@Reactive` store (ADR 0011). The WASM runtime
-/// and browser smokes press the button and assert the next frame paints the
-/// incremented count, which is the second-backend proof of that store.
-///
-/// The slot is spelled out instead of written as `@Reactive` because a
-/// `GamaMacros` dependency does not build under `check-wasm.sh`: the
-/// `--export=gama_web_*` linker flags the gate passes for the reactor apply
-/// to every link step, including the host-side `GamaMacrosImpl` plugin, and
-/// the macOS linker rejects them. This is exactly the code `@Component`
-/// would synthesize.
-struct WebCounter: View {
-    private let _count = ReactiveSlot(0)
-    private var count: Int { _count.get() }
+/// and browser smokes require the exact `0` to `1` transition after Enter,
+/// which is the second-backend proof of that store.
+@Component
+struct WebCounter {
+    @Reactive var count: Int = 0
 
     var body: some View {
         VStack {
             Text("Gama Web").bold()
             Text("count \(count)")
-            Button("Interactive") { [_count] in _count.set(_count.get() + 1) }
+            Button("Interactive") { count += 1 }
             ProgressView(value: 3, total: 4, label: "Ready")
         }
         .padding()
         .border(.rounded)
-    }
-
-    func render(in context: BuildContext) -> RenderNode {
-        _count._bind(in: context, slot: 0)
-        return body.render(in: context.child(0))
     }
 }
 
