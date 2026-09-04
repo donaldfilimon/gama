@@ -11,6 +11,12 @@ let strictCore: [SwiftSetting] = [
     // SE-0444: members are visible only in files that import their module.
     // GamaCore is stdlib-only, so this is a conservative 6.5-dev hygiene flag.
     .enableUpcomingFeature("MemberImportVisibility"),
+    // SE-0409: an unannotated `import` is internal, so a module named in a
+    // public declaration must be `public import`ed. Every import carries its
+    // access level already (annotated one commit before this flip so the flip
+    // is a semantic no-op); the compiler diagnoses over-annotation too
+    // (#UnusedImportAccess), so the set is checked in both directions.
+    .enableUpcomingFeature("InternalImportsByDefault"),
 ]
 
 // @_extern(wasm) is still experimental — scoped to the WASM target only.
