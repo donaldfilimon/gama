@@ -75,12 +75,28 @@ or CI/Linux, and the matrix intentionally fails when a prerequisite or a
 required runtime proof is unavailable. Do not weaken or skip a gate to make it
 green.
 
-One gate is easy to overlook because it owns no source under `Tests/gamaTests`:
-`check-concurrency-negative.sh` `-typecheck`s the fixtures in
-`Tests/CompileFail/` — a directory outside the test target, and therefore
-invisible to `swift test` — failing unless each one is still *rejected* with the
-unavailable-`Sendable` diagnostic. That is the enforcement behind ADR 0009
-keeping `Signal` and `PluginRuntime` non-`Sendable`.
+Two gates compile fixtures that live outside the test target and are
+therefore invisible to `swift test`: `check-concurrency-negative.sh`
+`-typecheck`s `Tests/CompileFail/`, failing unless each file is still
+*rejected* with the unavailable-`Sendable` diagnostic (the enforcement behind
+ADR 0009 keeping `Signal` and `PluginRuntime` non-`Sendable`), and
+`check-boundaries.sh` drives `Tests/Fixtures/`: `Ownership/` (`error.*` must
+fail, `ok.*` must compile) pins the `~Copyable` `Terminal` contract of ADR
+0010, `Confinement/` pins ADR 0009 at the fixture level (`error.*` must fail
+to compile; `warn.*` must compile and emit `#UnavailableSendableConformance`),
+`PortableSymbols/` is a fixture package proving the libm-symbol scan catches
+a real offender, and `TerminalSignal/` is a C probe that runs the signal
+handler outside Swift (re-raise through the displaced disposition, no write
+to a blocking tty on a fatal signal). Changing those contracts means updating
+the fixtures, not `GamaTests`.
+
+Gates also chain Python helpers that fail on their own: `check-docs.sh` runs
+`scripts/check-doc-links.py` (relative Markdown links) before DocC, and
+`check-wasm.sh` runs `scripts/check-wasm-unsafe-declarations.py` before the
+SDK build. The pre-push documentation checklist is the block in
+`CONTRIBUTING.md`: `./scripts/check-docs.sh` (which already runs the link
+checker's self-test plus the repo scan) followed by
+`./scripts/check-doc-coverage.sh`.
 
 `check-linux-leaks.sh` and `check-portable-symbols.sh` are not in that array:
 the first is a hosted-Linux LeakSanitizer proof (it exits non-zero on macOS by
@@ -111,12 +127,16 @@ swiftly run swift run gama-demo
 `ANDROID_NDK_HOME=… ./scripts/check-android.sh`. Other executables:
 `gama-apple-demo` (macOS scene/window lifecycle), `gama-web-demo` (browser
 reactor served from `WebHost/`), `gama-windows-console-smoke` (Windows
-acceptance binary).
+acceptance binary), and `gama-bench` (deterministic frame-path measurement;
+measure release builds only, it reports numbers, asserts no threshold, and is
+not a gate — rules and baselines in `docs/Performance.md`).
 
 Tests are Swift Testing only. The single test target is `GamaTests` at
 `Tests/gamaTests`. `--filter` matches the source identifier, not the `@Suite`
 display name: use the struct name (`--filter SceneGraphTests`), not
-`--filter 'Scene graph'`. Plugin and capability-service coverage lives in
+`--filter 'Scene graph'`. A non-matching filter prints "No matching test
+cases were run" and **exits zero**, so confirm the final test count rather
+than the exit status. Plugin and capability-service coverage lives in
 `PluginRuntimeTests`, `PluginSlotTests`, `PluginSceneTests`,
 `PluginCommandTests`, and `PlatformServicesTests`.
 Do not add `import XCTest`. Macro expansion tests use
@@ -126,7 +146,15 @@ Do not add `import XCTest`. Macro expansion tests use
 CI is `.github/workflows/ci.yml` — six jobs pinned to the same snapshot family
 with SHA256-verified downloads (`scripts/ci-install-swift-*.sh`).
 `scripts/check-toolchain-pins.sh` (via `check-boundaries.sh`) fails if CI
-URLs/SHAs drift from `Toolchains.toml`.
+URLs/SHAs drift from `Toolchains.toml`. A second workflow,
+`.github/workflows/pages.yml`, runs `scripts/bundle-web.sh` on every push to
+`main` and deploys the browser-smoked WASM site to GitHub Pages, so a merge
+to `main` is also a web deploy. `main` is protected by a repository ruleset:
+pull requests only, no force-push or deletion, and all six CI jobs are
+required status checks under the strict policy, so a PR must be current with
+`main` before it can merge. That is GitHub-side state, not repo state, so
+re-check it with `gh api repos/donaldfilimon/gama/rulesets` rather than
+trusting this line.
 
 ## Architecture
 
@@ -161,7 +189,10 @@ Target layering (all under `Sources/`, single test target `GamaTests` at
   host uniquely owns focus, actions, subscriptions, dirty state, and frames;
   out-of-band changes go through the host's `SubscriptionContext` or explicit
   `invalidate()`.
-- **Gama** — compatibility umbrella (`@_exported import GamaCore`) only.
+- **Gama** — compatibility umbrella (`@_exported import GamaCore`) only. Its
+  source path is the lowercase `Sources/gama` (set explicitly in
+  `Package.swift`); the case-insensitive local filesystem hides a wrong-case
+  reference that Linux CI will not.
 - **GamaPlugin** — stdlib-only Tier-1 static plugin and capability model:
   manifests, deny-by-default grants, unforgeable host-service handles
   (internal initializers), per-host `PluginRuntime`/`PluginSlot`, and opt-in
@@ -177,6 +208,12 @@ Target layering (all under `Sources/`, single test target `GamaTests` at
   import it. `check-boundaries.sh` rejects imports from every
   portable/framework target, routing OS-backed services outward through this
   target instead.
+- Every Swift target builds in Swift 6 language mode with the `ExistentialAny`
+  and `MemberImportVisibility` upcoming features (`strictCore` in
+  `Package.swift`; the C-only `GamaTUISignal` and `GamaEmbedABI` carry no
+  Swift settings), so a member that compiles in one file is rejected in
+  another until that file imports the defining module itself. `GamaAppleUI`
+  adds `InferIsolatedConformances`; `GamaWASM` adds experimental `Extern`.
 - **GamaMacros / GamaMacrosImpl** — optional `@Component`, `@Reactive`, `#rgb`
   sugar; the impl is a host-side compiler plugin. swift-syntax is the only
   package dependency, pinned by revision, build-time only — nothing from it
@@ -236,8 +273,10 @@ window of a `WindowGroup` captures the same closure, so a hoisted instance or
 an app-level `Signal` is one shared instance behind all of them (`Signal`
 also requires one host at a time, never concurrent hosts). That is right for
 deliberately shared model state and wrong for per-window state, which has no
-framework-provided storage today — the gap is tracked in
-`docs/superpowers/specs/drafts/2026-08-27-view-state-identity-draft.md`.
+framework-provided storage today. The fix is an accepted, unimplemented
+design: `docs/superpowers/specs/2026-08-29-view-state-identity-design.md`,
+tracked as open work in `tasks/todo.md` — acceptance is not an implementation
+claim.
 `ReactiveStateLifetimeTests` (in `Tests/gamaTests/MacroUsageTests.swift`)
 pins the behavior.
 
@@ -254,15 +293,14 @@ capability (e.g. Windows console native proof) as shipped.
 Prefer small reviewable commits, preserve `Package.resolved`, never commit
 credentials or runner configuration, never force-push the default branch, and
 only merge after required checks are green. Design specs live in
-`docs/superpowers/specs/` (`drafts/` are open questions, not commitments);
-the running goal ledger is `tasks/goals.md` + `tasks/todo.md`.
+`docs/superpowers/specs/` (`drafts/` are open questions, not commitments) and
+dated execution plans in `docs/superpowers/plans/`; neither is a capability
+claim. The running goal ledger is `tasks/goals.md` + `tasks/todo.md`.
 
 Before changing a backend or a settled design, read its record rather than
-re-deriving it: `docs/README.md` is the index, `docs/adr/` holds the nine
-decision records (own-the-rendering, toolchain pinning, Swift-Testing-only,
-signal confinement, DrawList wire format, noncopyable hosts, frame pumps,
-one-pump eager resize, Signal-is-not-Sendable),
-`docs/Plugins.md` defines the plugin tiers and capability model,
+re-deriving it: `docs/README.md` is the index, `docs/adr/0000-index.md`
+lists every decision record with its status (some are superseded, so read
+the table rather than assuming each file is live), `docs/Plugins.md` defines the plugin tiers and capability model,
 `docs/backends/<Backend>.md` the per-backend guides, and
 `Sources/GamaCore/GamaCore.docc/` the symbol-level articles built by
 `check-docs.sh`.
