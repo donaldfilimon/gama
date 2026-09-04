@@ -16,7 +16,10 @@ class MainActivity : Activity() {
 
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
-        host = GamaView(intent.getBooleanExtra(ACCEPTANCE_EXTRA, false))
+        host = GamaView()
+        if (intent.getBooleanExtra(ACCEPTANCE_EXTRA, false)) {
+            host.runAcceptanceProbe()
+        }
         setContentView(host)
     }
 
@@ -25,7 +28,7 @@ class MainActivity : Activity() {
         super.onDestroy()
     }
 
-    private inner class GamaView(acceptanceMode: Boolean) : View(this@MainActivity), AutoCloseable {
+    private inner class GamaView : View(this@MainActivity), AutoCloseable {
         private val native = GamaNative()
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             typeface = android.graphics.Typeface.MONOSPACE
@@ -35,29 +38,26 @@ class MainActivity : Activity() {
 
         init {
             check(native.resize(40, 12) == 0)
-            val before = requireNotNull(native.frame())
-            val beforeFrame = DrawListDecoder.decode(before)
-            frame = beforeFrame
-            if (acceptanceMode) {
-                check(beforeFrame.columns == 40)
-                val beforeTapLabels = tapLabels(beforeFrame)
-                check(beforeTapLabels == listOf("Tapped 0")) {
-                    "initial tap labels were $beforeTapLabels, expected [Tapped 0]"
-                }
-                check(native.pointer(1, 2, true) == 0)
-                val after = requireNotNull(native.frame())
-                frame = DrawListDecoder.decode(after)
-                check(!before.contentEquals(after)) { "pointer action did not mutate the rendered frame" }
-                val afterTapLabels = tapLabels(frame)
-                check(afterTapLabels == listOf("Tapped 1")) {
-                    "post-input tap labels were $afterTapLabels, expected [Tapped 1]"
-                }
-                contentDescription = "GAMA_OK ${frame.columns} ${frame.rows} TAPPED_0_TO_1"
-                Log.i("GamaAcceptance", contentDescription.toString())
-            } else {
-                contentDescription = "Gama Android"
-            }
+            frame = DrawListDecoder.decode(requireNotNull(native.frame()))
+            contentDescription = "Gama Android"
             importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
+        }
+
+        fun runAcceptanceProbe() {
+            check(frame.columns == 40)
+            val beforeTapLabels = tapLabels(frame)
+            check(beforeTapLabels == listOf("Tapped 0")) {
+                "initial tap labels were $beforeTapLabels, expected [Tapped 0]"
+            }
+            check(native.pointer(1, 2, true) == 0)
+            val after = requireNotNull(native.frame())
+            frame = DrawListDecoder.decode(after)
+            val afterTapLabels = tapLabels(frame)
+            check(afterTapLabels == listOf("Tapped 1")) {
+                "post-input tap labels were $afterTapLabels, expected [Tapped 1]"
+            }
+            contentDescription = "GAMA_OK ${frame.columns} ${frame.rows} TAPPED_0_TO_1"
+            Log.i("GamaAcceptance", contentDescription.toString())
         }
 
         private fun tapLabels(candidate: DrawListDecoder.Frame): List<String> = candidate.commands
