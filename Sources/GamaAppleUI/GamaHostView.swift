@@ -11,7 +11,7 @@
 #if canImport(AppKit) || canImport(UIKit)
 
 #if canImport(AppKit)
-    import AppKit
+    public import AppKit
     /// The platform view class `GamaHostView` extends — `NSView` on macOS.
     public typealias GamaPlatformView = NSView
     /// The platform font class the host paints with — `NSFont` on macOS.
@@ -19,7 +19,7 @@
     package typealias PlatformFont = NSFont
     typealias PlatformColor = NSColor
 #else
-    import UIKit
+    public import UIKit
     /// The platform view class `GamaHostView` extends — `UIView` on
     /// iOS/tvOS/visionOS.
     public typealias GamaPlatformView = UIView
@@ -30,8 +30,8 @@
     typealias PlatformColor = UIColor
 #endif
 
-import GamaCore
-import GamaDraw
+public import GamaCore
+public import GamaDraw
 
 /// A native AppKit/UIKit view hosting one Gama surface: it pumps the surface's
 /// `FrameHost`, paints the shared `DrawList` through CoreGraphics as a
@@ -312,7 +312,7 @@ public final class GamaHostView: GamaPlatformView {
         /// window, so keys flow without an extra click.
         public override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            _ = window?.makeFirstResponder(self)
+            _ = unsafe window?.makeFirstResponder(self)
         }
     #else
         /// Forwards each UIKit layout pass to the host as a `.resize`

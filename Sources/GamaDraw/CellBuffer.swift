@@ -3,7 +3,7 @@
 //  into. Terminals flush `presentDiff()` ANSI; GUI/DOM/embed hosts walk
 //  `forEachRun` to vectorize cells into draw commands. Platform-free.
 
-import GamaCore
+public import GamaCore
 
 /// One grid cell: a character, its style, and wide-glyph bookkeeping.
 public struct Cell: Hashable, Sendable {

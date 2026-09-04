@@ -48,7 +48,7 @@ enum TerminalRescue {
         original: termios
     ) throws(TerminalError) {
         var original = original
-        let result = gama_tui_signal_arm(inputFD, outputFD, &original)
+        let result = unsafe gama_tui_signal_arm(inputFD, outputFD, &original)
         if result != 0 {
             throw TerminalError("terminal signal rescue setup failed (errno \(result))")
         }

@@ -5,7 +5,7 @@
 //  through the slot's BuildContext into the owning host's action store,
 //  with zero new identity or event machinery.
 
-import GamaCore
+public import GamaCore
 
 /// A named region of the application's view tree that installed plugins
 /// may render into. Place one in ordinary view content:

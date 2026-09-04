@@ -7,13 +7,13 @@
 #if canImport(AppKit) || canImport(UIKit)
 
     #if canImport(AppKit)
-        import AppKit
+        public import AppKit
     #else
-        import UIKit
+        public import UIKit
     #endif
 
     import GamaCore
-    import GamaDraw
+    public import GamaDraw
 
     extension GamaHostView {
         /// The reading-order text of the most recently rendered frame.
@@ -68,9 +68,9 @@
             guard snapshot != lastAnnouncedAccessibilitySnapshot else { return }
             lastAnnouncedAccessibilitySnapshot = snapshot
             #if canImport(AppKit)
-                NSAccessibility.post(element: self, notification: .layoutChanged)
+                unsafe NSAccessibility.post(element: self, notification: .layoutChanged)
             #else
-                UIAccessibility.post(notification: .layoutChanged, argument: nil)
+                unsafe UIAccessibility.post(notification: .layoutChanged, argument: nil)
             #endif
         }
     }

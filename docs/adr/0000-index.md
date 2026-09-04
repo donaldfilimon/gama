@@ -17,3 +17,4 @@ are locked until a superseding ADR says otherwise.
 | [0009](0009-signal-is-not-sendable.md) | Signal and PluginRuntime are not Sendable; host confinement is compiler-checked | Accepted |
 | [0010](0010-noncopyable-terminal-ownership.md) | Terminal is noncopyable; one owner restores the tty | Accepted |
 | [0011](0011-reactive-state-is-per-surface.md) | @Reactive state is per-surface, host-owned and keyed by identity; a Signal on the App is shared | Accepted |
+| [0012](0012-strict-memory-safety-and-explicit-imports.md) | Strict memory safety with error promotion on shipped targets; explicit import access levels everywhere | Accepted |
