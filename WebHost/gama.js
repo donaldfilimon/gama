@@ -180,13 +180,18 @@ if (new URLSearchParams(location.search).get("gama-smoke") === "1") {
     clientX: bounds.left + 12, clientY: bounds.top + 28, bubbles: true,
   }));
   notifyResize();
+  // Activate the focused button through a real keydown: the demo's counter
+  // is a component built inline on every frame, so the count it paints next
+  // is the per-surface @Reactive store (ADR 0011) working in a browser.
+  root.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   const accessible = root.getAttribute("role") === "application"
     && root.getAttribute("aria-label")?.includes("Gama Web");
   const rendered = root.textContent.includes("Gama Web");
+  const state = /count (\d+)/.exec(root.textContent)?.[1] ?? "none";
   root.dataset.gamaSmoke = [
     "OK", `frames=${smoke.frames}`, `keys=${smoke.keys}`,
     `pointers=${smoke.pointers}`, `resizes=${smoke.resizes}`,
-    `rendered=${rendered}`, `accessible=${accessible}`,
+    `rendered=${rendered}`, `accessible=${accessible}`, `state=${state}`,
   ].join(";");
 }

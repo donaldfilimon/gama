@@ -24,6 +24,15 @@ single host. A successful reinstall replaces that host wholesale, releasing
 its subscriptions, frame state, and component state; a construction failure
 leaves the previously installed host in place.
 
+`gama-web-demo` builds its counter inline in the scene closure on a
+`ReactiveSlot` (the code `@Component` would synthesize; a macro plugin cannot
+be linked for a cross-compiled target under the pinned SwiftPM), so its state
+lives in the host's per-surface store (ADR 0011). `scripts/check-wasm.sh`
+proves that on this backend twice: the Node smoke sends Enter through
+`gama_web_v1_key` and requires the next frame to paint `count 1`, and the
+browser smoke dispatches a real `keydown` and requires the `state=` marker to
+carry the incremented count.
+
 The current WASI reactor is single-threaded. That is the complete
 justification for the one `nonisolated(unsafe)` declaration: the private
 installed-host slot in `WASMHost.swift`. `scripts/check-wasm.sh` scans Swift

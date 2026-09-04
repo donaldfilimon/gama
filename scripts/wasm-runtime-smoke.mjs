@@ -94,4 +94,15 @@ if (title !== "Gama") throw new Error(`unexpected title: ${title}; frames=${fram
 if (!html.includes("Gama Web")) throw new Error("rendered frame did not reach JavaScript host");
 if (frameRequests < 1) throw new Error("reactor never requested a frame");
 
+// Per-surface @Reactive state (ADR 0011) on this backend: the demo's counter
+// is a component built inline on every frame. Enter activates the focused
+// button, and the rebuilt frame must paint the incremented count rather than
+// the declared default.
+if (!html.includes("count 0")) throw new Error(`inline counter did not paint its initial state: ${html}`);
+instance.exports.gama_web_v1_key(5, 0, 0, 0);
+instance.exports.gama_web_v1_frame();
+if (!html.includes("count 1")) {
+  throw new Error(`inline @Reactive state did not survive the frame rebuild (expected "count 1"): ${html}`);
+}
+
 console.log("OK — WASM event-to-frame runtime smoke");

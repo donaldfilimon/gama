@@ -148,7 +148,9 @@ ANDROID_NDK_HOME=/path/to/pinned/ndk ./scripts/check-android.sh
 
 The separate emulator gate boots the required API 36 device, installs the APK,
 sends input, and requires the decoded Gama frame to change from `Tapped 0` to
-`Tapped 1`. Cross-compilation by itself does not prove that round trip.
+`Tapped 1`. Cross-compilation by itself does not prove that round trip. The
+tap counter is built inline on a `ReactiveSlot`, so the same assertion is the
+Android proof of per-surface `@Reactive` state (ADR 0011).
 
 ## Embedded Swift
 

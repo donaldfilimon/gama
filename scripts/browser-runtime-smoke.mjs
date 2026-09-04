@@ -98,7 +98,7 @@ try {
       returnByValue: true,
     });
     marker = result.result?.result?.value ?? "";
-    if (/^OK;frames=[1-9]\d*;keys=[1-9]\d*;pointers=[2-9]\d*;resizes=[1-9]\d*;rendered=true;accessible=true$/.test(marker)) break;
+    if (/^OK;frames=[1-9]\d*;keys=[2-9]\d*;pointers=[2-9]\d*;resizes=[1-9]\d*;rendered=true;accessible=true;state=[1-9]\d*$/.test(marker)) break;
     await delay(100);
   }
   const titleResult = await command("Runtime.evaluate", {
@@ -114,8 +114,8 @@ try {
   server.close();
   rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
-if (!/^OK;frames=[1-9]\d*;keys=[1-9]\d*;pointers=[2-9]\d*;resizes=[1-9]\d*;rendered=true;accessible=true$/.test(marker)) {
-  throw new Error(`browser event/frame/accessibility marker missing; marker=${marker}; runtime=${runtimeErrors.join(" | ")}; stderr=${errors}`);
+if (!/^OK;frames=[1-9]\d*;keys=[2-9]\d*;pointers=[2-9]\d*;resizes=[1-9]\d*;rendered=true;accessible=true;state=[1-9]\d*$/.test(marker)) {
+  throw new Error(`browser event/frame/accessibility/state marker missing (state must be the incremented inline count); marker=${marker}; runtime=${runtimeErrors.join(" | ")}; stderr=${errors}`);
 }
 if (expectedTitle !== undefined && pageTitle !== expectedTitle) {
   throw new Error(`browser title mismatch; expected=${expectedTitle}; actual=${pageTitle}`);
