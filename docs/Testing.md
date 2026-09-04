@@ -40,7 +40,8 @@ All suites live in `Tests/gamaTests/`:
 | `FormControlTests.swift` | TextField, Toggle, ProgressView |
 | `EmbedTests.swift` | Independent C-embed contexts |
 | `MacroUsageTests.swift` | `@Component` / `@Reactive` / `#rgb` compile-and-render; reactive state lifetime across frames under keyboard and pointer activation |
-| `MacroExpansionTests.swift` | Macro expansion via `SwiftSyntaxMacrosGenericTestSupport` (no XCTest) |
+| `MacroExpansionTests.swift` | Macro expansion via `SwiftSyntaxMacrosGenericTestSupport` (no XCTest): `ReactiveSlot` peer and binding `render(in:)` expansion, `@Reactive` outside `@Component` and hand-written `render(in:)` diagnostics |
+| `ViewStateIdentityTests.swift` | Per-surface `@Reactive` storage: inline persistence, `WindowGroup` independence, hoisted-instance per-surface writes, branch-flip eviction, out-of-band invalidation, `transientStateIDs`, `stateScope`, host-less local storage |
 | `EmbedABITests.swift` | Embed ABI additions: `gama_embed_v1_abi_version`, hostile-resize clamps, frame-storage reuse |
 | `WASMSerializerTests.swift` | WASM HTML serializer (compiled off wasm32) |
 | `AppleHostTests.swift` | Embeddable AppKit host (macOS only) |

@@ -16,8 +16,8 @@ evidence ledger.
 2. [Architecture and ownership](Architecture.md) — scene compilation,
    noncopyable hosts, frame flow, module boundaries, drawing, and services.
 3. [State, identity, and lifetime](StateAndIdentity.md) — signals, bindings,
-   hoisted state, collection identity, multi-window ownership, and current
-   limitations.
+   per-surface state, collection identity, multi-window ownership, and the
+   delivered design.
 4. [Examples and runnable surfaces](Examples.md) — terminal, MLIR, AppKit,
    WASM, C, Android, Embedded, and performance routes.
 5. [Verification and evidence boundaries](Verification.md) — the 13 local

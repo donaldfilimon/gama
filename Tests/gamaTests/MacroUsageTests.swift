@@ -76,9 +76,11 @@ private struct MacroCounter {
 }
 
 /// One component instance, stored on the app and captured by the scene
-/// closure. `@Reactive` state lives in the instance, and scene content is
-/// rebuilt every frame, so an instance constructed *inside* the closure
-/// would be replaced — along with its state — before the next frame paints.
+/// closure — the hoisted shape, one valid way to hold a component. Its
+/// `@Reactive` state binds to the host's per-surface store on render, so
+/// this pins that a hoisted instance keeps working. The inline shape
+/// (a component built fresh inside the closure every frame) is covered by
+/// `ViewStateIdentityTests`.
 private struct MacroCounterApp: App {
     let counter = MacroCounter()
     init() {}
