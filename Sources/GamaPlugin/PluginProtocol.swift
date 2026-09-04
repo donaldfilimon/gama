@@ -5,7 +5,7 @@
 //  boundary, so contributions stay portable and Embedded-compatible
 //  without `any View` existentials.
 
-import GamaCore
+public import GamaCore
 
 /// Names one render slot an application opts into with ``PluginSlot``.
 public struct SlotID: Hashable, Sendable, ExpressibleByStringLiteral {

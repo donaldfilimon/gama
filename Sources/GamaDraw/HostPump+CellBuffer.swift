@@ -1,4 +1,4 @@
-import GamaCore
+public import GamaCore
 
 extension HostPump {
     /// The shared cell-buffer step: resize the buffer to match the pump,

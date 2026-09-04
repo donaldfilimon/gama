@@ -3,7 +3,7 @@
 //  Extracted from the TUI renderer so DOM, GUI, and embed hosts paint
 //  pixel-identically — a backend only decides how cells reach the screen.
 
-import GamaCore
+public import GamaCore
 
 /// Rasterizes a laid-out tree into a ``CellBuffer`` — the one shared
 /// painter every backend drives.

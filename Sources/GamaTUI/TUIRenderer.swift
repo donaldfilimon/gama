@@ -3,7 +3,7 @@
 //  (Terminal.swift owns the platform split). Paints via the shared
 //  CellPainter, then flushes the differential ANSI diff.
 
-import GamaCore
+public import GamaCore
 import GamaDraw
 
 /// The terminal `Renderer`: owns a `RawModeSession` and a double-buffered

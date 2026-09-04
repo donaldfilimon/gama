@@ -26,7 +26,7 @@
 //  is dimensions, alignment, then the post-layout frame quad.
 //  Canonical user-facing reference: docs/MLIRDialect.md.
 
-import GamaCore
+public import GamaCore
 
 /// Lowers render trees into the textual `gama` MLIR dialect (generic op
 /// form, parseable with `mlir-opt --allow-unregistered-dialect`).

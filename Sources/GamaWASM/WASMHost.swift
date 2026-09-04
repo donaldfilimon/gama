@@ -8,7 +8,13 @@
 //    scripts/check-wasm.sh  (product gama-web-demo; Extern is already
 //    enabled on this target). Serve WebHost/ next to the .wasm artifact.
 
-import GamaCore
+#if arch(wasm32)
+    // `GamaWeb.install(app:)` is public and generic over `App`, so the wasm32
+    // build names GamaCore types in public API; the host-side stub does not.
+    public import GamaCore
+#else
+    import GamaCore
+#endif
 import GamaDraw
 
 #if arch(wasm32)

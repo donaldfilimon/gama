@@ -19,7 +19,7 @@
     import WinSDK
 #endif
 
-import GamaCore
+public import GamaCore
 
 /// The typed failure for every throwing GamaTUI operation — raw-mode entry
 /// and exit, writes, and event polling all `throws(TerminalError)`, so a

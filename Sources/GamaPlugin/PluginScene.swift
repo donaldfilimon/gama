@@ -9,7 +9,7 @@
 //  like `Window` declarations, including `openWindow` and
 //  `dismissWindow` context actions.
 
-import GamaCore
+public import GamaCore
 
 /// Context handed to `GamaPluginProtocol.scenes(in:)` when the runtime
 /// collects a plugin's scene contributions.

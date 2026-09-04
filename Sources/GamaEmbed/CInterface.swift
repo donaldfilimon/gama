@@ -1,6 +1,6 @@
 // CInterface.swift — versioned, context-based C embedding ABI.
 
-import GamaCore
+public import GamaCore
 import GamaDraw
 
 private protocol AnyEmbedHost: AnyObject {

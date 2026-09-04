@@ -1,7 +1,7 @@
 #if canImport(AppKit)
-import AppKit
-import GamaAppleUI
-import GamaCore
+public import AppKit
+package import GamaAppleUI
+public import GamaCore
 import GamaDraw
 
 /// AppKit application owner for scene-first Gama applications.

@@ -4,7 +4,7 @@
 //  that host's executor, releasing everything it owns when it goes away.
 //  Two hosts, two runtimes: nothing is shared.
 
-import GamaCore
+public import GamaCore
 
 /// The per-host plugin registry: install, capability mediation, slot
 /// rendering, and lifecycle. A runtime is confined to its owning host's
