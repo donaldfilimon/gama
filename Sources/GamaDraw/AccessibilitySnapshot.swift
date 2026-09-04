@@ -4,7 +4,7 @@
 //  derivation is unit-testable without AppKit/UIKit and every host that
 //  ships an adapter reads the same frame the same way.
 
-import GamaCore
+public import GamaCore
 
 /// A reading-order view of one rendered frame, derived only from its
 /// ``DrawList``.

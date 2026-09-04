@@ -3,7 +3,7 @@
 //  GUI hosts (CoreGraphics, Canvas2D, Skia, NDK) scale by their cell
 //  metrics; the C embed ABI ships the same list as a flat byte buffer.
 
-import GamaCore
+public import GamaCore
 
 /// One backend-neutral vector command produced by run-merging a
 /// ``CellBuffer``.

@@ -3,9 +3,9 @@
 
 import SwiftCompilerPlugin
 import SwiftDiagnostics
-import SwiftSyntax
+public import SwiftSyntax
 import SwiftSyntaxBuilder
-import SwiftSyntaxMacros
+public import SwiftSyntaxMacros
 
 @main
 struct GamaPlugin: CompilerPlugin {

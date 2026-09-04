@@ -210,12 +210,19 @@ Target layering (all under `Sources/`, single test target `GamaTests` at
   import it. `check-boundaries.sh` rejects imports from every
   portable/framework target, routing OS-backed services outward through this
   target instead.
-- Every Swift target builds in Swift 6 language mode with the `ExistentialAny`
-  and `MemberImportVisibility` upcoming features (`strictCore` in
-  `Package.swift`; the C-only `GamaTUISignal` and `GamaEmbedABI` carry no
-  Swift settings), so a member that compiles in one file is rejected in
-  another until that file imports the defining module itself. `GamaAppleUI`
-  adds `InferIsolatedConformances`; `GamaWASM` adds experimental `Extern`.
+- Every Swift target builds in Swift 6 language mode with the `ExistentialAny`,
+  `MemberImportVisibility`, and `InternalImportsByDefault` upcoming features
+  (`strictCore` in `Package.swift`; the C-only `GamaTUISignal` and
+  `GamaEmbedABI` carry no Swift settings), so a member that compiles in one
+  file is rejected in another until that file imports the defining module
+  itself, and a module whose types appear in a public declaration must be
+  `public import`ed (the compiler also rejects an unused `public import`).
+  Shipped library and macro targets additionally use `strictLibrary`: strict
+  memory safety with the `StrictMemorySafety` group promoted to an error, so
+  every unsafe operation is spelled `unsafe` at its site and a type with
+  unsafe storage but a safe API is `@safe`. Executables and `GamaTests` stay
+  on `strictCore` (ADR 0012 records the measured counts). `GamaAppleUI` adds
+  `InferIsolatedConformances`; `GamaWASM` adds experimental `Extern`.
 - **GamaMacros / GamaMacrosImpl** — optional `@Component`, `@Reactive`, `#rgb`
   sugar; the impl is a host-side compiler plugin. swift-syntax is the only
   package dependency, pinned by revision, build-time only — nothing from it

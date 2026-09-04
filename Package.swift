@@ -11,10 +11,27 @@ let strictCore: [SwiftSetting] = [
     // SE-0444: members are visible only in files that import their module.
     // GamaCore is stdlib-only, so this is a conservative 6.5-dev hygiene flag.
     .enableUpcomingFeature("MemberImportVisibility"),
+    // SE-0409: an unannotated `import` is internal, so a module named in a
+    // public declaration must be `public import`ed. Every import carries its
+    // access level already (annotated one commit before this flip so the flip
+    // is a semantic no-op); the compiler diagnoses over-annotation too
+    // (#UnusedImportAccess), so the set is checked in both directions.
+    .enableUpcomingFeature("InternalImportsByDefault"),
+]
+
+// Shipped library and macro targets additionally build under strict memory
+// safety (SE-0458) with the StrictMemorySafety diagnostic group promoted to
+// an error, so every memory-unsafe operation is spelled `unsafe` at its site
+// and a new one cannot land as a warning. Executables and the test target
+// are consumers of that surface and stay on `strictCore`; ADR 0012 records
+// the measured diagnostic counts behind that scope.
+let strictLibrary: [SwiftSetting] = strictCore + [
+    .strictMemorySafety(),
+    .treatWarning("StrictMemorySafety", as: .error),
 ]
 
 // @_extern(wasm) is still experimental — scoped to the WASM target only.
-let wasmSettings: [SwiftSetting] = strictCore + [
+let wasmSettings: [SwiftSetting] = strictLibrary + [
     .enableExperimentalFeature("Extern")
 ]
 
@@ -61,12 +78,12 @@ let package = Package(
             name: "Gama",
             dependencies: ["GamaCore"],
             path: "Sources/gama",
-            swiftSettings: strictCore
+            swiftSettings: strictLibrary
         ),
         // ── Core: Embedded-Swift-safe. No Foundation. No existential
         //    views in hot paths. No weak refs. Pure value render IR.
         //    Owns FrameHost — the backend-shared event/focus engine.
-        .target(name: "GamaCore", swiftSettings: strictCore),
+        .target(name: "GamaCore", swiftSettings: strictLibrary),
 
         // ── Plugin runtime: Tier-1 capability model (manifest, grants,
         //    unforgeable handles, per-host PluginRuntime, PluginSlot).
@@ -75,7 +92,7 @@ let package = Package(
         .target(
             name: "GamaPlugin",
             dependencies: ["GamaCore"],
-            swiftSettings: strictCore
+            swiftSettings: strictLibrary
         ),
 
         // ── Platform-conditional HostServices implementations (stderr
@@ -85,14 +102,14 @@ let package = Package(
         .target(
             name: "GamaPlatformServices",
             dependencies: ["GamaCore", "GamaPlugin"],
-            swiftSettings: strictCore
+            swiftSettings: strictLibrary
         ),
 
         // ── Macro declarations (what user code imports)
         .target(
             name: "GamaMacros",
             dependencies: ["GamaCore", "GamaMacrosImpl"],
-            swiftSettings: strictCore
+            swiftSettings: strictLibrary
         ),
 
         // ── Macro implementations (host-side compiler plugin)
@@ -102,7 +119,7 @@ let package = Package(
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
             ],
-            swiftSettings: strictCore
+            swiftSettings: strictLibrary
         ),
 
         // ── Draw: platform-free rasterizer shared by every backend —
@@ -111,7 +128,7 @@ let package = Package(
         .target(
             name: "GamaDraw",
             dependencies: ["GamaCore"],
-            swiftSettings: strictCore
+            swiftSettings: strictLibrary
         ),
 
         // ── TUI backend: POSIX terminals (Darwin/Glibc — termios/ioctl
@@ -125,7 +142,7 @@ let package = Package(
         .target(
             name: "GamaTUI",
             dependencies: ["GamaCore", "GamaDraw", "GamaTUISignal"],
-            swiftSettings: strictCore
+            swiftSettings: strictLibrary
         ),
 
         // ── WASM backend: browser reactor. Compiles to inert stubs off
@@ -141,7 +158,7 @@ let package = Package(
         .target(
             name: "GamaAppleUI",
             dependencies: ["GamaCore", "GamaDraw"],
-            swiftSettings: strictCore + [
+            swiftSettings: strictLibrary + [
                 .enableUpcomingFeature("InferIsolatedConformances"),
             ]
         ),
@@ -152,7 +169,7 @@ let package = Package(
         .target(
             name: "GamaAppleShell",
             dependencies: ["GamaCore", "GamaDraw", "GamaAppleUI"],
-            swiftSettings: strictCore
+            swiftSettings: strictLibrary
         ),
 
         // ── Embed backend: flat C ABI (events in, DrawList bytes out)
@@ -160,7 +177,7 @@ let package = Package(
         .target(
             name: "GamaEmbed",
             dependencies: ["GamaCore", "GamaDraw", "GamaEmbedABI"],
-            swiftSettings: strictCore
+            swiftSettings: strictLibrary
         ),
         .target(
             name: "GamaEmbedABI",
@@ -172,7 +189,7 @@ let package = Package(
         .target(
             name: "GamaMLIR",
             dependencies: ["GamaCore"],
-            swiftSettings: strictCore
+            swiftSettings: strictLibrary
         ),
 
         // Sample-only Android shared library. JNI and Gradle remain under
@@ -183,7 +200,7 @@ let package = Package(
             path: "Examples/Android",
             exclude: ["app", "build.gradle.kts", "settings.gradle.kts", "gradle.properties"],
             sources: ["AndroidDemoBootstrap.swift"],
-            swiftSettings: strictCore
+            swiftSettings: strictLibrary
         ),
 
         .executableTarget(

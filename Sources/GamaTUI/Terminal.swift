@@ -19,7 +19,7 @@
     import WinSDK
 #endif
 
-import GamaCore
+public import GamaCore
 
 /// The typed failure for every throwing GamaTUI operation — raw-mode entry
 /// and exit, writes, and event polling all `throws(TerminalError)`, so a
@@ -114,7 +114,7 @@ public struct Terminal: ~Copyable {
     /// mode cannot be applied; a failed screen setup restores the terminal
     /// before rethrowing.
     public mutating func enterRawMode() throws(TerminalError) {
-        guard tcgetattr(inputFD, &originalTermios) == 0 else {
+        guard unsafe tcgetattr(inputFD, &originalTermios) == 0 else {
             throw TerminalError("tcgetattr failed — stdin is not a tty")
         }
         var raw = originalTermios
@@ -124,10 +124,10 @@ public struct Terminal: ~Copyable {
         raw.c_cflag |= tcflag_t(CS8)
         raw.c_lflag &= ~tcflag_t(ECHO | ICANON | IEXTEN | ISIG)
         withUnsafeMutableBytes(of: &raw.c_cc) { cc in
-            cc[Int(VMIN)] = 0
-            cc[Int(VTIME)] = 0
+            unsafe cc[Int(VMIN)] = 0
+            unsafe cc[Int(VTIME)] = 0
         }
-        guard tcsetattr(inputFD, TCSAFLUSH, &raw) == 0 else {
+        guard unsafe tcsetattr(inputFD, TCSAFLUSH, &raw) == 0 else {
             throw TerminalError("tcsetattr failed")
         }
         isRaw = true
@@ -137,7 +137,7 @@ public struct Terminal: ~Copyable {
             try TerminalRescue.arm(
                 inputFD: inputFD, outputFD: outputFD, original: originalTermios)
         } catch {
-            _ = tcsetattr(inputFD, TCSANOW, &originalTermios)
+            _ = unsafe tcsetattr(inputFD, TCSANOW, &originalTermios)
             isRaw = false
             throw error
         }
@@ -169,7 +169,7 @@ public struct Terminal: ~Copyable {
         catch { firstError = error }
         // Restoration must not wait for an output queue (notably a PTY whose
         // reader has stopped after a crash); TCSANOW makes cleanup bounded.
-        if tcsetattr(inputFD, TCSANOW, &originalTermios) != 0, firstError == nil {
+        if unsafe tcsetattr(inputFD, TCSANOW, &originalTermios) != 0, firstError == nil {
             firstError = TerminalError("tcsetattr restoration failed")
         }
         isRaw = false
@@ -188,7 +188,7 @@ public struct Terminal: ~Copyable {
     /// to 80×24 when the query fails or reports a degenerate size.
     public func size() -> Size {
         var ws = winsize()
-        if ioctl(outputFD, UInt(TIOCGWINSZ), &ws) == 0, ws.ws_col > 0, ws.ws_row > 0 {
+        if unsafe ioctl(outputFD, UInt(TIOCGWINSZ), &ws) == 0, ws.ws_col > 0, ws.ws_row > 0 {
             return Size(width: Int(ws.ws_col), height: Int(ws.ws_row))
         }
         return Size(width: 80, height: 24)
@@ -205,13 +205,13 @@ public struct Terminal: ~Copyable {
             let n = bytes.withUnsafeBytes { buf -> Int in
                 guard let base = buf.baseAddress else { return 0 }
                 #if canImport(Darwin)
-                    return Darwin.write(outputFD, base.advanced(by: off), buf.count - off)
+                    return unsafe Darwin.write(outputFD, base.advanced(by: off), buf.count - off)
                 #elseif canImport(Glibc)
-                    return Glibc.write(outputFD, base.advanced(by: off), buf.count - off)
+                    return unsafe Glibc.write(outputFD, base.advanced(by: off), buf.count - off)
                 #elseif canImport(Musl)
-                    return Musl.write(outputFD, base.advanced(by: off), buf.count - off)
+                    return unsafe Musl.write(outputFD, base.advanced(by: off), buf.count - off)
                 #elseif canImport(Android)
-                    return Android.write(outputFD, base.advanced(by: off), buf.count - off)
+                    return unsafe Android.write(outputFD, base.advanced(by: off), buf.count - off)
                 #endif
             }
             if n < 0, errno == EINTR { continue }
@@ -244,7 +244,7 @@ public struct Terminal: ~Copyable {
         do {
             var fds = pollfd(fd: inputFD, events: Int16(POLLIN), revents: 0)
             let wait = hasPartialSequence ? min(max(0, timeoutMillis), 25) : max(0, timeoutMillis)
-            let r = poll(&fds, 1, Int32(wait))
+            let r = unsafe poll(&fds, 1, Int32(wait))
             if r < 0 {
                 if errno == EINTR {
                     // poll is not restartable on every supported libc even
@@ -282,7 +282,7 @@ public struct Terminal: ~Copyable {
             }
             let fd = inputFD
             let n = readBuffer.withUnsafeMutableBytes { raw in
-                read(fd, raw.baseAddress, raw.count)
+                unsafe read(fd, raw.baseAddress, raw.count)
             }
             if n < 0, errno == EINTR { return nil }
             guard n > 0 else { throw TerminalError("terminal input reached EOF") }
@@ -490,9 +490,13 @@ enum WindowsInputTranslator {
 /// written verbatim; input arrives as structured records via
 /// `ReadConsoleInputW`, so no ANSI input parsing is needed. Presents the
 /// same public surface as the POSIX implementation.
-public struct Terminal: ~Copyable {
-    private var hIn: HANDLE = INVALID_HANDLE_VALUE
-    private var hOut: HANDLE = INVALID_HANDLE_VALUE
+///
+/// `@safe`: the two console `HANDLE`s are unsafe raw-pointer storage, but
+/// every operation on them is confined to this type and spelled `unsafe`
+/// at its site, so the public surface is as safe as the POSIX one.
+@safe public struct Terminal: ~Copyable {
+    private var hIn: HANDLE = unsafe INVALID_HANDLE_VALUE
+    private var hOut: HANDLE = unsafe INVALID_HANDLE_VALUE
     private var savedInMode: DWORD = 0
     private var savedOutMode: DWORD = 0
     private var savedCP: UINT = 0
@@ -522,12 +526,13 @@ public struct Terminal: ~Copyable {
     /// and code page are saved for restoration. Throws when no console is
     /// attached or a mode cannot be set, undoing any partial setup first.
     public mutating func enterRawMode() throws(TerminalError) {
-        hIn = GetStdHandle(STD_INPUT_HANDLE)
-        hOut = GetStdHandle(STD_OUTPUT_HANDLE)
-        guard hIn != INVALID_HANDLE_VALUE, hOut != INVALID_HANDLE_VALUE else {
+        unsafe hIn = GetStdHandle(STD_INPUT_HANDLE)
+        unsafe hOut = GetStdHandle(STD_OUTPUT_HANDLE)
+        guard unsafe hIn != INVALID_HANDLE_VALUE, unsafe hOut != INVALID_HANDLE_VALUE else {
             throw TerminalError("GetStdHandle failed")
         }
-        guard GetConsoleMode(hIn, &savedInMode), GetConsoleMode(hOut, &savedOutMode) else {
+        guard unsafe GetConsoleMode(hIn, &savedInMode), unsafe GetConsoleMode(hOut, &savedOutMode)
+        else {
             throw TerminalError("GetConsoleMode failed — not a console")
         }
 
@@ -536,7 +541,7 @@ public struct Terminal: ~Copyable {
             savedOutMode
             | Self.ENABLE_PROCESSED_OUTPUT
             | Self.ENABLE_VIRTUAL_TERMINAL_PROCESSING
-        guard SetConsoleMode(hOut, outMode) else {
+        guard unsafe SetConsoleMode(hOut, outMode) else {
             throw TerminalError("SetConsoleMode(out) failed — Windows 10 1511+ required for VT")
         }
 
@@ -545,15 +550,15 @@ public struct Terminal: ~Copyable {
         inMode &= ~(Self.ENABLE_LINE_INPUT | Self.ENABLE_ECHO_INPUT
             | Self.ENABLE_PROCESSED_INPUT | Self.ENABLE_QUICK_EDIT_MODE)
         inMode |= Self.ENABLE_MOUSE_INPUT | Self.ENABLE_WINDOW_INPUT | Self.ENABLE_EXTENDED_FLAGS
-        guard SetConsoleMode(hIn, inMode) else {
+        guard unsafe SetConsoleMode(hIn, inMode) else {
             throw TerminalError("SetConsoleMode(in) failed")
         }
 
         // UTF-8 byte stream out.
         savedCP = GetConsoleOutputCP()
         guard SetConsoleOutputCP(65001) else {
-            _ = SetConsoleMode(hIn, savedInMode)
-            _ = SetConsoleMode(hOut, savedOutMode)
+            _ = unsafe SetConsoleMode(hIn, savedInMode)
+            _ = unsafe SetConsoleMode(hOut, savedOutMode)
             throw TerminalError("SetConsoleOutputCP(CP_UTF8) failed")
         }
 
@@ -578,8 +583,8 @@ public struct Terminal: ~Copyable {
         guard isRaw else { return }
         var failed = false
         do { try write("\u{1B}[0m\u{1B}[?25h\u{1B}[?1049l") } catch { failed = true }
-        if !SetConsoleMode(hIn, savedInMode) { failed = true }
-        if !SetConsoleMode(hOut, savedOutMode) { failed = true }
+        if unsafe !SetConsoleMode(hIn, savedInMode) { failed = true }
+        if unsafe !SetConsoleMode(hOut, savedOutMode) { failed = true }
         if savedCP != 0, !SetConsoleOutputCP(savedCP) { failed = true }
         isRaw = false
         if failed { throw TerminalError("Windows console restoration failed") }
@@ -591,7 +596,7 @@ public struct Terminal: ~Copyable {
     /// 80×24 when the query fails or reports a degenerate size.
     public func size() -> Size {
         var info = CONSOLE_SCREEN_BUFFER_INFO()
-        if GetConsoleScreenBufferInfo(hOut, &info) {
+        if unsafe GetConsoleScreenBufferInfo(hOut, &info) {
             let w = Int(info.srWindow.Right - info.srWindow.Left) + 1
             let h = Int(info.srWindow.Bottom - info.srWindow.Top) + 1
             if w > 0, h > 0 { return Size(width: w, height: h) }
@@ -610,7 +615,7 @@ public struct Terminal: ~Copyable {
         while off < bytes.count {
             let ok = bytes.withUnsafeBytes { buf -> Bool in
                 guard let base = buf.baseAddress else { return false }
-                return WriteFile(
+                return unsafe WriteFile(
                     hOut,
                     base.advanced(by: off),
                     DWORD(buf.count - off),
@@ -630,24 +635,25 @@ public struct Terminal: ~Copyable {
     /// Returns `nil` on timeout or for records with no `InputEvent`
     /// mapping.
     public mutating func nextEvent(timeoutMillis: Int) throws(TerminalError) -> InputEvent? {
-        let wait = WaitForSingleObject(hIn, DWORD(max(0, timeoutMillis)))
+        let wait = unsafe WaitForSingleObject(hIn, DWORD(max(0, timeoutMillis)))
         if wait == WAIT_TIMEOUT { return nil }
         guard wait == WAIT_OBJECT_0 else { throw TerminalError("WaitForSingleObject(console) failed") }
 
         var record = INPUT_RECORD()
         var count: DWORD = 0
-        guard ReadConsoleInputW(hIn, &record, 1, &count), count == 1 else {
+        guard unsafe ReadConsoleInputW(hIn, &record, 1, &count), count == 1 else {
             throw TerminalError("ReadConsoleInputW failed")
         }
 
         switch Int32(record.EventType) {
         case KEY_EVENT:
-            let k = record.Event.KeyEvent
+            // `Event` is a C union; reading a member is an unsafe access.
+            let k = unsafe record.Event.KeyEvent
             guard k.bKeyDown.boolValue else { return nil }
             return translate(key: k)
 
         case MOUSE_EVENT:
-            let m = record.Event.MouseEvent
+            let m = unsafe record.Event.MouseEvent
             return WindowsInputTranslator.pointer(
                 x: m.dwMousePosition.X, y: m.dwMousePosition.Y,
                 buttonState: m.dwButtonState, eventFlags: m.dwEventFlags)
@@ -661,7 +667,8 @@ public struct Terminal: ~Copyable {
     }
 
     private func translate(key k: KEY_EVENT_RECORD) -> InputEvent? {
-        WindowsInputTranslator.key(
+        // `uChar` is a C union; reading `UnicodeChar` is an unsafe access.
+        unsafe WindowsInputTranslator.key(
             virtualKey: k.wVirtualKeyCode,
             scalar: k.uChar.UnicodeChar,
             controlState: k.dwControlKeyState)

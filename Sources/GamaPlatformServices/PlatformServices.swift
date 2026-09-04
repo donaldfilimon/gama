@@ -9,7 +9,7 @@
 #if canImport(Foundation)
     import Foundation
     import GamaCore
-    import GamaPlugin
+    public import GamaPlugin
 
     extension FilesystemProvider {
         /// The real filesystem, honoring ``FilesystemScope`` path
