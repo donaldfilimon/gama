@@ -90,7 +90,19 @@ public final class GamaHostView: GamaPlatformView {
         lastAnnouncedAccessibilitySnapshot
     }
 
-    private let font = PlatformFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+    // Font construction is not reliably inert under CoreText pressure: the
+    // same failure described below for per-command styled fonts was observed
+    // while several hosts each measured a freshly constructed base font.
+    // Platform fonts are immutable, so construct the measurement font once
+    // and share that value; mutable render and accessibility caches remain
+    // confined to each host.
+    private static let baseFont =
+        PlatformFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+    private var font: PlatformFont { Self.baseFont }
+
+    /// Identity of the immutable measurement font. Package-only so the
+    /// regression test can pin one construction across multiple hosts.
+    package var baseFontIdentifier: ObjectIdentifier { ObjectIdentifier(font) }
 
     // MARK: Styled-font cache
     //
