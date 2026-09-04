@@ -8,20 +8,25 @@
 /// Marks a struct as a Gama component:
 ///  • adds `GamaCore.View` conformance via extension
 ///  • synthesizes a public memberwise initializer for stored properties
+///  • when the struct has `@Reactive` properties, synthesizes the
+///    `render(in:)` that binds each slot to the owning host before
+///    rendering `body`; a hand-written `render(in:)` beside `@Reactive`
+///    properties is an error (`component.render-collision`)
 ///
 ///     @Component
 ///     struct Badge {
 ///         var label: String
 ///         var body: some View { Text(label).bold() }
 ///     }
-@attached(member, names: named(init))
+@attached(member, names: named(init), named(render))
 @attached(extension, conformances: View)
 public macro Component() =
     #externalMacro(module: "GamaMacrosImpl", type: "ComponentMacro")
 
-/// Reactive stored property backed by a `Signal`, wired into the runtime
-/// invalidator. Compile-time expansion of the @State pattern — usable in
-/// classes and structs alike, no property-wrapper overhead.
+/// Reactive stored property whose state is owned by the host that renders
+/// it, keyed by the component's identity in the tree — **per surface**, not
+/// per instance. Requires a struct marked `@Component`; the `render(in:)`
+/// that `@Component` synthesizes binds each slot to the host.
 ///
 ///     @Component
 ///     struct Counter {
@@ -31,30 +36,38 @@ public macro Component() =
 ///         }
 ///     }
 ///
-/// The state lives in the component *instance*, which must outlive the
-/// frame. Scene content is rebuilt on every frame, so a component
-/// constructed inside a `Window` or `WindowGroup` closure is replaced —
-/// state included — before the next frame paints, and every mutation is
-/// silently discarded. Store the instance where it survives instead:
-///
 ///     struct CounterApp: App {
-///         private let counter = Counter()   // not `{ Counter() }` below
 ///         var scenes: some Scene {
-///             Window("Counter", id: "main", role: .primary) { counter }
+///             Window("Counter", id: "main", role: .primary) { Counter() }
 ///         }
 ///     }
 ///
-/// That shape is exact for a singleton ``GamaCore/Window``, which owns one
-/// surface. It is *sharing*, not per-surface storage: every surface built
-/// from a scene declaration captures the same closure, so a stored instance
-/// — like an app-level ``GamaCore/Signal`` — is one instance behind every
-/// open window of a ``GamaCore/WindowGroup``, and its `@Reactive` signals
-/// are shared state rather than per-window state. Store state on the app
-/// when the windows are meant to share a model (`Signal` still requires its
-/// readers to be one host at a time, never concurrent hosts). State that
-/// each window must own independently has no framework-provided storage
-/// today; the identity-keyed-view-state draft under
-/// `docs/superpowers/specs/drafts/` is where that gap is tracked.
+/// Scene content is rebuilt on every frame, and that inline construction is
+/// the primary shape: each frame's fresh `Counter` binds to the same
+/// host-owned signal, so the mutation is painted on the next frame. Two
+/// windows of one ``GamaCore/WindowGroup`` get independent state for the
+/// same declaration. A hoisted instance stored on the app remains valid and
+/// also writes per surface; its value before the first render seeds each
+/// surface's initial state.
+///
+/// Sharing has an explicit spelling: store a ``GamaCore/Signal`` on the app
+/// and observe it from each host. `@Reactive` is per-surface; a `Signal` on
+/// the `App` is shared. Raw `Signal` stored properties inside a component
+/// are unsupported — for `TextField` and `Toggle`, pass the slot's binding:
+///
+///     @Reactive var name: String = ""
+///     var body: some View { TextField("name", text: _name.binding()) }
+///
+/// Identity is structural: a branch flip or a positional `ForEach` reorder
+/// reconstructs state and is reported through `FrameHost.transientStateIDs`.
+/// Use `IdentifiedForEach` or `.stateScope(_:)` to pin a subtree to an
+/// explicit identity. Rendering without a host (a bare `BuildContext()`)
+/// keeps the slot on instance-local storage.
+///
+/// Compile errors: `reactive.requires-component` when the property sits
+/// outside a struct marked `@Component` (including in a class), and
+/// `component.render-collision` when the component hand-writes `render(in:)`.
+/// Expands to a `private let _name: ReactiveSlot<T>` peer plus accessors.
 @attached(peer, names: prefixed(`_`))
 @attached(accessor, names: named(init), named(get), named(set))
 public macro Reactive() =

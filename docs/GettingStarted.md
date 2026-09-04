@@ -6,8 +6,9 @@ remain authoritative in [Capabilities.md](Capabilities.md).
 
 This guide gets from a clean checkout to a running Gama application, then
 explains the two decisions that most often surprise new contributors: every
-application declares one primary scene, and persistent component state must
-outlive the scene-content closure that is evaluated for each frame.
+application declares one primary scene, and `@Reactive` component state is
+stored per surface by the host, keyed by position, so it outlives the
+scene-content closure that is evaluated for each frame.
 
 ## 1. Confirm the toolchain
 
@@ -131,45 +132,47 @@ The module selectors emitted by the macros (`GamaCore::View`,
 `GamaCore::Signal`, and `GamaCore::Color`) prevent a client declaration named
 `GamaCore` from changing lookup.
 
-## 5. Keep persistent component instances alive
+## 5. Component state persists per surface
 
-Scene content closures are evaluated when a frame is rebuilt. Today,
-instance-backed `@State` and `@Reactive` storage belongs to the component
-instance, not to an identity-keyed host store. Constructing a stateful
-component inline creates a new instance on the next frame:
-
-```swift
-// Wrong for persistent instance-backed state today.
-Window("Counter", id: "main", role: .primary) {
-    CounterPanel()
-}
-```
-
-Hoist the component into the application instead:
+Scene content closures are evaluated when a frame is rebuilt, so a component
+built inside one is a fresh value every frame. Its `@Reactive` state is not:
+the `FrameHost` that owns the surface stores it under the node's structural
+identity, and the fresh instance binds to the same storage. Building the
+component inline is the correct shape:
 
 ```swift
 struct CounterApp: App {
-    private let panel = CounterPanel()
-
     init() {}
 
     var scenes: some Scene {
         Window("Counter", id: "main", role: .primary) {
-            panel
+            CounterPanel() // Fresh instance each frame; @Reactive state persists.
         }
     }
 }
 ```
 
-This preserves one instance for the application lifetime. In a
-`WindowGroup`, the same hoisted instance is shared by every surface that uses
-it. Gama does not yet provide automatic per-window component storage; see
-[StateAndIdentity.md](StateAndIdentity.md) before choosing ownership.
+`@Reactive` is per-surface: in a `WindowGroup`, every window resolves its
+own storage for the same declaration. Hoisting an instance onto the `App`
+still works and is still per-surface — each host binds it to its own
+storage before invoking an action, and the instance's pre-render value only
+seeds each surface's initial value. To share state across surfaces, put a
+`Signal` on the `App` and observe it; do not expect a hoisted `@Reactive`
+component to do it. `State` remains instance-local.
+
+`@Reactive` is accepted only inside a struct marked `@Component`; anywhere
+else the macro reports a compile error rather than silently keeping local
+state. Identity is structural, so a branch flip or a positional `ForEach`
+reorder drops state; `IdentifiedForEach` and `.stateScope(_:)` pin a subtree
+to an identity you choose, and `FrameHost.transientStateIDs` names any node
+whose state was reconstructed. See [StateAndIdentity.md](StateAndIdentity.md)
+before choosing ownership.
 
 ## 6. Connect state that changes outside input callbacks
 
-An action invoked through `FrameHost` already dirties its host. External
-models must connect their changes explicitly:
+An action invoked through `FrameHost` already dirties its host, and so does
+any write to bound `@Reactive` state, even from a timer or lifecycle handler.
+External `Signal` models must connect their changes explicitly:
 
 ```swift
 let model = Signal(0)

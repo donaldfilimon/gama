@@ -6,10 +6,12 @@ status is authoritative in `docs/Capabilities.md`.
 
 ## Open implementation work
 
-- [ ] Implement the approved
-      [view-state identity design](../docs/superpowers/specs/2026-08-29-view-state-identity-design.md):
-      preserve inline `@Reactive` state per surface, diagnose transient state,
-      retain host-less rendering, and prove Embedded compatibility.
+- [ ] Prove per-surface `@Reactive` state on a second and third backend: the
+      [view-state design](../docs/superpowers/specs/2026-08-29-view-state-identity-design.md)
+      asks `check-wasm.sh` and `check-android-emulator.sh` for behavioral proof
+      beyond the Apple suite. The core, macros, diagnostics, Embedded
+      compatibility, and host-less rendering landed under
+      [ADR 0011](../docs/adr/0011-reactive-state-is-per-surface.md).
 - [ ] Decide and implement `StrictMemorySafety` and
       `InternalImportsByDefault` together with warning promotion. Merely
       enabling strict-memory-safety warnings is insufficient because the

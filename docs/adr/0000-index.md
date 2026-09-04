@@ -16,3 +16,4 @@ are locked until a superseding ADR says otherwise.
 | [0008](0008-one-pump-eager-resize.md) | One canonical HostPump; resize policy is eager on every backend | Accepted |
 | [0009](0009-signal-is-not-sendable.md) | Signal and PluginRuntime are not Sendable; host confinement is compiler-checked | Accepted |
 | [0010](0010-noncopyable-terminal-ownership.md) | Terminal is noncopyable; one owner restores the tty | Accepted |
+| [0011](0011-reactive-state-is-per-surface.md) | @Reactive state is per-surface, host-owned and keyed by identity; a Signal on the App is shared | Accepted |

@@ -1,6 +1,7 @@
 # View-state identity
 
-Status: Approved (2026-08-29). Promotes
+Status: Implemented and locally verified 2026-09-04 (ADR 0011,
+`../../adr/0011-reactive-state-is-per-surface.md`). Approved 2026-08-29. Promotes
 `drafts/2026-08-27-view-state-identity-draft.md` out of `drafts/`; that draft
 holds the original investigation and is superseded by this document.
 

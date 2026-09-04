@@ -39,6 +39,7 @@ done < <(find "$SCRATCH" -name GamaCore.swiftmodule -print)
 fixtures=(
   "SignalSendable.swift:Signal"
   "PluginRuntimeSendable.swift:PluginRuntime"
+  "ReactiveSlotSendable.swift:ReactiveSlot"
 )
 for specification in "${fixtures[@]}"; do
   fixture_name="${specification%%:*}"
@@ -68,4 +69,4 @@ for specification in "${fixtures[@]}"; do
   }
 done
 
-echo "OK — pinned concurrency negatives (Signal, PluginRuntime)"
+echo "OK — pinned concurrency negatives (Signal, PluginRuntime, ReactiveSlot)"

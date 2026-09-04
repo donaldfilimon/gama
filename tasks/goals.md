@@ -5,18 +5,19 @@
 Keep Gama a portable, retained Swift UI framework whose documentation and
 evidence match the exact source, toolchain, and acceptance matrix.
 
-Current implementation goals are limited to the two unchecked items in
-[`todo.md`](todo.md): per-surface view-state identity and an evidence-backed
-decision for strict memory safety/internal imports. The accepted designs define
-scope; neither acceptance nor a dated plan is an implementation claim.
+Current implementation goals are limited to the unchecked items in
+[`todo.md`](todo.md): backend behavioral proof for per-surface view state and
+an evidence-backed decision for strict memory safety/internal imports. The
+accepted designs define scope; neither acceptance nor a dated plan is an
+implementation claim.
 
 ## Delivered foundation
 
 The current `main` line includes the Swift 6.5-dev umbrella, scene-first core,
 shared frame pump, non-Sendable host state, noncopyable hosts and terminal
-ownership, Tier-1 plugins, Apple shell, TUI, Wasm, C/Android embedding, MLIR,
-packaging, accessibility derivation, deterministic performance evidence, and
-full public DocC coverage.
+ownership, per-surface identity-keyed `@Reactive` state, Tier-1 plugins, Apple
+shell, TUI, Wasm, C/Android embedding, MLIR, packaging, accessibility
+derivation, deterministic performance evidence, and full public DocC coverage.
 
 The source of truth for what is proven is
 [`docs/Capabilities.md`](../docs/Capabilities.md). The full local driver has 13

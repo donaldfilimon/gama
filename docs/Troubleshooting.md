@@ -100,20 +100,38 @@ separate layer.
 
 ## A stateful component resets
 
-**Symptom:** `@State` or `@Reactive` returns to its initial value after an
-action causes a new frame.
+**Symptom:** component state returns to its initial value after an action
+causes a new frame.
 
-Do not construct the component inline in the scene-content closure. Hoist one
-stable instance into an application/model owner. In a `WindowGroup`, remember
-that one hoisted instance is shared unless application code creates one per
-surface. See [StateAndIdentity.md](StateAndIdentity.md).
+Building the component inline in the scene-content closure is not the cause:
+`@Reactive` state is host-owned per surface and survives the rebuild. Check
+these instead:
+
+- `@Reactive` outside a struct marked `@Component` (including inside a
+  class) is a compile error (`@Reactive requires a struct marked
+  @Component; elsewhere its state never binds to a host`).
+- A hand-written `render(in:)` in a `@Component` with `@Reactive`
+  properties is a compile error (`@Component synthesizes render(in:) to bind
+  @Reactive state; remove this render(in:) or the @Reactive properties`).
+- Unstable structural identity: a branch flip, a positional `ForEach`
+  reorder, or a different component type at the same position evicts the
+  old key. Read `FrameHost.transientStateIDs` after the frame — it lists the
+  nodes whose storage was reconstructed. Pin the subtree with
+  `IdentifiedForEach` or `.stateScope(_:)`.
+- `State` and raw `Signal` stored properties are instance-local and reset
+  with the instance. Convert a raw `Signal` inside a component to
+  `@Reactive`; a raw `Signal` belongs on the `App`.
+
+See [StateAndIdentity.md](StateAndIdentity.md).
 
 ## External model changes do not repaint
 
 **Symptom:** a signal/model changes outside a Gama action, but
 `FrameHost.needsFrame` stays false.
 
-Connect it to the host:
+Bound `@Reactive` state does not need this: every host-owned signal already
+observes the host, so an out-of-band write sets `needsFrame` on its own.
+A raw `Signal` the `App` owns must be connected to the host:
 
 ```swift
 host.observe(modelSignal)

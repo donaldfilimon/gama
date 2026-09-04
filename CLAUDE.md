@@ -181,13 +181,15 @@ with typed throws, so hosts are moved, never shared.
 Target layering (all under `Sources/`, single test target `GamaTests` at
 `Tests/gamaTests`):
 
-- **GamaCore** — scenes, views, identity, state, layout, events, and
-  `FrameHost`. Embedded-Swift-safe: stdlib only. `check-boundaries.sh`
+- **GamaCore** — scenes, views, identity, state, layout, events,
+  `FrameHost`, and the per-host `@Reactive` state store it owns
+  (`ReactiveState.swift`). Embedded-Swift-safe: stdlib only. `check-boundaries.sh`
   rejects any import of Foundation, AppKit, UIKit, Darwin, Glibc, WinSDK, or
   Synchronization in GamaCore *and* GamaPlugin, and rejects process-global
   registries anywhere. `FrameHost` and `AppRuntime` are `~Copyable`: each
-  host uniquely owns focus, actions, subscriptions, dirty state, and frames;
-  out-of-band changes go through the host's `SubscriptionContext` or explicit
+  host uniquely owns focus, actions, `@Reactive` state, subscriptions, dirty
+  state, and frames; out-of-band changes go through the host's
+  `SubscriptionContext`, a bound `@Reactive` write, or explicit
   `invalidate()`.
 - **Gama** — compatibility umbrella (`@_exported import GamaCore`) only. Its
   source path is the lowercase `Sources/gama` (set explicitly in
@@ -259,26 +261,47 @@ That strictness is the guard keeping manifests identity/branding-only rather
 than a second build system, so extend the manifest schema, never the grammar.
 Rationale is in `docs/Packaging.md`.
 
-## State lifetime trap (`@Reactive`)
+## @Reactive state is per-surface
 
-A scene's content closure runs **on every frame**, so a component value built
-inside it is a fresh instance each frame — and `@Reactive` stores its
-`Signal` in the component instance. Build a component inline in a `Window`
-body and its state resets before the next pump: keypresses appear to do
-nothing while the focus ring still moves. Hoist the instance so it outlives
-the closure (`Sources/GamaDemo/main.swift:132` does this).
+A scene's content closure runs **on every frame**, and building a
+`@Reactive` component inline inside it is now the correct shape:
+`Window("Counter", id: "main", role: .primary) { Counter() }` keeps its
+state, because `@Reactive` no longer lives in the component instance.
+`@Reactive var x` expands to a `ReactiveSlot` peer, and the `render(in:)`
+that `@Component` synthesizes binds each slot to the owning `FrameHost`'s
+per-host state store, keyed by `(NodeID, slot index)`. A fresh instance each
+frame binds to the same host-owned signal. `Sources/GamaDemo/main.swift`
+builds `CounterPanel()` inline in `DemoApp.scenes`; a hoisted instance still
+works and writes per surface, so no migration is needed.
 
-Hoisting stores state **per scene declaration, not per surface**: every
-window of a `WindowGroup` captures the same closure, so a hoisted instance or
-an app-level `Signal` is one shared instance behind all of them (`Signal`
-also requires one host at a time, never concurrent hosts). That is right for
-deliberately shared model state and wrong for per-window state, which has no
-framework-provided storage today. The fix is an accepted, unimplemented
-design: `docs/superpowers/specs/2026-08-29-view-state-identity-design.md`,
-tracked as open work in `tasks/todo.md` — acceptance is not an implementation
-claim.
-`ReactiveStateLifetimeTests` (in `Tests/gamaTests/MacroUsageTests.swift`)
-pins the behavior.
+The contract is two words: **`@Reactive` is per-surface; a `Signal` on the
+`App` is shared.** Two windows of one `WindowGroup` get independent
+`@Reactive` state; a `Signal` stored on the app is one instance behind all of
+them (`Signal` still requires one host at a time, never concurrent hosts).
+Raw `Signal` stored properties inside components are unsupported — convert
+them to `@Reactive` and pass `_name.binding()` to `TextField`/`Toggle`.
+
+Two compile errors keep the binding from being skipped silently:
+`reactive.requires-component` (`@Reactive` outside a struct marked
+`@Component`, including in a class) and `component.render-collision` (a
+hand-written `render(in:)` beside `@Reactive` properties; synthesis is
+skipped). At runtime `FrameHost.transientStateIDs` lists nodes whose reactive
+storage identity changed since the previous frame — empty for a correctly
+bound tree; a name means a branch flip, a positional `ForEach` reorder, or a
+type change at the same position reconstructed state. The store sweeps once
+per `pump` after the final build, so a subtree that stops rendering releases
+its state; `IdentifiedForEach` and `.stateScope(_ id: NodeID)` pin a subtree
+to an explicit identity where structural keying is wrong. Host-less
+rendering (`BuildContext()` with no store, as `gama-demo --emit-mlir` uses)
+keeps instance-local storage. `State<Value>` is unchanged.
+
+Every host-owned signal observes the host's dirty flag, so an out-of-band
+write to bound `@Reactive` state requests a frame without `observe()`.
+`ViewStateIdentityTests` (`Tests/gamaTests/ViewStateIdentityTests.swift`)
+pins the model; `ReactiveStateLifetimeTests` (in
+`Tests/gamaTests/MacroUsageTests.swift`) pins the hoisted shape. ADR 0011
+(`docs/adr/0011-reactive-state-is-per-surface.md`) records the decision and
+the argued `WindowGroup` behavior flip.
 
 ## Evidence policy
 

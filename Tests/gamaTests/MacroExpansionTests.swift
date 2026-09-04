@@ -164,16 +164,16 @@ struct MacroExpansionTests {
         )
     }
 
-    @Test("Reactive expands signal storage and accessors")
-    func reactiveExpandsStorageAndAccessors() {
+    @Test("Reactive expands slot storage, accessors, and the binding render")
+    func reactiveExpandsStorageAccessorsAndRender() {
         expectExpansion(
-            "struct Counter {\n  @Reactive var value: Int = 1\n}",
+            "@Component\nstruct Counter {\n  @Reactive var value: Int = 1\n}",
             expanded: """
                 struct Counter {
                   var value: Int {
                       @storageRestrictions(initializes: _value)
                       init(initialValue) {
-                          _value = GamaCore::Signal(initialValue)
+                          _value = GamaCore::ReactiveSlot(initialValue)
                       }
                       get {
                           _value.get()
@@ -183,9 +183,175 @@ struct MacroExpansionTests {
                       }
                   }
 
-                  private let _value: GamaCore::Signal<Int>
+                  private let _value: GamaCore::ReactiveSlot<Int>
+
+                    init() {
+                    }
+
+                    func render(in context: GamaCore::BuildContext) -> GamaCore::RenderNode {
+                        _value._bind(in: context, slot: 0)
+                        return body.render(in: context.child(0))
+                    }
                 }
                 """
+        )
+    }
+
+    @Test("Reactive slots bind in declaration order")
+    func reactiveSlotsBindInDeclarationOrder() {
+        expectExpansion(
+            "@Component\npublic struct Panel {\n  @Reactive var count: Int = 0\n  var label: String\n  @Reactive var step: Int = 1\n}",
+            expanded: """
+                public struct Panel {
+                  var count: Int {
+                      @storageRestrictions(initializes: _count)
+                      init(initialValue) {
+                          _count = GamaCore::ReactiveSlot(initialValue)
+                      }
+                      get {
+                          _count.get()
+                      }
+                      nonmutating set {
+                          _count.set(newValue)
+                      }
+                  }
+
+                  private let _count: GamaCore::ReactiveSlot<Int>
+                  var label: String
+                  var step: Int {
+                      @storageRestrictions(initializes: _step)
+                      init(initialValue) {
+                          _step = GamaCore::ReactiveSlot(initialValue)
+                      }
+                      get {
+                          _step.get()
+                      }
+                      nonmutating set {
+                          _step.set(newValue)
+                      }
+                  }
+
+                  private let _step: GamaCore::ReactiveSlot<Int>
+
+                    public init(label: String) {
+                        self.label = label
+                    }
+
+                    public func render(in context: GamaCore::BuildContext) -> GamaCore::RenderNode {
+                        _count._bind(in: context, slot: 0)
+                        _step._bind(in: context, slot: 1)
+                        return body.render(in: context.child(0))
+                    }
+                }
+                """
+        )
+    }
+
+    @Test("Reactive outside a Component struct is an error, not silent local state")
+    func reactiveOutsideComponentIsDiagnosed() {
+        expectExpansion(
+            "struct Plain {\n  @Reactive var value: Int = 1\n}",
+            expanded: """
+                struct Plain {
+                  var value: Int {
+                      @storageRestrictions(initializes: _value)
+                      init(initialValue) {
+                          _value = GamaCore::ReactiveSlot(initialValue)
+                      }
+                      get {
+                          _value.get()
+                      }
+                      nonmutating set {
+                          _value.set(newValue)
+                      }
+                  }
+
+                  private let _value: GamaCore::ReactiveSlot<Int>
+                }
+                """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: "@Reactive requires a struct marked @Component; elsewhere its state never binds to a host",
+                    line: 2,
+                    column: 3
+                )
+            ]
+        )
+    }
+
+    @Test("Reactive in a class is diagnosed by both macros")
+    func reactiveInClassIsDiagnosed() {
+        expectExpansion(
+            "@Component\nfinal class Bad {\n  @Reactive var value: Int = 1\n}",
+            expanded: """
+                final class Bad {
+                  var value: Int {
+                      @storageRestrictions(initializes: _value)
+                      init(initialValue) {
+                          _value = GamaCore::ReactiveSlot(initialValue)
+                      }
+                      get {
+                          _value.get()
+                      }
+                      nonmutating set {
+                          _value.set(newValue)
+                      }
+                  }
+
+                  private let _value: GamaCore::ReactiveSlot<Int>
+                }
+                """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: "@Reactive requires a struct marked @Component; elsewhere its state never binds to a host",
+                    line: 3,
+                    column: 3
+                ),
+                DiagnosticSpec(
+                    message: "@Component can only be applied to structs",
+                    line: 1,
+                    column: 1,
+                    fixIts: [FixItSpec(message: "remove '@Component'")]
+                ),
+            ]
+        )
+    }
+
+    @Test("Component refuses to skip the binding render silently")
+    func componentDiagnosesHandWrittenRenderCollision() {
+        expectExpansion(
+            "@Component\nstruct Custom {\n  @Reactive var value: Int = 1\n  func render(in context: GamaCore.BuildContext) -> GamaCore.RenderNode {\n    .empty\n  }\n}",
+            expanded: """
+                struct Custom {
+                  var value: Int {
+                      @storageRestrictions(initializes: _value)
+                      init(initialValue) {
+                          _value = GamaCore::ReactiveSlot(initialValue)
+                      }
+                      get {
+                          _value.get()
+                      }
+                      nonmutating set {
+                          _value.set(newValue)
+                      }
+                  }
+
+                  private let _value: GamaCore::ReactiveSlot<Int>
+                  func render(in context: GamaCore.BuildContext) -> GamaCore.RenderNode {
+                    .empty
+                  }
+
+                    init() {
+                    }
+                }
+                """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: "@Component synthesizes render(in:) to bind @Reactive state; remove this render(in:) or the @Reactive properties",
+                    line: 4,
+                    column: 3
+                )
+            ]
         )
     }
 
