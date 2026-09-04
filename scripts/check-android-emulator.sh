@@ -368,7 +368,8 @@ run_android_runtime_assertion() {
   run_with_timeout "$GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS" adb shell am force-stop com.gama.example
   run_with_timeout "$GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS" adb logcat -c
   run_with_timeout "$GAMA_ANDROID_CONTROL_TIMEOUT_SECONDS" \
-    adb shell am start -W -n com.gama.example/.MainActivity >/dev/null
+    adb shell am start -W -n com.gama.example/.MainActivity \
+      --ez com.gama.example.ACCEPTANCE true >/dev/null
 
   for ((attempt = 1; attempt <= GAMA_ANDROID_POLL_ATTEMPTS; attempt++)); do
     # A wedged accessibility service can otherwise make one dump consume minutes.
