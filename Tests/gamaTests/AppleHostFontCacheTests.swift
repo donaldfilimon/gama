@@ -56,6 +56,15 @@ struct AppleHostFontCacheTests {
         return f
     }
 
+    @Test("hosts share one immutable base font")
+    func baseFontIsSharedAcrossHosts() {
+        let views = (0..<32).map { _ in
+            GamaHostView(frame: NSRect(x: 0, y: 0, width: 420, height: 180))
+        }
+
+        #expect(Set(views.map(\.baseFontIdentifier)).count == 1)
+    }
+
     @Test("drawing text repeatedly constructs at most four fonts")
     func styledFontConstructionIsBounded() {
         let view = GamaHostView(frame: NSRect(x: 0, y: 0, width: 420, height: 180))
