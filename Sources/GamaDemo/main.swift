@@ -43,8 +43,8 @@ struct StatBadge {
 struct CounterPanel {
     @Reactive var count: Int = 0
     @Reactive var step: Int = 1
-    private let name = Signal("")
-    private let notifications = Signal(true)
+    @Reactive var name: String = ""
+    @Reactive var notifications: Bool = true
 
     var body: some View {
         VStack(spacing: 1) {
@@ -70,8 +70,8 @@ struct CounterPanel {
                     .disabled(count == 0)
             }
             HStack(spacing: 2) {
-                TextField("your name", text: name.binding())
-                Toggle("notifications", isOn: notifications.binding())
+                TextField("your name", text: _name.binding())
+                Toggle("notifications", isOn: _notifications.binding())
             }
             ProgressView(value: Double(min(10, abs(count))), total: 10, label: "activity")
             List {
@@ -124,19 +124,16 @@ struct StatusLinePlugin: GamaPluginProtocol {
 
 struct DemoApp: App {
     let pluginBox: PluginRuntimeBox
-    // One panel instance for the life of the app. `@Reactive` state lives in
-    // the component instance and scene content is rebuilt every frame, so a
-    // `CounterPanel()` constructed inside the closure below would be replaced
-    // — along with its count, step, name, and toggle — before the frame that
-    // follows a press ever paints.
-    private let panel = CounterPanel()
     init() { pluginBox = PluginRuntimeBox() }
     init(pluginBox: PluginRuntimeBox) { self.pluginBox = pluginBox }
     var scenes: some Scene {
         Window("Gama Demo", id: "main", role: .primary) {
             ZStack(alignment: .center) {
                 VStack(spacing: 0) {
-                    panel
+                    // Built fresh every frame; its `@Reactive` count, step,
+                    // name, and toggle live in the host's per-surface store,
+                    // keyed by this position, so they survive the rebuild.
+                    CounterPanel()
                     if let runtime = pluginBox.runtime {
                         PluginSlot("status", runtime: runtime)
                     }

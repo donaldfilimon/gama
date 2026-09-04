@@ -56,8 +56,16 @@ public struct FrameHost: ~Copyable {
     /// Backends can surface this as a development diagnostic without making a
     /// malformed application crash in production.
     public private(set) var duplicateIDs: [NodeID] = []
+    /// Nodes whose `@Reactive` storage changed identity between the previous
+    /// frame and this one — state that was reconstructed rather than
+    /// preserved. Empty for a correctly bound tree; nonempty means a
+    /// component's identity moved (a branch flip, a reordered `ForEach`, or
+    /// a different component type at the same position) and its state was
+    /// dropped. Surface it as a development diagnostic like `duplicateIDs`.
+    public private(set) var transientStateIDs: [NodeID] = []
 
     private let dirty: Signal<Bool>
+    private let stateStore: HostStateStore
     /// Explicit model observation lifetime owned by this host.
     public let subscriptions: SubscriptionContext
     /// Set when the host wants to stop (Ctrl-C on TUI; hosts may ignore).
@@ -83,7 +91,12 @@ public struct FrameHost: ~Copyable {
         let dirty = Signal(true)
         self.dirty = dirty
         self.subscriptions = SubscriptionContext { dirty.set(true) }
+        self.stateStore = HostStateStore { dirty.set(true) }
     }
+
+    /// Number of live `@Reactive` signals this host stores. Tests use it to
+    /// prove eviction returns the store to its baseline.
+    package var reactiveStateCount: Int { stateStore.count }
 
     /// True when state changed since the last `pump`.
     public var needsFrame: Bool { dirty.get() }
@@ -111,17 +124,19 @@ public struct FrameHost: ~Copyable {
         dirty.set(false)
 
         actions.beginBuildPass()
+        stateStore.beginBuildPass()
         var env = EnvironmentValues()
         env.focusedID = focusedID
         env.windowContext = windowContext
         let actionStore = actions
-        let ctx = BuildContext(
+        var ctx = BuildContext(
             id: .root,
             inheritedStyle: .plain,
             environment: env,
             registerAction: { id, action in actionStore.register(id, action: action) },
             registerKeyHandler: { id, handler in actionStore.registerKey(id, handler: handler) }
         )
+        ctx.stateStore = stateStore
         let ir = renderScene(ctx)
         var laid = LayoutEngine.layout(ir, in: Rect(origin: .zero, size: size))
 
@@ -139,14 +154,16 @@ public struct FrameHost: ~Copyable {
             // Rebuild once so the frame returned by this pump already
             // contains the reconciled focus highlight.
             actions.beginBuildPass()
+            stateStore.beginBuildPass()
             env.focusedID = focusedID
-            let focusedContext = BuildContext(
+            var focusedContext = BuildContext(
                 id: .root,
                 inheritedStyle: .plain,
                 environment: env,
                 registerAction: { id, action in actionStore.register(id, action: action) },
                 registerKeyHandler: { id, handler in actionStore.registerKey(id, handler: handler) }
             )
+            focusedContext.stateStore = stateStore
             let focusedIR = renderScene(focusedContext)
             laid = LayoutEngine.layout(focusedIR, in: Rect(origin: .zero, size: size))
             interactive.removeAll(keepingCapacity: true)
@@ -154,6 +171,10 @@ public struct FrameHost: ~Copyable {
             validateIdentities()
             focusables = interactive.compactMap { $0.isFocusable ? (id: $0.id, rect: $0.frame) : nil }
         }
+        // Sweep once, after whichever build painted: the reconciliation
+        // build's marks are the live set.
+        stateStore.sweep()
+        transientStateIDs = stateStore.transientIDs
         return laid
     }
 
@@ -213,6 +234,7 @@ public struct FrameHost: ~Copyable {
 
         case .key(.enter), .key(.character(" ")):
             if let id = focusedID {
+                stateStore.activate()
                 actions.invoke(id)
                 dirty.set(true)
             }
@@ -222,6 +244,7 @@ public struct FrameHost: ~Copyable {
             // the focusable subset — non-focusable targets stay clickable.
             if let hit = interactive.last(where: { $0.frame.contains(p) }) {
                 if hit.isFocusable { focusedID = hit.id }
+                stateStore.activate()
                 actions.invoke(hit.id)
                 dirty.set(true)
             }
@@ -231,6 +254,7 @@ public struct FrameHost: ~Copyable {
             dirty.set(true)
 
         case .key(let key):
+            stateStore.activate()
             if let id = focusedID, actions.invokeKey(key, for: id) {
                 dirty.set(true)
             }

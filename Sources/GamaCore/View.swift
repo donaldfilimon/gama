@@ -23,6 +23,9 @@ public struct BuildContext {
     public var registerKeyHandler: (
         NodeID, @escaping (Key) -> Bool
     ) -> Void
+    /// The owning host's `@Reactive` storage; `nil` for host-less rendering,
+    /// which keeps every slot on instance-local storage.
+    package var stateStore: HostStateStore? = nil
 
     /// Creates a build context. Every parameter defaults to the isolated
     /// case — root identity, plain style, fresh environment, no-op
@@ -318,6 +321,45 @@ where Data.Index == Int {
                 return content(element).render(in: childContext)
             }
         )
+    }
+}
+
+/// Renders `content` under an explicit identity instead of its structural
+/// position, so its `@Reactive` state, focus, and actions survive source
+/// edits above it or reordering around it. The identity replaces the
+/// inherited one for the whole subtree, exactly as ``IdentifiedForEach``
+/// does per element; distinct scopes need distinct ids.
+public struct StateScopedView<Content: View>: View {
+    /// Terminates `body` recursion; this view compiles in `render(in:)`.
+    public typealias Body = Never_
+    /// Never invoked; present only to satisfy `View`.
+    public var body: Never_ { Never_() }
+    /// The identity the subtree renders under.
+    public let id: NodeID
+    /// The scoped content.
+    public let content: Content
+
+    /// Creates a scope rendering `content` under `id`.
+    public init(id: NodeID, content: Content) {
+        self.id = id
+        self.content = content
+    }
+
+    /// Renders `content` with `context.id` replaced by ``id``.
+    public func render(in context: BuildContext) -> RenderNode {
+        var scoped = context
+        scoped.id = id
+        return content.render(in: scoped)
+    }
+}
+
+extension View {
+    /// Pins this view's subtree — its `@Reactive` state, focus, and actions —
+    /// to `id` rather than to its structural position. Use it where
+    /// structural keying is wrong: a reordered `ForEach`, or state that must
+    /// survive inserting a modifier above it.
+    public func stateScope(_ id: NodeID) -> StateScopedView<Self> {
+        StateScopedView(id: id, content: self)
     }
 }
 

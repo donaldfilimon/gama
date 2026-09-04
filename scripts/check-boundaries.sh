@@ -75,6 +75,18 @@ require_unavailable_sendable_conformance() {
 }
 require_unavailable_sendable_conformance "$signal_source" Signal
 require_unavailable_sendable_conformance "$plugin_runtime_source" PluginRuntime
+# The per-surface state layer (ADR 0011) is host-confined the same way.
+reactive_state_source="$ROOT/Sources/GamaCore/ReactiveState.swift"
+grep -Eq '^public final class ReactiveSlot<Value: Sendable>[[:space:]]*:[[:space:]]*~Sendable[[:space:]]*\{' \
+  "$reactive_state_source" || {
+    echo "error: ReactiveSlot must explicitly declare ~Sendable" >&2; exit 1
+  }
+grep -Eq '^package final class HostStateStore[[:space:]]*:[[:space:]]*~Sendable[[:space:]]*\{' \
+  "$reactive_state_source" || {
+    echo "error: HostStateStore must explicitly declare ~Sendable" >&2; exit 1
+  }
+require_unavailable_sendable_conformance "$reactive_state_source" ReactiveSlot
+require_unavailable_sendable_conformance "$reactive_state_source" HostStateStore
 echo "OK — explicit ~Sendable plus unavailable-conformance contracts"
 
 # Exercise the handler itself outside Swift: it must re-raise through the

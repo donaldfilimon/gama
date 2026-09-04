@@ -14,7 +14,7 @@
 ///         var label: String
 ///         var body: some View { Text(label).bold() }
 ///     }
-@attached(member, names: named(init))
+@attached(member, names: named(init), named(render))
 @attached(extension, conformances: View)
 public macro Component() =
     #externalMacro(module: "GamaMacrosImpl", type: "ComponentMacro")
