@@ -152,6 +152,19 @@ Open questions blocking implementation:
       candidate replaces it; candidates 3-5 remain not recommended for the
       same reason.
 
+- [ ] **PR #85 carries the uncorrected `CellSerializer` spec, and the fix is
+      unpushed.** Its head `cf0c369` has the code but not `eeb2426` /
+      `0f498d5`, so merging it as-is lands a spec asserting that a one-byte
+      HTML change breaks the WASM browser marker and that an encoding change
+      breaks `check-c-abi.sh`. Both were verified false: the marker reads
+      `root.textContent` through a regex (`WebHost/gama.js:174-196`), and
+      `Examples/CEmbed/main.c:8` checks length plus the `GAMA` magic but no
+      draw command. It also lacks the `GamaAppleUI` third conformance and the
+      exact-string HTML test. Peers `gama-13` and `abbey-bot-94` were notified
+      2026-09-06 15:5x; no reply yet. **Publishing needs the user's
+      authorization, which has not been given, so this is recorded rather than
+      resolved.**
+
 ## Manual and credential-gated acceptance
 
 - [ ] Exercise the AppKit accessibility adapter with VoiceOver and the UIKit
