@@ -82,17 +82,26 @@ let pageTitle = "";
 const runtimeErrors = [];
 try {
   const activePort = join(profile, "DevToolsActivePort");
-  for (let attempt = 0; attempt < 150 && !existsSync(activePort); attempt += 1) await delay(100);
+  // Startup budget, not a proof budget. A hosted runner measured Chrome alive
+  // and retrying `dbus/bus.cc` connections for the whole of a 15s window
+  // without ever publishing the endpoint, so 15s failed a browser that was
+  // still coming up. Every assertion below is unchanged: this waits longer
+  // for a live browser and gives up immediately on a dead one, which fails a
+  // genuinely broken browser sooner than the old fixed wait did.
+  const startupBudgetMs = 60_000;
+  const deadline = Date.now() + startupBudgetMs;
+  while (!existsSync(activePort) && exit === null && !spawnError && Date.now() < deadline) {
+    await delay(100);
+  }
   if (!existsSync(activePort)) {
-    // Report what the browser actually did. The wait itself is unchanged: a
-    // browser that never publishes DevToolsActivePort still fails the gate.
+    const waited = `${((startupBudgetMs - Math.max(deadline - Date.now(), 0)) / 1000).toFixed(1)}s`;
     const cause = [
       `binary=${chrome}`,
       spawnError ? `spawn=${spawnError}` : null,
       exit ? `exited early: code=${exit.code} signal=${exit.signal}` : spawnError ? null : "still running",
       `stderr=${errors.trim() || "<empty>"}`,
     ].filter(Boolean).join("; ");
-    throw new Error(`Chrome DevTools endpoint did not start after 15s: ${cause}`);
+    throw new Error(`Chrome DevTools endpoint did not start after ${waited}: ${cause}`);
   }
   const debugPort = (await import("node:fs/promises")).readFile(activePort, "utf8")
     .then((contents) => contents.split("\n", 1)[0]);
