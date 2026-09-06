@@ -99,8 +99,12 @@ Candidates, in order:
       five scripts source it; no `/Users/<name>` path remains under `scripts/`.
       `check-toolchain-pins.sh` now asserts those scripts route through the lib
       instead of repeating the literal, and fails on any checked-in home path,
-      so the class cannot return. Mutation-verified both directions; eleven
-      gates green. The `SCRATCH_ROOT` and Swift-version repetitions above are
+      so the class cannot return. Mutation-verified both directions; eleven of
+      the thirteen `check.sh` gates green and two NOT RUN for missing local
+      prerequisites. The fifth rewired script, `bundle-web.sh`, is **not** in
+      the gate array at all — it is the Pages deploy path, so it got a
+      `bash -n` plus the byte-identical path proof here, and hosted Pages CI is
+      its only real exercise. The `SCRATCH_ROOT` and Swift-version repetitions above are
       untouched and remain cosmetic: no defect was demonstrated for either.
 - [ ] `Sources/GamaTUI/Terminal.swift` holds POSIX and Windows Console in one
       678-line file (`// MARK` at :77 and :442). Pure file split, no

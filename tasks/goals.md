@@ -106,9 +106,12 @@ status: in_progress
   `scripts/lib/toolchain.sh` instead of defaulting to one developer's home
   directory, and `check-toolchain-pins.sh` fails on any checked-in home path
   so the class cannot return. Behavior preserved: the derived path is
-  byte-identical to the removed literal on this machine. Eleven runnable gates
-  green, including the four rewired scripts and `check-boundaries`, which
-  chains the pin gate. Local evidence only; the six-job matrix has not run.
+  byte-identical to the removed literal on this machine. Eleven of the
+  thirteen `check.sh` gates green (two NOT RUN for missing local
+  prerequisites), including the four rewired scripts and `check-boundaries`,
+  which chains the pin gate. `bundle-web.sh` is the fifth rewired script and
+  is not a gate at all — it is the Pages deploy path, syntax-checked only.
+  Local evidence only; the six-job matrix has not run.
 - The slice shipped **narrower than approved**, on evidence. It also proposed
   adding `unset TOOLCHAINS` to the nine scripts lacking it, on this
   repository's documented claim that a stray value overrides explicit pins.
