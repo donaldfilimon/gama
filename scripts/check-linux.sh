@@ -2,7 +2,10 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SDK="${GAMA_LINUX_SDK_ID:-swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a_static-linux-0.1.0}"
-SWIFT="${GAMA_SWIFT_64:-/Users/donaldfilimon/Library/Developer/Toolchains/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a.xctoolchain/usr/bin/swift}"
+# shellcheck source=lib/toolchain.sh
+source "$ROOT/scripts/lib/toolchain.sh"
+SWIFT="${GAMA_SWIFT_64:-}"
+[[ -n "$SWIFT" ]] || SWIFT="$(gama_snapshot_swift)" || exit 1
 SCRATCH_ROOT="${GAMA_SCRATCH_ROOT:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}}"
 "$SWIFT" --version | grep -q 'Swift version 6.5'
 "$SWIFT" sdk list | grep -Fxq "$SDK" || { echo "error: missing Linux SDK $SDK" >&2; exit 1; }

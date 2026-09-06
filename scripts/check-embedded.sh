@@ -2,7 +2,10 @@
 set -euo pipefail
 unset TOOLCHAINS || true
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SNAP="${GAMA_EMBEDDED_TOOLCHAIN:-/Users/donaldfilimon/Library/Developer/Toolchains/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a.xctoolchain}"
+# shellcheck source=lib/toolchain.sh
+source "$ROOT/scripts/lib/toolchain.sh"
+SNAP="${GAMA_EMBEDDED_TOOLCHAIN:-}"
+[[ -n "$SNAP" ]] || SNAP="$(gama_snapshot_toolchain_dir)" || exit 1
 SWIFTC="${GAMA_SWIFTC_64:-$SNAP/usr/bin/swiftc}"
 if [[ -n "${GAMA_SWIFTC_64:-}" ]]; then
   EXPECTED_SHA="${GAMA_SWIFTC_SHA256:-}"

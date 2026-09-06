@@ -9,7 +9,8 @@
 
 - Run `unset TOOLCHAINS` before Swift commands. Use `swiftly run swift ...`; `.swift-version` pins `main-snapshot-2026-08-21` (Swift 6.5-dev).
 - `Package.swift` deliberately stays `swift-tools-version: 6.4` so Xcode's SwiftPM can resolve platform gates. `check-boundaries.sh` enforces this; do not upgrade it with the compiler.
-- `Toolchains.toml` is the pin authority. `scripts/check-toolchain-pins.sh`, chained from the boundary gate, rejects drift in compiler/SDK revisions, URLs, and checksums.
+- `Toolchains.toml` is the pin authority. `scripts/check-toolchain-pins.sh`, chained from the boundary gate, rejects drift in compiler/SDK revisions, URLs, and checksums; it also discovers every `GAMA_TOOLCHAIN_ID` default rather than listing scripts, and fails on any checked-in home-directory path under `scripts/`.
+- Scripts derive the pinned snapshot's location from `Toolchains.toml` through `scripts/lib/toolchain.sh`. Do not write an absolute toolchain path into a script; override with `GAMA_SWIFT_64` / `GAMA_SWIFTC_64` / `GAMA_EMBEDDED_TOOLCHAIN` instead.
 - This checkout is iCloud/FileProvider-managed. Direct tests must use a scratch path outside the repository:
 
 ```bash
@@ -43,7 +44,7 @@ swiftly run swift run gama-demo
 - `FrameHost` and `AppRuntime` are `~Copyable`; each host uniquely owns focus, actions, `@Reactive` state, subscriptions, dirty state, and frames. Out-of-band changes use host subscriptions or explicit `invalidate()`.
 - `GamaPlatformServices` contains Foundation-backed host-service implementations. Only apps, demos, examples, and tests may import it; portable/framework targets must depend on service interfaces instead.
 - `GamaMacrosImpl` is a host compiler plugin. `swift-syntax` is revision-pinned and build-time-only; shipped products must retain zero runtime package dependencies.
-- Backends translate events and present shared `DrawList` output; do not fork layout, paint, or application semantics. Keep C `gama_embed_v1_*` and WASM `gama_web_v1_*` symbols versioned and separately namespaced.
+- Backends translate events and present shared `DrawList` output; do not fork layout, paint, or application semantics. Keep C `gama_embed_v1_*` and WASM `gama_web_v1_*`/`gama_web_v2_*` symbols versioned and separately namespaced; the WASM backend ships both tiers, `v2` being the argument-compatible status-reporting form (`docs/backends/WASM.md`).
 
 ## State And Documentation Traps
 

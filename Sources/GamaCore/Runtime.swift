@@ -91,6 +91,30 @@ public protocol Renderer {
     /// Release whatever `begin()` acquired. `run()` invokes this from a
     /// `defer` on every exit path, discarding any error it throws.
     mutating func end() throws(Failure)
+
+    /// Receives the semantic lines the application emitted this frame.
+    ///
+    /// Backends presenting a chronology use these in place of whatever they
+    /// would otherwise derive; the default ignores them, so a grid backend is
+    /// unaffected.
+    mutating func emit(_ lines: [String]) throws(Failure)
+
+    /// Whether this backend has an input source worth waiting on.
+    ///
+    /// Terminals, GUI hosts, and browsers do, so the default is `true`. A
+    /// backend that can never produce an event — a redirected stream, a
+    /// one-shot render — reports `false`, and the loop then treats a frame
+    /// it did not have to produce as the end of the run rather than waiting
+    /// forever for a key that cannot arrive.
+    var waitsForInput: Bool { get }
+}
+
+extension Renderer {
+    /// Backends have an input source unless they say otherwise.
+    public var waitsForInput: Bool { true }
+
+    /// Backends that present a grid have no use for emitted lines.
+    public mutating func emit(_ lines: [String]) throws(Failure) {}
 }
 
 // MARK: - App
@@ -109,11 +133,32 @@ public protocol App {
     /// Receives application-level events once and addressed window events for
     /// their affected surface. Reference-backed models may mutate here.
     func handleLifecycle(_ event: LifecycleEvent)
+
+    /// Hands the application its host-owned channel for out-of-band writes:
+    /// ``SubscriptionContext/complete(_:)``, ``SubscriptionContext/emit(_:)``,
+    /// and signal observation.
+    ///
+    /// Without this an application launched through a convenience entry point
+    /// has no handle on its own host, so it can neither report an outcome nor
+    /// emit a line. Defaulted, so existing applications are unaffected.
+    ///
+    /// **Fires on the primary-surface path only** — `FrameHost.init(app:)`,
+    /// which `AppRuntime`, `GamaWASM`, and `GamaEmbed` all use. A backend that
+    /// builds a host per surface from an already-compiled `SceneSurface`, as
+    /// the AppKit host view does for multi-window shells, does not call it,
+    /// so an application relying on `connect` gets one channel for the primary
+    /// surface rather than one per window. Widening that is a design decision
+    /// about which surface owns an application-level outcome, not an
+    /// oversight to patch.
+    func connect(_ context: SubscriptionContext)
 }
 
 extension App {
     /// Default lifecycle handler for applications that do not observe lifecycle events.
     public func handleLifecycle(_ event: LifecycleEvent) {}
+
+    /// Default for applications that never report an outcome or emit a line.
+    public func connect(_ context: SubscriptionContext) {}
 }
 
 // MARK: - Runtime
@@ -149,6 +194,16 @@ public struct AppRuntime<A: App, R: Renderer>: ~Copyable {
         pump.observe(signal)
     }
 
+    /// The outcome the application reported, or `nil` if the loop ended for
+    /// another reason (a quit request) or has not run.
+    public var completion: CompletionStatus? { pump.completion }
+
+    /// Records the application's outcome, ending the loop after the frame
+    /// in flight is presented. The first status wins.
+    public func complete(_ status: CompletionStatus) {
+        pump.complete(status)
+    }
+
     /// Blocks in a present/handle loop until the host requests quit
     /// (Ctrl-C / Ctrl-Q by default). Frames are produced only while the
     /// host is dirty; idle iterations just wait on `nextEvent`. Rethrows
@@ -181,7 +236,14 @@ public struct AppRuntime<A: App, R: Renderer>: ~Copyable {
                 lastObservedRendererSize = renderer.size
                 pump.handle(.resize(renderer.size))
             }
+            var producedFrame = false
+            // Drained before the frame so a line emitted during the previous
+            // iteration's event handling reaches the presenter that will
+            // render this frame.
+            let emitted = pump.drainStreamLines()
+            if !emitted.isEmpty { try renderer.emit(emitted) }
             if let advanced = pump.advance() {
+                producedFrame = true
                 try renderer.present(advanced.frame)
                 if advanced.followUp {
                     // A follow-up frame stays ahead of any blocking wait, but
@@ -190,6 +252,17 @@ public struct AppRuntime<A: App, R: Renderer>: ~Copyable {
                     inputTimeoutMillis = 0
                 }
             }
+            // Checked after presenting so the frame that completion made
+            // dirty still reaches the renderer; a run that finishes must
+            // still show its final state.
+            if pump.completion != nil { break }
+            // A backend with no input source cannot ever be sent a quit key,
+            // so once it goes clean nothing can change and waiting is a hang
+            // rather than idling. A declared completion still takes
+            // precedence above, so this never launders a failure into a
+            // silent success; an application doing asynchronous work must
+            // declare completion rather than rely on staying dirty.
+            if !renderer.waitsForInput && !producedFrame { break }
             if let event = try renderer.nextEvent(timeoutMillis: inputTimeoutMillis) {
                 if case .resize(let size) = event, renderer.size == size {
                     // Avoid presenting the same resize twice when a renderer
