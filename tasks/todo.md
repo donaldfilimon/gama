@@ -50,16 +50,22 @@ changes, and local verification does not replace hosted proof.
       The row's changed-WASM-form caveat is now discharged locally and still
       open hosted.
 
-- [ ] **Local verification of the adaptive terminal surface.** At `30c0d0f`,
+- [ ] **Local verification of the adaptive terminal surface.** At `1e2b688`,
       eleven of the thirteen `scripts/check.sh` gates ran in the main checkout
-      and all passed: `check-apple.sh` (291 tests in 53 suites),
+      and all passed: `check-apple.sh` (299 tests in 54 suites),
       `check-apple-platforms.sh`, `check-boundaries.sh`,
       `check-concurrency-negative.sh`, `check-c-abi.sh`, `check-embedded.sh`,
       `check-linux.sh`, `check-wasm.sh`, `check-android.sh`, `check-docs.sh`,
       and `check-doc-coverage.sh`. Not run: `check-android-emulator.sh` (no
-      booted emulator) and `check-mlir.sh` (no local `mlir-opt`). This is local
+      booted emulator) and `check-mlir.sh` (no local `mlir-opt`). Separately,
+      an out-of-repository probe exercised the process boundary that unit
+      tests cannot reach: piped, it emits declared lines and exits with the
+      declared code, message on stderr; under a pty the same binary renders
+      the grid with cursor-positioning ANSI. That probe is what caught a hang
+      in an input-less run that every unit test had passed over. This is local
       evidence for one commit on an advancing, unpushed branch. It is not
-      hosted proof, and no row in `docs/Capabilities.md` may be promoted on it.
+      hosted proof, and no row in `docs/Capabilities.md` may be promoted on
+      it.
 
 ## Manual and credential-gated acceptance
 
