@@ -21,8 +21,10 @@ error.
 
 Per the evidence ledger (`docs/Capabilities.md`), the POSIX path is locally
 proven by PTY escape/UTF-8 and raw-mode-restore suites; the Windows console
-path is implemented and its input translators run hosted on Swift 6.4.x, but
-it is not 6.5-dev proven and native console behavior is not a shipped claim.
+path is implemented, and the required Swift 6.4.x job runs input-translator
+tests plus the native console mode, UTF-8, and restoration smoke. The evidence
+ledger records verified runs; Windows is not 6.5-dev proven, and interactive
+terminal acceptance remains a separate manual check.
 Running instructions and the input/output details live in
 `docs/backends/TUI.md`.
 

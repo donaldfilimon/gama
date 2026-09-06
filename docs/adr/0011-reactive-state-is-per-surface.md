@@ -63,8 +63,9 @@ called `observe()`.
   before the first frame is preserved.
 - `pump` may build twice for focus reconciliation; the store marks per build
   and sweeps once after the final build. Keys the final build did not resolve
-  are evicted and their invalidation observers cancelled. Branch flips and
-  positional `ForEach` reorders drop state (SwiftUI-equivalent);
+  are evicted and their invalidation observers cancelled. Branch flips evict
+  their old keys; positional `ForEach` reorders retain state by index,
+  potentially assigning it to a different element;
   `IdentifiedForEach` and the new `.stateScope(_ id: NodeID)` modifier
   (`StateScopedView`, which replaces the inherited identity for its subtree
   exactly as `IdentifiedForEach` does per element) are the escape hatches.
@@ -100,9 +101,11 @@ Silence was the bug, so every way the binding can be skipped is loud.
   silently dropping the binding.
 - Runtime: `FrameHost.transientStateIDs: [NodeID]` (public, mirroring
   `duplicateIDs`) lists nodes whose reactive storage identity changed since
-  the previous frame. It is empty for the inline shape — the spec's stage-2
-  acceptance bar — and names the node when a branch flip or a type change at
-  the same position reconstructed state.
+  the previous frame at the same `(NodeID, slot)` key. It is empty for the
+  inline shape and names the node when a slot value-type change replaces
+  storage. New and removed keys are not reported, and positional reorders can
+  reuse storage for a different element without a diagnostic. The key does
+  not encode the enclosing component type independently of its slot value type.
 
 ## The behavior flip, argued
 
@@ -165,9 +168,12 @@ to source, and it is deliberate:
 - The Embedded core grows by the store, recorded in `../Capabilities.md`.
 - Evidence level is **Locally proven**. Hosted proof arrives with the
   hosted matrix on the merged commit. The second-backend proof uses the
-  public author-facing form: `gama-web-demo` declares an inline `@Component`
-  with `@Reactive` state, the Node smoke requires the exact `0` to `1`
-  transition after Enter, and the browser smoke requires `state=0->0->1` so
-  only Enter can account for the mutation. The Android demo uses the same
-  macro-authored form; its dual-ABI cross-build and API 36 emulator assertion
+  public `ReactiveSlot` API directly: `gama-web-demo` declares an inline
+  counter whose `render(in:)` binds slot zero before rendering its body
+  under `context.child(0)`, matching the macro expansion without requiring
+  the host macro plugin during wasm32 cross-compilation. The Node smoke
+  requires the exact `0` to `1` transition after Enter, and the browser smoke
+  requires `state=0->0->1` so only Enter can account for the mutation. The
+  Android demo retains the `@Component`/`@Reactive` form; its dual-ABI
+  cross-build and API 36 emulator assertion
   from `Tapped 0` to `Tapped 1` are the third-backend proof.

@@ -215,7 +215,8 @@ let package = Package(
         // and the experimental Extern feature stays scoped to GamaWASM.
         .executableTarget(
             name: "GamaWebDemo",
-            dependencies: ["GamaCore", "GamaMacros", "GamaWASM"],
+            // Bind ReactiveSlot directly so wasm32 never needs the host macro plugin.
+            dependencies: ["GamaCore", "GamaWASM"],
             swiftSettings: strictCore,
             // These are properties of this WASI reactor's public ABI, not
             // command-global build flags. Keeping them target-local prevents
@@ -265,7 +266,7 @@ let package = Package(
                 "Gama", "GamaCore", "GamaPlugin", "GamaPlatformServices",
                 "GamaMacros", "GamaMLIR",
                 "GamaTUI", "GamaDraw", "GamaEmbed", "GamaMacrosImpl",
-                "GamaAppleUI", "GamaAppleShell", "GamaWASM",
+                "GamaAppleUI", "GamaAppleShell", "GamaWASM", "GamaWebDemo",
                 .product(name: "SwiftSyntaxMacroExpansion", package: "swift-syntax"),
                 .product(name: "SwiftSyntaxMacrosGenericTestSupport", package: "swift-syntax")
             ],

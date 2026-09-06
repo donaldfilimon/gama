@@ -27,8 +27,10 @@ scene from its initial payload, and only explicit Quit terminates. Per the
 evidence ledger (`docs/Capabilities.md`), the shell is implemented and
 locally proven by the pinned Apple build plus offscreen AppKit tests that
 never enter the global event loop; the Dock/Command-Q smoke remains
-supplemental and manual, and packaging, placement restoration, close veto,
-UIKit scene delegates, and a Windows GUI are not shipped.
+supplemental and manual. The implemented macOS bundle and ad-hoc signing path
+have separate packaging checks; Developer ID signing and notarization remain
+credential-gated. Placement restoration, close veto, UIKit scene delegates,
+and a Windows GUI are not shipped.
 
 Embedding a Gama surface in an application you own is the separate
 `GamaAppleUI` product; the launch walkthrough, lifecycle detail, and manual

@@ -173,13 +173,16 @@ public final class ReactiveSlot<Value: Sendable>: ~Sendable {
         Binding(get: { [self] in signal.get() }, set: { [self] in signal.set($0) })
     }
 
-    /// Binds this slot to the host that owns `context`, or leaves it on
+    /// Binds this slot to the host that owns `context`, or restores its
     /// local storage when there is no host (host-less rendering such as
     /// `gama-demo --emit-mlir`). Called by the `render(in:)` that
     /// `@Component` synthesizes; `slot` is the property's declaration
     /// index, which together with `context.id` forms the storage key.
     public func _bind(in context: BuildContext, slot: Int) {
-        guard let store = context.stateStore else { return }
+        guard let store = context.stateStore else {
+            bound = nil
+            return
+        }
         _ = store.resolve(
             ReactiveStateKey(node: context.id, slot: slot),
             initial: local.get(),

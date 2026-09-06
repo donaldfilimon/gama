@@ -17,7 +17,7 @@ model sessions, system presentation, and credentialed distribution.
 | Portable layout, interaction, scene semantics | `GamaCore` |
 | CoreGraphics presentation in an existing native view | `GamaAppleUI` |
 | A complete macOS AppKit application and multi-window policy | `GamaAppleShell` |
-| Foundation-backed clock/files/environment/logging | `GamaPlatformServices` behind interfaces |
+| Foundation-backed monotonic clock/files/logging | `GamaPlatformServices` behind interfaces |
 | SwiftUI navigation, commands, toolbar, settings, or Liquid Glass | application presentation layer |
 | SwiftData schema, model container, migrations, persistence | application data layer |
 | Foundation Models session, tools, prompts, generation | application/service layer |

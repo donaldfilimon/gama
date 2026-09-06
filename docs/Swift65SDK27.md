@@ -104,8 +104,11 @@ examples.
 ### Compiler-proven bounded adoption
 
 - Macro-generated references use defensive module selectors:
-  `GamaCore::View`, `GamaCore::Signal`, and `GamaCore::Color`. This
-  prevents a client declaration named `GamaCore` from changing lookup.
+  `GamaCore::View` and `GamaCore::Color`, plus `GamaCore::ReactiveSlot`,
+  `GamaCore::BuildContext`, and `GamaCore::RenderNode` in the later per-surface
+  state implementation. The original `GamaCore::Signal` peer became a
+  `ReactiveSlot` under ADR 0011. These selectors prevent a client declaration
+  named `GamaCore` from changing lookup.
   Macro roles, arguments, products, and the pinned build-time-only SwiftSyntax
   dependency remain unchanged.
 - `Signal` and `PluginRuntime` explicitly declare `~Sendable`. Their

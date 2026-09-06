@@ -30,13 +30,18 @@ pinned snapshot automatically — the same compiler the scripts pin via `xcrun
 --toolchain org.swift.65202608211a`, without hardcoding the id. Sanity-check
 with `swiftly run swift --version` → must report `6.5-dev`.
 
-The check scripts are the authority on toolchain identity: they verify
-`Swift version 6.5` (and for the Embedded gate, the exact compiler SHA256 and
-revision) and fail loudly on mismatch. `Toolchains.toml` records pinned
-artifact URLs/SHA256s for non-Apple platforms; Windows deliberately remains on
-the 6.4.x snapshot. Override knobs: `GAMA_TOOLCHAIN_ID`, `GAMA_SWIFT_64` /
-`GAMA_SWIFTC_64` (+ `GAMA_SWIFTC_SHA256`), and per-gate scratch paths like
-`GAMA_APPLE_SCRATCH_PATH`.
+The check scripts are the authority on toolchain identity, and they do not all
+want the same compiler. Every gate that asserts a version string asserts
+`Swift version 6.5` (and the Embedded gate additionally pins the exact compiler
+SHA256 and revision) **except `check-apple-platforms.sh`, which runs
+`xcrun --toolchain default` and fails unless it reports `Swift version 6.4`** —
+it drives `xcodebuild` for the iOS/tvOS/visionOS `GamaAppleUI` compiles, which
+go through Xcode's integrated SwiftPM. That gate is the concrete reason the
+manifest stays `swift-tools-version: 6.4`: raising the tools version to match
+the compiler pin would take the platform gates with it. `Toolchains.toml`
+records pinned artifact URLs/SHA256s for non-Apple platforms; Windows
+deliberately remains on the 6.4.x snapshot. Override knobs: `GAMA_TOOLCHAIN_ID`,
+`GAMA_SWIFT_64` / `GAMA_SWIFTC_64` (+ `GAMA_SWIFTC_SHA256`).
 
 ## iCloud constraints (measured, not theoretical)
 
@@ -90,19 +95,29 @@ handler outside Swift (re-raise through the displaced disposition, no write
 to a blocking tty on a fatal signal). Changing those contracts means updating
 the fixtures, not `GamaTests`.
 
-Gates also chain Python helpers that fail on their own: `check-docs.sh` runs
-`scripts/check-doc-links.py` (relative Markdown links) before DocC, and
-`check-wasm.sh` runs `scripts/check-wasm-unsafe-declarations.py` before the
-SDK build. The pre-push documentation checklist is the block in
-`CONTRIBUTING.md`: `./scripts/check-docs.sh` (which already runs the link
-checker's self-test plus the repo scan) followed by
-`./scripts/check-doc-coverage.sh`.
+Gates also chain helpers that fail on their own, so a gate's name understates
+what it covers. `check-docs.sh` runs `scripts/check-doc-links.py` (relative
+Markdown links) **and `scripts/check-run-gama-skill.sh`** before DocC;
+`check-wasm.sh` runs `scripts/check-wasm-unsafe-declarations.py` and then two
+Node smoke drivers (`wasm-runtime-smoke.mjs`, `browser-runtime-smoke.mjs`,
+each self-tested first and then run against the built artifact), so **node is a
+prerequisite of the WASM gate**, not just Python. `check-boundaries.sh` chains
+`check-portable-symbols.sh` and `check-toolchain-pins.sh`. The pre-push
+documentation checklist is the block in `CONTRIBUTING.md`:
+`./scripts/check-docs.sh` followed by `./scripts/check-doc-coverage.sh`.
 
 `check-linux-leaks.sh` and `check-portable-symbols.sh` are not in that array:
 the first is a hosted-Linux LeakSanitizer proof (it exits non-zero on macOS by
 design — macOS can build `gama-leak-check` but cannot produce the evidence),
 and the second is a helper the platform gates call to scan emitted objects for
 forbidden libm/libc symbols.
+
+**The `run-gama` skill is tracked twice and the docs gate enforces parity.**
+`.agents/skills/run-gama/{SKILL.md,driver.sh}` and
+`.claude/skills/run-gama/{SKILL.md,driver.sh}` must stay equivalent after the
+gate normalizes each entry-point path to `<run-gama-skill>`. Editing one mirror
+alone fails `check-docs.sh` — a documentation gate failing on a shell script,
+which reads as an unrelated break. Change both, or neither.
 
 Run tests directly (single test, filtered) — must use a scratch path outside
 iCloud:
@@ -115,6 +130,22 @@ swiftly run swift test \
 
 (`/usr/bin/xcrun --toolchain org.swift.65202608211a swift test …` is the
 equivalent explicit form the scripts use.)
+
+**Redirecting gate scratch: the variable is `GAMA_SCRATCH_ROOT`, not
+`SCRATCH_ROOT`.** Eight scripts (`check-wasm.sh`, `check-linux.sh`,
+`check-linux-leaks.sh`, `check-c-abi.sh`, `check-android.sh`,
+`check-android-emulator.sh`, `check-doc-coverage.sh`, `bundle-web.sh`) derive
+scratch from `GAMA_SCRATCH_ROOT` → `RUNNER_TEMP` → `TMPDIR` → `/tmp`; a bare
+`SCRATCH_ROOT` is silently ignored and the run lands in the shared default.
+`check-apple.sh` reads its own `GAMA_APPLE_SCRATCH_PATH`; see the other
+`GAMA_*_SCRATCH_PATH` / `GAMA_*_OUTPUT` names in the scripts. Two caveats:
+`swiftc` aborts with `couldNotFindTmpDir` if the `TMPDIR` you pass does not
+exist, so `mkdir -p` it first; and **`check-mlir.sh` hardcodes
+`/private/tmp/gama-framework-swiftpm` with no override — the same path the
+single-test command above recommends**, so a filtered `swift test` and a
+concurrent MLIR gate collide. `check-apple-platforms.sh` likewise hardcodes
+`/private/tmp/gama-<platform>-derived`. Give each session its own root when a
+peer may be running gates.
 
 Run the terminal demo:
 
@@ -142,6 +173,15 @@ than the exit status. Plugin and capability-service coverage lives in
 Do not add `import XCTest`. Macro expansion tests use
 `SwiftSyntaxMacrosGenericTestSupport`. See `docs/Testing.md` and
 `docs/Toolchain.md`.
+
+**`#expect` cannot read a bare property off a `~Copyable` host.**
+`#expect(host.needsFrame)` does not compile: the macro expands to
+`__checkPropertyAccess`, which requires `Copyable`, and the diagnostic names
+that helper rather than the property — so it reads as an unrelated failure.
+Bind first (`let dirtyAfter = pump.needsFrame; #expect(dirtyAfter)`); every
+`needsFrame` assertion in `GamaTests` already has this shape. Comparisons
+(`#expect(host.duplicateIDs == [...])`) take a different overload and are
+fine.
 
 CI is `.github/workflows/ci.yml` — six jobs pinned to the same snapshot family
 with SHA256-verified downloads (`scripts/ci-install-swift-*.sh`).
@@ -293,9 +333,11 @@ Two compile errors keep the binding from being skipped silently:
 `@Component`, including in a class) and `component.render-collision` (a
 hand-written `render(in:)` beside `@Reactive` properties; synthesis is
 skipped). At runtime `FrameHost.transientStateIDs` lists nodes whose reactive
-storage identity changed since the previous frame — empty for a correctly
-bound tree; a name means a branch flip, a positional `ForEach` reorder, or a
-type change at the same position reconstructed state. The store sweeps once
+storage was replaced at the same `(NodeID, slot)` key since the previous
+frame, such as a slot value-type change. It does not report new or removed
+keys, or positional `ForEach` reorders that reuse storage for different
+elements. An empty diagnostic does not establish element-stable identity.
+The store sweeps once
 per `pump` after the final build, so a subtree that stops rendering releases
 its state; `IdentifiedForEach` and `.stateScope(_ id: NodeID)` pin a subtree
 to an explicit identity where structural keying is wrong. Host-less

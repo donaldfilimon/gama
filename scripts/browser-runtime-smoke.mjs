@@ -67,6 +67,14 @@ const child = spawn(chrome, [
 ], { stdio: ["ignore", "ignore", "pipe"] });
 let errors = "";
 child.stderr.on("data", (chunk) => { errors += chunk; });
+// Without these two listeners a launch failure is indistinguishable from a
+// slow start: `spawn` reports ENOENT/EACCES through an `error` event, and a
+// browser that dies on startup can exit before writing a byte to stderr, so
+// the wait below would otherwise time out carrying an empty diagnostic.
+let spawnError = "";
+child.on("error", (error) => { spawnError = error.message; });
+let exit = null;
+child.on("exit", (code, signal) => { exit = { code, signal }; });
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 let socket;
 let marker = "";
@@ -74,8 +82,27 @@ let pageTitle = "";
 const runtimeErrors = [];
 try {
   const activePort = join(profile, "DevToolsActivePort");
-  for (let attempt = 0; attempt < 150 && !existsSync(activePort); attempt += 1) await delay(100);
-  if (!existsSync(activePort)) throw new Error(`Chrome DevTools endpoint did not start: ${errors}`);
+  // Startup budget, not a proof budget. A hosted runner measured Chrome alive
+  // and retrying `dbus/bus.cc` connections for the whole of a 15s window
+  // without ever publishing the endpoint, so 15s failed a browser that was
+  // still coming up. Every assertion below is unchanged: this waits longer
+  // for a live browser and gives up immediately on a dead one, which fails a
+  // genuinely broken browser sooner than the old fixed wait did.
+  const startupBudgetMs = 60_000;
+  const deadline = Date.now() + startupBudgetMs;
+  while (!existsSync(activePort) && exit === null && !spawnError && Date.now() < deadline) {
+    await delay(100);
+  }
+  if (!existsSync(activePort)) {
+    const waited = `${((startupBudgetMs - Math.max(deadline - Date.now(), 0)) / 1000).toFixed(1)}s`;
+    const cause = [
+      `binary=${chrome}`,
+      spawnError ? `spawn=${spawnError}` : null,
+      exit ? `exited early: code=${exit.code} signal=${exit.signal}` : spawnError ? null : "still running",
+      `stderr=${errors.trim() || "<empty>"}`,
+    ].filter(Boolean).join("; ");
+    throw new Error(`Chrome DevTools endpoint did not start after ${waited}: ${cause}`);
+  }
   const debugPort = (await import("node:fs/promises")).readFile(activePort, "utf8")
     .then((contents) => contents.split("\n", 1)[0]);
   const target = await fetch(

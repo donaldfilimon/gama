@@ -45,7 +45,7 @@ runtime.
 | --- | --- | --- |
 | `GamaCore` | scenes, views, identity, state, layout, events, `FrameHost` | Foundation, platform UI, POSIX, WinSDK, global registries |
 | `GamaPlugin` | static plugin manifests, grants, scoped capability handles | platform services or dynamic loading |
-| `GamaPlatformServices` | Foundation-backed clock, random, files, environment, logging | renderer or application semantics |
+| `GamaPlatformServices` | Foundation-backed monotonic clock, filesystem access, logging | renderer or application semantics |
 | `GamaDraw` | cells, painting, draw lists, versioned binary codec | native windows or input loops |
 | `GamaTUI` | terminal ownership, decoding, differential presentation | a separate layout or focus engine |
 | `GamaAppleUI` | AppKit/UIKit host views, event translation, drawing | application window policy |
@@ -87,6 +87,7 @@ Each host owns:
 - Per-frame actions and key handlers.
 - Focus identity and the current focusable regions.
 - Duplicate interactive-identity diagnostics.
+- Identity-keyed reactive storage and reconstructed-state diagnostics.
 - Host-local subscriptions and cancellation.
 - Dirty state, latest size, and quit intent.
 
@@ -106,6 +107,9 @@ Every pump performs the same sequence:
 5. Reconcile focus by identity rather than array position.
 6. Rebuild once when focus reconciliation changes the environment so the
    returned frame already contains the correct focus appearance.
+7. Evict reactive state absent from the final build and publish its identity
+   diagnostics. Initial rendering and focus reconciliation use the same
+   context-building path; eviction happens only after the final pass.
 
 `RenderNode.group` is the flattening sentinel emitted by tuples and
 `ForEach`. `RenderNode.overlay` is the `ZStack` lowering and always layers;
@@ -136,6 +140,7 @@ attempted laundering.
 
 Input-driven actions already cause another frame. Out-of-band changes use:
 
+- Bound `@Reactive` writes, which invalidate their owning host automatically
 - `FrameHost.observe(_:)`
 - `Signal.subscribe(in:)`
 - `Signal.binding(in:)`
