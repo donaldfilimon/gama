@@ -189,11 +189,26 @@ status: in_progress
   taken; the Embedded row is re-measured at **641,464 bytes** (from 636,792),
   and its claim that `5dbdad8` is "unpushed" is corrected — that was true when
   written and is now false.
-- Remaining weakness, recorded rather than fixed: the rows that anchor to **no
-  commit at all** cannot be classified stale by this method, which is a weaker
-  position than the ones that were wrong. `Mac POSIX TUI` and
-  `Core/builders/layout/drawing` in particular describe code that changed
-  substantially in the same range.
+- **Unanchored rows surveyed 2026-09-06.** Of 20 table rows, 13 named no
+  commit. Three of those asserted **Hosted proven with neither a commit nor a
+  run id** — `Core/builders/layout/drawing`, `macOS multi-window shell`, and
+  `Plugin runtime + capability model (Tier 1)` — the weakest claims in the
+  file, since an unanchored claim cannot even be checked for staleness. All
+  three are now anchored to `98c150d`.
+- One row was overstating its own coverage: `DrawList/C ABI` claimed
+  "randomized/malformed codec tests". Verified — **no randomized or fuzz codec
+  test exists anywhere under `Tests/`**. The word is removed rather than a test
+  invented to justify it.
+- Six rows use phrases outside the declared vocabulary (`locally compile
+  proven`, `locally cross-compile proven`, `locally runtime proven`, `locally
+  compile/test proven`). On inspection these are **narrower** than "Locally
+  proven", not looser, so the honest fix was to declare them in the vocabulary
+  section as restrictions rather than normalize them away and lose precision.
+- Still open, and genuinely so: the remaining ten unanchored rows are
+  local-evidence claims whose anchor would have to be a local run rather than a
+  hosted commit, and `Windows console` has **no check script at all** — its job
+  is inline in `.github/workflows/ci.yml`, so `scripts/check.sh` cannot prove
+  it locally by any means.
 
 - Corrected `docs/Capabilities.md` 2026-09-06. Its Evidence snapshot named
   `bc2fe4d` as the current `origin/main` tip while the tip was `0d4cf12`,
