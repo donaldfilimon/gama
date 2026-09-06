@@ -165,6 +165,27 @@ Open questions blocking implementation:
       authorization, which has not been given, so this is recorded rather than
       resolved.**
 
+- [ ] **PR #84 is safe on the code but falsifies two lines of
+      `docs/Testing.md`, and no gate can catch it.** The split is genuinely
+      move-only: 55 `@Test` names, 12 `@Suite` names, and the suite-to-test
+      binding are byte-identical across the diff, the only semantic change
+      being `TestBox` losing `private` because two split files now need it.
+      All six required jobs pass on the exact head `e014217`. After merge,
+      `docs/Testing.md:38` still lists the deleted `gamaTests.swift` and none
+      of the ten new files, and `:57` still calls `TestBox` "file-local" when
+      it is now target-internal. `check-doc-links.py` validates relative links,
+      not backticked file references, which is exactly why CI stays green while
+      the table is wrong. Also worth deciding: `ViewBuilderTests.swift`
+      declares `struct BuilderTests`, so `--filter ViewBuilderTests` matches
+      nothing and **exits zero** — the documented silent-filter hazard, in a
+      file this PR creates.
+- [ ] **Baseline correction to my own reporting.** I cited "304 tests in 55
+      suites" as the suite size. That is the **local** figure at `148b6da`,
+      which includes the unpushed `CellSerializerTests` (5 tests, 1 suite).
+      `origin/main` at `98c150d` measures **299 in 54**, and 299 + 5 = 304,
+      54 + 1 = 55, so the two reconcile exactly. Anywhere the hosted baseline
+      is meant, 299/54 is the number.
+
 ## Manual and credential-gated acceptance
 
 - [ ] Exercise the AppKit accessibility adapter with VoiceOver and the UIKit
