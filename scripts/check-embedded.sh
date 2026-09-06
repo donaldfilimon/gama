@@ -33,4 +33,46 @@ LLD="${GAMA_LLD:-$(dirname "$SWIFTC")/ld.lld}"
 test -s "$LINKED"
 bytes="$(wc -c < "$LINKED" | tr -d ' ')"
 echo "Embedded linked artifact bytes: $bytes"
+
+# ADR 0009 names a size gate as its zero-cost evidence. Until 2026-09-06 the
+# line above was the whole of it: a number printed and nothing asserted.
+BASELINE_FILE="$ROOT/scripts/embedded-size-baseline.txt"
+[[ -f "$BASELINE_FILE" ]] || { echo "error: missing size baseline: $BASELINE_FILE" >&2; exit 1; }
+base_revision=""; base_bytes=""; base_tolerance=""
+while IFS= read -r line || [[ -n "$line" ]]; do
+  [[ -z "${line// }" ]] && continue
+  [[ "$line" == \#* ]] && continue
+  if [[ "$line" =~ ^([a-z_]+)[[:space:]]*=[[:space:]]*\"([^\"]*)\"$ ]]; then
+    case "${BASH_REMATCH[1]}" in
+      revision) base_revision="${BASH_REMATCH[2]}" ;;
+      bytes) base_bytes="${BASH_REMATCH[2]}" ;;
+      tolerance_percent) base_tolerance="${BASH_REMATCH[2]}" ;;
+      *) echo "error: unknown key in size baseline: ${BASH_REMATCH[1]}" >&2; exit 1 ;;
+    esac
+  else
+    echo "error: unrecognized line in size baseline: $line" >&2
+    exit 1
+  fi
+done < "$BASELINE_FILE"
+[[ -n "$base_revision" && -n "$base_bytes" && -n "$base_tolerance" ]] || {
+  echo "error: size baseline must set revision, bytes, and tolerance_percent" >&2; exit 1; }
+grep -q "Swift $base_revision" <<<"$version" || {
+  echo "error: size baseline pins compiler revision $base_revision, which is not the one in use" >&2
+  echo "  re-measure the artifact deliberately before bumping the snapshot" >&2
+  exit 1; }
+margin=$(( base_bytes * base_tolerance / 100 ))
+high=$(( base_bytes + margin ))
+low=$(( base_bytes - margin ))
+if (( bytes > high )); then
+  echo "error: Embedded artifact grew to $bytes bytes; baseline $base_bytes +${base_tolerance}% allows $high" >&2
+  echo "  this is the regression ADR 0009 cites as its zero-cost evidence" >&2
+  echo "  if the growth is intended, re-measure and update $BASELINE_FILE with the reason" >&2
+  exit 1
+fi
+if (( bytes < low )); then
+  echo "error: Embedded artifact shrank to $bytes bytes; baseline $base_bytes -${base_tolerance}% allows $low" >&2
+  echo "  either a real win worth recording, or the link did not produce the whole module" >&2
+  exit 1
+fi
+echo "OK — Embedded artifact $bytes bytes within ${base_tolerance}% of the pinned $base_bytes"
 echo "OK — Embedded GamaCore whole-module compile and relocatable link: $LINKED"

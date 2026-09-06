@@ -303,6 +303,24 @@ Open questions blocking implementation:
       so a manifest reshape cannot silently reduce it to checking nothing.
       All three gate-counting documents were updated in the same commit, which
       is the omission that made M2 a live violation an hour ago.
+- [x] **H4 closed 2026-09-06: the Embedded size gate ADR 0009 cites now
+      exists.** `check-embedded.sh` computed the byte count, printed it, and
+      asserted nothing, so an artifact could double while the gate said OK and
+      an Accepted ADR kept naming it as zero-cost evidence. It now compares
+      against `scripts/embedded-size-baseline.txt`, pinned at **641,464 bytes**
+      (measured, and reproducible to the byte — the artifact is deterministic
+      for a fixed compiler and source).
+      The pin names the compiler revision the script already requires
+      unconditionally, so bumping the snapshot fails here first and forces a
+      deliberate re-measure instead of a silently rebased number. The tolerance
+      is **two-sided**: growth is the regression ADR 0009 cares about, and a
+      shrink is either a real win worth recording or a sign the link did not
+      produce the whole module — both want a human, not a stale baseline
+      absorbing them. Note ADR 0011's recorded +8.1% identity-store cost would
+      have tripped this, which is the point.
+      Mutation-proven four ways: apparent growth, apparent shrink, a mismatched
+      compiler revision, and a malformed baseline line each fail with a
+      specific message.
 - [ ] **Remaining unenforced-policy backlog, from a full audit of ADRs, AGENTS.md,
       CONTRIBUTING.md and docs (15 gaps: 6 HIGH, 6 MEDIUM, 3 LOW).** The
       highest-leverage single fix is a `swift package dump-package` assertion
