@@ -346,6 +346,25 @@ Open questions blocking implementation:
       has non-Copyable type"). Dropping its annotation fails to compile on the
       spot. `FrameHost`'s stored properties are all `Copyable`, which is why it
       alone was reachable.
+- [x] **H1 is closed — by a peer session, not by me, verified empirically
+      2026-09-06 before I duplicated it.** `scripts/portable-global-state.py`
+      exists (untracked in this checkout, so it is that session's work in
+      flight), covers five portable targets rather than the audit's three, and
+      its own docstring names "gap H1 of the unenforced-policy audit". I tested
+      the audit's exact violation — a `nonisolated(unsafe)` global planted in
+      `GamaPlugin` — and it fails with a precise message. The audit agent had
+      read the tree before this landed. The same peer has extended my
+      `scripts/package-graph.py` with a Swift-6-language-mode assertion, which
+      is the ground their gate stands on, and has `scripts/evidence-locality.py`
+      in flight for H5. **Left alone deliberately: not mine to commit.**
+- [x] **Corrected a self-contradiction I introduced in the Packaged wasm site
+      row.** It declared the 9,297,539-byte figure "removed rather than carried
+      forward" and then restated the number three clauses later in the same
+      cell. The historical clause no longer repeats it.
+- [ ] **The audit's other H5 instance is not reproducible.** It reported a
+      stale 9,297,539-byte figure at `docs/Packaging.md:48`; that file contains
+      no such figure and no `application/wasm` claim. Either it was fixed
+      before I looked or the agent misread. Recorded rather than acted on.
 - [ ] **Remaining unenforced-policy backlog, from a full audit of ADRs, AGENTS.md,
       CONTRIBUTING.md and docs (15 gaps: 6 HIGH, 6 MEDIUM, 3 LOW).** The
       highest-leverage single fix is a `swift package dump-package` assertion
@@ -363,6 +382,105 @@ Open questions blocking implementation:
       `nonisolated(unsafe) static var` in `GamaPlugin` passes; **H5** the
       evidence policy is enforced in one file, and `docs/Packaging.md:48` still
       carries the 9,297,539-byte figure the ledger removed as stale.
+      **Status 2026-09-06: H3, H6(b), L1, H4 and H2 are closed by the gates and
+      fixture recorded above; H1 and H5 are closed below. No HIGH gap remains
+      open.** The MEDIUM and LOW remainder of the 15 has not been re-audited.
+
+- [x] **H1 closed 2026-09-06, and measurement made the rule much smaller than
+      the audit assumed.** `check-boundaries.sh` policed process-global state
+      with three string literals — `ActionRegistry`, `Invalidator.shared`,
+      `nonisolated(unsafe).*_host` — so a global named anything else passed.
+      The obvious fix was a stored-versus-computed `static var` heuristic.
+      Measured against the pinned compiler first, that turned out to be
+      unnecessary: every target builds in Swift 6 language mode, which rejects
+      the common case by itself — planting `static var probeCounter = 0` in
+      `GamaPlugin` fails with "static property 'probeCounter' is not
+      concurrency-safe because it is nonisolated global shared mutable state".
+      The compiler is self-enforcing here exactly as ADR 0006's `AppRuntime`
+      turned out to be, so `Scene.swift:428`'s computed `static var` never
+      needed distinguishing.
+      What the compiler still accepts, both verified to build clean with zero
+      errors, are the two deliberate hatches: `nonisolated(unsafe) static var`
+      and `@MainActor static var`. `scripts/portable-global-state.py`, chained
+      from `check-boundaries.sh`, rejects both across `GamaCore`, `GamaPlugin`,
+      `GamaDraw`, `GamaEmbed`, and `GamaMLIR` — an **extension** of the old
+      three-target scope, justified because `GamaDraw` and `GamaMLIR` are
+      equally platform-free. Backends stay out: `GamaWASM/WASMHost.swift:89`
+      is a justified single-threaded use and would fail.
+      **Mutation-proven against the exact line the audit named**: with
+      `nonisolated(unsafe) static var probeCounter = 0` in `GamaPlugin` the old
+      three-literal rule still passes and the new gate exits 1 naming the file
+      and line; same for the `@MainActor` form; removing them returns 0.
+      The self-test pins the non-obvious half — that a *mention* is not a use,
+      so the doc comment at `WASMHost.swift:87` and a string literal quoting
+      the attribute both stay green, while a trailing `// justified` comment
+      does not launder a real declaration on the same line.
+      Two deliberate over-reaches, both green today and both fail-closed. The
+      global-actor pattern is `@[A-Z]\w*Actor\b`, which matches any attribute
+      ending in `Actor` rather than only real global actors. And the
+      comment/string walk is line-scoped, so rather than let it misread a
+      multi-line `"""` literal's interior as code the script refuses any file
+      containing one; none exists in these targets, and one appearing is a
+      reason to write a real lexer, not to trust this walk. An earlier draft of
+      that docstring claimed the multi-line case "fails closed" on its own,
+      which was false — the refusal is what makes the claim true.
+      Two things stated rather than papered over. The global-actor ban is one
+      step wider than "no global state" (it rejects the attribute on a function
+      too), on the ground that isolation couples a portable target to a
+      concurrency runtime it must not require; only `GamaCore` is compiled by
+      `check-embedded.sh`, so for the other four this gate is the only thing
+      saying so. And a `static let` bound to a reference type with mutable
+      interior is process-global state that neither the compiler nor this
+      script rejects; none exists in these targets today (every `static let` is
+      a value-type constant) and catching it needs type information, not text.
+      Green locally: `check-boundaries.sh`, `check-docs.sh`,
+      `check-doc-coverage.sh`, all exit 0. Local evidence only.
+
+- [ ] **The compiler half of H1 rests on an unasserted assumption.**
+      `scripts/portable-global-state.py` is only the smaller rule because Swift
+      6 language mode rejects the common case, and nothing gates that mode:
+      `scripts/package-graph.py` asserts `strictLibrary` scope, the
+      zero-runtime-dependency guarantee, and experimental-feature scoping, but
+      not `swiftLanguageMode`. Dropping a target to Swift 5 mode would silently
+      reopen bare `static var` while every gate stayed green. The fix is one
+      assertion in that script, which is another session's active file.
+
+- [x] **H5 closed 2026-09-06: anchored evidence claims are now confined to the
+      one file that is checked for staleness.** Two halves. The live defect:
+      `docs/Packaging.md:48` held a second, hand-maintained copy of the
+      packaged-wasm evidence — anchored to `77812d99`, naming Pages run
+      `33919361438` and the 9,297,539-byte artifact. Measured, not inferred:
+      both copies were written together by `8bb838b` on 2026-09-04; the ledger
+      retired that figure as stale in `a4c7a5c` on 2026-09-06 15:36, because
+      both `scripts/bundle-web.sh` and the wasm source it bundles had changed;
+      `docs/Packaging.md` was still asserting it under two hours later when
+      this gate landed. The duplicate stood for two days, the divergence for
+      about two hours, and nothing would have caught either. That
+      cell now points at the `Packaged wasm site` row of `Capabilities.md`
+      instead of restating it, which is the ledger's own "update once and link"
+      rule applied. The structural half: `scripts/evidence-locality.py`, chained
+      from `check-docs.sh`, fails an anchored evidence claim or a CI run id in
+      any document other than the ledger, because
+      `scripts/evidence-freshness.py` reaches exactly one file
+      (`LEDGER = "docs/Capabilities.md"`) and everything else could go stale in
+      silence with every gate green — which is precisely what happened.
+      **Mutation-proven against the real historical defect**: restoring the
+      exact retired `docs/Packaging.md` cell makes the gate fail with both
+      messages and exit 1; removing it returns exit 0. The self-test asserts
+      both directions, including that measurement conditions are *not* claims,
+      so `docs/Performance.md` naming the commits a benchmark ran at and
+      `docs/Toolchain.md` naming a compiler revision stay untouched. A sweep of
+      `docs/` plus the four root documents found no other instance. Green
+      locally: `check-docs.sh`, `check-doc-coverage.sh`,
+      `check-evidence-freshness.sh`, `check-boundaries.sh`, all exit 0. Local
+      evidence only; no hosted run has seen this.
+
+- [ ] **`docs/Capabilities.md:72` contradicts itself and the gate cannot see
+      it.** The `Packaged wasm site` cell says the 9,297,539-byte figure is
+      "removed rather than carried forward" and then carries it forward in the
+      same cell as "historical detail". Freshness passes because the anchor is
+      fresh; staleness of a *number inside* a row is not something an anchor
+      can express. Either drop the historical restatement or re-measure it.
 
 ## Acceptance-matrix drift (observed 2026-09-06 17:1x, local `main` `8c9d1c7`)
 
