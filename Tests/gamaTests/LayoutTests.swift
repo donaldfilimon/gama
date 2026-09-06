@@ -1,0 +1,176 @@
+//  LayoutTests.swift — layout engine behaviour.
+
+import Testing
+
+@testable import Gama
+@testable import GamaCore
+@testable import GamaDraw
+@testable import GamaMLIR
+@testable import GamaTUI
+
+@Suite("Layout")
+struct LayoutTests {
+    @Test("text measure")
+    func textMeasure() {
+        let s = LayoutEngine.measure(.text("hello", style: .plain), proposal: .unspecified)
+        #expect(s == Size(width: 5, height: 1))
+    }
+
+    @Test("text wrap")
+    func textWrap() {
+        let s = LayoutEngine.measure(
+            .text("hello world", style: .plain),
+            proposal: ProposedSize(width: 5)
+        )
+        #expect(s.width == 5)
+        #expect(s.height == 2)
+    }
+
+    @Test("word wrap breaks on spaces")
+    func wordWrapBreaksOnSpaces() {
+        #expect(TextLayout.wrap("hello world", width: 5) == ["hello", "world"])
+        #expect(TextLayout.wrap("a bb ccc", width: 4) == ["a bb", "ccc"])
+    }
+
+    @Test("word wrap hard-breaks long words")
+    func wordWrapHardBreaksLongWords() {
+        #expect(TextLayout.wrap("abcdefgh", width: 3) == ["abc", "def", "gh"])
+    }
+
+    @Test("word wrap preserves newlines")
+    func wordWrapPreservesNewlines() {
+        #expect(TextLayout.wrap("a\nb", width: 10) == ["a", "b"])
+    }
+
+    @Test("unicode display width and wrapping")
+    func unicodeDisplayWidthAndWrapping() {
+        #expect(TextLayout.displayWidth(of: "e\u{301}") == 1)
+        #expect(TextLayout.displayWidth(of: "界") == 2)
+        #expect(TextLayout.displayWidth(of: "🙂") == 2)
+        #expect(TextLayout.wrap("a界b", width: 3) == ["a界", "b"])
+        #expect(TextLayout.size(of: "界a", width: nil) == Size(width: 3, height: 1))
+    }
+
+    @Test("exact hard wrap does not append empty line")
+    func exactHardWrapDoesNotAppendEmptyLine() {
+        #expect(TextLayout.wrap("abc", width: 3) == ["abc"])
+        #expect(TextLayout.wrap("abcdef", width: 3) == ["abc", "def"])
+    }
+
+    @Test("divider axis resolution")
+    func dividerAxisResolution() {
+        let h = RenderNode.stack(
+            axis: .horizontal, spacing: 0,
+            alignment: Alignment(horizontal: .leading, vertical: .top),
+            children: [
+                .text("a", style: .plain),
+                .divider(style: .plain),
+                .text("b", style: .plain),
+            ]
+        )
+        let laidH = LayoutEngine.layout(h, in: Rect(x: 0, y: 0, width: 9, height: 5))
+        #expect(laidH.children[1].frame.size.width == 1)
+        #expect(laidH.children[1].frame.size.height == 5)
+
+        let v = RenderNode.stack(
+            axis: .vertical, spacing: 0,
+            alignment: Alignment(horizontal: .leading, vertical: .top),
+            children: [
+                .text("a", style: .plain),
+                .divider(style: .plain),
+                .text("b", style: .plain),
+            ]
+        )
+        let laidV = LayoutEngine.layout(v, in: Rect(x: 0, y: 0, width: 9, height: 5))
+        #expect(laidV.children[1].frame.size.width == 9)
+        #expect(laidV.children[1].frame.size.height == 1)
+    }
+
+    @Test("flex remainder fully distributed")
+    func flexRemainderFullyDistributed() {
+        let node = RenderNode.stack(
+            axis: .horizontal, spacing: 0,
+            alignment: Alignment(horizontal: .leading, vertical: .top),
+            children: [
+                .spacer(minLength: 0),
+                .spacer(minLength: 0),
+                .spacer(minLength: 0),
+            ]
+        )
+        let laid = LayoutEngine.layout(node, in: Rect(x: 0, y: 0, width: 10, height: 1))
+        let total = laid.children.reduce(0) { $0 + $1.frame.size.width }
+        #expect(total == 10)
+        #expect(laid.children.last!.frame.maxX == 10)
+    }
+
+    @Test("spacer honors min length")
+    func spacerHonorsMinLength() {
+        let node = RenderNode.stack(
+            axis: .horizontal, spacing: 0,
+            alignment: Alignment(horizontal: .leading, vertical: .top),
+            children: [
+                .text("abcdefgh", style: .plain),
+                .spacer(minLength: 4),
+            ]
+        )
+        let laid = LayoutEngine.layout(node, in: Rect(x: 0, y: 0, width: 10, height: 1))
+        #expect(laid.children[1].frame.size.width >= 4)
+    }
+
+    @Test("VStack stacks vertically")
+    func vStackStacksVertically() {
+        let node = RenderNode.stack(
+            axis: .vertical, spacing: 1,
+            alignment: Alignment(horizontal: .leading, vertical: .top),
+            children: [
+                .text("a", style: .plain),
+                .text("b", style: .plain),
+            ]
+        )
+        let laid = LayoutEngine.layout(node, in: Rect(x: 0, y: 0, width: 10, height: 10))
+        #expect(laid.children.count == 2)
+        #expect(laid.children[0].frame.minY == 0)
+        #expect(laid.children[1].frame.minY == 2)
+    }
+
+    @Test("spacer absorbs leftover")
+    func spacerAbsorbsLeftover() {
+        let node = RenderNode.stack(
+            axis: .horizontal, spacing: 0,
+            alignment: Alignment(horizontal: .leading, vertical: .top),
+            children: [
+                .text("ab", style: .plain),
+                .spacer(minLength: 0),
+                .text("cd", style: .plain),
+            ]
+        )
+        let laid = LayoutEngine.layout(node, in: Rect(x: 0, y: 0, width: 20, height: 1))
+        #expect(laid.children[0].frame.minX == 0)
+        #expect(laid.children[2].frame.maxX == 20)
+        #expect(laid.children[1].frame.size.width == 16)
+    }
+
+    @Test("fixed frame centers child")
+    func fixedFrameCentersChild() {
+        let node = RenderNode.frame(
+            width: 10, height: 3,
+            alignment: Alignment(horizontal: .center, vertical: .center),
+            child: .text("hi", style: .plain)
+        )
+        let laid = LayoutEngine.layout(node, in: Rect(x: 0, y: 0, width: 40, height: 10))
+        #expect(laid.frame.size == Size(width: 10, height: 3))
+        let child = laid.children[0]
+        #expect(child.frame.minX == laid.frame.minX + 4)
+        #expect(child.frame.minY == laid.frame.minY + 1)
+    }
+
+    @Test("border reserves two cells")
+    func borderReservesTwoCells() {
+        let node = RenderNode.border(
+            .single, style: .plain, title: nil,
+            child: .text("x", style: .plain)
+        )
+        let m = LayoutEngine.measure(node, proposal: .unspecified)
+        #expect(m == Size(width: 3, height: 3))
+    }
+}
