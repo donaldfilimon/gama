@@ -131,8 +131,9 @@ struct CounterPanel {
 ```
 
 The module selectors emitted by the macros (`GamaCore::View`,
-`GamaCore::Signal`, and `GamaCore::Color`) prevent a client declaration named
-`GamaCore` from changing lookup.
+`GamaCore::ReactiveSlot`, `GamaCore::BuildContext`, `GamaCore::RenderNode`, and
+`GamaCore::Color`) prevent a client declaration named `GamaCore` from changing
+lookup.
 
 ## 5. Component state persists per surface
 
@@ -164,10 +165,11 @@ component to do it. `State` remains instance-local.
 
 `@Reactive` is accepted only inside a struct marked `@Component`; anywhere
 else the macro reports a compile error rather than silently keeping local
-state. Identity is structural, so a branch flip or a positional `ForEach`
-reorder drops state; `IdentifiedForEach` and `.stateScope(_:)` pin a subtree
-to an identity you choose, and `FrameHost.transientStateIDs` names any node
-whose state was reconstructed. See [StateAndIdentity.md](StateAndIdentity.md)
+state. A branch flip evicts the old subtree; positional `ForEach` state
+follows indices and may move to a different element after reordering.
+`IdentifiedForEach` and `.stateScope(_:)` pin a subtree to an identity you
+choose. `FrameHost.transientStateIDs` reports storage replacements at an
+existing key, not every identity change. See [StateAndIdentity.md](StateAndIdentity.md)
 before choosing ownership.
 
 ## 6. Connect state that changes outside input callbacks

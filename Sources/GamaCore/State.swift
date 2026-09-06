@@ -1,8 +1,8 @@
 //  State.swift — GamaCore
 //  Reactivity without Combine, without weak references (Embedded Swift
-//  has no weak/unowned-safe). Subscriptions are explicit tokens the
-//  runtime cancels between build passes — no retain cycles possible
-//  because Signal never captures its observers' owners.
+//  has no weak/unowned-safe). Subscriptions are explicit tokens, with
+//  SubscriptionContext owning cancellation for a host lifetime. Observer
+//  closures retain their captures; callers must avoid ownership cycles.
 
 /// Opaque handle for one observer registration on a `Signal`; hand it
 /// back to `Signal.cancel(_:)` to detach that observer. Tokens are the
@@ -246,8 +246,9 @@ public struct State<Value: Sendable> {
     private let signal: Signal<Value>
 
     /// Allocates the backing `Signal`. The wrapper stores only that
-    /// reference, so copies of the enclosing view value share one cell
-    /// and state survives rebuilds of the view struct.
+    /// reference, so copies of the enclosing view value share one cell.
+    /// Constructing a new wrapper creates new storage; use `@Reactive` in
+    /// a `@Component` for state that survives fresh values on every frame.
     public init(wrappedValue: Value) {
         self.signal = Signal(wrappedValue)
     }

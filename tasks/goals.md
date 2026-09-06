@@ -5,13 +5,12 @@
 Keep Gama a portable, retained Swift UI framework whose documentation and
 evidence match the exact source, toolchain, and acceptance matrix.
 
-There is no open implementation goal: every accepted design has landed.
-[`todo.md`](todo.md) has no accepted implementation work; it retains manual
-and credential-gated acceptance plus a separately labeled deferred-product
-scope. The next implementation slice needs a new accepted design; neither
-acceptance nor a dated plan is an implementation claim. Extending strict
-memory safety to the executables and test target is not committed work; ADR
-0012 records the measured counts for whoever re-opens it.
+The accepted foundation designs are implemented. Current maintenance keeps
+state ownership, diagnostics, and documentation aligned with that foundation;
+[`todo.md`](todo.md) records the delivery requirements, manual and
+credential-gated acceptance, and deferred product scope. New product scope
+needs a new accepted design. Extending strict memory safety to executables
+and the test target remains a separate decision documented in ADR 0012.
 
 ## Delivered foundation
 

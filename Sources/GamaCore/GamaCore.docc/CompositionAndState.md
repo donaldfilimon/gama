@@ -41,9 +41,11 @@ binds it, or with no host at all, a slot reads and writes its own local
 signal; ``ReactiveSlot/binding()`` follows whichever is current, and
 ``ReactiveSlot/signal`` exposes it. After a frame's final build the host
 evicts every key that build did not resolve, so a subtree that stops
-rendering releases its state; a branch flip or positional reorder drops it,
-and ``FrameHost/transientStateIDs`` names the nodes whose storage was
-reconstructed, alongside ``FrameHost/duplicateIDs``.
+rendering releases its state. A branch flip evicts its old keys; a positional
+reorder retains state by index and may associate it with a different element.
+Use ``IdentifiedForEach`` or ``StateScopedView`` for element-owned state.
+``FrameHost/transientStateIDs`` reports storage replacement at an existing
+key; it does not report new or removed keys or positional storage reuse.
 
 Every host-owned signal observes the host, so an out-of-band write to bound
 `@Reactive` state requests a frame by itself. Other state sources outside a

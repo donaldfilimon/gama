@@ -170,10 +170,11 @@ place that passed `_name` as a `Signal` becomes `_name.signal`. Bound
 `@Reactive` state also invalidates the host on out-of-band writes without an
 `observe()` call; raw signals still need one.
 
-Structural keying means a branch flip or positional `ForEach` reorder drops
-state. `IdentifiedForEach` and the new `.stateScope(_:)` modifier pin a
-subtree to a chosen identity, and `FrameHost.transientStateIDs` reports the
-nodes whose state was reconstructed. Host-less rendering, including
+Structural keying means a branch flip evicts the old subtree, while positional
+`ForEach` state follows indices through a reorder. Use `IdentifiedForEach` or
+`.stateScope(_:)` when state must follow an element. `FrameHost.transientStateIDs`
+reports storage replaced at the same key; it does not detect positional state
+being reused for a different element. Host-less rendering, including
 `gama-demo --emit-mlir`, keeps instance-local storage and emits identical
 output.
 
