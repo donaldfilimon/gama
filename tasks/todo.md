@@ -94,9 +94,14 @@ Candidates, in order:
       fallback — correct on exactly one machine and silently wrong on every
       other, inside gates meant to fail closed. CI never reaches those
       defaults because `ci-install-swift-snapshot.sh` exports the variables,
-      so it is a portability defect rather than a CI defect. An untracked
-      `scripts/lib/toolchain.sh` already derives these from `Toolchains.toml`
-      but is wired into nothing yet.
+      so it is a portability defect rather than a CI defect.
+      **Delivered `dc7e847`.** `scripts/lib/toolchain.sh` is tracked and all
+      five scripts source it; no `/Users/<name>` path remains under `scripts/`.
+      `check-toolchain-pins.sh` now asserts those scripts route through the lib
+      instead of repeating the literal, and fails on any checked-in home path,
+      so the class cannot return. Mutation-verified both directions; eleven
+      gates green. The `SCRATCH_ROOT` and Swift-version repetitions above are
+      untouched and remain cosmetic: no defect was demonstrated for either.
 - [ ] `Sources/GamaTUI/Terminal.swift` holds POSIX and Windows Console in one
       678-line file (`// MARK` at :77 and :442). Pure file split, no
       demonstrated defect, and it sits under the unpushed `AnsiPresenter`

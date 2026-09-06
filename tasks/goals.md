@@ -101,9 +101,25 @@ status: in_progress
 - Audit delivered 2026-09-06 against `origin/main` `0d4cf12`, ten commits past
   the brief's `bc2fe4d` reference snapshot. Module map, five candidates, and a
   recommended first slice are in [`todo.md`](todo.md).
-- Implementation is not started and is gated on approval, per the brief's own
-  requirement to present a design and obtain approval first. Two questions are
-  open; the honest recommendation may be that no slice is warranted yet.
+- First slice approved and delivered 2026-09-06 as `dc7e847`: gate scripts
+  derive the pinned toolchain from `Toolchains.toml` through
+  `scripts/lib/toolchain.sh` instead of defaulting to one developer's home
+  directory, and `check-toolchain-pins.sh` fails on any checked-in home path
+  so the class cannot return. Behavior preserved: the derived path is
+  byte-identical to the removed literal on this machine. Eleven runnable gates
+  green, including the four rewired scripts and `check-boundaries`, which
+  chains the pin gate. Local evidence only; the six-job matrix has not run.
+- The slice shipped **narrower than approved**, on evidence. It also proposed
+  adding `unset TOOLCHAINS` to the nine scripts lacking it, on this
+  repository's documented claim that a stray value overrides explicit pins.
+  Measured, it does not: `TOOLCHAINS` overrode a bare `xcrun swift` but not
+  `xcrun --toolchain <id>`, and not the `swiftly` shim, and no script invokes
+  swift without the flag. `CLAUDE.md` was narrowed to what reproduces rather
+  than nine scripts being changed to satisfy a claim that does not.
+- Candidates 3-5 (`GamaHostView` split, `Primitives.swift` size,
+  `Terminal.swift` platform split) remain **not recommended**: each is a file
+  split with no demonstrated defect, and candidate 3 carries the highest risk
+  against hosted-proven AppKit for a presentational benefit.
 
 ## Delivered foundation
 
