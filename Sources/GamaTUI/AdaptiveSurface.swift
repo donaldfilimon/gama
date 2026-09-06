@@ -117,6 +117,7 @@ public struct StreamRenderer: Renderer {
     private var buffer: CellBuffer
     private var presenter = StreamPresenter()
     private let sink: any StreamSink
+    private var declaredLines: [String] = []
 
     /// Creates a renderer writing to `sink`, laying out at `size`.
     ///
@@ -142,11 +143,29 @@ public struct StreamRenderer: Renderer {
     /// Releases nothing, because `begin()` acquired nothing.
     public mutating func end() throws(TerminalError) {}
 
-    /// Paints `root` and writes one line per row whose content changed.
+    /// Records semantic lines the application declared for this frame. They
+    /// replace derivation, because derivation cannot invent text the grid
+    /// never held.
+    public mutating func emit(_ lines: [String]) throws(TerminalError) {
+        declaredLines.append(contentsOf: lines)
+    }
+
+    /// Writes the lines the application declared, or, when it declared none,
+    /// one line per row whose painted content changed.
+    ///
+    /// The buffer is reconciled either way, so a frame that was overridden
+    /// still advances the diff and a later derived frame reports changes
+    /// against what was actually drawn rather than against a stale grid.
     public mutating func present(_ root: LaidOutNode) throws(TerminalError) {
         buffer.clearBack()
         CellPainter.paint(root, into: &buffer)
-        for line in presenter.present(&buffer) { sink.write(line) }
+        let derived = presenter.present(&buffer)
+        if declaredLines.isEmpty {
+            for line in derived { sink.write(line) }
+        } else {
+            for line in declaredLines { sink.write(line) }
+            declaredLines.removeAll(keepingCapacity: true)
+        }
     }
 
     /// A redirected run has no input source, so the loop ends when this

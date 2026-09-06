@@ -92,6 +92,13 @@ public protocol Renderer {
     /// `defer` on every exit path, discarding any error it throws.
     mutating func end() throws(Failure)
 
+    /// Receives the semantic lines the application emitted this frame.
+    ///
+    /// Backends presenting a chronology use these in place of whatever they
+    /// would otherwise derive; the default ignores them, so a grid backend is
+    /// unaffected.
+    mutating func emit(_ lines: [String]) throws(Failure)
+
     /// Whether this backend has an input source worth waiting on.
     ///
     /// Terminals, GUI hosts, and browsers do, so the default is `true`. A
@@ -105,6 +112,9 @@ public protocol Renderer {
 extension Renderer {
     /// Backends have an input source unless they say otherwise.
     public var waitsForInput: Bool { true }
+
+    /// Backends that present a grid have no use for emitted lines.
+    public mutating func emit(_ lines: [String]) throws(Failure) {}
 }
 
 // MARK: - App
@@ -123,11 +133,23 @@ public protocol App {
     /// Receives application-level events once and addressed window events for
     /// their affected surface. Reference-backed models may mutate here.
     func handleLifecycle(_ event: LifecycleEvent)
+
+    /// Hands the application its host-owned channel for out-of-band writes:
+    /// ``SubscriptionContext/complete(_:)``, ``SubscriptionContext/emit(_:)``,
+    /// and signal observation. Called once, as the host is created.
+    ///
+    /// Without this an application launched through a convenience entry point
+    /// has no handle on its own host, so it can neither report an outcome nor
+    /// emit a line. Defaulted, so existing applications are unaffected.
+    func connect(_ context: SubscriptionContext)
 }
 
 extension App {
     /// Default lifecycle handler for applications that do not observe lifecycle events.
     public func handleLifecycle(_ event: LifecycleEvent) {}
+
+    /// Default for applications that never report an outcome or emit a line.
+    public func connect(_ context: SubscriptionContext) {}
 }
 
 // MARK: - Runtime
@@ -206,6 +228,11 @@ public struct AppRuntime<A: App, R: Renderer>: ~Copyable {
                 pump.handle(.resize(renderer.size))
             }
             var producedFrame = false
+            // Drained before the frame so a line emitted during the previous
+            // iteration's event handling reaches the presenter that will
+            // render this frame.
+            let emitted = pump.drainStreamLines()
+            if !emitted.isEmpty { try renderer.emit(emitted) }
             if let advanced = pump.advance() {
                 producedFrame = true
                 try renderer.present(advanced.frame)

@@ -100,6 +100,11 @@ public struct HostPump: ~Copyable {
     /// The outcome the application reported, or `nil` while it is running.
     public var completion: CompletionStatus? { host.completion }
 
+    /// Takes the semantic lines emitted since the last call.
+    package func drainStreamLines() -> [String] {
+        host.subscriptions.drainStreamLines()
+    }
+
     /// Records the application's outcome; the first status wins.
     public func complete(_ status: CompletionStatus) {
         host.subscriptions.complete(status)

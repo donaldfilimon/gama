@@ -84,6 +84,7 @@ public struct FrameHost: ~Copyable {
         let graph = try compileSceneGraph(app)
         let surface = try graph.makePrimarySurface()
         self.init(surface: surface)
+        app.connect(subscriptions)
     }
 
     package init(surface: SceneSurface) {

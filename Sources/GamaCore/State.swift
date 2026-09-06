@@ -49,6 +49,31 @@ public final class SubscriptionContext {
     /// changes that no observed signal carries.
     public func invalidate() { invalidateHost() }
 
+    private var pendingStreamLines: [String] = []
+
+    /// Emits one semantic line for any presenter that consumes a chronology
+    /// rather than a grid, and invalidates the host so it reaches a frame.
+    ///
+    /// This is a channel beside the view tree, not a node inside it, because
+    /// a log line is event-shaped: it happens once, at a moment. A view node
+    /// exists continuously and is re-evaluated every frame, so deriving a
+    /// chronology from one would either replay lines or need a second diff.
+    /// Emitting is exactly-once by construction.
+    ///
+    /// Backends that present a grid ignore these entirely.
+    public func emit(_ line: String) {
+        pendingStreamLines.append(line)
+        invalidateHost()
+    }
+
+    /// Takes the lines emitted since the last call, leaving none behind.
+    /// Backends drain once per frame; a chronology must never replay.
+    package func drainStreamLines() -> [String] {
+        let pending = pendingStreamLines
+        pendingStreamLines.removeAll(keepingCapacity: true)
+        return pending
+    }
+
     private var completionStatus: CompletionStatus?
 
     /// The outcome the application reported, or `nil` while it is still
