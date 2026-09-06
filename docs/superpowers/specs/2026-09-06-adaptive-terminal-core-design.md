@@ -190,6 +190,15 @@ hosted evidence rather than a local green.
 
 ## Open questions
 
+- `App.connect(_:)` fires only on `FrameHost.init(app:)`, the primary-surface
+  path used by `AppRuntime`, `GamaWASM`, and `GamaEmbed`. `GamaAppleUI` builds
+  a host per surface through `init(surface:)`
+  (`Sources/GamaAppleUI/GamaHostView.swift:282`) and therefore never calls it.
+  An application relying on `connect` gets one channel for the primary surface,
+  not one per window. Whether an application-level outcome should be reportable
+  from an auxiliary window at all is a design question, and it interacts with
+  the unresolved item below about completion in a multi-window shell.
+
 - The concrete shape of `Presenter` is deliberately unfixed here. Phase 2 only
   requires that the ANSI path conform without changing behavior; the shape that
   also spans AppleUI, WASM, and Embed is phase 5's spike.

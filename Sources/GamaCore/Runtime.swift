@@ -136,11 +136,20 @@ public protocol App {
 
     /// Hands the application its host-owned channel for out-of-band writes:
     /// ``SubscriptionContext/complete(_:)``, ``SubscriptionContext/emit(_:)``,
-    /// and signal observation. Called once, as the host is created.
+    /// and signal observation.
     ///
     /// Without this an application launched through a convenience entry point
     /// has no handle on its own host, so it can neither report an outcome nor
     /// emit a line. Defaulted, so existing applications are unaffected.
+    ///
+    /// **Fires on the primary-surface path only** — `FrameHost.init(app:)`,
+    /// which `AppRuntime`, `GamaWASM`, and `GamaEmbed` all use. A backend that
+    /// builds a host per surface from an already-compiled `SceneSurface`, as
+    /// the AppKit host view does for multi-window shells, does not call it,
+    /// so an application relying on `connect` gets one channel for the primary
+    /// surface rather than one per window. Widening that is a design decision
+    /// about which surface owns an application-level outcome, not an
+    /// oversight to patch.
     func connect(_ context: SubscriptionContext)
 }
 
