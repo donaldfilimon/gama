@@ -27,10 +27,12 @@ status: in_progress
   against proposal titles. No source migration is warranted now: `@_extern`
   has no unprefixed form, and the one available migration is a versioned-ABI
   change recorded under deferred scope in [`todo.md`](todo.md).
-- The gate change is not covered by the eleven-gate run recorded in
-  [`todo.md`](todo.md): that run was at `5dbdad8` and this change is later than
-  it. `check-toolchain-pins.sh` and `check-boundaries.sh`, which chains it, are
-  green locally; the remaining gates have not been re-run against it.
+- Hosted proven at `0d4cf12`. The gate change went out as PR #82, cherry-picked
+  onto `origin/main` so it could be reviewed apart from PR #81, and all six
+  required acceptance jobs passed on the updated head. The hole it closes was
+  independently reproduced by mutation: with a stale id planted in
+  `check-boundaries.sh` the previous gate exited 0 and printed OK, while the
+  current one exits 1 and names the file.
 
 ## Adaptive terminal surface
 status: in_progress
@@ -92,6 +94,16 @@ status: in_progress
   carry hosted rows.
 - `AnsiPresenter` had no production call site when it shipped, which made the
   protocol a claim rather than a seam. `TUIRenderer` now presents through it.
+
+## Evidence-first behavior-preserving refactor
+status: in_progress
+
+- Audit delivered 2026-09-06 against `origin/main` `0d4cf12`, ten commits past
+  the brief's `bc2fe4d` reference snapshot. Module map, five candidates, and a
+  recommended first slice are in [`todo.md`](todo.md).
+- Implementation is not started and is gated on approval, per the brief's own
+  requirement to present a design and obtain approval first. Two questions are
+  open; the honest recommendation may be that no slice is warranted yet.
 
 ## Delivered foundation
 
