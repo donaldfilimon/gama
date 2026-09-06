@@ -138,9 +138,35 @@ for script in bundle-macos.sh bundle-web.sh; do
     "Swift $swift_revision" "packaging Swift 6.5-dev revision grep"
 done
 
-for script in check-apple.sh check-concurrency-negative.sh check-docs.sh check-c-abi.sh check-mlir.sh; do
-  must_contain "$ROOT/scripts/$script" "$xctoolchain_id" "GAMA_TOOLCHAIN_ID default"
-done
+# Discover the scripts that select the pinned compiler instead of listing
+# them. The enumerated list this replaces named five scripts while ten
+# hardcoded the id, so bundle-macos.sh, check-boundaries.sh,
+# check-doc-coverage.sh, check-portable-symbols.sh, and profile-apple-host.sh
+# could go stale and this gate still printed OK.
+toolchain_default_count=0
+while IFS= read -r script; do
+  while IFS= read -r found; do
+    toolchain_default_count=$((toolchain_default_count + 1))
+    must_equal "GAMA_TOOLCHAIN_ID default in ${script#"$ROOT"/}" \
+      "$xctoolchain_id" "$found"
+  done < <(grep -o 'GAMA_TOOLCHAIN_ID:-[^"}]*' "$script" \
+    | sed 's/^GAMA_TOOLCHAIN_ID:-//')
+done < <(grep -l 'GAMA_TOOLCHAIN_ID:-' "$ROOT"/scripts/*.sh \
+  | grep -v '/check-toolchain-pins\.sh$' | sort)
+
+if [[ "$toolchain_default_count" -eq 0 ]]; then
+  echo "error: no script defaults GAMA_TOOLCHAIN_ID; discovery pattern is stale" >&2
+  exit 1
+fi
+
+# Belt and braces: no script may name any snapshot toolchain id but the pinned
+# one, in any spelling, including a hardcode that no override variable guards.
+# Toolchain ids are digit-leading (org.swift.65202608211a); the leading [0-9]
+# is what keeps SwiftPM's org.swift.swiftpm data directory out of this sweep.
+while IFS= read -r found; do
+  must_equal "toolchain id literal under scripts/" "$xctoolchain_id" "$found"
+done < <(grep -rho --exclude=check-toolchain-pins.sh \
+  'org\.swift\.[0-9][A-Za-z0-9]*' "$ROOT"/scripts | sort -u)
 
 must_contain "$ROOT/scripts/check-wasm.sh" "$wasm_sdk_id" "WASM SDK id default"
 must_contain "$ROOT/scripts/check-linux.sh" "$linux_sdk_id" "static Linux SDK id default"
