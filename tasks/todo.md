@@ -165,8 +165,16 @@ Open questions blocking implementation:
       authorization, which has not been given, so this is recorded rather than
       resolved.**
 
-- [ ] **PR #84 is safe on the code but falsifies two lines of
-      `docs/Testing.md`, and no gate can catch it.** The split is genuinely
+- [x] **PR #84 merged as `dfc0f95`; the two `docs/Testing.md` lines it
+      falsified are now fixed (2026-09-06).** Both were verified false on the
+      merged tree before editing: `gamaTests.swift` is deleted yet line 38 still
+      listed it, and `TestBox` moved to `TestSupport.swift` as target-internal
+      while line 57 still called it "file-local". The table now carries all ten
+      topic files plus `TestSupport.swift`, mapped from the actual `@Suite`
+      names in each file rather than from the PR description, and it records
+      that `ViewBuilderTests.swift` declares `struct BuilderTests`, so
+      `--filter ViewBuilderTests` matches nothing and exits zero.
+      Original review finding, kept for the record: The split is genuinely
       move-only: 55 `@Test` names, 12 `@Suite` names, and the suite-to-test
       binding are byte-identical across the diff, the only semantic change
       being `TestBox` losing `private` because two split files now need it.
