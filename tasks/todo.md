@@ -321,6 +321,23 @@ Open questions blocking implementation:
       Mutation-proven four ways: apparent growth, apparent shrink, a mismatched
       compiler revision, and a malformed baseline line each fail with a
       specific message.
+- [x] **H2 closed 2026-09-06: ADR 0006's `~Copyable` hosts are now pinned by a
+      compile-fail fixture.** The ADR promises "accidental sharing is a compile
+      error" and nothing enforced it: `check-boundaries.sh` pinned `~Sendable`
+      for four types and the ownership fixtures pinned `Terminal` (ADR 0010),
+      but neither host type was covered. `Tests/Fixtures/Ownership/error.FrameHostMustNotBeCopied.swift`
+      closes it, driven by the existing harness with `swiftc -c` — never
+      `-typecheck`, since move-only enforcement runs in SIL.
+      **Mutation-proven against the real defect**: deleting `: ~Copyable` from
+      `Sources/GamaCore/FrameHost.swift:38` — the exact edit the audit named —
+      makes the gate fail with "ownership negative compiled but must not", and
+      restoring it returns green.
+      Scope justified by measurement rather than assumed: `AppRuntime` needs no
+      fixture because it stores a `HostPump`, which is itself `~Copyable`, and a
+      `Copyable` struct cannot store a non-`Copyable` one ("stored property ...
+      has non-Copyable type"). Dropping its annotation fails to compile on the
+      spot. `FrameHost`'s stored properties are all `Copyable`, which is why it
+      alone was reachable.
 - [ ] **Remaining unenforced-policy backlog, from a full audit of ADRs, AGENTS.md,
       CONTRIBUTING.md and docs (15 gaps: 6 HIGH, 6 MEDIUM, 3 LOW).** The
       highest-leverage single fix is a `swift package dump-package` assertion
@@ -338,6 +355,28 @@ Open questions blocking implementation:
       `nonisolated(unsafe) static var` in `GamaPlugin` passes; **H5** the
       evidence policy is enforced in one file, and `docs/Packaging.md:48` still
       carries the 9,297,539-byte figure the ledger removed as stale.
+
+## Acceptance-matrix drift (observed 2026-09-06 17:1x, local `main` `8c9d1c7`)
+
+Two `CLAUDE.md` statements no longer match `scripts/check.sh`. Recorded here
+rather than edited because that file is dirty under a concurrent session, and
+because this command's scope is the ledger.
+
+- [ ] `CLAUDE.md:86` says the `gates=(…)` array is "thirteen entries at time of
+      writing". It is **fifteen**: the thirteen plus `check-evidence-freshness.sh`
+      and `check-package-graph.sh`. The surrounding sentence already tells the
+      reader the array is the authority, so the prose is self-protecting, but
+      the number is wrong.
+- [ ] The in-flight `CLAUDE.md` paragraph describes `check-evidence-freshness.sh`
+      as "a **third** script outside the array … unwired on purpose", with the
+      remaining step being "adding it to `gates=(…)`". Commit `67377af`
+      ("enable evidence freshness as the fourteenth gate") already did that, so
+      the paragraph is stale on landing. It does hedge — it tells the reader to
+      check `git status` and re-run rather than trust either state — so this is
+      staleness, not a false claim.
+
+Both are for whoever owns `CLAUDE.md` next; re-read the array before fixing
+either, since the count moved twice today.
 
 ## Manual and credential-gated acceptance
 
