@@ -237,6 +237,72 @@ status: in_progress
   hosted commit, and `Windows console` has **no check script at all** — its job
   is inline in `.github/workflows/ci.yml`, so `scripts/check.sh` cannot prove
   it locally by any means.
+- **The unanchored-rows residual directly above is now closed.** All 20 rows
+  carry an evidence annotation and `check-evidence-freshness.sh` is gate 14, so
+  totality is mechanized rather than audited: an unannotated row fails, and so
+  does a table reformat that reduces the parse to zero rows. `Windows console`
+  having no local check script is unchanged and stays open.
+- **Hand-maintained duplicates of ledger evidence are now a gate failure, not a
+  convention.** The freshness gate reaches one file, so `docs/Packaging.md`
+  carried a hand-maintained second copy of the packaged-wasm claim for two
+  days; when the ledger retired its byte figure as stale the copy silently
+  stopped agreeing, and every gate stayed green. That cell now links to the ledger
+  row, and `scripts/evidence-locality.py` (chained from `check-docs.sh`) fails
+  an anchored claim or a CI run id in any other document. Mutation-proven by
+  restoring the exact retired cell. Measurement conditions are deliberately not
+  claims, so the benchmark and toolchain commit references are untouched.
+  Local evidence only. Detail in [`todo.md`](todo.md); one residual recorded
+  there: the ledger row itself restates the retired figure as "historical
+  detail", which no anchor can catch.
+- **The no-process-global rule is no longer three string literals wide.** It
+  named three known offenders, so a global called anything else passed. The
+  rule that replaced it is smaller than expected because the compiler was
+  measured before the gate was designed: Swift 6 language mode already rejects
+  a bare stored `static var` as "nonisolated global shared mutable state", so
+  only the two hatches around it — `nonisolated(unsafe)` and global-actor
+  isolation — needed policing, and no stored-versus-computed heuristic was
+  written. `scripts/portable-global-state.py` chains from
+  `check-boundaries.sh` and covers two more platform-free targets than the old
+  rule did. Mutation-proven on the exact line the audit named, where the old
+  rule still passes. Backends are deliberately out of scope. Local evidence
+  only; detail and two stated boundaries in [`todo.md`](todo.md).
+- **That residual is closed too: the Swift 6 language mode is now asserted.**
+  `scripts/package-graph.py` requires it on every Swift target, not only the
+  shipped ones. Writing the check found a real defect in its own first draft,
+  and the defect was the exact false green it exists to prevent: SwiftPM
+  *appends* rather than replaces, so a target declaring the mode twice dumps
+  both values and the last wins at compile time; a first-match read passed a
+  manifest whose compiler had already reopened bare mutable globals. Verified
+  at the compiler rather than inferred. Every declared mode is now checked.
+- **Both remaining capability residuals are closed**, the second
+  (`docs/Capabilities.md` restating its own retired byte figure) by another
+  session's `a69566a`. One new residual replaces them, recorded in
+  [`todo.md`](todo.md): a ledger entry could name a script the commit did not
+  contain, which happened to these very bullets.
+- **That residual is closed as well.** `scripts/referenced-paths.py`, chained
+  from `check-docs.sh`, fails any document naming a repository path the tree
+  does not contain. It is the inverse of evidence freshness, which asks whether
+  a claim's sources moved and never whether the thing it names exists; the
+  blindness was measured rather than asserted, by reproducing the real split
+  state and watching the freshness gate exit 0 while the new one reported all
+  eleven references. Scope came from measurement too: bare filenames and
+  module-relative fragments are prose, not claims, and plans and drafts may
+  name what they propose. Local evidence only.
+- **The unenforced-policy audit's MEDIUM/LOW half was a number, not a list, so
+  it was re-derived.** A fresh pass over the ten Accepted ADRs replaced the
+  count with an inventory: two gaps closed (ADR 0012's "explicit import access
+  levels everywhere", which `package-graph.py` never checked beside the memory
+  -safety half it did; and ADR 0008's stated reason for keeping the pump policy
+  in `GamaCore`, which nothing asserted, so moving one file would have dropped
+  the pump from the Embedded proof with every gate green), and three recorded
+  open with reasons rather than checkboxes. Detail in [`todo.md`](todo.md).
+- **The freshness gate caught this session's own edit, which is the point of
+  it.** Changing `scripts/check-embedded.sh` invalidated the `Embedded core`
+  row's anchor, because the gate compares the working tree to `HEAD` rather
+  than only commit history. The row is now `unverified` and says why: a local
+  run of the changed tree passes, but an uncommitted tree cannot carry an
+  anchor, so it must be re-anchored once the change lands. No claim was
+  strengthened to keep a gate green.
 
 - Corrected `docs/Capabilities.md` 2026-09-06. Its Evidence snapshot named
   `bc2fe4d` as the current `origin/main` tip while the tip was `0d4cf12`,
@@ -268,9 +334,10 @@ accessibility derivation, deterministic performance evidence, and full public
 DocC coverage.
 
 The source of truth for what is proven is
-[`docs/Capabilities.md`](../docs/Capabilities.md). The full local driver has 13
-fail-closed gates in `scripts/check.sh`; hosted proof is the six-job "Gama
-acceptance" workflow for the exact pushed commit. Manual UI, accessibility,
+[`docs/Capabilities.md`](../docs/Capabilities.md). The full local driver has 15
+fail-closed gates in `scripts/check.sh` as of 2026-09-06 — read the `gates=(…)`
+array rather than this sentence; hosted proof is the six-job "Gama acceptance"
+workflow for the exact pushed commit. Manual UI, accessibility,
 credentialed release, physical-device, and physical-board acceptance remain
 separate evidence layers.
 

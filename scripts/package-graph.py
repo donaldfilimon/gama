@@ -13,6 +13,22 @@ lists, where a new target simply omitting them was silently conforming:
     dependency graph.
   * `Extern` is experimental and scoped to `GamaWASM`; and ADR 0012 decision 4
     bans `NonisolatedNonsendingByDefault` outright.
+  * ADR 0012's *other* half: `ExistentialAny`, `MemberImportVisibility`, and
+    `InternalImportsByDefault` on every Swift target. The record pairs strict
+    memory safety with "explicit import access levels everywhere", and only the
+    first was checked here. Both live in `Package.swift` helper arrays, so a
+    target assembling its own settings list keeps one promise and drops the
+    other with nothing to say so.
+  * Swift 6 language mode on every Swift target. Added 2026-09-06 because a
+    second gate came to depend on it: `scripts/portable-global-state.py`
+    polices only the two hatches around process-global state
+    (`nonisolated(unsafe)` and global-actor isolation) on the measured ground
+    that the language mode rejects the bare case by itself — planting
+    `static var probeCounter = 0` in `GamaPlugin` fails with "nonisolated
+    global shared mutable state". `swiftLanguageVersions` is unset
+    package-wide, so the mode is hand-attached per target exactly like the
+    settings above; dropping one target to Swift 5 would silently reopen bare
+    mutable globals there while every gate stayed green.
 
 The strict-scope exemption is derived, not listed: a target is exempt only if
 it has no Swift sources on disk. `GamaEmbedABI` and `GamaTUISignal` are C-only
@@ -35,6 +51,16 @@ BANNED_FEATURES = {"NonisolatedNonsendingByDefault"}
 # Build-time-only target kinds may reach a package product.
 MAY_USE_PRODUCTS = {"macro", "test"}
 SHIPPED_KINDS = {"regular", "macro"}
+# Swift 6 mode is the ground scripts/portable-global-state.py stands on.
+REQUIRED_LANGUAGE_MODE = "6"
+# ADR 0012 has two halves and only strict memory safety was checked. These are
+# the other half — "explicit import access levels everywhere" — and they live in
+# `strictCore`, which every Swift target takes directly or through
+# `strictLibrary`. A new target with a hand-rolled settings list would keep the
+# memory-safety promise and silently drop this one.
+REQUIRED_UPCOMING_FEATURES = frozenset(
+    {"ExistentialAny", "MemberImportVisibility", "InternalImportsByDefault"}
+)
 
 
 def settings(target: dict) -> list[tuple[str, object]]:
@@ -57,6 +83,27 @@ def promotes_strict_to_error(target: dict) -> bool:
         if payload.get("_0") == "StrictMemorySafety" and payload.get("_1") == "error":
             return True
     return False
+
+
+def swift_language_modes(target: dict) -> list[str]:
+    """Every Swift language mode the target declares, in manifest order.
+
+    A list rather than the first match, because a target can declare the
+    setting twice and the LAST one wins at compile time. Measured 2026-09-06:
+    `strictLibrary + [.swiftLanguageMode(.v5)]` on `GamaPlugin` dumps as
+    `[{"_0": "6"}, {"_0": "5"}]`, and a bare `static var probeCounter = 0`
+    then compiles with zero concurrency errors — the hatch
+    `scripts/portable-global-state.py` relies on being shut. A first-match
+    accessor read "6" off that manifest and passed, which is exactly the
+    false green this gate exists to prevent, so every declared mode is
+    checked and any non-6 fails.
+    """
+    found: list[str] = []
+    for kind, payload in settings(target):
+        if kind != "swiftLanguageMode":
+            continue
+        found.append(str(payload.get("_0")) if isinstance(payload, dict) else str(payload))
+    return found
 
 
 def features(target: dict) -> set[str]:
@@ -100,12 +147,40 @@ def check(root: Path, manifest: dict) -> list[str]:
         return ["error: dump-package returned no targets; this gate checked nothing"]
 
     shipped = 0
+    swift_targets = 0
     for target in sorted(targets, key=lambda t: t["name"]):
         name = target["name"]
         kind = target.get("type", "")
+        swift = has_swift_sources(root, target)
+
+        # Every Swift target, not only the shipped ones: the language-mode
+        # guarantee is per-module, and an executable or the test target
+        # dropping to Swift 5 reopens bare mutable globals just as quietly.
+        if swift:
+            swift_targets += 1
+            modes = swift_language_modes(target)
+            offenders = [m for m in modes if m != REQUIRED_LANGUAGE_MODE]
+            if not modes or offenders:
+                declared = ", ".join(repr(m) for m in modes) or "none"
+                failures.append(
+                    f"error: Swift target {name!r} declares language mode(s) "
+                    f"{declared}, and every one must be "
+                    f"{REQUIRED_LANGUAGE_MODE!r}; the last declaration wins at "
+                    "compile time, and scripts/portable-global-state.py "
+                    "polices only the two hatches around process-global state "
+                    "because Swift 6 mode rejects the bare case itself"
+                )
+            absent = REQUIRED_UPCOMING_FEATURES - features(target)
+            if absent:
+                failures.append(
+                    f"error: Swift target {name!r} does not enable "
+                    f"{', '.join(sorted(absent))}; ADR 0012 requires explicit "
+                    "import access levels on every Swift target, not only the "
+                    "shipped ones it also holds to strict memory safety"
+                )
 
         if kind in SHIPPED_KINDS:
-            if has_swift_sources(root, target):
+            if swift:
                 shipped += 1
                 if not has_strict_memory_safety(target):
                     failures.append(
@@ -150,6 +225,11 @@ def check(root: Path, manifest: dict) -> list[str]:
             "error: no shipped Swift target was inspected; the manifest shape "
             "changed and this gate stopped checking anything"
         )
+    if swift_targets == 0:
+        failures.append(
+            "error: no Swift target was language-mode checked; the manifest "
+            "shape changed and this gate stopped checking anything"
+        )
     return failures
 
 
@@ -176,6 +256,18 @@ def self_test() -> None:
     }
     assert not promotes_strict_to_error(warn_only), "warning must not count as error"
 
+    # Language mode: the real dump spells it {"_0": "6"}. A target that sets
+    # none, or sets 5, must be caught — those are the two shapes that would
+    # reopen bare mutable globals under scripts/portable-global-state.py.
+    assert swift_language_modes(strict) == [], "no mode declared must read as []"
+    v6 = {"kind": {"swiftLanguageMode": {"_0": "6"}}}
+    v5 = {"kind": {"swiftLanguageMode": {"_0": "5"}}}
+    assert swift_language_modes({"settings": [v6]}) == ["6"]
+    assert swift_language_modes({"settings": [v5]}) == ["5"]
+    # The measured shape of `strictLibrary + [.swiftLanguageMode(.v5)]`. A
+    # first-match accessor reads "6" here and passes while the compiler uses 5.
+    assert swift_language_modes({"settings": [v6, v5]}) == ["6", "5"]
+
     assert features({"settings": [{"kind": {"enableExperimentalFeature": {"_0": "Extern"}}}]}) == {
         "Extern"
     }
@@ -184,6 +276,52 @@ def self_test() -> None:
     ) == ["SwiftSyntaxMacros"]
     assert product_dependencies({"dependencies": [{"byName": ["GamaCore", None]}]}) == []
     assert check(Path("/nonexistent"), {"targets": []})
+
+    # End to end on a synthetic manifest, since has_swift_sources() treats an
+    # unreadable directory as "has Swift" and therefore in scope: a v6 target
+    # is clean on the language-mode rule, a v5 target is not, and a target
+    # declaring no mode at all is not either.
+    def modes_reported(mode_setting: list) -> list[str]:
+        target = {
+            "name": "Probe",
+            "type": "regular",
+            "settings": [
+                {"kind": {"strictMemorySafety": {}}},
+                {"kind": {"treatWarning": {"_0": "StrictMemorySafety", "_1": "error"}}},
+            ]
+            + mode_setting,
+        }
+        return [f for f in check(Path("/nonexistent"), {"targets": [target]})
+                if "language mode" in f]
+
+    assert modes_reported([v6]) == [], modes_reported([v6])
+    assert len(modes_reported([v5])) == 1, "Swift 5 mode must fail"
+    assert len(modes_reported([])) == 1, "an undeclared mode must fail"
+    # ADR 0012's upcoming-feature half.
+    def features_reported(names: list[str]) -> list[str]:
+        target = {
+            "name": "Probe",
+            "type": "regular",
+            "settings": [
+                {"kind": {"strictMemorySafety": {}}},
+                {"kind": {"treatWarning": {"_0": "StrictMemorySafety", "_1": "error"}}},
+                v6,
+            ]
+            + [{"kind": {"enableUpcomingFeature": {"_0": n}}} for n in names],
+        }
+        return [f for f in check(Path("/nonexistent"), {"targets": [target]})
+                if "import access levels" in f]
+
+    assert features_reported(sorted(REQUIRED_UPCOMING_FEATURES)) == []
+    assert len(features_reported([])) == 1, "no upcoming features must fail"
+    partial = features_reported(["ExistentialAny"])
+    assert len(partial) == 1 and "MemberImportVisibility" in partial[0], partial
+    assert "ExistentialAny" not in partial[0], "only the absent ones are named"
+
+    assert len(modes_reported([v6, v5])) == 1, (
+        "v6 followed by v5 is the real regression shape and must fail; the "
+        "last declaration is the one the compiler uses"
+    )
 
 
 def main() -> int:
@@ -223,7 +361,8 @@ def main() -> int:
             print(line, file=sys.stderr)
         return 1
     print(
-        "OK — strict memory safety on every shipped Swift target, zero runtime "
+        "OK — Swift 6 language mode and explicit import access levels on every "
+        "Swift target, strict memory safety on every shipped one, zero runtime "
         "package dependencies, and scoped experimental features"
     )
     return 0

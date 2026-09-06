@@ -16,6 +16,12 @@ fi
 if grep -R -n -E --include='*.swift' 'ActionRegistry|Invalidator\.shared|nonisolated\(unsafe\).*_host' "$ROOT/Sources/GamaCore" "$ROOT/Sources/GamaPlugin" "$ROOT/Sources/GamaEmbed"; then
   echo "error: process-global framework state detected" >&2; exit 1
 fi
+# The three literals above name known offenders; a global called anything else
+# passed them. Swift 6 language mode rejects nonisolated global mutable state on
+# its own, so what is left to police is the two hatches around it —
+# `nonisolated(unsafe)` and global-actor isolation — across every portable
+# target, not just the three listed here.
+python3 "$ROOT/scripts/portable-global-state.py" --self-test "$ROOT"
 # POSIX handlers must terminate at the C support boundary. A Swift handler
 # closure or Swift-owned signal storage can enter runtime initialization or
 # exclusivity machinery from asynchronous signal context.

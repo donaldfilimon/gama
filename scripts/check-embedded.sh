@@ -20,8 +20,28 @@ fi
 version="$($SWIFTC --version)"
 grep -q 'Swift version 6.5' <<<"$version" || { echo "error: exact Swift 6.5 snapshot required" >&2; exit 1; }
 grep -q 'Swift 95c5142e84b82c1' <<<"$version" || { echo "error: wrong Swift 6.5 snapshot revision" >&2; exit 1; }
+# ADR 0008 keeps the canonical pump's *policy* in GamaCore for one stated
+# reason: this gate compiles GamaCore alone, so a pump moved into GamaDraw would
+# sit outside the Embedded proof while every gate stayed green. The record says
+# so; nothing asserted it. The split is deliberate — HostPump.swift is the
+# policy and belongs here, HostPump+CellBuffer.swift is the CellBuffer half and
+# belongs in GamaDraw, which depends on GamaCore and cannot be Embedded.
+[[ -f "$ROOT/Sources/GamaCore/HostPump.swift" ]] || {
+  echo "error: Sources/GamaCore/HostPump.swift is missing; ADR 0008 keeps the pump policy in GamaCore precisely so this gate covers it" >&2
+  exit 1
+}
+if compgen -G "$ROOT/Sources/GamaDraw/HostPump.swift" >/dev/null; then
+  echo "error: the pump policy moved to GamaDraw; this gate compiles GamaCore alone, so it would no longer prove the pump" >&2
+  exit 1
+fi
 sources=()
 while IFS= read -r source; do sources+=("$source"); done < <(find "$ROOT/Sources/GamaCore" -name '*.swift' | sort)
+# The find above is what makes the check above meaningful: this gate proves
+# exactly the files under Sources/GamaCore and nothing else.
+grep -qx "$ROOT/Sources/GamaCore/HostPump.swift" < <(printf '%s\n' "${sources[@]}") || {
+  echo "error: HostPump.swift exists but was not collected into the Embedded compile" >&2
+  exit 1
+}
 OUT="${GAMA_EMBEDDED_OUTPUT:-${TMPDIR:-/tmp}/GamaCore.embedded.o}"
 LINKED="${GAMA_EMBEDDED_LINKED_OUTPUT:-${OUT%.o}.linked.o}"
 mkdir -p "$(dirname "$OUT")"
