@@ -121,10 +121,24 @@ status: done
   `GamaWASM` has no Swift accessibility path, the gate's assertion being in the
   browser driver. An `AccessibilitySerializer` would have had zero call sites,
   repeating the `AnsiPresenter` defect recorded directly above it.
-- The design is honest about its own value: it buys a named family and a
-  signature-enforced distinction, **not** runtime selection, and it costs a
-  full six-job matrix re-proof because `GamaWASM` is hosted proven. Awaiting
-  approval before implementation.
+- **Implemented 2026-09-06**, and materially changed by an independent design
+  review before it landed. Three factual errors were found and corrected. The
+  spec claimed a one-byte HTML change would break the browser marker and an
+  encoding change would break `check-c-abi.sh`; verified directly, the marker
+  reads `root.textContent` through a regex and `Examples/CEmbed/main.c` checks
+  length plus the `GAMA` magic but no draw command, so **both claims were
+  false** — the failure this repository's evidence policy exists to prevent.
+  Nothing pinned byte-identical HTML at all, so a test now does.
+- The review also showed `GamaAppleUI` belongs in the family:
+  `GamaHostView.swift:242` has the identical shape to `GamaEmbed`, and the
+  exclusion had been inherited from the phase 5 spike whose `inout`/swap
+  grounds a `borrowing` protocol does not have. Including it is what gives
+  `DrawListSerializer` more than one call site.
+- Open and stated rather than papered over: nothing in the tree is generic over
+  `CellSerializer`, so it constrains conformers, not consumers.
+- Verified locally: `check-apple` (304 tests in 55 suites), `check-wasm`,
+  `check-c-abi`, `check-boundaries`, `check-docs`, `check-doc-coverage`, all
+  exit 0. `check-wasm` is the only gate that type-checks the WASM call site.
 
 ## Evidence-first behavior-preserving refactor
 status: done
@@ -162,6 +176,24 @@ status: done
 
 ## Capability-ledger honesty
 status: in_progress
+
+- **Full row audit delivered 2026-09-06.** Every one of the seven rows that
+  named a commit was stale: the files each row's claim depends on had changed
+  since the commit it named. Five (`Scene-first core`, `Strict memory safety`,
+  `WebAssembly/browser`, `Android/JNI`, `Per-surface @Reactive`) were re-proven
+  by the later merges, so they are re-pointed to `98c150d` rather than
+  downgraded, each carrying a note saying what changed and why the old anchor
+  failed. Two carried stale *measurements* and could not simply be re-pointed:
+  the packaged-wasm row's 9,297,539-byte artifact figure is **removed**, since
+  both the bundler and the bundled source changed and no re-measurement was
+  taken; the Embedded row is re-measured at **641,464 bytes** (from 636,792),
+  and its claim that `5dbdad8` is "unpushed" is corrected — that was true when
+  written and is now false.
+- Remaining weakness, recorded rather than fixed: the rows that anchor to **no
+  commit at all** cannot be classified stale by this method, which is a weaker
+  position than the ones that were wrong. `Mac POSIX TUI` and
+  `Core/builders/layout/drawing` in particular describe code that changed
+  substantially in the same range.
 
 - Corrected `docs/Capabilities.md` 2026-09-06. Its Evidence snapshot named
   `bc2fe4d` as the current `origin/main` tip while the tip was `0d4cf12`,
