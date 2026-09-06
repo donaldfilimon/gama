@@ -129,6 +129,26 @@ No termios state on the non-TTY path is the reason this is safe in CI: there is
 no terminal to corrupt and no disposition to restore, so the rescue machinery in
 `TerminalRescue.swift` is not engaged at all.
 
+## Defect found after the phases landed
+
+Unit tests drove `StreamRenderer` directly and all passed while the shipped
+entry point hung. An out-of-repo probe calling `App.runAdaptive()` through a
+real pipe found it: a surface with no input source can never be sent a quit
+key, so a loop that ended only on quit-or-completion spun forever for an
+application that never declared a status. It rendered one frame and then
+burned CPU indefinitely.
+
+The fix adds `Renderer.waitsForInput`, defaulted `true` so no existing
+backend changes, and `false` on `StreamRenderer`. The loop now treats a
+clean iteration on an input-less backend as the end of the run. A declared
+completion is still checked first, so this never launders a failure into a
+silent success. The consequence to know: an application doing asynchronous
+work on an input-less surface must declare completion rather than rely on
+becoming dirty later, because the run ends at the first quiescent frame.
+
+The lesson is the one the repository already encodes about gates: driving a
+component directly is not evidence about the entry point that composes it.
+
 ## Testing
 
 Swift Testing only, in the single `GamaTests` target, per ADR 0003.

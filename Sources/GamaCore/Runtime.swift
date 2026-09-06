@@ -91,6 +91,20 @@ public protocol Renderer {
     /// Release whatever `begin()` acquired. `run()` invokes this from a
     /// `defer` on every exit path, discarding any error it throws.
     mutating func end() throws(Failure)
+
+    /// Whether this backend has an input source worth waiting on.
+    ///
+    /// Terminals, GUI hosts, and browsers do, so the default is `true`. A
+    /// backend that can never produce an event — a redirected stream, a
+    /// one-shot render — reports `false`, and the loop then treats a frame
+    /// it did not have to produce as the end of the run rather than waiting
+    /// forever for a key that cannot arrive.
+    var waitsForInput: Bool { get }
+}
+
+extension Renderer {
+    /// Backends have an input source unless they say otherwise.
+    public var waitsForInput: Bool { true }
 }
 
 // MARK: - App
@@ -191,7 +205,9 @@ public struct AppRuntime<A: App, R: Renderer>: ~Copyable {
                 lastObservedRendererSize = renderer.size
                 pump.handle(.resize(renderer.size))
             }
+            var producedFrame = false
             if let advanced = pump.advance() {
+                producedFrame = true
                 try renderer.present(advanced.frame)
                 if advanced.followUp {
                     // A follow-up frame stays ahead of any blocking wait, but
@@ -204,6 +220,13 @@ public struct AppRuntime<A: App, R: Renderer>: ~Copyable {
             // dirty still reaches the renderer; a run that finishes must
             // still show its final state.
             if pump.completion != nil { break }
+            // A backend with no input source cannot ever be sent a quit key,
+            // so once it goes clean nothing can change and waiting is a hang
+            // rather than idling. A declared completion still takes
+            // precedence above, so this never launders a failure into a
+            // silent success; an application doing asynchronous work must
+            // declare completion rather than rely on staying dirty.
+            if !renderer.waitsForInput && !producedFrame { break }
             if let event = try renderer.nextEvent(timeoutMillis: inputTimeoutMillis) {
                 if case .resize(let size) = event, renderer.size == size {
                     // Avoid presenting the same resize twice when a renderer

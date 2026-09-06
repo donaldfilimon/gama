@@ -86,6 +86,42 @@ struct AdaptiveSurfaceTests {
         #expect(sink.lines.contains("step 1/3"))
     }
 
+    /// A surface with no input source cannot receive a quit key, so a loop
+    /// that only ended on quit-or-completion spun forever for an application
+    /// that never declared one. Found by an end-to-end probe, not by a unit
+    /// test driving the renderer directly.
+    @Test("A run with no input and no completion still terminates")
+    func inputlessRunTerminates() throws {
+        let sink = RecordingSink()
+        var runtime = try AppRuntime(
+            app: SilentApp(),
+            renderer: StreamRenderer(sink: sink),
+            frameTimeoutMillis: 0
+        )
+        // Would not return before this change.
+        try runtime.run()
+        let completion = runtime.completion
+        #expect(completion == nil)
+        #expect(sink.lines.isEmpty == false)
+    }
+
+    @Test("An input-less renderer declares that it does not wait")
+    func streamRendererDoesNotWait() {
+        let renderer = StreamRenderer(sink: RecordingSink())
+        #expect(renderer.waitsForInput == false)
+    }
+
+    @Test("A terminal renderer still waits for input")
+    func terminalRendererWaits() {
+        #expect(TUIRenderer().waitsForInput)
+    }
+
+    private struct SilentApp: App {
+        var scenes: some Scene {
+            Window("Main", id: "main", role: .primary) { Text("one frame") }
+        }
+    }
+
     // MARK: Completion exits the loop
 
     @Test("Completion ends the run and the final frame is presented")

@@ -38,9 +38,18 @@ status: in_progress
 - Phases 1-3 implemented and locally verified 2026-09-06: `CompletionStatus`
   and the completion signal in `GamaCore`, `CellPresenter` plus
   `AnsiPresenter`/`StreamPresenter` in `GamaDraw`, and `SurfaceMode`,
-  `StreamRenderer`, and `App.runAdaptive()` in `GamaTUI`. An unmodified
-  application now renders a live TUI on a terminal and emits plain changed
-  rows when redirected, ending on a declared completion status. 20 new Swift
+  `StreamRenderer`, and `App.runAdaptive()` in `GamaTUI`. An application that
+  adopts `runAdaptive()` renders a live TUI on a terminal and emits plain
+  changed rows when redirected, ending on a declared completion status. Its
+  stream layout is fixed at 80 columns, so a line wider than that wraps
+  through `CellPainter`; honoring `COLUMNS` belongs to phase 4.
+- An end-to-end probe outside the repository caught a hang the unit tests
+  could not: an input-less surface with no declared completion never
+  terminated. Fixed with `Renderer.waitsForInput` (defaulted `true`, so no
+  existing backend changes). Verified at the process boundary: piped, the
+  probe now exits `0` with its content on stdout; with a declared failure it
+  exits `3` and puts the message on stderr; under a pty it selects
+  `TUIRenderer` and emits cursor-positioning ANSI. 20 new Swift
   Testing cases in 3 suites; the suite is 291 in 53. Local only: no hosted
   matrix has run against this work, so no ledger row may be promoted.
 - The phase 5 spike ran and rescoped that phase. One `CellBuffer`-rooted

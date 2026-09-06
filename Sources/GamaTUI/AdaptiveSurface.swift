@@ -89,7 +89,11 @@ public final class StandardOutputSink: StreamSink {
                     return unsafe Android.write(
                         STDOUT_FILENO, base.advanced(by: offset), buffer.count - offset)
                 #else
-                    return buffer.count - offset
+                    // Windows has no write(2) here. Report zero rather than
+                    // the byte count: claiming a successful write that never
+                    // happened is worse than the guard below bailing out.
+                    // The Windows console row is Blocked regardless.
+                    return 0
                 #endif
             }
             if written < 0, errno == EINTR { continue }
@@ -144,6 +148,10 @@ public struct StreamRenderer: Renderer {
         CellPainter.paint(root, into: &buffer)
         for line in presenter.present(&buffer) { sink.write(line) }
     }
+
+    /// A redirected run has no input source, so the loop ends when this
+    /// renderer goes clean instead of waiting for a key that cannot arrive.
+    public var waitsForInput: Bool { false }
 
     /// Always `nil`: a redirected run takes no input, so the loop never
     /// waits on a keyboard that is not there.
@@ -228,7 +236,9 @@ func writeStandardError(_ message: String) {
                 return unsafe Android.write(
                     STDERR_FILENO, base.advanced(by: offset), buffer.count - offset)
             #else
-                return buffer.count - offset
+                // See StandardOutputSink.write: report zero, never a
+                // successful write that did not happen.
+                return 0
             #endif
         }
         if written < 0, errno == EINTR { continue }
