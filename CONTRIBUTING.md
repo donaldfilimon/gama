@@ -16,7 +16,7 @@ Details and traps (iCloud checkout, Windows exception): `docs/Toolchain.md`.
 
 ## Gate reference
 
-`./scripts/check.sh` runs the full local acceptance matrix — thirteen gates,
+`./scripts/check.sh` runs the full local acceptance matrix — fourteen gates,
 sequential, fail-closed. Do not weaken or skip a gate to make it green.
 
 | Gate | Proves | Hosted CI job / step |
@@ -34,6 +34,7 @@ sequential, fail-closed. Do not weaken or skip a gate to make it green.
 | `check-mlir.sh` | Emitted dialect parses under `mlir-opt --allow-unregistered-dialect` | macOS — "MLIR parse" |
 | `check-docs.sh` | Relative Markdown links pass; run-gama mirrors, paths, modes, and failure cleanup agree; DocC builds with zero warnings; Capabilities ledger present with its status legend | macOS — "Source boundaries and documentation" |
 | `check-doc-coverage.sh` | Every public declaration has a symbol-graph doc comment, excluding only justified allowlist entries | macOS — "Source boundaries and documentation" |
+| `check-evidence-freshness.sh` | Every `docs/Capabilities.md` row carries an evidence annotation, and no row's anchor commit predates a change to the paths it depends on | macOS — "Source boundaries and documentation" |
 
 The Linux job additionally runs the native test suite under Address and
 Thread Sanitizer; the Windows job runs the console smoke on Swift 6.4.x (the

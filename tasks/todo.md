@@ -273,6 +273,38 @@ Open questions blocking implementation:
       the gap is not later "fixed" by a gate that is green by construction.
       Windows proof stays the CI job, and the capability row must keep saying so.
 
+- [x] **Two live policy violations fixed 2026-09-06, both mine.**
+      (1) `docs/Capabilities.md` asserted "no randomized or fuzz codec test
+      exists anywhere under `Tests/`" and deleted the word "randomized" from
+      the DrawList/C ABI row on that basis. The claim was **false**:
+      `Tests/gamaTests/ModernTests.swift:101` is
+      `@Test("deterministic randomized frames round-trip")`, 256 LCG-driven
+      frames through encode/decode. I had grepped three files and none of them
+      was `ModernTests.swift`, then stated a universal. The word is restored
+      and the correction recorded in the row. No hostile-input *fuzzer* exists,
+      which is a different and unclaimed thing.
+      (2) `AGENTS.md`, `CONTRIBUTING.md`, and `docs/Verification.md` all said
+      thirteen gates while `scripts/check.sh` ran fourteen — I added the
+      fourteenth and updated none of them. All three now say fourteen and both
+      tables carry the new row.
+- [ ] **Unenforced-policy backlog, from a full audit of ADRs, AGENTS.md,
+      CONTRIBUTING.md and docs (15 gaps: 6 HIGH, 6 MEDIUM, 3 LOW).** The
+      highest-leverage single fix is a `swift package dump-package` assertion
+      gate, which would close three at once (H3 `strictLibrary` is hand-attached
+      per target so a new shipped library escapes ADR 0012 silently; H6(b)
+      nothing stops a shipped library gaining a package dependency, breaking the
+      zero-runtime-dependency guarantee; L1 `Extern` scoping and the
+      `NonisolatedNonsendingByDefault` ban are prose only) using output
+      `check-docs.sh` already generates. Others worth naming: **H4** ADR 0009
+      cites "the Embedded size gate not regressing" as evidence and **no size
+      gate exists** — `check-embedded.sh` prints the byte count and asserts
+      nothing; **H2** ADR 0006's `~Copyable` on `FrameHost`/`AppRuntime` has no
+      pin, so deleting `: ~Copyable` would pass every gate; **H1** the
+      no-process-global rule is three string literals wide, so a
+      `nonisolated(unsafe) static var` in `GamaPlugin` passes; **H5** the
+      evidence policy is enforced in one file, and `docs/Packaging.md:48` still
+      carries the 9,297,539-byte figure the ledger removed as stale.
+
 ## Manual and credential-gated acceptance
 
 - [ ] Exercise the AppKit accessibility adapter with VoiceOver and the UIKit
