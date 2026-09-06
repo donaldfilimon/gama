@@ -9,7 +9,8 @@
 
 - Run `unset TOOLCHAINS` before Swift commands. Use `swiftly run swift ...`; `.swift-version` pins `main-snapshot-2026-08-21` (Swift 6.5-dev).
 - `Package.swift` deliberately stays `swift-tools-version: 6.4` so Xcode's SwiftPM can resolve platform gates. `check-boundaries.sh` enforces this; do not upgrade it with the compiler.
-- `Toolchains.toml` is the pin authority. `scripts/check-toolchain-pins.sh`, chained from the boundary gate, rejects drift in compiler/SDK revisions, URLs, and checksums.
+- `Toolchains.toml` is the pin authority. `scripts/check-toolchain-pins.sh`, chained from the boundary gate, rejects drift in compiler/SDK revisions, URLs, and checksums; it also discovers every `GAMA_TOOLCHAIN_ID` default rather than listing scripts, and fails on any checked-in home-directory path under `scripts/`.
+- Scripts derive the pinned snapshot's location from `Toolchains.toml` through `scripts/lib/toolchain.sh`. Do not write an absolute toolchain path into a script; override with `GAMA_SWIFT_64` / `GAMA_SWIFTC_64` / `GAMA_EMBEDDED_TOOLCHAIN` instead.
 - This checkout is iCloud/FileProvider-managed. Direct tests must use a scratch path outside the repository:
 
 ```bash

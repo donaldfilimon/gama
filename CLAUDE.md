@@ -21,8 +21,14 @@ package (the xcodebuild platform gates depend on that) — the 6.5-dev identity
 lives in the compiler pin, not the manifest grammar. `check-boundaries.sh`
 enforces the 6.4 tools-version line, so do not "upgrade" it.
 
-Always `unset TOOLCHAINS` first — a stray value overrides both the swiftly
-shim and the scripts' explicit `xcrun --toolchain` pins.
+Always `unset TOOLCHAINS` first. **Measured 2026-09-06, narrower than this
+file previously claimed:** a stray value overrides a *bare* `xcrun swift`
+(6.4 becomes the snapshot, or the reverse), but it did **not** override an
+explicit `xcrun --toolchain <id>`, and it did not override the `swiftly` shim.
+Every check script passes the flag explicitly, so none of them is vulnerable
+today; `unset TOOLCHAINS` remains correct for hand-typed commands and is cheap
+insurance if a script ever drops the flag. Do not cite the old, broader claim
+as a reason to change a script.
 
 **Preferred everyday invocation: `swiftly run`.** From the repo root,
 `swiftly run swift <build|run|test|…>` reads `.swift-version` and selects the
@@ -140,7 +146,18 @@ equivalent explicit form the scripts use.)
 scratch from `GAMA_SCRATCH_ROOT` → `RUNNER_TEMP` → `TMPDIR` → `/tmp`; a bare
 `SCRATCH_ROOT` is silently ignored and the run lands in the shared default.
 `check-apple.sh` reads its own `GAMA_APPLE_SCRATCH_PATH`; see the other
-`GAMA_*_SCRATCH_PATH` / `GAMA_*_OUTPUT` names in the scripts. Two caveats:
+`GAMA_*_SCRATCH_PATH` / `GAMA_*_OUTPUT` names in the scripts.
+
+**Toolchain paths are derived, never written down.** `scripts/lib/toolchain.sh`
+resolves the pinned snapshot from `Toolchains.toml`'s `[snapshot].xctoolchain`
+under `$HOME`, and `check-wasm.sh`, `check-linux.sh`, `check-android.sh`,
+`check-embedded.sh`, and `bundle-web.sh` source it. `check-toolchain-pins.sh`
+now **fails on any checked-in `/Users/<name>/` or `/home/<name>/` path under
+`scripts/`**, because those five previously defaulted to one developer's home
+directory: correct on exactly one machine, silently wrong everywhere else,
+inside gates meant to fail closed. CI never reached them, since
+`ci-install-swift-snapshot.sh` exports `GAMA_SWIFT_64`, which is why only a
+second developer would have found them. Two caveats:
 `swiftc` aborts with `couldNotFindTmpDir` if the `TMPDIR` you pass does not
 exist, so `mkdir -p` it first; and **`check-mlir.sh` hardcodes
 `/private/tmp/gama-framework-swiftpm` with no override — the same path the

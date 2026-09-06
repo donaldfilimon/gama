@@ -131,8 +131,14 @@ must_contain "$ROOT/scripts/check-embedded.sh" \
   "Swift $swift_revision" "Swift 6.5-dev revision grep"
 must_contain "$ROOT/scripts/check-embedded.sh" \
   "$swiftc_sha256" "macOS swiftc SHA-256 default"
-must_contain "$ROOT/scripts/check-embedded.sh" \
-  "$xctoolchain" "embedded toolchain directory default"
+# The snapshot directory name is no longer written into any script: they
+# derive it from [snapshot].xctoolchain through scripts/lib/toolchain.sh, so
+# the assertion is that they still go through that lib rather than that they
+# repeat the literal.
+for script in check-embedded.sh check-wasm.sh check-linux.sh check-android.sh bundle-web.sh; do
+  must_contain "$ROOT/scripts/$script" \
+    "lib/toolchain.sh" "shared toolchain resolution"
+done
 for script in bundle-macos.sh bundle-web.sh; do
   must_contain "$ROOT/scripts/$script" \
     "Swift $swift_revision" "packaging Swift 6.5-dev revision grep"
@@ -172,8 +178,17 @@ must_contain "$ROOT/scripts/check-wasm.sh" "$wasm_sdk_id" "WASM SDK id default"
 must_contain "$ROOT/scripts/check-linux.sh" "$linux_sdk_id" "static Linux SDK id default"
 must_contain "$ROOT/scripts/check-android.sh" "$android_sdk_id" "Android SDK id default"
 
-for script in check-wasm.sh check-linux.sh check-android.sh; do
-  must_contain "$ROOT/scripts/$script" "$xctoolchain" "local snapshot toolchain path default"
-done
+# A checked-in absolute home directory is correct on exactly one machine and
+# silently wrong on every other, inside gates that are supposed to fail
+# closed. CI never reached the ones this replaced, because
+# ci-install-swift-snapshot.sh exports GAMA_SWIFT_64, which is precisely why
+# they survived unnoticed: only a second developer would have found them.
+# The pattern requires a real path segment after the prefix, so prose such as
+# /Users/<name> in a comment is not a match.
+while IFS= read -r found; do
+  echo "error: checked-in home-directory path under scripts/: $found" >&2
+  echo "  derive it from Toolchains.toml via scripts/lib/toolchain.sh instead" >&2
+  exit 1
+done < <(grep -rhoE '/(Users|home)/[A-Za-z0-9_.-]+/' "$ROOT"/scripts | sort -u)
 
 echo "OK — Toolchains.toml pins match CI, check scripts, and .swift-version"
