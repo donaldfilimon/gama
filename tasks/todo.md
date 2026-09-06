@@ -130,11 +130,20 @@ Candidates, in order:
 
 Open questions blocking implementation:
 
-- [ ] Should any refactor start while ten commits of adaptive-terminal work sit
-      unpushed and unreviewed in the shared checkout?
-- [ ] If the remaining `scripts/` duplication is cosmetic now that #82 guards
-      it, is the correct outcome "no slice", and if so which candidate replaces
-      it?
+- [x] **Should any refactor start while the adaptive-terminal work sits
+      unpushed and unreviewed in the shared checkout?** Answered by events
+      2026-09-06 rather than by argument: a peer session pushed that line to
+      `origin/feat/adaptive-terminal-surface` and opened **PR #83**, which
+      carries the refactor slice `dc7e847` and both ledger commits along with
+      it. The refactor did not need to wait, and it did not end up as the
+      standalone PR against `0d4cf12` that the handoff report proposed — it is
+      bundled into #83. Recorded because the report said otherwise.
+- [x] **Is the correct outcome for the remaining `scripts/` duplication "no
+      slice"?** Yes. `SCRATCH_ROOT` fallback and Swift-version repetition
+      stayed untouched: with #82 and the home-path sweep in place neither can
+      go stale silently, and no defect was demonstrated for either. No
+      candidate replaces it; candidates 3-5 remain not recommended for the
+      same reason.
 
 ## Manual and credential-gated acceptance
 
