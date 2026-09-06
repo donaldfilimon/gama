@@ -27,7 +27,11 @@ status: in_progress
   against proposal titles. No source migration is warranted now: `@_extern`
   has no unprefixed form, and the one available migration is a versioned-ABI
   change recorded under deferred scope in [`todo.md`](todo.md).
-- Hosted proven at `0d4cf12`. The gate change went out as PR #82, cherry-picked
+- Hosted proven at `0d4cf12`, re-verified from run state 2026-09-06: run
+  `34049182287` completed with all six required jobs green. When this line was
+  first written that run was still `in_progress`, so the claim ran ahead of its
+  evidence by a few minutes — check `gh run view`, never a watcher's exit code.
+  The gate change went out as PR #82, cherry-picked
   onto `origin/main` so it could be reviewed apart from PR #81, and all six
   required acceptance jobs passed on the updated head. The hole it closes was
   independently reproduced by mutation: with a stale id planted in
@@ -35,7 +39,15 @@ status: in_progress
   current one exits 1 and names the file.
 
 ## Adaptive terminal surface
-status: in_progress
+status: done
+
+- **Hosted proven 2026-09-06.** PR #83 merged as `98c150d` with all six
+  required acceptance jobs green at its head `3f180f1`, whose tree is
+  byte-identical to the merge commit's — so the evidence covers the exact
+  integrated tree rather than only the branch. Phases 1-4 are shipped and
+  proven; phase 5 is closed unbuilt with a designed successor that is not
+  implemented, recorded below and in its own spec. Closing this goal does not
+  claim `CellSerializer`.
 
 - Phases 1-3 implemented and locally verified 2026-09-06: `CompletionStatus`
   and the completion signal in `GamaCore`, `CellPresenter` plus
@@ -94,9 +106,47 @@ status: in_progress
   carry hosted rows.
 - `AnsiPresenter` had no production call site when it shipped, which made the
   protocol a claim rather than a seam. `TUIRenderer` now presents through it.
+- Phase 5's successor is designed but **not implemented**, spec at
+  [`2026-09-06-cell-serializer-design.md`](../docs/superpowers/specs/2026-09-06-cell-serializer-design.md):
+  a non-mutating `CellSerializer` (`func serialize(_ buffer: borrowing
+  CellBuffer) -> Output`) naming the wholesale family, with two conformances,
+  `DrawListSerializer` and `HTMLSerializer`. Grounded by re-reading the code
+  rather than the earlier notes: neither `GamaWASM` nor `GamaEmbed` ever swaps
+  or calls `presentDiff`, and `advance(into:emit:)` hands them a **borrow**, so
+  no `inout` access can be formed — the two reasons `CellPresenter` cannot span
+  them are one fact stated twice.
+- A third conformance was proposed and withdrawn before anything was built.
+  `AccessibilitySnapshot`'s only production consumer is `GamaAppleUI`, deriving
+  it from a retained view's `currentDrawList`, not from a borrowed buffer; and
+  `GamaWASM` has no Swift accessibility path, the gate's assertion being in the
+  browser driver. An `AccessibilitySerializer` would have had zero call sites,
+  repeating the `AnsiPresenter` defect recorded directly above it.
+- **Implemented 2026-09-06**, and materially changed by an independent design
+  review before it landed. Three factual errors were found and corrected. The
+  spec claimed a one-byte HTML change would break the browser marker and an
+  encoding change would break `check-c-abi.sh`; verified directly, the marker
+  reads `root.textContent` through a regex and `Examples/CEmbed/main.c` checks
+  length plus the `GAMA` magic but no draw command, so **both claims were
+  false** — the failure this repository's evidence policy exists to prevent.
+  Nothing pinned byte-identical HTML at all, so a test now does.
+- The review also showed `GamaAppleUI` belongs in the family:
+  `GamaHostView.swift:242` has the identical shape to `GamaEmbed`, and the
+  exclusion had been inherited from the phase 5 spike whose `inout`/swap
+  grounds a `borrowing` protocol does not have. Including it is what gives
+  `DrawListSerializer` more than one call site.
+- Open and stated rather than papered over: nothing in the tree is generic over
+  `CellSerializer`, so it constrains conformers, not consumers.
+- Verified locally: `check-apple` (304 tests in 55 suites), `check-wasm`,
+  `check-c-abi`, `check-boundaries`, `check-docs`, `check-doc-coverage`, all
+  exit 0. `check-wasm` is the only gate that type-checks the WASM call site.
 
 ## Evidence-first behavior-preserving refactor
-status: in_progress
+status: done
+
+- **Hosted proven 2026-09-06.** The slice `dc7e847` and both ledger commits
+  are ancestors of `98c150d`, integrated through PR #83 rather than the
+  standalone PR the handoff report proposed. All six required jobs green.
+  Candidates 3-5 stay not recommended and are deliberately not delivered.
 
 - Audit delivered 2026-09-06 against `origin/main` `0d4cf12`, ten commits past
   the brief's `bc2fe4d` reference snapshot. Module map, five candidates, and a
@@ -123,6 +173,45 @@ status: in_progress
   `Terminal.swift` platform split) remain **not recommended**: each is a file
   split with no demonstrated defect, and candidate 3 carries the highest risk
   against hosted-proven AppKit for a presentational benefit.
+
+## Capability-ledger honesty
+status: in_progress
+
+- **Full row audit delivered 2026-09-06.** Every one of the seven rows that
+  named a commit was stale: the files each row's claim depends on had changed
+  since the commit it named. Five (`Scene-first core`, `Strict memory safety`,
+  `WebAssembly/browser`, `Android/JNI`, `Per-surface @Reactive`) were re-proven
+  by the later merges, so they are re-pointed to `98c150d` rather than
+  downgraded, each carrying a note saying what changed and why the old anchor
+  failed. Two carried stale *measurements* and could not simply be re-pointed:
+  the packaged-wasm row's 9,297,539-byte artifact figure is **removed**, since
+  both the bundler and the bundled source changed and no re-measurement was
+  taken; the Embedded row is re-measured at **641,464 bytes** (from 636,792),
+  and its claim that `5dbdad8` is "unpushed" is corrected — that was true when
+  written and is now false.
+- Remaining weakness, recorded rather than fixed: the rows that anchor to **no
+  commit at all** cannot be classified stale by this method, which is a weaker
+  position than the ones that were wrong. `Mac POSIX TUI` and
+  `Core/builders/layout/drawing` in particular describe code that changed
+  substantially in the same range.
+
+- Corrected `docs/Capabilities.md` 2026-09-06. Its Evidence snapshot named
+  `bc2fe4d` as the current `origin/main` tip while the tip was `0d4cf12`,
+  thirteen commits later, and the per-surface `@Reactive` row still attached
+  its hosted claim to `77812d99` while describing four behavior changes made
+  after that merge. Both are now stated against the commits that actually
+  carry the evidence: the snapshot names run `34049182287` at `0d4cf12`, and
+  the row names run `34048029135` at `7d6e2fb`, whose six required jobs were
+  green first-attempt and which contains all four changed commits. The row's
+  "locally proven at unpushed `5dbdad8`" caveat is removed because it is no
+  longer true.
+- The recorded suite size was wrong in two places and both were low: the row
+  said 266 tests in 49 suites and the ledger said 269. Measured, it is **299
+  in 54**. Local gates re-run for this slice: `check-apple.sh`,
+  `check-docs.sh`, `check-doc-coverage.sh`, all exit 0.
+- Open: the remaining rows still keyed to `77812d99` have not been audited one
+  by one against `0d4cf12`; this slice corrected the two demonstrably stale
+  claims, not the whole table.
 
 ## Delivered foundation
 

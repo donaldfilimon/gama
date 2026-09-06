@@ -12,18 +12,31 @@ require all six hosted acceptance jobs before integration, and verify the
 integrated `main` commit. A successful baseline run does not prove later
 changes, and local verification does not replace hosted proof.
 
-- [ ] **`docs/Capabilities.md` overstates the per-surface `@Reactive` row.** It
-      reads "Hosted proven 2026-09-04 at merge commit `77812d99` ... 266 tests
-      in 49 suites are green". Commits after that merge changed the behavior
-      the row describes: `ReactiveSlot._bind` now clears `bound` when there is
-      no store, `FrameHost.pump` was refactored onto a shared `buildFrame`,
-      the documented meaning of `transientStateIDs` was narrowed, and
-      `GamaWebDemo` dropped `GamaMacros` for direct `ReactiveSlot` binding.
-      The suite is 269, not 266. By this ledger's own rule the hosted-proven
-      claim attaches to `77812d99` only; it does not carry to the unpushed
-      commits, and the row should say so until a hosted run covers them.
+- [x] **`docs/Capabilities.md` overstated the per-surface `@Reactive` row —
+      resolved 2026-09-06, in the opposite direction from this entry's own
+      premise.** The four post-`77812d99` behavior changes it names
+      (`ReactiveSlot._bind` clearing `bound` with no store, `FrameHost.pump`
+      on a shared `buildFrame`, the narrowed `transientStateIDs` meaning,
+      `GamaWebDemo` off `GamaMacros`) were still unpushed when this was
+      written. They are not any more: `5dbdad8`, `8afa994`, `90f2f99`, and
+      `befc7e3` are all ancestors of `7d6e2fb` (PR #81), whose six required
+      jobs passed first-attempt as run `34048029135`. The row now attaches to
+      `7d6e2fb` instead of `77812d99`, and the sentences calling the changed
+      form locally proven at an unpushed `5dbdad8` are gone.
+      Two further corrections came out of checking run state rather than
+      trusting the file: the **Evidence snapshot named `bc2fe4d` as the
+      current `origin/main` tip**, thirteen commits stale — it is `0d4cf12`,
+      whose run `34049182287` finished six-for-six during this slice — and the
+      suite is **299 tests in 54 suites**, not the 266 the row claimed nor the
+      269 this entry claimed. Verified locally: `check-apple.sh`,
+      `check-docs.sh`, and `check-doc-coverage.sh` all exit 0.
 
-- [ ] **Local verification of the unpushed line.** At `5dbdad8`, eleven of the
+- [x] **Superseded by hosted proof 2026-09-06 — this line is no longer
+      unpushed.** PR #83 merged as `98c150d`; its head `3f180f1` passed all six
+      required acceptance jobs, and `98c150d^{tree}` is byte-identical to
+      `3f180f1^{tree}`, so the hosted evidence covers this exact tree. The
+      local record below stands as the pre-push evidence it was.
+      **Local verification of the unpushed line.** At `5dbdad8`, eleven of the
       thirteen `scripts/check.sh` gates ran in an isolated `/private/tmp`
       worktree and all passed: `check-apple.sh` (271 tests in 50 suites),
       `check-apple-platforms.sh`, `check-boundaries.sh`,
@@ -50,7 +63,9 @@ changes, and local verification does not replace hosted proof.
       The row's changed-WASM-form caveat is now discharged locally and still
       open hosted.
 
-- [ ] **Local verification of the adaptive terminal surface.** At `1e2b688`,
+- [x] **Superseded by hosted proof 2026-09-06.** Same merge, same tree
+      identity: the adaptive terminal surface is hosted proven at `98c150d`.
+      **Local verification of the adaptive terminal surface.** At `1e2b688`,
       eleven of the thirteen `scripts/check.sh` gates ran in the main checkout
       and all passed: `check-apple.sh` (299 tests in 54 suites),
       `check-apple-platforms.sh`, `check-boundaries.sh`,
@@ -122,11 +137,33 @@ Candidates, in order:
 
 Open questions blocking implementation:
 
-- [ ] Should any refactor start while ten commits of adaptive-terminal work sit
-      unpushed and unreviewed in the shared checkout?
-- [ ] If the remaining `scripts/` duplication is cosmetic now that #82 guards
-      it, is the correct outcome "no slice", and if so which candidate replaces
-      it?
+- [x] **Should any refactor start while the adaptive-terminal work sits
+      unpushed and unreviewed in the shared checkout?** Answered by events
+      2026-09-06 rather than by argument: a peer session pushed that line to
+      `origin/feat/adaptive-terminal-surface` and opened **PR #83**, which
+      carries the refactor slice `dc7e847` and both ledger commits along with
+      it. The refactor did not need to wait, and it did not end up as the
+      standalone PR against `0d4cf12` that the handoff report proposed — it is
+      bundled into #83. Recorded because the report said otherwise.
+- [x] **Is the correct outcome for the remaining `scripts/` duplication "no
+      slice"?** Yes. `SCRATCH_ROOT` fallback and Swift-version repetition
+      stayed untouched: with #82 and the home-path sweep in place neither can
+      go stale silently, and no defect was demonstrated for either. No
+      candidate replaces it; candidates 3-5 remain not recommended for the
+      same reason.
+
+- [ ] **PR #85 carries the uncorrected `CellSerializer` spec, and the fix is
+      unpushed.** Its head `cf0c369` has the code but not `eeb2426` /
+      `0f498d5`, so merging it as-is lands a spec asserting that a one-byte
+      HTML change breaks the WASM browser marker and that an encoding change
+      breaks `check-c-abi.sh`. Both were verified false: the marker reads
+      `root.textContent` through a regex (`WebHost/gama.js:174-196`), and
+      `Examples/CEmbed/main.c:8` checks length plus the `GAMA` magic but no
+      draw command. It also lacks the `GamaAppleUI` third conformance and the
+      exact-string HTML test. Peers `gama-13` and `abbey-bot-94` were notified
+      2026-09-06 15:5x; no reply yet. **Publishing needs the user's
+      authorization, which has not been given, so this is recorded rather than
+      resolved.**
 
 ## Manual and credential-gated acceptance
 

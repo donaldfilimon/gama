@@ -12,6 +12,11 @@ private protocol AnyEmbedHost: AnyObject {
 private final class EmbedHostBox<A: App>: AnyEmbedHost {
     var pump: HostPump
     var buffer: CellBuffer
+    /// This backend derives a `DrawList` from the painted grid and never
+    /// swaps the buffer's planes, so it holds a `CellSerializer` rather
+    /// than a `CellPresenter`. The serializer is stateless; it is stored
+    /// to name the family, not to carry frame state.
+    let serializer = DrawListSerializer()
 
     init(app: A, size: Size) throws(SceneConfigurationError) {
         pump = HostPump(host: try FrameHost(app: app), size: size)
@@ -31,7 +36,7 @@ private final class EmbedHostBox<A: App>: AnyEmbedHost {
     func frame() -> [UInt8]? {
         var encoded: [UInt8]?
         _ = pump.advance(into: &buffer) { painted in
-            encoded = DrawList.from(painted).encode()
+            encoded = serializer.serialize(painted).encode()
         }
         return encoded
     }

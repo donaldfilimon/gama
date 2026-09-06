@@ -47,6 +47,9 @@ private protocol AnyWASMHost: AnyObject {
 private final class WASMHostBox<A: App>: AnyWASMHost {
     var pump: HostPump
     var buffer: CellBuffer
+    /// This backend reads the painted back plane whole and never swaps
+    /// it, so it holds a `CellSerializer`, not a `CellPresenter`.
+    let serializer = HTMLSerializer()
 
     init(app: A, size: Size) throws(SceneConfigurationError) {
         self.pump = HostPump(host: try FrameHost(app: app), size: size)
@@ -67,7 +70,7 @@ private final class WASMHostBox<A: App>: AnyWASMHost {
         // host is still dirty, and every backend now honors it the same
         // way. Here that means one more rAF.
         let outcome = pump.advance(into: &buffer) { painted in
-            let html = HTMLSerializer.grid(from: painted)
+            let html = serializer.serialize(painted)
             let bytes = Array(html.utf8)
             bytes.withUnsafeBufferPointer { buf in
                 unsafe gama_js_setHTML(buf.baseAddress, Int32(buf.count))
@@ -215,7 +218,19 @@ nonisolated func gama_web_v2_resize(_ cols: Int32, _ rows: Int32) -> Int32 {
 // Deliberately outside `#if arch(wasm32)`: pure String code with no wasm
 // dependency, so it compiles — and is unit-tested — on every host platform.
 
-enum HTMLSerializer {
+struct HTMLSerializer: CellSerializer {
+    /// Derives this backend's DOM text from the painted grid.
+    ///
+    /// Forwards to ``grid(from:)`` rather than absorbing it: the three
+    /// members stay `static` so the unqualified `css(for:)` and
+    /// `escape(_:)` calls inside `grid` keep resolving statically, and so
+    /// the existing direct-call tests keep exercising them. The instance
+    /// method exists only to satisfy ``CellSerializer``, which requires
+    /// one; this backend never swaps the buffer's planes.
+    func serialize(_ buffer: borrowing CellBuffer) -> String {
+        Self.grid(from: buffer)
+    }
+
     /// One <pre> line per row; runs of identical style collapse into one
     /// <span style="..."> — same run-merging the DrawList uses.
     static func grid(from buffer: CellBuffer) -> String {

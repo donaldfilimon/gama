@@ -71,6 +71,13 @@ public final class GamaHostView: GamaPlatformView {
     // reads, so the snapshot is computed lazily, cached until the next
     // frame, and the change notification is armed only after a client has
     // actually queried the view.
+    /// This host derives a `DrawList` from the borrowed painted grid and
+    /// never swaps the buffer's planes, exactly as `GamaEmbed` does, so it
+    /// holds a `CellSerializer`. It was excluded from the earlier
+    /// `CellPresenter` spike for reasons — an `inout` access and a swap
+    /// contract — that a `borrowing`, non-mutating protocol does not have.
+    let drawListSerializer = DrawListSerializer()
+
     var accessibilityCacheIsStale = true
     var cachedAccessibilitySnapshot: AccessibilitySnapshot?
     var cachedAccessibilityElements: [GamaAccessibilityLineElement]?
@@ -232,7 +239,7 @@ public final class GamaHostView: GamaPlatformView {
             let grid = self.gridSize()
             if grid != session.pump.size { session.pump.handle(.resize(grid)) }
             let outcome = session.pump.advance(into: &session.buffer) { painted in
-                self.currentDrawList = DrawList.from(painted)
+                self.currentDrawList = self.drawListSerializer.serialize(painted)
             }
             guard outcome.produced else { return }
             self.setNeedsDisplayCompat()
