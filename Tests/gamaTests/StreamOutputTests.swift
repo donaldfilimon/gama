@@ -37,7 +37,7 @@ struct StreamOutputTests {
 
     @Test("Emitting marks the host dirty so the line reaches a frame")
     func emittingMarksDirty() throws {
-        let host = try FrameHost(app: PlainApp())
+        var host = try FrameHost(app: PlainApp())
         _ = host.pump(size: Size(width: 20, height: 3))
         let clean = host.needsFrame
         #expect(clean == false)
