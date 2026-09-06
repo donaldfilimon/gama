@@ -98,6 +98,25 @@ status: in_progress
   carry hosted rows.
 - `AnsiPresenter` had no production call site when it shipped, which made the
   protocol a claim rather than a seam. `TUIRenderer` now presents through it.
+- Phase 5's successor is designed but **not implemented**, spec at
+  [`2026-09-06-cell-serializer-design.md`](../docs/superpowers/specs/2026-09-06-cell-serializer-design.md):
+  a non-mutating `CellSerializer` (`func serialize(_ buffer: borrowing
+  CellBuffer) -> Output`) naming the wholesale family, with two conformances,
+  `DrawListSerializer` and `HTMLSerializer`. Grounded by re-reading the code
+  rather than the earlier notes: neither `GamaWASM` nor `GamaEmbed` ever swaps
+  or calls `presentDiff`, and `advance(into:emit:)` hands them a **borrow**, so
+  no `inout` access can be formed — the two reasons `CellPresenter` cannot span
+  them are one fact stated twice.
+- A third conformance was proposed and withdrawn before anything was built.
+  `AccessibilitySnapshot`'s only production consumer is `GamaAppleUI`, deriving
+  it from a retained view's `currentDrawList`, not from a borrowed buffer; and
+  `GamaWASM` has no Swift accessibility path, the gate's assertion being in the
+  browser driver. An `AccessibilitySerializer` would have had zero call sites,
+  repeating the `AnsiPresenter` defect recorded directly above it.
+- The design is honest about its own value: it buys a named family and a
+  signature-enforced distinction, **not** runtime selection, and it costs a
+  full six-job matrix re-proof because `GamaWASM` is hosted proven. Awaiting
+  approval before implementation.
 
 ## Evidence-first behavior-preserving refactor
 status: in_progress
