@@ -27,7 +27,11 @@ status: in_progress
   against proposal titles. No source migration is warranted now: `@_extern`
   has no unprefixed form, and the one available migration is a versioned-ABI
   change recorded under deferred scope in [`todo.md`](todo.md).
-- Hosted proven at `0d4cf12`. The gate change went out as PR #82, cherry-picked
+- Hosted proven at `0d4cf12`, re-verified from run state 2026-09-06: run
+  `34049182287` completed with all six required jobs green. When this line was
+  first written that run was still `in_progress`, so the claim ran ahead of its
+  evidence by a few minutes — check `gh run view`, never a watcher's exit code.
+  The gate change went out as PR #82, cherry-picked
   onto `origin/main` so it could be reviewed apart from PR #81, and all six
   required acceptance jobs passed on the updated head. The hole it closes was
   independently reproduced by mutation: with a stale id planted in
@@ -123,6 +127,27 @@ status: in_progress
   `Terminal.swift` platform split) remain **not recommended**: each is a file
   split with no demonstrated defect, and candidate 3 carries the highest risk
   against hosted-proven AppKit for a presentational benefit.
+
+## Capability-ledger honesty
+status: in_progress
+
+- Corrected `docs/Capabilities.md` 2026-09-06. Its Evidence snapshot named
+  `bc2fe4d` as the current `origin/main` tip while the tip was `0d4cf12`,
+  thirteen commits later, and the per-surface `@Reactive` row still attached
+  its hosted claim to `77812d99` while describing four behavior changes made
+  after that merge. Both are now stated against the commits that actually
+  carry the evidence: the snapshot names run `34049182287` at `0d4cf12`, and
+  the row names run `34048029135` at `7d6e2fb`, whose six required jobs were
+  green first-attempt and which contains all four changed commits. The row's
+  "locally proven at unpushed `5dbdad8`" caveat is removed because it is no
+  longer true.
+- The recorded suite size was wrong in two places and both were low: the row
+  said 266 tests in 49 suites and the ledger said 269. Measured, it is **299
+  in 54**. Local gates re-run for this slice: `check-apple.sh`,
+  `check-docs.sh`, `check-doc-coverage.sh`, all exit 0.
+- Open: the remaining rows still keyed to `77812d99` have not been audited one
+  by one against `0d4cf12`; this slice corrected the two demonstrably stale
+  claims, not the whole table.
 
 ## Delivered foundation
 

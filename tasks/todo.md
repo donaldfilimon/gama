@@ -12,16 +12,24 @@ require all six hosted acceptance jobs before integration, and verify the
 integrated `main` commit. A successful baseline run does not prove later
 changes, and local verification does not replace hosted proof.
 
-- [ ] **`docs/Capabilities.md` overstates the per-surface `@Reactive` row.** It
-      reads "Hosted proven 2026-09-04 at merge commit `77812d99` ... 266 tests
-      in 49 suites are green". Commits after that merge changed the behavior
-      the row describes: `ReactiveSlot._bind` now clears `bound` when there is
-      no store, `FrameHost.pump` was refactored onto a shared `buildFrame`,
-      the documented meaning of `transientStateIDs` was narrowed, and
-      `GamaWebDemo` dropped `GamaMacros` for direct `ReactiveSlot` binding.
-      The suite is 269, not 266. By this ledger's own rule the hosted-proven
-      claim attaches to `77812d99` only; it does not carry to the unpushed
-      commits, and the row should say so until a hosted run covers them.
+- [x] **`docs/Capabilities.md` overstated the per-surface `@Reactive` row —
+      resolved 2026-09-06, in the opposite direction from this entry's own
+      premise.** The four post-`77812d99` behavior changes it names
+      (`ReactiveSlot._bind` clearing `bound` with no store, `FrameHost.pump`
+      on a shared `buildFrame`, the narrowed `transientStateIDs` meaning,
+      `GamaWebDemo` off `GamaMacros`) were still unpushed when this was
+      written. They are not any more: `5dbdad8`, `8afa994`, `90f2f99`, and
+      `befc7e3` are all ancestors of `7d6e2fb` (PR #81), whose six required
+      jobs passed first-attempt as run `34048029135`. The row now attaches to
+      `7d6e2fb` instead of `77812d99`, and the sentences calling the changed
+      form locally proven at an unpushed `5dbdad8` are gone.
+      Two further corrections came out of checking run state rather than
+      trusting the file: the **Evidence snapshot named `bc2fe4d` as the
+      current `origin/main` tip**, thirteen commits stale — it is `0d4cf12`,
+      whose run `34049182287` finished six-for-six during this slice — and the
+      suite is **299 tests in 54 suites**, not the 266 the row claimed nor the
+      269 this entry claimed. Verified locally: `check-apple.sh`,
+      `check-docs.sh`, and `check-doc-coverage.sh` all exit 0.
 
 - [ ] **Local verification of the unpushed line.** At `5dbdad8`, eleven of the
       thirteen `scripts/check.sh` gates ran in an isolated `/private/tmp`
