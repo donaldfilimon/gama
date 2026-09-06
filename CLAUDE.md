@@ -21,8 +21,14 @@ package (the xcodebuild platform gates depend on that) — the 6.5-dev identity
 lives in the compiler pin, not the manifest grammar. `check-boundaries.sh`
 enforces the 6.4 tools-version line, so do not "upgrade" it.
 
-Always `unset TOOLCHAINS` first — a stray value overrides both the swiftly
-shim and the scripts' explicit `xcrun --toolchain` pins.
+Always `unset TOOLCHAINS` first. **Measured 2026-09-06, narrower than this
+file previously claimed:** a stray value overrides a *bare* `xcrun swift`
+(6.4 becomes the snapshot, or the reverse), but it did **not** override an
+explicit `xcrun --toolchain <id>`, and it did not override the `swiftly` shim.
+Every check script passes the flag explicitly, so none of them is vulnerable
+today; `unset TOOLCHAINS` remains correct for hand-typed commands and is cheap
+insurance if a script ever drops the flag. Do not cite the old, broader claim
+as a reason to change a script.
 
 **Preferred everyday invocation: `swiftly run`.** From the repo root,
 `swiftly run swift <build|run|test|…>` reads `.swift-version` and selects the
@@ -102,7 +108,9 @@ Markdown links) **and `scripts/check-run-gama-skill.sh`** before DocC;
 Node smoke drivers (`wasm-runtime-smoke.mjs`, `browser-runtime-smoke.mjs`,
 each self-tested first and then run against the built artifact), so **node is a
 prerequisite of the WASM gate**, not just Python. `check-boundaries.sh` chains
-`check-portable-symbols.sh` and `check-toolchain-pins.sh`. The pre-push
+`check-portable-symbols.sh` and `check-toolchain-pins.sh`, and
+`check-doc-coverage.sh` chains `scripts/doc-coverage.py`, so **python3 is a
+prerequisite of the documentation gates**, not only the WASM one. The pre-push
 documentation checklist is the block in `CONTRIBUTING.md`:
 `./scripts/check-docs.sh` followed by `./scripts/check-doc-coverage.sh`.
 
@@ -138,7 +146,18 @@ equivalent explicit form the scripts use.)
 scratch from `GAMA_SCRATCH_ROOT` → `RUNNER_TEMP` → `TMPDIR` → `/tmp`; a bare
 `SCRATCH_ROOT` is silently ignored and the run lands in the shared default.
 `check-apple.sh` reads its own `GAMA_APPLE_SCRATCH_PATH`; see the other
-`GAMA_*_SCRATCH_PATH` / `GAMA_*_OUTPUT` names in the scripts. Two caveats:
+`GAMA_*_SCRATCH_PATH` / `GAMA_*_OUTPUT` names in the scripts.
+
+**Toolchain paths are derived, never written down.** `scripts/lib/toolchain.sh`
+resolves the pinned snapshot from `Toolchains.toml`'s `[snapshot].xctoolchain`
+under `$HOME`, and `check-wasm.sh`, `check-linux.sh`, `check-android.sh`,
+`check-embedded.sh`, and `bundle-web.sh` source it. `check-toolchain-pins.sh`
+now **fails on any checked-in `/Users/<name>/` or `/home/<name>/` path under
+`scripts/`**, because those five previously defaulted to one developer's home
+directory: correct on exactly one machine, silently wrong everywhere else,
+inside gates meant to fail closed. CI never reached them, since
+`ci-install-swift-snapshot.sh` exports `GAMA_SWIFT_64`, which is why only a
+second developer would have found them. Two caveats:
 `swiftc` aborts with `couldNotFindTmpDir` if the `TMPDIR` you pass does not
 exist, so `mkdir -p` it first; and **`check-mlir.sh` hardcodes
 `/private/tmp/gama-framework-swiftpm` with no override — the same path the
@@ -270,7 +289,11 @@ Target layering (all under `Sources/`, single test target `GamaTests` at
 - **GamaDraw** — platform-free rasterizer shared by every backend: CellBuffer
   (double-buffered grid + ANSI diff), CellPainter (IR → cells), DrawList
   (cells → vector commands + versioned little-endian binary, magic `GAMA`,
-  version 1).
+  version 1), and `AccessibilitySnapshot` (`DrawList` → text plus per-line
+  frames). Accessibility is therefore a *portable* concern computed here, not
+  an Apple-only one: `AccessibilitySnapshotTests` pins the platform-free
+  derivation and `AppleHostAccessibilityTests` pins the AppKit/UIKit bridge in
+  `Sources/GamaAppleUI/GamaHostAccessibility.swift`.
 - **Backends** translate events in and present `DrawList` out; they never fork
   application semantics. GamaTUI (POSIX termios + Windows Console VT; its
   signal handling lives in the **C-only** `GamaTUISignal` target so that
@@ -280,14 +303,29 @@ Target layering (all under `Sources/`, single test target `GamaTests` at
   (NSApplication/NSWindow ownership, multi-window and per-shell command
   routing; compiles to an inert target without AppKit — it is the one
   backend that renders auxiliary scenes), GamaWASM
-  (browser reactor, `gama_web_v1_*` exports, inert stubs off wasm32,
-  experimental `Extern` feature scoped to this target only; `WebHost/` holds
-  the page and JS glue the web demo is served from), GamaEmbed +
+  (browser reactor, inert stubs off wasm32, experimental `Extern` feature
+  scoped to this target only; `WebHost/` holds the page and JS glue the web
+  demo is served from. It publishes **two export tiers, not one**:
+  `gama_web_v1_*` and the argument-compatible status-reporting
+  `gama_web_v2_*`, which fails closed with `-1` before `GamaWeb.install` and
+  returns `-2` from `gama_web_v2_key` for an invalid key code — a change to
+  either tier is a public-ABI change, see `docs/backends/WASM.md`),
+  GamaEmbed +
   GamaEmbedABI (context-owned flat C ABI `gama_embed_v1_*`; C header and
   ownership rules in `Sources/GamaEmbedABI/include/GamaEmbed.h`; static so the
   entry points fold into the host binary), GamaMLIR (deterministic textual
   `gama` dialect emitter — not a Swift MLIR frontend).
 - C and WASM symbols remain versioned and separately namespaced.
+- **`gama-web-demo` deliberately keeps the macro plugin out of the wasm32
+  dependency graph, and that dependency has flipped more than once
+  (`79cccd3` added `GamaMacros`, `5dbdad8` removed it again).**
+  `GamaWebDemo` depends on `GamaCore` and `GamaWASM` only, declaring its
+  counter with a direct `ReactiveSlot` instead of `@Component`/`@Reactive`;
+  its `--export=` linker flags are target-local *and* `.when(platforms:
+  [.wasi])` so SwiftPM cannot forward them to the host-side `GamaMacrosImpl`
+  build. Read the `GamaWebDemo` target block in `Package.swift` before
+  changing either — never a memory of it. Rationale: `docs/backends/WASM.md`
+  and ADR 0011.
 - `Examples/` holds host integrations kept out of the framework targets:
   `Android` (JNI/Gradle, built as the `GamaAndroidDemo` product), plus
   `AppleHost`, `CEmbed`, and `Embedded` consumer samples.
@@ -307,6 +345,16 @@ in `Distribution/` (`gama-apple-demo.toml`, `gama-web-demo.toml`) through
 That strictness is the guard keeping manifests identity/branding-only rather
 than a second build system, so extend the manifest schema, never the grammar.
 Rationale is in `docs/Packaging.md`.
+
+`bundle-macos.sh` closes with a four-step verification block — `plutil
+-lint`, ad-hoc `codesign`, `codesign --verify --deep --strict`, then launching
+the bundled app with `--smoke` — so a packaging change can fail on app startup
+rather than on the bundling, and the ad-hoc signature is local-launch evidence
+only (`release-macos.sh` is the Developer ID + notarization path). The smoke
+step is also why `GamaAppleDemo` depends on `GamaAppleUI`
+and `GamaDraw` directly: the smoke path reads
+`GamaHostView.currentDrawList.commands`, and `MemberImportVisibility` requires
+importing each declaring module.
 
 ## @Reactive state is per-surface
 

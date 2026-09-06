@@ -140,6 +140,41 @@ public struct CellBuffer: Hashable, Sendable {
         }
     }
 
+    // MARK: Row inspection
+
+    /// True when any cell in row `y` differs from the presented frame, or
+    /// when a full repaint is pending. Out-of-range rows report `false`.
+    ///
+    /// This is the same comparison ``presentDiff()`` makes per cell, raised
+    /// to a whole row so a presenter that emits lines rather than cursor
+    /// movements can ask the question it actually has.
+    public func rowChanged(_ y: Int) -> Bool {
+        guard y >= 0, y < size.height else { return false }
+        if forceFull { return true }
+        let start = y * size.width
+        for x in 0..<size.width where back[start + x] != front[start + x] {
+            return true
+        }
+        return false
+    }
+
+    /// The text of row `y` in the pending frame, with continuation cells of
+    /// double-width characters skipped and trailing blanks trimmed.
+    /// Out-of-range rows return an empty string.
+    public func rowText(_ y: Int) -> String {
+        guard y >= 0, y < size.height else { return "" }
+        let start = y * size.width
+        var text = ""
+        text.reserveCapacity(size.width)
+        for x in 0..<size.width {
+            let cell = back[start + x]
+            if cell.isContinuation { continue }
+            text.append(cell.character)
+        }
+        while let last = text.last, last == " " { text.removeLast() }
+        return text
+    }
+
     // MARK: Diff → ANSI
 
     /// Emit minimal escape codes reconciling front→back; swaps buffers.
