@@ -6,7 +6,12 @@ closed unbuilt. That phase proposed conforming `GamaWASM` and `GamaEmbed` to
 `CellPresenter`; this design explains why that was impossible, and names the
 family those two backends actually belong to.
 
-This is a design record, not a capability claim. Nothing here is implemented.
+**Status, corrected 2026-09-06 after an independent design review.** This is
+implemented: `CellSerializer` and `DrawListSerializer` in `GamaDraw`, the
+`HTMLSerializer` conformance in `GamaWASM`, and call sites in `GamaEmbed`,
+`GamaWASM`, and `GamaAppleUI`. Locally gated only — no hosted run covers it.
+The review found three factual errors in the first revision of this document;
+each is corrected in place below and marked, rather than quietly rewritten.
 
 ## Why `CellPresenter` cannot span these backends
 
@@ -69,23 +74,47 @@ Three properties, each a deliberate contrast with `CellPresenter`:
   reader to infer it from the missing `inout`.
 - **`borrowing` parameter.** `CellBuffer` is `public struct CellBuffer:
   Hashable, Sendable` — it is `Copyable`. `borrowing` is therefore an intent
-  marker and a guarantee that no copy is taken; it is **not** a correctness
+  marker: it makes the parameter non-implicitly-copyable in the callee, while an
+  explicit `copy` remains legal. It is **not** a correctness
   requirement, and the doc comment must not imply otherwise. It also matches
   the `emit` parameter the backends are already handed.
 
 ## Conformances
 
-Two, both wrapping code that already exists, neither changing its behavior.
+Two conformances, **three** call sites. The first revision of this document said
+"the two wholesale consumers" and excluded `GamaAppleUI`. That was wrong, and
+the review caught it: `Sources/GamaAppleUI/GamaHostView.swift:234` is
+`session.pump.advance(into: &session.buffer) { painted in self.currentDrawList
+= DrawList.from(painted) }` — the same borrowed buffer, the same non-mutating
+`DrawList` derivation, differing from `GamaEmbed` only in where the result is
+stored, which this design's own rule puts on the delivery side. The exclusion
+had been inherited verbatim from the phase 5 `CellPresenter` spike, whose
+grounds were the `inout` access and the swap contract; neither survives a
+`borrowing`, non-mutating requirement. `GamaAppleUI` is therefore included, and
+that is what gives `DrawListSerializer` more than one production call site.
 
 **`DrawListSerializer`** — new, public, `Sources/GamaDraw/`. Forwards to
 `DrawList.from(_ buffer: CellBuffer)` (`Sources/GamaDraw/DrawList.swift:35`).
 `Output == DrawList`.
 
 **`HTMLSerializer`** — existing, internal, `Sources/GamaWASM/WASMHost.swift`.
-`Output == String`. It is currently a caseless `enum` with static methods, so
-it becomes a `struct` to have an instance to conform with. Its serialization
-logic, including the run-merging and the escaping rules documented on
-`escape(_:)`, is copied verbatim, not rewritten.
+`Output == String`. It becomes a `struct` (a caseless `enum` cannot be
+instantiated) but **retains all three static members**, and `serialize` is a
+one-line forward to `Self.grid(from:)`. This is a forwarding wrapper, not a
+transplant: "copied verbatim" in the first revision was ambiguous between the
+two, and the difference matters. Forwarding guarantees byte-identity by
+construction and leaves every existing assertion in `WASMSerializerTests`
+compiling and running unchanged — rewriting the only HTML tests as part of a
+behavior-preserving change would remove the witness exactly when it is needed.
+It also keeps `grid`'s unqualified `css(for:)` and `escape(_:)` calls resolving
+statically.
+
+A trap worth recording: `HTMLSerializer` is declared **outside** `#if
+arch(wasm32)` while its production call site is **inside** it. On macOS neither
+`swift build` nor `swift test` type-checks that call, so a broken conversion
+passes `check-apple.sh` in full and fails only in `check-wasm.sh`, which needs
+the pinned WASM SDK. A green `WASMSerializerTests` is not evidence the call
+site compiles.
 
 The asymmetry is deliberate and worth recording: `DrawListSerializer` is public
 in GamaDraw because `DrawList` is a public output format, while
@@ -98,8 +127,9 @@ Delivery stays exactly where it is. Only the derivation is routed through the
 protocol.
 
 ```swift
-// Sources/GamaWASM/WASMHost.swift:69   — the gama_js_setHTML call stays here
-// Sources/GamaEmbed/CInterface.swift:33 — the `encoded =` assignment stays here
+// Sources/GamaWASM/WASMHost.swift:76    — the gama_js_setHTML call stays here
+// Sources/GamaEmbed/CInterface.swift:39  — the `encoded =` assignment stays here
+// Sources/GamaAppleUI/GamaHostView.swift:242 — the currentDrawList store stays here
 ```
 
 In both, the closure body changes from calling a free function to calling
@@ -110,18 +140,29 @@ existing typed-throws `throws(E)` on `advance` is untouched.
 
 ## Rejected: a third conformance
 
-An earlier draft of this design proposed `AccessibilitySnapshot` as a third
-member, on the reasoning that it is also a buffer-rooted derivation. Checking
-the call sites refuted this before anything was built.
+An earlier draft proposed `AccessibilitySnapshot` as a third conformance. The
+rejection stands, but the **argument has been replaced**: the first revision
+argued from call-site count, and the review was right that a type mismatch is
+the stronger and unanswerable reason.
 
-`AccessibilitySnapshot` has exactly one production consumer,
-`Sources/GamaAppleUI/GamaHostAccessibility.swift:28`, which derives it from
-`currentDrawList` — a **retained view's** DrawList, not a borrowed `CellBuffer`
-inside `advance(into:emit:)`. GamaAppleUI is precisely the backend the phase 5
-spike excluded, because it mutates a retained view rather than producing an
-output value. `Sources/GamaWASM` contains no Swift accessibility path at all;
-the accessibility assertion in the WASM gate lives in the browser driver
-`scripts/browser-runtime-smoke.mjs`, not in Swift.
+`AccessibilitySnapshot.from` takes a **`DrawList`**, not a `CellBuffer`
+(`Sources/GamaDraw/AccessibilitySnapshot.swift:77`). It is a DrawList-rooted
+derivation and simply cannot satisfy `serialize(_ buffer: borrowing
+CellBuffer)` without inventing the composition
+`AccessibilitySnapshot.from(DrawList.from(buffer))`, which appears exactly once
+in this repository — at `Tests/gamaTests/AccessibilitySnapshotTests.swift:202`,
+in a test. A conformance would have to manufacture a call chain that no
+production code performs.
+
+The call-site observation is still true and still worth keeping as support:
+`AccessibilitySnapshot`'s only production consumer is
+`Sources/GamaAppleUI/GamaHostAccessibility.swift:28`, which reads the
+already-retained `currentDrawList` rather than a borrowed buffer, and
+`Sources/GamaWASM` has no Swift accessibility path — the WASM gate's
+accessibility assertion is in `WebHost/gama.js`, reached from
+`scripts/browser-runtime-smoke.mjs`. Note this is a *different* question from
+whether `GamaAppleUI` conforms: it does, for its `DrawList` derivation. Only
+its accessibility derivation is excluded.
 
 Adding an `AccessibilitySerializer` would therefore have created a type with
 zero call sites. That is the exact defect this repository has already recorded
@@ -131,10 +172,33 @@ both load-bearing beat three where one is decorative.
 
 ## Testing
 
-The real check is that both outputs stay byte-identical. A serializer that
-changes one byte of HTML breaks the WASM gate's `state=0->0->1` browser marker;
-one that changes the DrawList encoding breaks `check-c-abi.sh`. Those gates
-already exist and must pass unchanged.
+**Corrected after review; the first revision made two false evidence claims,
+which in this repository is the failure the whole evidence policy exists to
+prevent.** It asserted that a one-byte HTML change breaks the WASM browser
+marker and that a DrawList encoding change breaks `check-c-abi.sh`. Verified
+directly, neither holds:
+
+- The browser marker reads `root.textContent` through a regex plus
+  `.includes()` (`WebHost/gama.js:174-196`). Span structure, the `gama-row`
+  class, and every value emitted by `css(for:)` are invisible to it. A total
+  rewrite of `css(for:)` would pass.
+- `Examples/CEmbed/main.c:8` asserts `length >= 20` and then checks the four
+  magic bytes `GAMA`. So it does catch a magic or truncation change — the
+  review overstated this by saying magic is unchecked — but it validates **no
+  draw command**, so a change to the command encoding passes.
+
+Nothing pinned byte-identical HTML at all: `WASMSerializerTests` uses
+`hasPrefix`, `hasSuffix`, `contains`, and range counts, never whole-string
+equality.
+
+The real guards, therefore, are the tests, and they had to be written rather
+than assumed. `CellSerializerTests` pins five things: that
+`DrawListSerializer.serialize` equals `DrawList.from`; that the instance
+`HTMLSerializer.serialize` equals the static `grid(from:)` it forwards to;
+that `HTMLSerializer` output matches an **exact literal string**, closing the
+gap above; that serializing twice leaves the planes unswapped, so a
+`StreamPresenter` still sees every painted row as changed; and that
+serialization is repeatable on an unchanged buffer.
 
 Added coverage pins the wrappers as behavior-preserving rather than assuming
 it: for each conformance, one Swift Testing case asserting that
@@ -155,12 +219,25 @@ protocol is a name for a shape, accepted as such. If a consumer that must
 select an output ever appears, this is the seam it would use, but that consumer
 is not asserted here.
 
-The cost is not zero. GamaWASM is hosted proven, so this change requires the
-full six-job acceptance matrix to re-prove a benefit that is documentation
-rather than capability. That trade was made deliberately and is recorded here
-so a later reader does not have to reconstruct it.
+The cost is not zero, but the first revision misstated it. Every PR pays the
+six-job matrix — `main` requires all six as strict status checks — so that is
+not a cost specific to this change. The real obligation is narrower and
+bookkeeping: the WebAssembly row in `docs/Capabilities.md` is hosted proven
+against a specific merge commit, and touching `GamaWASM` invalidates that
+recorded evidence until a new green merge re-establishes it.
 
 ## Open questions
 
-None blocking. The scope above is closed: two conformances, no error channel,
-no runtime selection, delivery unmoved.
+One, left open honestly. Nothing in the tree is generic over `CellSerializer`:
+both conformances are consumed as concrete types, so the protocol constrains
+its *conformers'* signatures but no call site is expressed in terms of it.
+Deleting the protocol and keeping the two structs would compile. The review
+called this the `AnsiPresenter` defect relocated one level up, and that
+criticism is fair on its own terms. What answers it partly is the third call
+site: `DrawListSerializer` is now used by both `GamaEmbed` and `GamaAppleUI`,
+so the family is not a one-member curiosity. What would answer it fully is a
+consumer generic over `CellSerializer`, and none is asserted here.
+
+Not open, and deliberately so: no error channel, no runtime selection, no
+delivery moved, and no ADR — this changes no settled decision, it names an
+existing shape.

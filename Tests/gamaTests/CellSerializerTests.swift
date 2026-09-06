@@ -2,6 +2,7 @@ import Testing
 
 @testable import GamaCore
 @testable import GamaDraw
+@testable import GamaWASM
 
 /// `CellPresenter` reconciles and *swaps*; `CellSerializer` derives a value
 /// and leaves the buffer alone. These pin both halves of that distinction:
@@ -58,5 +59,29 @@ struct CellSerializerTests {
         let b = painted()
         let serializer = DrawListSerializer()
         #expect(serializer.serialize(b) == serializer.serialize(b))
+    }
+
+    /// Nothing in this repository pinned byte-identical HTML before this
+    /// case. `WASMSerializerTests` uses `hasPrefix`, `contains`, and range
+    /// counts; the browser gate's marker reads `root.textContent` through a
+    /// regex, so span structure, the `gama-row` class, and every CSS value
+    /// are invisible to it. A rewrite of `css(for:)` would pass both.
+    @Test("HTMLSerializer output is pinned exactly")
+    func htmlIsByteIdentical() {
+        var b = CellBuffer(size: Size(width: 3, height: 1))
+        b.putText("hi", at: Point(x: 0, y: 0), style: TextStyle(), maxWidth: 3)
+        #expect(
+            HTMLSerializer().serialize(b)
+                == #"<pre class="gama-row"><span style="">hi </span></pre>"#)
+    }
+
+    /// The instance method must be indistinguishable from the static it
+    /// forwards to. The statics are deliberately retained so the existing
+    /// direct-call tests keep exercising them.
+    @Test("HTMLSerializer instance equals its static")
+    func htmlWrapperIsIdentical() {
+        var b = CellBuffer(size: Size(width: 12, height: 2))
+        b.putText("row", at: Point(x: 0, y: 0), style: TextStyle(attributes: [.bold]), maxWidth: 12)
+        #expect(HTMLSerializer().serialize(b) == HTMLSerializer.grid(from: b))
     }
 }

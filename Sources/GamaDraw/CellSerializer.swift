@@ -22,19 +22,22 @@
 /// - Non-`mutating`, because a serializer holds no frame state. Two calls
 ///   on an unchanged buffer return the same value.
 /// - No swap, and none is implied. A conforming type that advanced the
-///   buffer would break ``GamaWASM`` and ``GamaEmbed``, which have never
+///   buffer would break `GamaWASM` and `GamaEmbed`, which have never
 ///   swapped and would begin emitting diffs of themselves.
 /// - `borrowing`, matching the parameter that
-///   ``HostPump/advance(into:emit:)`` already hands its consumer.
+///   `HostPump.advance(into:emit:)` already hands its consumer.
 ///
-/// `CellBuffer` is `Copyable`, so `borrowing` here guarantees no copy is
-/// taken and states the intent; it is not a correctness requirement, and
-/// a conformance is not made unsound by ignoring it.
+/// `CellBuffer` is `Copyable`, so `borrowing` states intent: it makes the
+/// parameter non-implicitly-copyable in the callee, while an explicit
+/// `copy` remains legal. It is not a correctness requirement, and a
+/// conformance is not made unsound by ignoring it.
 ///
 /// Nothing selects a conformance at run time today: `GamaWASM` always
 /// emits HTML and `GamaEmbed` always emits a ``DrawList``. This protocol
-/// names a shape shared by two backends; it is not a plug-in point, and
-/// should not be described as one.
+/// names a shape shared by three call sites — `GamaEmbed`, `GamaWASM`, and
+/// `GamaAppleUI`, which derives a `DrawList` the same way — and it is not a
+/// plug-in point, so it should not be described as one. Nothing in the tree
+/// is generic over this protocol; it constrains conformers, not consumers.
 public protocol CellSerializer {
     /// The value this serializer derives from one painted frame.
     associatedtype Output
@@ -51,8 +54,9 @@ public protocol CellSerializer {
 /// every non-terminal backend consumes.
 ///
 /// This adds no behavior. It gives ``DrawList/from(_:)`` a name in the
-/// ``CellSerializer`` family so `GamaEmbed`'s frame path reads as a member
-/// of that family rather than as a bare free-function call.
+/// ``CellSerializer`` family so the `GamaEmbed` and `GamaAppleUI` frame
+/// paths read as members of that family rather than as bare free-function
+/// calls.
 public struct DrawListSerializer: CellSerializer {
     /// Creates a serializer. It holds no state; the buffer owns the frame.
     public init() {}
