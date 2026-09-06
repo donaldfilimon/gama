@@ -43,6 +43,7 @@ All suites live in `Tests/gamaTests/`:
 | `MacroExpansionTests.swift` | Macro expansion via `SwiftSyntaxMacrosGenericTestSupport` (no XCTest): `ReactiveSlot` peer and binding `render(in:)` expansion, `@Reactive` outside `@Component` and hand-written `render(in:)` diagnostics |
 | `ViewStateIdentityTests.swift` | Per-surface `@Reactive` storage: inline persistence, `WindowGroup` independence, hoisted-instance per-surface writes, branch-flip eviction, out-of-band invalidation, `transientStateIDs`, `stateScope`, host-less local storage and transitions from a live host |
 | `EmbedABITests.swift` | Embed ABI additions: `gama_embed_v1_abi_version`, hostile-resize clamps, frame-storage reuse |
+| `WebDemoStateTests.swift` | Native tests of the explicit-slot browser demo: inline counter persistence across rebuilds and independent inline/hoisted `WindowGroup` surfaces |
 | `WASMSerializerTests.swift` | WASM HTML serializer (compiled off wasm32) |
 | `AppleHostTests.swift` | Embeddable AppKit host (macOS only) |
 | `AppleShellTests.swift` | Offscreen AppKit scene/window ownership (macOS only) |

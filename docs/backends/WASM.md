@@ -24,13 +24,20 @@ single host. A successful reinstall replaces that host wholesale, releasing
 its subscriptions, frame state, and component state; a construction failure
 leaves the previously installed host in place.
 
-`gama-web-demo` declares its inline counter with `@Component` and
-`@Reactive`, so its state lives in the host's per-surface store (ADR 0011).
-`scripts/check-wasm.sh` proves that author-facing path twice: the Node smoke
+`gama-web-demo` declares its inline counter with a direct `ReactiveSlot`,
+keeping the host macro plugin out of the wasm32 dependency graph. Its
+`render(in:)` binds slot zero at the component's identity before rendering
+the body under `context.child(0)`, matching the `@Component`/`@Reactive`
+expansion and retaining the host's per-surface store (ADR 0011).
+`WebDemoStateTests` exercises the same demo on the host, checking inline
+rebuilds and independent inline or hoisted `WindowGroup` surfaces.
+`scripts/check-wasm.sh` proves the direct-slot runtime path twice: the Node smoke
 sends Enter through `gama_web_v1_key` and requires an exact `0` to `1`
 transition, while the browser smoke dispatches real DOM events and requires
 `state=0->0->1`. The middle zero proves that Tab, pointer, and resize coverage
 did not activate the counter; the final one is attributable to Enter.
+These smokes prove WASM state behavior; macro expansion is covered separately
+by the host-side macro tests.
 
 The current WASI reactor is single-threaded. That is the complete
 justification for the one `nonisolated(unsafe)` declaration: the private
