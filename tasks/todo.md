@@ -186,7 +186,20 @@ Open questions blocking implementation:
       54 + 1 = 55, so the two reconcile exactly. Anywhere the hosted baseline
       is meant, 299/54 is the number.
 
-- [ ] **Build `scripts/check-evidence-freshness.sh` — designed, not built.**
+- [x] **PR 1 delivered 2026-09-06: `scripts/evidence-freshness.py` +
+      `scripts/check-evidence-freshness.sh`, self-test green, deliberately NOT
+      in the `gates=(...)` array.** Run against the real ledger it exits 1 and
+      names all 20 unannotated rows, which is the correct red state before
+      PR 2. Its self-test proves ten cases on a scratch repo under `$TMPDIR`
+      (never inside this iCloud tree): fresh passes; committed drift fails;
+      uncommitted drift fails; `unverified` with drift passes; `unverified`
+      *without* drift fails; a missing anchor fails; a non-ancestor anchor
+      fails; an unannotated row fails; a renamed table header fails with "zero
+      rows parsed"; a shallow clone fails. The self-test caught a real fixture
+      bug on first run — it wrote "Hosted proven" prose while setting
+      `layer=unverified`, and the lead-word binding rejected it, which is the
+      binding working.
+- [ ] **PR 2: annotate all 20 rows and enable the gate in one commit.**
       A fail-closed fourteenth gate that fails when a capability row's anchor
       commit predates changes to the files that row depends on. Design decided:
       a strict inline HTML-comment annotation per row
