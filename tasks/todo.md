@@ -238,6 +238,17 @@ Open questions blocking implementation:
       so a comment fix counts as drift; and it couples to true merges — a switch
       to squash-merge would break the ancestry check loudly.
 
+- [x] **ADR 0003 was Accepted and unenforced; now gated (2026-09-06).**
+      "Swift Testing only; XCTest is banned" was a live decision that nothing
+      checked — every mention of XCTest under `scripts/` and
+      `.github/workflows/` was a *comment*. An `import XCTest` would have
+      compiled and merged green. `check-boundaries.sh` now scans every Swift
+      source under `Sources/` and `Tests/` by discovery rather than by a file
+      list, so a new directory cannot escape it. Mutation-proven three ways:
+      green on a clean tree, exit 1 on a planted import naming the file, and
+      **green on a commented-out import**, which is the false-positive a naive
+      `grep XCTest` would have produced.
+
 ## Manual and credential-gated acceptance
 
 - [ ] Exercise the AppKit accessibility adapter with VoiceOver and the UIKit

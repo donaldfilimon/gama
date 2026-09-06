@@ -264,6 +264,23 @@ MODULEMAP
   echo "OK — Terminal ownership fixtures ($own_n fixtures)"
 fi
 
+# ADR 0003 (Accepted) bans XCTest, and until now nothing enforced it: the
+# decision lived in prose while an `import XCTest` would have compiled and
+# merged green. Discovered by scanning every Swift source rather than by
+# listing files, so a new directory cannot silently escape the rule.
+xctest_hits=0
+while IFS= read -r hit; do
+  xctest_hits=$((xctest_hits + 1))
+  echo "error: XCTest import at ${hit#"$ROOT"/}" >&2
+done < <(grep -rnE \
+  '^[[:space:]]*(@testable[[:space:]]+)?(public|internal|package|private|fileprivate)?[[:space:]]*import[[:space:]]+XCTest([[:space:]]|$)' \
+  --include='*.swift' "$ROOT/Sources" "$ROOT/Tests" || true)
+if [[ "$xctest_hits" -ne 0 ]]; then
+  echo "  ADR 0003 bans XCTest; use Swift Testing (import Testing)" >&2
+  exit 1
+fi
+echo "OK — Swift Testing only, no XCTest import (ADR 0003)"
+
 grep -q 'swift-tools-version: 6.4' "$ROOT/Package.swift"
 "$ROOT/scripts/check-toolchain-pins.sh"
 echo "OK — portable-core and explicit-ownership boundaries"
