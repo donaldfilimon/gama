@@ -47,7 +47,7 @@ jobs:
       - name: iOS, tvOS, and visionOS compile
         run: ./scripts/check-apple-platforms.sh
       - name: Source boundaries and documentation
-        run: ./scripts/check-boundaries.sh && ./scripts/check-concurrency-negative.sh && ./scripts/check-docs.sh && ./scripts/check-doc-coverage.sh && ./scripts/check-evidence-freshness.sh
+        run: ./scripts/check-boundaries.sh && ./scripts/check-concurrency-negative.sh && ./scripts/check-docs.sh && ./scripts/check-doc-coverage.sh && ./scripts/check-evidence-freshness.sh && ./scripts/check-package-graph.sh
       - name: MLIR parse
         run: |
           brew install llvm

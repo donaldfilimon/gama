@@ -43,7 +43,7 @@ pinned snapshot. It is used only by the documented xcodebuild platform gates.
 
 ## Complete acceptance matrix
 
-`./scripts/check.sh` runs fourteen fail-closed gates in this order:
+`./scripts/check.sh` runs fifteen fail-closed gates in this order:
 
 | Gate | Main proof |
 | --- | --- |
@@ -61,6 +61,7 @@ pinned snapshot. It is used only by the documented xcodebuild platform gates.
 | `check-docs.sh` | relative links, synchronized run-gama mirrors and cleanup, all DocC catalogs with warnings as errors |
 | `check-doc-coverage.sh` | every public symbol has documentation or a justified exception |
 | `check-evidence-freshness.sh` | every capability row is annotated, and no anchor predates a change to the paths it claims |
+| `check-package-graph.sh` | ADR 0012's strict-memory-safety scope, the zero-runtime-package-dependency guarantee, and experimental-feature scoping, all read from `dump-package` |
 
 The driver intentionally fails when a required SDK, NDK, emulator, browser,
 MLIR tool, or other prerequisite is absent. A skipped or unavailable gate is

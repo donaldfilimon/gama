@@ -287,7 +287,23 @@ Open questions blocking implementation:
       thirteen gates while `scripts/check.sh` ran fourteen — I added the
       fourteenth and updated none of them. All three now say fourteen and both
       tables carry the new row.
-- [ ] **Unenforced-policy backlog, from a full audit of ADRs, AGENTS.md,
+- [x] **H3 + H6(b) + L1 closed 2026-09-06 by `scripts/check-package-graph.sh`,
+      the fifteenth gate.** It reads `swift package dump-package` and asserts
+      ADR 0012's strict-memory-safety scope on every shipped Swift target, the
+      zero-runtime-package-dependency guarantee, `Extern` scoped to `GamaWASM`,
+      and the `NonisolatedNonsendingByDefault` ban. Mutation-proven on all
+      three: dropping `strictMemorySafety` from `GamaDraw`, giving `GamaTUI` a
+      `SwiftSyntax` product dependency, and leaking `Extern` to a second target
+      each fail with the offending target named.
+      The exemption is **derived, not listed**: a target escapes the strict
+      requirement only if it has no `.swift` file on disk. `GamaEmbedABI` and
+      `GamaTUISignal` qualify today (0 Swift, 2 C files each), and either would
+      stop qualifying the moment it gained Swift — a name-based allowlist would
+      not have noticed. It also fails when zero shipped targets are inspected,
+      so a manifest reshape cannot silently reduce it to checking nothing.
+      All three gate-counting documents were updated in the same commit, which
+      is the omission that made M2 a live violation an hour ago.
+- [ ] **Remaining unenforced-policy backlog, from a full audit of ADRs, AGENTS.md,
       CONTRIBUTING.md and docs (15 gaps: 6 HIGH, 6 MEDIUM, 3 LOW).** The
       highest-leverage single fix is a `swift package dump-package` assertion
       gate, which would close three at once (H3 `strictLibrary` is hand-attached

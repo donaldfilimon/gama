@@ -32,7 +32,7 @@ swiftly run swift run gama-demo
 - Portable ownership/import/symbol rules: `./scripts/check-boundaries.sh`.
 - Documentation gates: `./scripts/check-docs.sh && ./scripts/check-doc-coverage.sh`. New public declarations need `///`; do not expand the coverage allowlist without a genuine baseline exception.
 - Android cross-build/JNI packaging requires `ANDROID_NDK_HOME=... ./scripts/check-android.sh`.
-- Full acceptance is `./scripts/check.sh`. Its `gates` array is authoritative and currently runs 14 fail-closed gates: Apple, Apple platforms, boundaries, concurrency negatives, C ABI, Embedded, Linux, WASM, Android, Android emulator, MLIR, DocC, doc coverage, and evidence freshness.
+- Full acceptance is `./scripts/check.sh`. Its `gates` array is authoritative and currently runs 15 fail-closed gates: Apple, Apple platforms, boundaries, concurrency negatives, C ABI, Embedded, Linux, WASM, Android, Android emulator, MLIR, DocC, doc coverage, evidence freshness, and package graph.
 - Some full-matrix gates require pinned SDKs, the NDK, Node/browser tooling, MLIR, or hosted non-macOS runners. Missing proof is a failure; do not weaken or skip gates to make the matrix green.
 - CI truth is `.github/workflows/ci.yml`. Windows deliberately uses the pinned Swift 6.4.x exception; other jobs use the 6.5-dev snapshot family.
 
