@@ -1,10 +1,9 @@
 # Adaptive terminal surface (umbrella)
 
-Status: Proposed 2026-09-06. Nothing here is implemented and no capability
-claim follows from this document. It records the agreed shape of a fifth
-presentation surface and the decisions taken during design; each phase below
-needs its own spec and plan before implementation. Phase 5 is additionally
-gated on a feasibility spike whose answer is not yet known.
+Status: Phases 1-3 implemented and locally verified 2026-09-06; phases 4-5
+proposed. The phase 5 spike has been run and its answer is recorded below,
+which rescopes that phase and reduces its evidence cost. No hosted proof
+covers any of this: local gates are not the platform matrix.
 
 ## Problem
 
@@ -75,10 +74,32 @@ hard part is testable with no I/O.
 continues to enforce that. Nothing in this design routes an OS capability
 through the portable core.
 
-## Risk: the presenter abstraction may not fit
+## Spike result: the abstraction fits three of four
 
-Phase 5 assumes one `Presenter` shape spans the existing backends. Reading them,
-that is not established:
+Run 2026-09-06, before phase 5 was attempted. The question was whether one
+shape spans the existing backends. It spans three of them, and the fourth is
+excluded for a principled reason rather than an awkward one.
+
+| Backend | Roots on | Emits | Fits |
+| --- | --- | --- | --- |
+| `GamaTUI` | `CellBuffer` | `String` (ANSI) and `[String]` (lines) | Yes, conformed in phase 2 |
+| `GamaWASM` | `CellBuffer` | `String` (HTML grid, `WASMHost.grid(from:)`) | Yes |
+| `GamaEmbed` | `CellBuffer` | `[UInt8]` (`DrawList.from(painted).encode()`) | Yes |
+| `GamaAppleUI` | `DrawList` | mutates a retained view; returns nothing | No |
+
+`GamaAppleUI` is not a producer. Its frame path assigns `currentDrawList` and
+mutates retained view state, so there is no output value for an
+`associatedtype Output` to name. Forcing it to conform would mean inventing a
+return value that nothing consumes. It stays out of the family by design.
+
+**Phase 5 is therefore rescoped to `GamaWASM` and `GamaEmbed`.** Because
+`GamaAppleUI` is excluded, the macOS AppKit host row does not reset, which
+removes the largest single piece of the evidence cost recorded below.
+
+The original risk, retained for the record:
+
+Phase 5 assumed one `Presenter` shape spans the existing backends. Before the
+spike that was not established:
 
 | Backend | Consumes | Emits | Update model |
 | --- | --- | --- | --- |
@@ -96,14 +117,13 @@ negative answer is a useful result and narrows phase 5 to the subset it fits.
 
 ## Evidence cost
 
-Phase 5 modifies `GamaAppleUI`, `GamaWASM`, and `GamaEmbed`. The macOS AppKit
-host, WebAssembly/browser, DrawList/C ABI, and Android rows in
+Phase 5 as rescoped modifies `GamaWASM` and `GamaEmbed` only. The
+WebAssembly/browser and DrawList/C ABI rows in
 [`Capabilities.md`](../../Capabilities.md) are **Hosted proven** at merge commit
 `bc2fe4d`. By the ledger's own rule that proof does not transfer across the
 change: on merge those rows drop to *Implemented* until a fresh six-job
-acceptance run passes at the new merge commit. This is a known, accepted price
-of taking the refactor now rather than later, recorded here so it is not
-discovered during review.
+acceptance run passes at the new merge commit. The macOS AppKit host row no
+longer resets, because the spike excluded `GamaAppleUI` from the refactor.
 
 Phases 1 through 4 add new surface without altering existing backend behavior
 and carry no such reset, but still require the full matrix before integration.

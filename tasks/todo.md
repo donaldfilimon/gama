@@ -72,13 +72,15 @@ before execution:
   hardware acceptance.
 - Additional distribution formats: Embed SDK, Linux/Windows staged products,
   Android release/keystore packaging, CLI veneer, and iOS-family archives.
-- The adaptive terminal surface: TTY-aware presentation from one binary, with a
-  declared completion status as the process exit code. Designs proposed
-  2026-09-06 in `docs/superpowers/specs/2026-09-06-adaptive-terminal-surface-design.md`
-  and `docs/superpowers/specs/2026-09-06-adaptive-terminal-core-design.md`. Both
-  carry `Status: Proposed`; neither is accepted, so this remains uncommitted
-  work. Note it is distinct from the `CLI veneer` named above, which is a
-  packaging tool rather than a presentation surface.
+- Adaptive terminal surface phases 4 and 5, which are **not** committed
+  implementation work and each need a spec before execution. Phase 4 is the
+  author-declared `StreamOutput` that lets a component emit semantic lines
+  rather than whatever reached the cell grid. Phase 5 conforms `GamaWASM` and
+  `GamaEmbed` to `CellPresenter`; the 2026-09-06 spike established that shape
+  fits them and excludes `GamaAppleUI`, which mutates a retained view instead
+  of producing an output value. Phases 1-3 shipped and are recorded in
+  `tasks/goals.md`; the surface is distinct from the `CLI veneer` above, which
+  is a packaging tool rather than a presentation surface.
 - Migrating the 17 `@_cdecl` entry points in `GamaEmbed` (8) and `GamaWASM`
   (9) to `@c`. Measured against the pinned snapshot on 2026-09-06: `@c` is
   implemented and takes a bare identifier (`@c(name)`, not `@c("name")`), but

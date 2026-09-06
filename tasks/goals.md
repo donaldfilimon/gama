@@ -33,18 +33,28 @@ status: in_progress
   green locally; the remaining gates have not been re-run against it.
 
 ## Adaptive terminal surface
-status: todo
+status: in_progress
 
-- Design proposed 2026-09-06; not accepted, not implemented, and no capability
-  follows from it. One binary renders a live TUI on a terminal and plain
-  pipeable output when stdout is not a TTY, reporting a process exit code.
+- Phases 1-3 implemented and locally verified 2026-09-06: `CompletionStatus`
+  and the completion signal in `GamaCore`, `CellPresenter` plus
+  `AnsiPresenter`/`StreamPresenter` in `GamaDraw`, and `SurfaceMode`,
+  `StreamRenderer`, and `App.runAdaptive()` in `GamaTUI`. An unmodified
+  application now renders a live TUI on a terminal and emits plain changed
+  rows when redirected, ending on a declared completion status. 20 new Swift
+  Testing cases in 3 suites; the suite is 291 in 53. Local only: no hosted
+  matrix has run against this work, so no ledger row may be promoted.
+- The phase 5 spike ran and rescoped that phase. One `CellBuffer`-rooted
+  shape fits `GamaTUI`, `GamaWASM`, and `GamaEmbed`; `GamaAppleUI` is excluded
+  because it mutates a retained view rather than producing an output value.
+  The macOS AppKit host row therefore no longer resets.
+- Open: phase 4 (author-declared `StreamOutput`) and phase 5 (conform
+  `GamaWASM` and `GamaEmbed`). Both need their own spec before execution.
   Umbrella record in
   [`2026-09-06-adaptive-terminal-surface-design.md`](../docs/superpowers/specs/2026-09-06-adaptive-terminal-surface-design.md);
   phases 1-3 in
   [`2026-09-06-adaptive-terminal-core-design.md`](../docs/superpowers/specs/2026-09-06-adaptive-terminal-core-design.md).
-- Blocked on design review. Phase 5 is further gated on a spike on whether one
-  `Presenter` shape spans `GamaTUI`, `GamaAppleUI`, `GamaWASM`, and
-  `GamaEmbed`, and would reset four rows currently hosted proven at `bc2fe4d`.
+  Phase 5 would reset the WebAssembly/browser and DrawList/C ABI rows, which
+  are hosted proven at `bc2fe4d`, until a fresh six-job run covers them.
 
 ## Delivered foundation
 

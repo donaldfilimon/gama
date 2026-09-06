@@ -1,6 +1,10 @@
 # Adaptive terminal surface: core, presenter, and selection (phases 1-3)
 
-Status: Proposed 2026-09-06. Not implemented. Specifies phases 1 through 3 of
+Status: Implemented and locally verified 2026-09-06. Twenty Swift Testing
+cases across three suites pass, and the suite is 291 in 53 suites. Local gates
+are not hosted proof; the six-job matrix has not run against this work. One
+naming deviation from the design as written is recorded in *Phase 2*.
+Specifies phases 1 through 3 of
 [`2026-09-06-adaptive-terminal-surface-design.md`](2026-09-06-adaptive-terminal-surface-design.md),
 which holds the agreed decisions, non-goals, and evidence cost. At the close of
 phase 3 an unmodified Gama application renders a live TUI on a terminal and
@@ -52,13 +56,29 @@ problem as presenting to a consumer that cannot see a grid.
 
 Phase 2 adds a third derivation and names the shared abstraction.
 
-```swift
-/// Consumes rendered output and emits bytes for one kind of consumer.
-public protocol Presenter: ~Copyable { /* shape fixed during implementation */ }
+The design named this protocol `Presenter`. **It shipped as `CellPresenter`**,
+because naming it `Presenter` would have claimed a generality that had not been
+established when it was written: at that point the spike had not run, and a
+protocol over `CellBuffer` is not a protocol over every backend. The spike has
+since shown the `CellBuffer` family is exactly `GamaTUI`, `GamaWASM`, and
+`GamaEmbed`, so the narrower name is the accurate one and is kept.
 
-/// Emits changed content as plain lines, for a consumer that is not a terminal.
-public struct StreamPresenter: ~Copyable { ... }
+```swift
+/// Reconciles a CellBuffer's pending frame into text for one consumer,
+/// then swaps the buffers.
+public protocol CellPresenter {
+    associatedtype Output
+    mutating func present(_ buffer: inout CellBuffer) -> Output
+}
+
+public struct AnsiPresenter: CellPresenter { /* -> String, wraps presentDiff */ }
+public struct StreamPresenter: CellPresenter { /* -> [String] */ }
 ```
+
+`CellBuffer` gained two public queries the line presenter needs and the ANSI
+one did not: `rowChanged(_:)`, the per-cell comparison `presentDiff()` already
+makes raised to a whole row, and `rowText(_:)`, which skips double-width
+continuation cells and trims trailing blanks.
 
 The protocol is introduced **additively**: `CellBuffer`'s ANSI path conforms to
 it, and no existing call site changes. Converting the other backends is phase 5
