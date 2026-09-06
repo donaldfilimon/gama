@@ -31,7 +31,12 @@ changes, and local verification does not replace hosted proof.
       269 this entry claimed. Verified locally: `check-apple.sh`,
       `check-docs.sh`, and `check-doc-coverage.sh` all exit 0.
 
-- [ ] **Local verification of the unpushed line.** At `5dbdad8`, eleven of the
+- [x] **Superseded by hosted proof 2026-09-06 — this line is no longer
+      unpushed.** PR #83 merged as `98c150d`; its head `3f180f1` passed all six
+      required acceptance jobs, and `98c150d^{tree}` is byte-identical to
+      `3f180f1^{tree}`, so the hosted evidence covers this exact tree. The
+      local record below stands as the pre-push evidence it was.
+      **Local verification of the unpushed line.** At `5dbdad8`, eleven of the
       thirteen `scripts/check.sh` gates ran in an isolated `/private/tmp`
       worktree and all passed: `check-apple.sh` (271 tests in 50 suites),
       `check-apple-platforms.sh`, `check-boundaries.sh`,
@@ -58,7 +63,9 @@ changes, and local verification does not replace hosted proof.
       The row's changed-WASM-form caveat is now discharged locally and still
       open hosted.
 
-- [ ] **Local verification of the adaptive terminal surface.** At `1e2b688`,
+- [x] **Superseded by hosted proof 2026-09-06.** Same merge, same tree
+      identity: the adaptive terminal surface is hosted proven at `98c150d`.
+      **Local verification of the adaptive terminal surface.** At `1e2b688`,
       eleven of the thirteen `scripts/check.sh` gates ran in the main checkout
       and all passed: `check-apple.sh` (299 tests in 54 suites),
       `check-apple-platforms.sh`, `check-boundaries.sh`,

@@ -39,7 +39,15 @@ status: in_progress
   current one exits 1 and names the file.
 
 ## Adaptive terminal surface
-status: in_progress
+status: done
+
+- **Hosted proven 2026-09-06.** PR #83 merged as `98c150d` with all six
+  required acceptance jobs green at its head `3f180f1`, whose tree is
+  byte-identical to the merge commit's — so the evidence covers the exact
+  integrated tree rather than only the branch. Phases 1-4 are shipped and
+  proven; phase 5 is closed unbuilt with a designed successor that is not
+  implemented, recorded below and in its own spec. Closing this goal does not
+  claim `CellSerializer`.
 
 - Phases 1-3 implemented and locally verified 2026-09-06: `CompletionStatus`
   and the completion signal in `GamaCore`, `CellPresenter` plus
@@ -119,7 +127,12 @@ status: in_progress
   approval before implementation.
 
 ## Evidence-first behavior-preserving refactor
-status: in_progress
+status: done
+
+- **Hosted proven 2026-09-06.** The slice `dc7e847` and both ledger commits
+  are ancestors of `98c150d`, integrated through PR #83 rather than the
+  standalone PR the handoff report proposed. All six required jobs green.
+  Candidates 3-5 stay not recommended and are deliberately not delivered.
 
 - Audit delivered 2026-09-06 against `origin/main` `0d4cf12`, ten commits past
   the brief's `bc2fe4d` reference snapshot. Module map, five candidates, and a

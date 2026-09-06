@@ -19,9 +19,13 @@ Status is evidence-based, not inferred from source presence.
 ## Evidence snapshot
 
 The latest completed acceptance evidence used for this table is the six-job
-hosted run `34049182287` at merge commit `0d4cf12` (PR #82), the current
-`origin/main` tip, on 2026-09-06, with all six required jobs green on their
-first attempt. The preceding snapshots were run `34048029135` at `7d6e2fb`
+hosted run at `3f180f1`, the head of PR #83, on 2026-09-06, with all six
+required jobs green. `origin/main` is now the merge commit `98c150d`, whose
+tree is **byte-identical** to `3f180f1`'s, so that evidence covers the exact
+integrated tree; `98c150d`'s own acceptance run was still in flight when this
+was written, and is a re-confirmation rather than the first proof. The
+preceding snapshots were run `34049182287` at `0d4cf12` (PR #82, six-for-six
+first-attempt green), run `34048029135` at `7d6e2fb`
 (PR #81, also six-for-six first-attempt green), run `33931402885` at `bc2fe4d`
 — whose WebAssembly job failed on the first attempt when headless Chrome never
 published `DevToolsActivePort` and passed only on a re-run of that job — and
