@@ -57,12 +57,11 @@ public struct FrameHost: ~Copyable {
     /// Backends can surface this as a development diagnostic without making a
     /// malformed application crash in production.
     public private(set) var duplicateIDs: [NodeID] = []
-    /// Nodes whose `@Reactive` storage changed identity between the previous
-    /// frame and this one — state that was reconstructed rather than
-    /// preserved. Empty for a correctly bound tree; nonempty means a
-    /// component's identity moved (a branch flip, a reordered `ForEach`, or
-    /// a different component type at the same position) and its state was
-    /// dropped. Surface it as a development diagnostic like `duplicateIDs`.
+    /// Nodes with a reactive slot whose storage was replaced at the same
+    /// key since the previous frame, such as a slot value-type change.
+    /// New or removed keys and positional reorders that reuse the same
+    /// storage are not reported. An empty list therefore does not prove
+    /// that collection state follows the intended element identities.
     public private(set) var transientStateIDs: [NodeID] = []
 
     private let dirty: Signal<Bool>

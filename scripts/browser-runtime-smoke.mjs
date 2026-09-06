@@ -89,7 +89,7 @@ try {
     const cause = [
       `binary=${chrome}`,
       spawnError ? `spawn=${spawnError}` : null,
-      exit ? `exited early: code=${exit.code} signal=${exit.signal}` : "still running",
+      exit ? `exited early: code=${exit.code} signal=${exit.signal}` : spawnError ? null : "still running",
       `stderr=${errors.trim() || "<empty>"}`,
     ].filter(Boolean).join("; ");
     throw new Error(`Chrome DevTools endpoint did not start after 15s: ${cause}`);

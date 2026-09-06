@@ -333,9 +333,11 @@ Two compile errors keep the binding from being skipped silently:
 `@Component`, including in a class) and `component.render-collision` (a
 hand-written `render(in:)` beside `@Reactive` properties; synthesis is
 skipped). At runtime `FrameHost.transientStateIDs` lists nodes whose reactive
-storage identity changed since the previous frame — empty for a correctly
-bound tree; a name means a branch flip, a positional `ForEach` reorder, or a
-type change at the same position reconstructed state. The store sweeps once
+storage was replaced at the same `(NodeID, slot)` key since the previous
+frame, such as a slot value-type change. It does not report new or removed
+keys, or positional `ForEach` reorders that reuse storage for different
+elements. An empty diagnostic does not establish element-stable identity.
+The store sweeps once
 per `pump` after the final build, so a subtree that stops rendering releases
 its state; `IdentifiedForEach` and `.stateScope(_ id: NodeID)` pin a subtree
 to an explicit identity where structural keying is wrong. Host-less

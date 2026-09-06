@@ -63,8 +63,9 @@ called `observe()`.
   before the first frame is preserved.
 - `pump` may build twice for focus reconciliation; the store marks per build
   and sweeps once after the final build. Keys the final build did not resolve
-  are evicted and their invalidation observers cancelled. Branch flips and
-  positional `ForEach` reorders drop state (SwiftUI-equivalent);
+  are evicted and their invalidation observers cancelled. Branch flips evict
+  their old keys; positional `ForEach` reorders retain state by index,
+  potentially assigning it to a different element;
   `IdentifiedForEach` and the new `.stateScope(_ id: NodeID)` modifier
   (`StateScopedView`, which replaces the inherited identity for its subtree
   exactly as `IdentifiedForEach` does per element) are the escape hatches.
@@ -100,9 +101,11 @@ Silence was the bug, so every way the binding can be skipped is loud.
   silently dropping the binding.
 - Runtime: `FrameHost.transientStateIDs: [NodeID]` (public, mirroring
   `duplicateIDs`) lists nodes whose reactive storage identity changed since
-  the previous frame. It is empty for the inline shape — the spec's stage-2
-  acceptance bar — and names the node when a branch flip or a type change at
-  the same position reconstructed state.
+  the previous frame at the same `(NodeID, slot)` key. It is empty for the
+  inline shape and names the node when a slot value-type change replaces
+  storage. New and removed keys are not reported, and positional reorders can
+  reuse storage for a different element without a diagnostic. The key does
+  not encode the enclosing component type independently of its slot value type.
 
 ## The behavior flip, argued
 

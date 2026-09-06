@@ -299,6 +299,55 @@ extension ViewStateIdentityTests {
         #expect(counter.count == 4)
     }
 
+    @Test("collection state follows explicit identities or positions", arguments: [false, true])
+    func collectionReorderingUsesDeclaredIdentity(stableIdentity: Bool) throws {
+        final class Items { var values = [7, 3] }
+        struct ListApp: App {
+            let items: Items
+            let stableIdentity: Bool
+            init() { self.init(items: Items(), stableIdentity: false) }
+            init(items: Items, stableIdentity: Bool) {
+                self.items = items
+                self.stableIdentity = stableIdentity
+            }
+            var scenes: some Scene {
+                Window("List", id: "main", role: .primary) {
+                    VStack(spacing: 0) {
+                        if stableIdentity {
+                            IdentifiedForEach(items.values, id: { NodeID(raw: UInt64($0)) }) { item in
+                                LabeledCounter(label: "i\(item)")
+                            }
+                        } else {
+                            ForEach(items.values) { item in
+                                LabeledCounter(label: "i\(item)")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        let items = Items()
+        let size = Size(width: 10, height: 2)
+        var host = try FrameHost(app: ListApp(items: items, stableIdentity: stableIdentity))
+        _ = host.pump(size: size)
+        host.handle(.key(.enter))
+        _ = host.pump(size: size)
+        items.values.reverse()
+        let frame = host.pump(size: size)
+        let rows = painted(frame, size: size)
+        if stableIdentity {
+            #expect(rows.hasPrefix(" i3 0 "))
+            #expect(rows.dropFirst(size.width).hasPrefix(" i7 1 "))
+        } else {
+            #expect(rows.hasPrefix(" i3 1 "))
+            #expect(rows.dropFirst(size.width).hasPrefix(" i7 0 "))
+        }
+        // Both modes reused their keys; a positional reorder is not a
+        // storage-replacement diagnostic, even though state changed owners.
+        let transient = host.transientStateIDs
+        #expect(transient.isEmpty)
+    }
+
     @Test("host-less rendering detaches a previously hosted component")
     func hostLessRenderingAfterHostRestoresLocalStorage() throws {
         struct HoistedApp: App {

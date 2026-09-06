@@ -447,7 +447,7 @@ struct SignalTests {
     }
 
     @Test("concurrent hosts remain isolated")
-    func concurrentHostsRemainIsolated() async {
+    func concurrentHostsRemainIsolated() async throws {
         struct ConcurrentApp: App {
             let count: Signal<Int>
             init() { count = Signal(0) }
@@ -459,11 +459,11 @@ struct SignalTests {
             }
         }
 
-        let results = await withTaskGroup(of: Int.self, returning: [Int].self) { group in
+        let results = try await withThrowingTaskGroup(of: Int.self, returning: [Int].self) { group in
             for _ in 0..<16 {
                 group.addTask {
                     let count = Signal(0)
-                    var host = try! FrameHost(app: ConcurrentApp(count: count))
+                    var host = try FrameHost(app: ConcurrentApp(count: count))
                     _ = host.pump(size: Size(width: 20, height: 2))
                     host.handle(.key(.enter))
                     _ = host.pump(size: Size(width: 20, height: 2))
@@ -471,7 +471,7 @@ struct SignalTests {
                 }
             }
             var values: [Int] = []
-            for await value in group { values.append(value) }
+            for try await value in group { values.append(value) }
             return values
         }
         #expect(results.count == 16)
