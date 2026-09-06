@@ -23,6 +23,25 @@ status: in_progress
   `org.swift.*` literal under `scripts/` that is not the pin. Verified by
   mutation in both directions; `check-boundaries.sh`, which chains it, is
   green. Local evidence only, on top of an already-unpushed line.
+- **Re-probed 2026-09-06 against the pinned compiler, not against proposal
+  titles, and the answer is still no migration.** Shipped sources carry three
+  underscored attributes: `@_cdecl` (17), `@_extern` (7), `@_exported` (2).
+  Measured, one at a time:
+  - `@extern` unprefixed **does not exist** — `error: unknown attribute
+    'extern'`. `@_extern` still requires the experimental `Extern` feature the
+    package already scopes to `GamaWASM`. No migration is available at all.
+  - `exported import` unprefixed **does not parse**. No migration available.
+  - `@c(identifier)` **works**, and accepts the real ABI names — `@c(gama_web_v2_frame)`
+    emits exactly `_gama_web_v2_frame`. But the symbol counts settle it:
+    `@c` emits **one** symbol while `@_cdecl` emits **two**, the C name plus
+    the Swift-mangled `_$s…`. Migration is therefore an ABI *narrowing* on
+    `gama_embed_v1_*` and `gama_web_v1_*`/`v2_*`, which this repository's own
+    rule treats as a public-ABI change.
+  Nothing in `Sources/`, `Examples/`, `WebHost/`, or `scripts/` references a
+  mangled Swift symbol, and the C header publishes 11 `gama_embed_v1_*` names,
+  so the removal would very likely be harmless in practice. "Very likely
+  harmless" is not a reason to narrow a shipped versioned ABI when the change
+  buys only the deletion of an underscore and no defect motivates it.
 - Audited the 6.5-dev spellings against the pinned compiler rather than
   against proposal titles. No source migration is warranted now: `@_extern`
   has no unprefixed form, and the one available migration is a versioned-ABI
