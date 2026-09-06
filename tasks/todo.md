@@ -4,35 +4,13 @@ This ledger contains current work only. Completed delivery history remains in
 Git, merged pull requests, dated ADRs, and `docs/superpowers/`. Capability
 status is authoritative in `docs/Capabilities.md`.
 
-## Open implementation work
+## Maintenance delivery
 
-- [ ] **Hosted acceptance is red on the tip of `main`.** The "Gama acceptance"
-      run for the pushed merge commit `bc2fe4d` failed: five jobs green, the
-      WebAssembly job failed inside `scripts/check-wasm.sh`. The Swift/WASI
-      build, the libm symbol scans, and `wasm-runtime-smoke.mjs`
-      (`state=0->1`) all passed; the failure is
-      `scripts/browser-runtime-smoke.mjs:78`, `Chrome DevTools endpoint did
-      not start`, after the 15 s (150 x 100 ms) wait for `DevToolsActivePort`.
-
-      Evidence that this is infrastructure, not a Gama regression: the pull
-      request head `bb43f6b` and the merge commit `bc2fe4d` have **identical
-      trees**, and the pull-request run of the same tree passed 90 minutes
-      earlier. That reasoning explains the red; it does not substitute for a
-      green run on the pushed commit.
-
-      Two separable follow-ups, neither yet accepted:
-
-      - Re-run the WebAssembly job for `bc2fe4d` to restore hosted proof for
-        that commit.
-      - **Done (local):** `browser-runtime-smoke.mjs` now reports why the
-        browser never published `DevToolsActivePort`. It listens for the
-        child's `error` and `exit` events and names the binary, any spawn
-        error, early exit code/signal, and stderr. Verified by forcing both
-        paths: a binary that exits immediately reports `exited early: code=0
-        signal=null`, and a non-executable path reports `spawn=... EACCES`
-        (previously an unhandled `error` event). The 150 x 100 ms wait, the
-        missing-browser hard failure, and the non-zero exit are unchanged, so
-        the gate is no weaker; only its diagnostic is. Uncommitted.
+Documentation, state-ownership, and browser-diagnostic maintenance uses the
+same acceptance requirements as other code changes: review the final commit,
+require all six hosted acceptance jobs before integration, and verify the
+integrated `main` commit. A successful baseline run does not prove later
+changes, and local verification does not replace hosted proof.
 
 ## Manual and credential-gated acceptance
 
