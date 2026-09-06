@@ -2,8 +2,8 @@
 # Fail when a capability claim in docs/Capabilities.md is anchored to a commit
 # that predates changes to the files the claim depends on.
 #
-# NOT yet in the gates=(...) array of scripts/check.sh. Turning it on requires
-# annotating every row in one commit: a partially annotated table cannot be
+# The fourteenth gate in scripts/check.sh. Every row was annotated in one
+# commit rather than in batches: a partially annotated table cannot be
 # fail-closed on totality, and a gate that tolerates unannotated rows for a
 # few weeks tolerates them permanently.
 set -euo pipefail

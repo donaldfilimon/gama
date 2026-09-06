@@ -199,7 +199,25 @@ Open questions blocking implementation:
       bug on first run — it wrote "Hosted proven" prose while setting
       `layer=unverified`, and the lead-word binding rejected it, which is the
       binding working.
-- [ ] **PR 2: annotate all 20 rows and enable the gate in one commit.**
+- [x] **PR 2 delivered 2026-09-06: all 20 rows annotated, gate enabled as the
+      fourteenth entry in `scripts/check.sh`, `fetch-depth: 0` added to the
+      macOS CI job.** Mutation-proven red and green in both shapes that matter:
+      a modified file inside an annotated path, and an **untracked new file**
+      inside an annotated directory — the second is the shape the original
+      drift actually took, since `Sources/GamaCore/Completion.swift` was new
+      rather than modified.
+      The gate immediately caught two things during its own enablement.
+      `Android/JNI` claimed hosted proof while linking a `GamaEmbed` that had
+      changed. And adding the gate to `.github/workflows/ci.yml` demoted four
+      rows that list the workflow as a dependency. I considered narrowing those
+      paths to `Toolchains.toml` to keep them green and **rejected it**:
+      narrowing a gate's scope to suit the person who just tripped it is the
+      failure mode this repository exists to prevent. The run at `3f180f1` did
+      execute a different workflow than the tree now holds, so the demotion is
+      true, and the next hosted run re-anchors them.
+      Resulting picture, which is an accurate description of a tree with 18
+      unpushed commits and no hosted run over them: 1 hosted, 10 locally,
+      1 implemented, 8 unverified.
       A fail-closed fourteenth gate that fails when a capability row's anchor
       commit predates changes to the files that row depends on. Design decided:
       a strict inline HTML-comment annotation per row

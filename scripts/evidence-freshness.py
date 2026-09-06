@@ -178,7 +178,9 @@ def check(root: Path) -> list[str]:
             )
             continue
 
-        lead = cells[1].split()[0].strip("*`").lower() if cells[1].split() else ""
+        # Strip emphasis and trailing punctuation: rows legitimately read
+        # "Implemented; native console ..." or "**Hosted proven** ...".
+        lead = cells[1].split()[0].strip("*`;:,.").lower() if cells[1].split() else ""
         if lead != layer:
             failures.append(
                 f"error: {LEDGER}:{number}: row {name!r} lead word {lead!r} "
