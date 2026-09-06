@@ -204,6 +204,15 @@ status: in_progress
   compile/test proven`). On inspection these are **narrower** than "Locally
   proven", not looser, so the honest fix was to declare them in the vocabulary
   section as restrictions rather than normalize them away and lose precision.
+- **The defect recurred within this session, from my own commits, and that is
+  the strongest argument for mechanizing it.** `7d4feb7` anchored rows to
+  `98c150d` while `30afe99`, `a4c7a5c`, and `eeb2426` had already changed the
+  sources four of those rows describe — `GamaDraw/CellSerializer.swift`,
+  `GamaAppleUI/GamaHostView.swift`, `GamaEmbed/CInterface.swift`, and
+  `GamaWASM/WASMHost.swift`. Hand-auditing fixed the ledger and hand-editing
+  re-broke it inside a few hours, with all gates green throughout. Those four
+  rows now declare the drift explicitly rather than carrying a hosted claim
+  that does not describe the working tree.
 - Still open, and genuinely so: the remaining ten unanchored rows are
   local-evidence claims whose anchor would have to be a local run rather than a
   hosted commit, and `Windows console` has **no check script at all** — its job

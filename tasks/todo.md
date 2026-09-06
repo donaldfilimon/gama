@@ -186,6 +186,27 @@ Open questions blocking implementation:
       54 + 1 = 55, so the two reconcile exactly. Anywhere the hosted baseline
       is meant, 299/54 is the number.
 
+- [ ] **Build `scripts/check-evidence-freshness.sh` — designed, not built.**
+      A fail-closed fourteenth gate that fails when a capability row's anchor
+      commit predates changes to the files that row depends on. Design decided:
+      a strict inline HTML-comment annotation per row
+      (`layer=`/`anchor=`/`paths=`), parsed by `scripts/evidence-freshness.py`
+      behind a thin bash wrapper, in the `check-docs.sh`/`check-doc-links.py`
+      shape. Locality is the anti-drift property — a separate manifest
+      reintroduces the very split-file drift being fixed. Totality is the
+      fail-closed hinge: zero rows parsed, or any row without an annotation, is
+      a hard failure, mirroring `check-toolchain-pins.sh`'s count guard.
+      Introduces an **Unverified** vocabulary term whose rule is inverted —
+      absence of drift fails — so a row cannot be parked there after the drift
+      is repaired. Needs `fetch-depth: 0` on the macOS CI job, since anchors are
+      unreachable in a depth-1 clone. Land as two PRs: script plus self-test
+      first, then annotate all twenty rows and enable in one commit, never in
+      batches.
+      Known limits worth keeping: it proves freshness, not that the anchor's run
+      passed (no network); `paths` remains human judgment; it is content-blind,
+      so a comment fix counts as drift; and it couples to true merges — a switch
+      to squash-merge would break the ancestry check loudly.
+
 ## Manual and credential-gated acceptance
 
 - [ ] Exercise the AppKit accessibility adapter with VoiceOver and the UIKit
