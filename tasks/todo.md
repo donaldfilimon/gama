@@ -249,6 +249,30 @@ Open questions blocking implementation:
       **green on a commented-out import**, which is the false-positive a naive
       `grep XCTest` would have produced.
 
+- [x] **Spike 2026-09-06: can the Windows console path be gated locally?
+      No — and the attempt would be worse than the gap.** Measured on this Mac
+      with the pinned compiler:
+      - The triple is recognized (`-print-target-info -target
+        x86_64-unknown-windows-msvc` returns a valid target block), so it
+        *looks* checkable.
+      - It is not. `swiftc -typecheck -target x86_64-unknown-windows-msvc`
+        fails with `unable to load standard library for target
+        'x86_64-unknown-windows-msvc'`. The installed SDKs are static-linux,
+        android, and wasm only, and `Toolchains.toml [windows_exception]` pins
+        a Windows `.exe` installer, not a cross-compilation SDK. Unlike Linux,
+        Android, and WASM, Windows has no local cross route by design.
+      - **The trap:** a plain `swiftc -typecheck` of
+        `Sources/GamaWindowsConsoleSmoke/main.swift` on macOS **exits 0**. It
+        proves nothing, because `#if os(Windows)` elides the real code and only
+        the three-line `#else` fallback (lines 35-37) is compiled. A gate built
+        that way would pass forever while the Windows implementation rotted —
+        the same vacuous-pass family this repo already documents for
+        `-typecheck` on `~Copyable` code, and the same shape as the
+        `HTMLSerializer` call site that only `check-wasm.sh` type-checks.
+      **Recommendation: leave Windows ungated locally and keep this record**, so
+      the gap is not later "fixed" by a gate that is green by construction.
+      Windows proof stays the CI job, and the capability row must keep saying so.
+
 ## Manual and credential-gated acceptance
 
 - [ ] Exercise the AppKit accessibility adapter with VoiceOver and the UIKit
