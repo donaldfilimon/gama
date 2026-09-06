@@ -21,6 +21,20 @@
 public import GamaCore
 import GamaDraw
 
+/// Whether this process's standard output is an interactive terminal.
+///
+/// Windows reaches this file without POSIX `isatty` or `STDOUT_FILENO` in
+/// scope, and its console row is Blocked, so it reports `false` and takes
+/// the descriptor-independent stream presentation rather than claiming an
+/// interactive terminal it cannot drive.
+private func stdoutIsTerminal() -> Bool {
+    #if os(Windows)
+        return false
+    #else
+        return isatty(STDOUT_FILENO) == 1
+    #endif
+}
+
 /// Which presentation a terminal-family run should use.
 public enum SurfaceMode: Hashable, Sendable {
     /// A real terminal: raw mode, differential ANSI, and an input loop.
@@ -50,7 +64,7 @@ public enum SurfaceMode: Hashable, Sendable {
 
     /// Chooses a mode from this process's stdout and command line.
     public static func detect(arguments: [String] = CommandLine.arguments) -> SurfaceMode {
-        select(isTerminal: isatty(STDOUT_FILENO) == 1, arguments: arguments)
+        select(isTerminal: stdoutIsTerminal(), arguments: arguments)
     }
 }
 
@@ -96,7 +110,10 @@ public final class StandardOutputSink: StreamSink {
                     return 0
                 #endif
             }
-            if written < 0, errno == EINTR { continue }
+            #if !os(Windows)
+                // EINTR retry is POSIX-only; Windows has no `errno` here.
+                if written < 0, errno == EINTR { continue }
+            #endif
             guard written > 0 else { return }
             offset += written
         }
@@ -201,7 +218,7 @@ extension App {
         arguments: [String] = CommandLine.arguments
     ) throws(AppLaunchError<TerminalError>) -> CompletionStatus {
         let mode = SurfaceMode.select(
-            isTerminal: isatty(STDOUT_FILENO) == 1,
+            isTerminal: stdoutIsTerminal(),
             arguments: arguments
         )
         switch mode {
@@ -260,7 +277,9 @@ func writeStandardError(_ message: String) {
                 return 0
             #endif
         }
-        if written < 0, errno == EINTR { continue }
+        #if !os(Windows)
+            if written < 0, errno == EINTR { continue }
+        #endif
         guard written > 0 else { return }
         offset += written
     }
