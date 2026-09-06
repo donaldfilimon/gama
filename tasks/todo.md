@@ -72,6 +72,13 @@ before execution:
   hardware acceptance.
 - Additional distribution formats: Embed SDK, Linux/Windows staged products,
   Android release/keystore packaging, CLI veneer, and iOS-family archives.
+- The adaptive terminal surface: TTY-aware presentation from one binary, with a
+  declared completion status as the process exit code. Designs proposed
+  2026-09-06 in `docs/superpowers/specs/2026-09-06-adaptive-terminal-surface-design.md`
+  and `docs/superpowers/specs/2026-09-06-adaptive-terminal-core-design.md`. Both
+  carry `Status: Proposed`; neither is accepted, so this remains uncommitted
+  work. Note it is distinct from the `CLI veneer` named above, which is a
+  packaging tool rather than a presentation surface.
 - Migrating the 17 `@_cdecl` entry points in `GamaEmbed` (8) and `GamaWASM`
   (9) to `@c`. Measured against the pinned snapshot on 2026-09-06: `@c` is
   implemented and takes a bare identifier (`@c(name)`, not `@c("name")`), but
