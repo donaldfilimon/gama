@@ -149,6 +149,16 @@ public struct AppRuntime<A: App, R: Renderer>: ~Copyable {
         pump.observe(signal)
     }
 
+    /// The outcome the application reported, or `nil` if the loop ended for
+    /// another reason (a quit request) or has not run.
+    public var completion: CompletionStatus? { pump.completion }
+
+    /// Records the application's outcome, ending the loop after the frame
+    /// in flight is presented. The first status wins.
+    public func complete(_ status: CompletionStatus) {
+        pump.complete(status)
+    }
+
     /// Blocks in a present/handle loop until the host requests quit
     /// (Ctrl-C / Ctrl-Q by default). Frames are produced only while the
     /// host is dirty; idle iterations just wait on `nextEvent`. Rethrows
@@ -190,6 +200,10 @@ public struct AppRuntime<A: App, R: Renderer>: ~Copyable {
                     inputTimeoutMillis = 0
                 }
             }
+            // Checked after presenting so the frame that completion made
+            // dirty still reaches the renderer; a run that finishes must
+            // still show its final state.
+            if pump.completion != nil { break }
             if let event = try renderer.nextEvent(timeoutMillis: inputTimeoutMillis) {
                 if case .resize(let size) = event, renderer.size == size {
                     // Avoid presenting the same resize twice when a renderer

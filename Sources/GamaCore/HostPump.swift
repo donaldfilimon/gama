@@ -97,6 +97,14 @@ public struct HostPump: ~Copyable {
     /// changes that did not arrive through ``handle(_:)``.
     public mutating func invalidate() { host.invalidate() }
 
+    /// The outcome the application reported, or `nil` while it is running.
+    public var completion: CompletionStatus? { host.completion }
+
+    /// Records the application's outcome; the first status wins.
+    public func complete(_ status: CompletionStatus) {
+        host.subscriptions.complete(status)
+    }
+
     /// The canonical step: lay out one frame when the host is dirty.
     ///
     /// Returns `nil` when the host is clean — the caller emits nothing and

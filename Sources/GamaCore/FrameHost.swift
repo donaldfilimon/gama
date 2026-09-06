@@ -70,6 +70,10 @@ public struct FrameHost: ~Copyable {
     public let subscriptions: SubscriptionContext
     /// Set when the host wants to stop (Ctrl-C on TUI; hosts may ignore).
     public private(set) var wantsQuit = false
+    /// The outcome the application reported through ``subscriptions``, or
+    /// `nil` while it is still running. Distinct from ``wantsQuit``, which
+    /// records a user's request to stop rather than the work's own result.
+    public var completion: CompletionStatus? { subscriptions.completion }
     /// Last size applied by `pump(size:)` or a `.resize` event.
     public private(set) var lastSize: Size = .zero
 

@@ -49,6 +49,25 @@ public final class SubscriptionContext {
     /// changes that no observed signal carries.
     public func invalidate() { invalidateHost() }
 
+    private var completionStatus: CompletionStatus?
+
+    /// The outcome the application reported, or `nil` while it is still
+    /// running. Backends that must terminate read this; interactive
+    /// backends may ignore it.
+    public var completion: CompletionStatus? { completionStatus }
+
+    /// Records that the application has finished, with the outcome to
+    /// report, and invalidates the host so the result travels the frame
+    /// path a backend already runs.
+    ///
+    /// The first status wins: later calls are ignored rather than
+    /// replacing it, so a late success cannot mask an earlier failure.
+    public func complete(_ status: CompletionStatus) {
+        guard completionStatus == nil else { return }
+        completionStatus = status
+        invalidateHost()
+    }
+
     /// Detaches every observation and forgets which signals were seen,
     /// so they may be observed afresh. The invalidation callback stays,
     /// making the context reusable across host resets.
