@@ -131,8 +131,9 @@ struct CounterPanel {
 ```
 
 The module selectors emitted by the macros (`GamaCore::View`,
-`GamaCore::Signal`, and `GamaCore::Color`) prevent a client declaration named
-`GamaCore` from changing lookup.
+`GamaCore::ReactiveSlot`, `GamaCore::BuildContext`, `GamaCore::RenderNode`, and
+`GamaCore::Color`) prevent a client declaration named `GamaCore` from changing
+lookup.
 
 ## 5. Component state persists per surface
 

@@ -82,6 +82,8 @@ the global event loop. The supplemental manual smoke is:
 5. Click the Dock icon and confirm the primary payload reopens.
 6. Press Command-Q and confirm the process terminates.
 
-This manual path is not packaging proof. A `.app` bundle, signing,
-notarization, placement restoration, close veto, UIKit scene delegates, and a
-Windows GUI remain separate work.
+This manual path is not packaging proof. The implemented `.app` bundle and
+ad-hoc signing path have their own checks in [Packaging.md](../Packaging.md);
+Developer ID signing and notarization still require a successful credentialed
+run. Placement restoration, close veto, UIKit scene delegates, and a Windows
+GUI remain deferred.

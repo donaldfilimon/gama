@@ -67,6 +67,14 @@ const child = spawn(chrome, [
 ], { stdio: ["ignore", "ignore", "pipe"] });
 let errors = "";
 child.stderr.on("data", (chunk) => { errors += chunk; });
+// Without these two listeners a launch failure is indistinguishable from a
+// slow start: `spawn` reports ENOENT/EACCES through an `error` event, and a
+// browser that dies on startup can exit before writing a byte to stderr, so
+// the wait below would otherwise time out carrying an empty diagnostic.
+let spawnError = "";
+child.on("error", (error) => { spawnError = error.message; });
+let exit = null;
+child.on("exit", (code, signal) => { exit = { code, signal }; });
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 let socket;
 let marker = "";
@@ -75,7 +83,17 @@ const runtimeErrors = [];
 try {
   const activePort = join(profile, "DevToolsActivePort");
   for (let attempt = 0; attempt < 150 && !existsSync(activePort); attempt += 1) await delay(100);
-  if (!existsSync(activePort)) throw new Error(`Chrome DevTools endpoint did not start: ${errors}`);
+  if (!existsSync(activePort)) {
+    // Report what the browser actually did. The wait itself is unchanged: a
+    // browser that never publishes DevToolsActivePort still fails the gate.
+    const cause = [
+      `binary=${chrome}`,
+      spawnError ? `spawn=${spawnError}` : null,
+      exit ? `exited early: code=${exit.code} signal=${exit.signal}` : "still running",
+      `stderr=${errors.trim() || "<empty>"}`,
+    ].filter(Boolean).join("; ");
+    throw new Error(`Chrome DevTools endpoint did not start after 15s: ${cause}`);
+  }
   const debugPort = (await import("node:fs/promises")).readFile(activePort, "utf8")
     .then((contents) => contents.split("\n", 1)[0]);
   const target = await fetch(

@@ -298,4 +298,37 @@ extension ViewStateIdentityTests {
         counter.count = 4
         #expect(counter.count == 4)
     }
+
+    @Test("host-less rendering detaches a previously hosted component")
+    func hostLessRenderingAfterHostRestoresLocalStorage() throws {
+        struct HoistedApp: App {
+            let counter = LabeledCounter(label: "n")
+            init() {}
+            var scenes: some Scene {
+                Window("Counter", id: "main", role: .primary) { counter }
+            }
+        }
+        let app = HoistedApp()
+        app.counter.count = 3
+        let size = Size(width: 10, height: 1)
+        var host = try FrameHost(app: app)
+        _ = host.pump(size: size)
+        host.handle(.key(.enter))
+        let hostedFrame = host.pump(size: size)
+        #expect(painted(hostedFrame, size: size).hasPrefix(" n 4 "))
+
+        _ = app.counter.render(in: BuildContext())
+        #expect(app.counter.count == 3)
+        app.counter.count = 9
+        let dirtyAfterLocalWrite = host.needsFrame
+        #expect(!dirtyAfterLocalWrite)
+
+        // A later host action must reattach its own storage, preserving both
+        // the surface's count and the independent host-less value.
+        host.handle(.key(.enter))
+        let resumedFrame = host.pump(size: size)
+        #expect(painted(resumedFrame, size: size).hasPrefix(" n 5 "))
+        _ = app.counter.render(in: BuildContext())
+        #expect(app.counter.count == 9)
+    }
 }

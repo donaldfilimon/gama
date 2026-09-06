@@ -29,8 +29,9 @@ private final class HostActionStore {
 /// semantics shared by every backend. Poll-style renderers wrap it in
 /// `AppRuntime`; retained-mode hosts (AppKit/UIKit, DOM, C embed) call
 /// `pump(size:)` and `handle(_:)` from their own event sources. Out-of-band
-/// changes reach it only through `subscriptions` or an explicit
-/// `invalidate()`; there is no process-global registry to go around it.
+/// changes reach it through bound `@Reactive` writes, `subscriptions`, or
+/// an explicit `invalidate()`; there is no process-global registry to go
+/// around it.
 /// Noncopyable: the host owns live reference state (action tables, the
 /// dirty signal, subscriptions); a copy would silently share all of it.
 /// Single ownership is a compile-time guarantee.
@@ -123,27 +124,10 @@ public struct FrameHost: ~Copyable {
         lastSize = size
         dirty.set(false)
 
-        actions.beginBuildPass()
-        stateStore.beginBuildPass()
         var env = EnvironmentValues()
         env.focusedID = focusedID
         env.windowContext = windowContext
-        let actionStore = actions
-        var ctx = BuildContext(
-            id: .root,
-            inheritedStyle: .plain,
-            environment: env,
-            registerAction: { id, action in actionStore.register(id, action: action) },
-            registerKeyHandler: { id, handler in actionStore.registerKey(id, handler: handler) }
-        )
-        ctx.stateStore = stateStore
-        let ir = renderScene(ctx)
-        var laid = LayoutEngine.layout(ir, in: Rect(origin: .zero, size: size))
-
-        interactive.removeAll(keepingCapacity: true)
-        laid.collectInteractive(into: &interactive)
-        validateIdentities()
-        focusables = interactive.compactMap { $0.isFocusable ? (id: $0.id, rect: $0.frame) : nil }
+        var laid = buildFrame(size: size, environment: env)
 
         // Reconcile focus with the new tree.
         if let id = focusedID, !focusables.contains(where: { $0.id == id }) {
@@ -153,29 +137,34 @@ public struct FrameHost: ~Copyable {
         if env.focusedID != focusedID {
             // Rebuild once so the frame returned by this pump already
             // contains the reconciled focus highlight.
-            actions.beginBuildPass()
-            stateStore.beginBuildPass()
             env.focusedID = focusedID
-            var focusedContext = BuildContext(
-                id: .root,
-                inheritedStyle: .plain,
-                environment: env,
-                registerAction: { id, action in actionStore.register(id, action: action) },
-                registerKeyHandler: { id, handler in actionStore.registerKey(id, handler: handler) }
-            )
-            focusedContext.stateStore = stateStore
-            let focusedIR = renderScene(focusedContext)
-            laid = LayoutEngine.layout(focusedIR, in: Rect(origin: .zero, size: size))
-            interactive.removeAll(keepingCapacity: true)
-            laid.collectInteractive(into: &interactive)
-            validateIdentities()
-            focusables = interactive.compactMap { $0.isFocusable ? (id: $0.id, rect: $0.frame) : nil }
+            laid = buildFrame(size: size, environment: env)
         }
         // Sweep once, after whichever build painted: the reconciliation
         // build's marks are the live set.
         stateStore.sweep()
         transientStateIDs = stateStore.transientIDs
         return laid
+    }
+
+    /// Rebuilds the tree and its interaction tables with one consistent
+    /// context. State eviction belongs to `pump`, after its final build.
+    private mutating func buildFrame(size: Size, environment: EnvironmentValues) -> LaidOutNode {
+        actions.beginBuildPass()
+        stateStore.beginBuildPass()
+        let actionStore = actions
+        var context = BuildContext(
+            environment: environment,
+            registerAction: { id, action in actionStore.register(id, action: action) },
+            registerKeyHandler: { id, handler in actionStore.registerKey(id, handler: handler) }
+        )
+        context.stateStore = stateStore
+        let frame = LayoutEngine.layout(renderScene(context), in: Rect(origin: .zero, size: size))
+        interactive.removeAll(keepingCapacity: true)
+        frame.collectInteractive(into: &interactive)
+        validateIdentities()
+        focusables = interactive.compactMap { $0.isFocusable ? (id: $0.id, rect: $0.frame) : nil }
+        return frame
     }
 
     private var focusedIndex: Int? {

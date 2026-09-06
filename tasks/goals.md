@@ -31,6 +31,13 @@ acceptance" workflow for the exact pushed commit. Manual UI, accessibility,
 credentialed release, physical-device, and physical-board acceptance remain
 separate evidence layers.
 
+**Hosted proof is currently absent for the tip of `main`.** The acceptance run
+for the pushed merge commit failed in the WebAssembly job; see
+[`todo.md`](todo.md). By this ledger's own rule that hosted proof attaches to
+the exact pushed commit, no hosted-proven claim holds for that commit until a
+green run exists for it, regardless of how the same tree fared on its pull
+request.
+
 ## Ledger rules
 
 - Keep only current work here and in `todo.md`; Git and dated design records

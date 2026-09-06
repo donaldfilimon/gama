@@ -1,9 +1,9 @@
 # State, identity, and lifetime
 
 Status: Current behavior guide. `@Reactive` state is identity-keyed and
-host-owned per surface — Locally proven on 2026-09-04 (Apple gate,
-boundaries, concurrency negatives, Embedded compile/link). Hosted proof
-arrives with the merge. Design:
+host-owned per surface. Local and hosted verification, including the tested
+commit and platform limits, are recorded in [Capabilities.md](Capabilities.md).
+Design:
 [2026-08-29-view-state-identity-design.md](superpowers/specs/2026-08-29-view-state-identity-design.md);
 decision: [ADR 0011](adr/0011-reactive-state-is-per-surface.md).
 
@@ -77,8 +77,10 @@ across surfaces — for that, put a `Signal` on the `App`.
 
 **Host-less rendering** (`BuildContext()` with no host, as in
 `gama-demo --emit-mlir` or `component.render(in: BuildContext())` in a test)
-never binds; the slot keeps instance-local storage. `--emit-mlir` output is
-unchanged by binding.
+uses instance-local storage, including when the same component was previously
+rendered by a host. Returning to a host restores that surface's stored value;
+local writes do not mutate or invalidate the former host. `--emit-mlir` output
+is unchanged by binding.
 
 **Eviction.** After a frame's final build the host sweeps every key that
 build did not resolve, so a subtree that stops rendering releases its state
