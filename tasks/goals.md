@@ -56,14 +56,42 @@ status: in_progress
   shape fits `GamaTUI`, `GamaWASM`, and `GamaEmbed`; `GamaAppleUI` is excluded
   because it mutates a retained view rather than producing an output value.
   The macOS AppKit host row therefore no longer resets.
-- Open: phase 4 (author-declared `StreamOutput`) and phase 5 (conform
-  `GamaWASM` and `GamaEmbed`). Both need their own spec before execution.
+- Phase 4 implemented 2026-09-06 as an emitted-line channel rather than the
+  view-tree `StreamOutput` the design sketched. `RenderNode` is an indirect
+  enum every backend switches on exhaustively, so a new case would have
+  rippled through layout, painting, MLIR, WASM, and Embed. More importantly a
+  chronology is event-shaped: a line happens once, while a view node is
+  re-evaluated every frame, so deriving one from the tree would replay lines
+  or need a second diff. `SubscriptionContext.emit(_:)` is exactly-once by
+  construction. `App.connect(_:)` (defaulted, so existing apps are
+  unaffected) hands the application its channel, which also closed a real gap:
+  before it, an app launched through `runAdaptive()` could neither report an
+  outcome nor emit anything.
+- Verified end to end at the process boundary with one declaration and one
+  binary: piped it emits `deploy: step 1/10 building` and exits `2` with the
+  message on stderr; under a pty the same binary renders the grid
+  (`[####------] 3/10`, cursor-positioning ANSI) and the emitted lines are
+  correctly absent, because grid backends ignore them.
+- Open: phase 5 (conform `GamaWASM` and `GamaEmbed` to `CellPresenter`).
   Umbrella record in
   [`2026-09-06-adaptive-terminal-surface-design.md`](../docs/superpowers/specs/2026-09-06-adaptive-terminal-surface-design.md);
   phases 1-3 in
   [`2026-09-06-adaptive-terminal-core-design.md`](../docs/superpowers/specs/2026-09-06-adaptive-terminal-core-design.md).
-  Phase 5 would reset the WebAssembly/browser and DrawList/C ABI rows, which
-  are hosted proven at `bc2fe4d`, until a fresh six-job run covers them.
+- Phase 5 closed without implementation. A closer review reversed the spike:
+  `GamaWASM` and `GamaEmbed` never call `presentDiff()` and read the back plane
+  wholesale, so `CellPresenter`'s "then swaps the buffers" contract is false
+  for them; and both reach the grid through `HostPump.advance(into:emit:)`,
+  whose `emit` takes a **borrowing** `CellBuffer`, so no `inout` access can be
+  formed and a conformance would have zero call sites. Naming that family
+  honestly needs a different, non-mutating `borrowing CellBuffer -> Output`
+  abstraction, which is new design rather than this phase.
+- Correction the same review produced: `DrawList/C ABI` is **Locally proven**,
+  not hosted proven, and `Embedded core` is locally compile/link proven. An
+  earlier revision of the spec and of this ledger overstated both. Among the
+  backends phase 5 would have touched, only WebAssembly/browser and Android/JNI
+  carry hosted rows.
+- `AnsiPresenter` had no production call site when it shipped, which made the
+  protocol a claim rather than a seam. `TUIRenderer` now presents through it.
 
 ## Delivered foundation
 
