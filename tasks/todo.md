@@ -24,13 +24,15 @@ status is authoritative in `docs/Capabilities.md`.
 
       - Re-run the WebAssembly job for `bc2fe4d` to restore hosted proof for
         that commit.
-      - The gate reported the failure with an **empty** stderr string, so the
-        cause is unknown rather than merely infrastructural.
-        `browser-runtime-smoke.mjs` spawns Chrome with no `error` listener and
-        never reports the child's exit code, so a spawn failure, an immediate
-        crash, and a slow start are indistinguishable in the log. Making that
-        failure legible is a diagnostics change; it must not relax the wait or
-        let a missing browser pass, which would weaken a fail-closed gate.
+      - **Done (local):** `browser-runtime-smoke.mjs` now reports why the
+        browser never published `DevToolsActivePort`. It listens for the
+        child's `error` and `exit` events and names the binary, any spawn
+        error, early exit code/signal, and stderr. Verified by forcing both
+        paths: a binary that exits immediately reports `exited early: code=0
+        signal=null`, and a non-executable path reports `spawn=... EACCES`
+        (previously an unhandled `error` event). The 150 x 100 ms wait, the
+        missing-browser hard failure, and the non-zero exit are unchanged, so
+        the gate is no weaker; only its diagnostic is. Uncommitted.
 
 ## Manual and credential-gated acceptance
 
