@@ -24,9 +24,21 @@ because of its plugin loop, so interactive proof remains
 Ordinary apps that should follow stdout use `App.runAdaptive()`:
 
 ```swift
+struct MyApp: App {
+    func connect(_ context: SubscriptionContext) {
+        context.complete(.failure(exitCode: .general, "2 targets failed"))
+    }
+    // scenes …
+}
+
 let status = try MyApp.runAdaptive()
 exit(status.code)
 ```
+
+A declared failure is built with `failure(exitCode:_:)`, whose
+`FailureExitCode` accepts only `1...255`, so the code reaching `exit` cannot
+be a zero the shell reads as success. The unvalidated `failure(code:_:)`
+factory accepts one.
 
 A terminal selects `TUIRenderer` (raw mode, differential ANSI, input loop).
 A pipe, file, or CI log selects `StreamRenderer`: plain lines, no termios,
@@ -36,6 +48,9 @@ no signal dispositions, no input, layout extent fixed at 80×24.
 `StreamRenderer.waitsForInput` is `false`, so the first quiescent frame ends
 the run. Async work must declare `CompletionStatus` via `complete(_:)`;
 quiescence is not success, and `complete` does not exit the process.
+Opt-in `FailureExitCode` accepts only `1...255` and rejects `0`, negatives,
+and `256+` by failing construction (`failure(exitCode:_:)`); the unvalidated
+`failure(code:_:)` factory still accepts zero.
 This path is pinned by `AdaptiveSurfaceTests` and `StreamOutputTests`. It
 is not hosted proven.
 

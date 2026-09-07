@@ -12,6 +12,34 @@ credential-gated acceptance, and deferred product scope. New product scope
 needs a new accepted design. Extending strict memory safety to executables
 and the test target remains a separate decision documented in ADR 0012.
 
+## Validated failure exit codes
+status: done
+
+- Landed 2026-09-06 as an additive GamaCore API, not a rewrite of
+  `failure(code:_:)`. Public `FailureExitCode` accepts only `1...255`
+  (failable, immutable `Int32` raw, `RawRepresentable`/`Hashable`/`Sendable`,
+  `.general` raw `1`). `CompletionStatus.failure(exitCode:_:)` writes that
+  raw into a status that starts `isSuccess == false`. Legacy
+  `failure(code: 0)` still reports success; negatives and 256 still construct
+  through the raw surfaces; `code` stays mutable.
+- RED on pinned 6.5-dev: tests failed to compile (`cannot find
+  'FailureExitCode'`; only `failure(code:_:)` existed). GREEN:
+  `FailureExitCodeTests` 12 tests (255 accepted-range cases plus 5 rejection
+  cases); `CompletionStatusTests` still 6. Apple gate 317 tests in 56 suites,
+  debug/test/release. Docs, doc-coverage, and boundaries green. Local
+  evidence only — not hosted six-job proof. Handbook HTML/JS and the Linux
+  6.2.1 harness were not imported.
+- Follow-up 2026-09-06: `AGENTS.md` and `CLAUDE.md` now name the opt-in
+  `1...255` path and still say unvalidated `failure(code:_:)` accepts zero.
+  Freshness stayed green with no ledger promotion. Embedded 642,084 bytes
+  within 2% of 641,464; pin not re-measured. `FailureExitCodeTests` still 12
+  on 6.5-dev; docs and doc-coverage green. Local evidence only.
+- Catalog follow-up 2026-09-06: `docs/backends/TUI.md` and
+  `GamaCore.docc/BackendAuthoring.md` now carry the same opt-in `1...255` /
+  legacy-zero see-also next to `complete(_:)`. `AGENTS.md` / `CLAUDE.md`
+  sentences kept. Freshness green, no ledger promotion. `FailureExitCodeTests`
+  still 12; docs and doc-coverage green. Local evidence only.
+
 ## Toolchain selection and 6.5-dev spelling audit
 status: done
 

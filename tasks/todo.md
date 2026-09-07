@@ -630,6 +630,151 @@ because this command's scope is the ledger.
 Both are for whoever owns `CLAUDE.md` next; re-read the array before fixing
 either, since the count moved twice today.
 
+## Source review and two answered residuals (2026-09-06 22:0x)
+
+- [x] **Both `CLAUDE.md` items directly above are now fixed, not just recorded.**
+      The file states the array is fifteen entries and says the count moved from
+      thirteen the same day, and the stale "third script outside the array"
+      paragraph is gone. It also now records something previously undocumented:
+      `CLAUDE.md` is itself scanned by `scripts/referenced-paths.py` and
+      `scripts/evidence-locality.py`, so editing it can break `check-docs.sh` —
+      the four root documents are in both scanners' scope.
+
+- [x] **ADR 0001's residual is ANSWERED, and the answer is that the recorded
+      candidate does not work.** The bullet above proposed "a per-backend golden
+      `DrawList` for one shared scene". That is unsound: there is no shared grid,
+      so there is no shared value. Embed's extent is the `columns`/`rows` passed
+      to `makeContext`; `GamaAppleUI`'s is derived from a measured monospaced
+      cell size in `Sources/GamaAppleUI/GamaHostView.swift` and re-forced every
+      frame, so a test cannot pin it by sending `.resize`. N goldens therefore
+      differ by construction, and each is a recording of its own backend — when a
+      backend forks, its golden is re-baselined and the gate rubber-stamps the
+      fork. That is the green-by-construction family this repository already
+      documents.
+      A reshaped form IS sound: ONE reference derivation plus cross-backend
+      equality, with the expected extent computed independently of the backend
+      and asserted before the commands are compared. Reachable for exactly two
+      backends — `GamaEmbed` and `GamaAppleUI` under `canImport(AppKit)`.
+      `GamaWASM` is not reachable (`WASMHostBox`, the pump and `frame()` are all
+      inside `#if arch(wasm32)`), `GamaTUI` is `CellPresenter`-family and never
+      builds a `DrawList`, and `GamaMLIR` lowers `RenderNode` to text so it is
+      outside the family. **Designed, not implemented**; no gate is claimed.
+      Two limits stated rather than papered over: a fork of the *dirty gate*
+      produces byte-identical output and stays invisible, and
+      `TUIRenderer`/`StreamRenderer` bypass `HostPump.advance(into:emit:)`
+      entirely, so `HostPump+CellBuffer.swift`'s "four backends" comment is
+      currently overstated.
+
+- [x] **The `docs/` half of the unenforced-policy audit is now derived.** Ten
+      gaps: 1 HIGH, 6 MEDIUM, 3 LOW, plus two recorded as not mechanizable with
+      reasons, and one category (force-push, PR-only, merge-after-green) that is
+      enforced by the GitHub ruleset rather than by anything in the repository.
+      One is a LIVE error rather than a latent risk:
+      `docs/TerminalOwnershipMigration.md:21` cites the Windows `Terminal`
+      declaration at line 493; measured, it is at 497, and 493 is a doc comment.
+      `scripts/referenced-paths.py` is green on it **by construction** — it
+      matches `path:<line>` and then discards the suffix, so it proves the file
+      exists and never that the line means what the prose says. Cheap partial
+      fix available: where a citation carries `:NN`, require the file to have at
+      least NN lines. A full check is not possible and should not be claimed.
+      Stated so a later pass does not repeat it: a count-marker gate must exempt
+      dated evidence reports, or it will fail honest history — `docs/Swift65SDK27.md`
+      says thirteen gates because that is what its dated run measured.
+
+- [x] **Full local gate audit at this tree.** Twelve of the fifteen gates ran and
+      all exited 0, read directly rather than through a pipe: apple,
+      apple-platforms, boundaries, concurrency-negative, c-abi, embedded, linux,
+      wasm, docs, doc-coverage, evidence-freshness, package-graph. **317 tests in
+      56 suites.** Three did not run and fail closed on genuinely missing local
+      prerequisites, not on defects: `check-android.sh` (no `ANDROID_NDK_HOME`),
+      `check-android-emulator.sh` (no `ANDROID_HOME`, and no booted emulator),
+      `check-mlir.sh` (no `mlir-opt`). Local evidence only.
+
+- [x] **The docs sweep's one HIGH gap is closed: the platform-import ban now
+      covers every portable target.** `check-boundaries.sh` banned Foundation,
+      AppKit, UIKit, Darwin, Glibc, WinSDK, and Synchronization in `GamaCore` and
+      `GamaPlugin` only, while `scripts/portable-global-state.py` policed global
+      state across five targets. The two rules answer the same question — may
+      this target require a platform or concurrency runtime — so the mismatch
+      left `GamaDraw`, `GamaEmbed`, and `GamaMLIR` forbidden a
+      `nonisolated(unsafe)` global yet free to `import Foundation`, which would
+      have taken the platform dependency the global was banned for.
+      The ban now uses the same five-target list, and both the list and the
+      reason are stated beside it so they cannot drift apart silently.
+      **Green by measurement, not by hope**: all three newly covered targets
+      import only `GamaCore` (and `GamaDraw` in `GamaEmbed`'s case) today, so the
+      extension was verified clean before it was made.
+      **Mutation-proven in both directions**: `import Foundation` planted at the
+      top of `Sources/GamaDraw/CellSerializer.swift` makes the gate exit 1 and
+      name the file and line; restoring the file byte-identically returns exit 0.
+      The pre-change target list was re-read from `HEAD` to confirm it names only
+      the two targets and would have passed that same mutation.
+      Gates green after the change: boundaries, docs, doc-coverage,
+      evidence-freshness, package-graph, all exit 0. `check-apple.sh` was not
+      re-run because this slice changes no Swift source. Local evidence only.
+
+- [x] **All four defects below are FIXED and merged into local `main`, verified
+      on the merged tree rather than per-branch.** Eleven runnable gates exit 0
+      and the suite is **321 tests in 56 suites**. The count reconciles exactly:
+      317 before, +3 for the TextField space tests, +3 for the layout tests, −2
+      for two duplicate cases deleted during review, so nothing was silently
+      dropped by the merges. Embedded 643,432 bytes, +0.31% on the 641,464 pin.
+      Not run, unchanged prerequisites: Android (no NDK/SDK), MLIR (no
+      `mlir-opt`). Local evidence only.
+
+- [ ] **Residuals from this pass, each real and none of them fixed.** Recorded
+      rather than quietly dropped.
+      (1) **The fail-open `if grep --include` shape survives in two more places,
+      and the larger one was missed by my own review.** `scripts/check-boundaries.sh`
+      still greps a nonexistent-directory-tolerant pattern for the three
+      process-global literals over three directories, and for the
+      `GamaPlatformServices` inverse ban over **thirteen** — that second one is
+      the biggest remaining exposure by target count and fails silently exactly
+      as the import ban did. The `TerminalRescue.swift` check is a milder case:
+      no `--include`, so a missing file exits 2 with a diagnostic — fail-open but
+      noisy, not silent.
+      (2) **`flexPriority` is now advisory.** The public property still collapses
+      both axes and is no longer what the layout solver consults; an internal
+      `flexPriority(along:)` in `Sources/GamaCore/RenderNode.swift` is. Its doc
+      comment says so. Needs a decision record to deprecate it or promote the
+      axis-aware form to public — deliberately not decided, because that is a
+      public API change.
+      (3) **The WASM no-host path has zero coverage in either export tier.**
+      Nothing anywhere asserts `-1`, and the state is reachable:
+      `Sources/GamaWASM/WASMHost.swift` documents that a first install throwing
+      `SceneConfigurationError` leaves no host installed. Closing it needs a
+      fixture app whose `install` throws, plus changes to the Node smoke driver.
+      Note the `-2` defect just fixed was established by source inspection, not
+      measurement — probing the pre-fix build traps with a signature mismatch on
+      exactly the discriminating key codes.
+      (4) **No regression test pins a `complete` issued from `connect`.** The
+      corrected `docs/backends/TUI.md` example is correct by construction; the
+      existing test only pins that `connect` fires at all.
+      (5) `CONTRIBUTING.md` still calls the boundary gate "GamaCore import bans"
+      when it has covered five targets since 2026-09-06.
+      (1) **A space can never be typed into a `TextField`.**
+      `Sources/GamaCore/FrameHost.swift` matches `.key(.character(" "))` in the
+      activation case before the generic `case .key(let key)` that would reach
+      `invokeKey`, and `TextField` registers only a key handler in
+      `Sources/GamaCore/Primitives.swift`, never an action — so the keystroke is
+      consumed by a no-op. Its own guard admits scalars `>= 0x20`, so it means to
+      accept U+0020. Untested: `Tests/gamaTests/FormControlTests.swift` types a
+      letter, a letter, and backspace.
+      (2) **`measureStack` drops the cross-axis extent of flexible children.**
+      `Sources/GamaCore/Layout.swift` continues past the child before the cross
+      maximum is updated, then floors it to 1, while the placement pass grants
+      those same children the full cross extent — measure and place disagree.
+      (3) **Flexibility is recorded axis-blind.** `Sources/GamaCore/RenderNode.swift`
+      returns flexible when *either* frame maximum is unbounded, so a node
+      declared flexible on width absorbs leftover height in a vertical stack.
+      This one is a design call on a `public` property, not a clear defect.
+      (4) **`gama_web_v2_key` returns `-2` where the backend guide promises
+      `-1`.** `Sources/GamaWASM/WASMHost.swift` checks the key code before it
+      checks for an installed host, inverting the documented fail-closed order;
+      `Sources/GamaEmbed/CInterface.swift` checks the context first. Nothing pins
+      it, because the v2 exports are inside `#if arch(wasm32)` and the WASM gate
+      drives only the v1 tier.
+
 ## Manual and credential-gated acceptance
 
 - [ ] Exercise the AppKit accessibility adapter with VoiceOver and the UIKit

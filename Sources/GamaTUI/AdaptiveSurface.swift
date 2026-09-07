@@ -210,7 +210,19 @@ extension App {
     /// quit. This does **not** terminate the process: exiting is the
     /// caller's decision, which also keeps the path testable.
     ///
+    /// A declared failure is built with `failure(exitCode:_:)`, whose
+    /// `FailureExitCode` accepts only `1...255`, so the code handed to
+    /// `exit` cannot be a zero the shell reads as success. The unvalidated
+    /// `failure(code:_:)` factory accepts one.
+    ///
     /// ```swift
+    /// struct MyApp: App {
+    ///     func connect(_ context: SubscriptionContext) {
+    ///         context.complete(.failure(exitCode: .general, "2 targets failed"))
+    ///     }
+    ///     // scenes …
+    /// }
+    ///
     /// let status = try MyApp.runAdaptive()
     /// exit(status.code)
     /// ```

@@ -44,13 +44,13 @@ swiftly run swift run gama-demo
 
 - Flow: `App -> SceneBuilder -> RenderNode -> LayoutEngine -> CellPainter -> CellBuffer -> DrawList -> backend`; platform events return through `FrameHost`.
 - Every app declares exactly one primary scene. All backends except `GamaAppleShell` render only that primary scene; the shell owns macOS auxiliary/multi-window surfaces.
-- `GamaCore` and `GamaPlugin` are stdlib-only. They may not import Foundation, platform UI/POSIX modules, WinSDK, or Synchronization, and framework state must not move into process-global registries.
+- `GamaCore` and `GamaPlugin` are stdlib-only. The platform-import ban covers all five portable targets — `GamaCore`, `GamaPlugin`, `GamaDraw`, `GamaEmbed`, `GamaMLIR` — which may not import Foundation, platform UI/POSIX modules, WinSDK, or Synchronization, and framework state must not move into process-global registries. Both bans are enforced by `scripts/portable-global-state.py` over its single `TARGETS` list, so there is no second list to keep in step; it fails closed on a target directory that is missing or empty.
 - `FrameHost` and `AppRuntime` are `~Copyable`; each host uniquely owns focus, actions, `@Reactive` state, subscriptions, dirty state, and frames. Out-of-band changes use host subscriptions or explicit `invalidate()`.
 - `GamaPlatformServices` contains Foundation-backed host-service implementations. Only apps, demos, examples, and tests may import it; portable/framework targets must depend on service interfaces instead.
 - `GamaMacrosImpl` is a host compiler plugin. `swift-syntax` is revision-pinned and build-time-only; shipped products must retain zero runtime package dependencies.
 - Backends translate events and present shared `DrawList` output; do not fork layout, paint, or application semantics. Keep C `gama_embed_v1_*` and WASM `gama_web_v1_*`/`gama_web_v2_*` symbols versioned and separately namespaced; the WASM backend ships both tiers, `v2` being the argument-compatible status-reporting form (`docs/backends/WASM.md`).
 - `CellPresenter` (mutating, swaps planes: TUI `AnsiPresenter` / `StreamPresenter`) and `CellSerializer` (non-mutating, no swap: WASM, Embed, and Apple `DrawListSerializer`) are distinct families. Do not unify them (`docs/superpowers/specs/2026-09-06-cell-serializer-design.md`).
-- `App.runAdaptive()` selects interactive versus stream from stdout (`--gama-plain` / `--gama-tui`). An input-less stream run ends at the first quiescent frame; async work must declare `CompletionStatus` via `complete(_:)`.
+- `App.runAdaptive()` selects interactive versus stream from stdout (`--gama-plain` / `--gama-tui`). An input-less stream run ends at the first quiescent frame; async work must declare `CompletionStatus` via `complete(_:)`. `FailureExitCode` is an opt-in `1...255` constructor used with `failure(exitCode:_:)`; it rejects `0`, negatives, and `256+` by failing construction. The unvalidated `failure(code:_:)` factory still accepts zero.
 
 ## State And Documentation Traps
 
