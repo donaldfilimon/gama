@@ -9,7 +9,7 @@ import Testing
 @testable import GamaTUI
 
 @Suite("View builder")
-struct BuilderTests {
+struct ViewBuilderTests {
     @Test("render nodes remain hashable")
     func renderNodesRemainHashable() {
         func requireHashable<T: Hashable>(_: T.Type) {}

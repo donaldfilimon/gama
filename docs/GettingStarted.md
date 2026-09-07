@@ -94,6 +94,11 @@ struct HelloApp: App {
 try HelloApp.main(renderer: TUIRenderer())
 ```
 
+That explicit renderer is the interactive path. Ordinary apps that should
+follow stdout use `App.runAdaptive()` instead, which selects `TUIRenderer`
+or `StreamRenderer` from the descriptor (`--gama-plain` / `--gama-tui`
+override detection).
+
 The data flow is always:
 
 ```text

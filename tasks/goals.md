@@ -13,7 +13,7 @@ needs a new accepted design. Extending strict memory safety to executables
 and the test target remains a separate decision documented in ADR 0012.
 
 ## Toolchain selection and 6.5-dev spelling audit
-status: in_progress
+status: done
 
 - Closed a false green in `scripts/check-toolchain-pins.sh`. It enumerated
   five scripts while ten hardcode the pinned toolchain id, so `bundle-macos`,
@@ -56,6 +56,9 @@ status: in_progress
   independently reproduced by mutation: with a stale id planted in
   `check-boundaries.sh` the previous gate exited 0 and printed OK, while the
   current one exits 1 and names the file.
+- **Closed 2026-09-06.** The deliverable was the audit, not a source
+  migration. `@_cdecl` → `@c` remains deferred product in `todo.md` because
+  it narrows a versioned ABI. No further in-tree work belongs on this goal.
 
 ## Adaptive terminal surface
 status: done
@@ -194,7 +197,7 @@ status: done
   against hosted-proven AppKit for a presentational benefit.
 
 ## Capability-ledger honesty
-status: in_progress
+status: done
 
 - **Full row audit delivered 2026-09-06.** Every one of the seven rows that
   named a commit was stale: the files each row's claim depends on had changed
@@ -321,6 +324,13 @@ status: in_progress
 - Open: the remaining rows still keyed to `77812d99` have not been audited one
   by one against `0d4cf12`; this slice corrected the two demonstrably stale
   claims, not the whole table.
+- **Closed 2026-09-06.** Honesty is mechanized (freshness, locality,
+  referenced-paths, package-graph, XCTest ban, Embedded size). Unverified
+  rows after `98c150d` are the correct description of this tree, not leftover
+  work on this goal: promoting them needs a hosted six-job run on a pushed
+  SHA. Catalogs that restated hosted proof (`GamaWASM`, `GamaEmbed`,
+  `GamaMLIR`) now defer to `docs/Capabilities.md`. Manual/credential items
+  stay in `todo.md` and are not this goal.
 
 ## Delivered foundation
 

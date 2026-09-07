@@ -20,8 +20,8 @@ evidence ledger.
    delivered design.
 4. [Examples and runnable surfaces](Examples.md) — terminal, MLIR, AppKit,
    WASM, C, Android, Embedded, and performance routes.
-5. [Verification and evidence boundaries](Verification.md) — the 13 local
-   gates, hosted-job map, deployment, packaging, performance, and manual proof.
+5. [Verification and evidence boundaries](Verification.md) — the local
+   gates in `scripts/check.sh`, hosted-job map, deployment, packaging, performance, and manual proof.
 6. [Troubleshooting](Troubleshooting.md) — toolchain, FileProvider, filters,
    demos, platform prerequisites, docs, and branch safety.
 

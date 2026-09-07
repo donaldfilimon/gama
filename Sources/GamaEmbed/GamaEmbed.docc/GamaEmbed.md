@@ -24,9 +24,10 @@ construction; two contexts share no state, which the independent-context
 suite proves.
 
 Per the evidence ledger (`docs/Capabilities.md`), the C embedding surface
-is locally proven by the Swift Testing ABI suites plus the compiled,
-linked, and executed pure-C consumer gate (`scripts/check-c-abi.sh`), and
-hosted proven on the Linux job. The static product folds the entry points
+is Locally proven by the Swift Testing ABI suites plus the compiled,
+linked, and executed pure-C consumer gate (`scripts/check-c-abi.sh`). The
+hosted Linux C consumer job is remaining proof, not current evidence.
+The static product folds the entry points
 into the host binary; on Darwin and Android hosts the consumer also
 carries the Swift runtime, a boundary `docs/backends/CEmbed.md` states
 explicitly.

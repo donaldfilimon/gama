@@ -91,6 +91,48 @@ struct DrawListTests {
         #expect(try DrawList.decode(original.encode()) == original)
     }
 
+    @Test("v1 golden payload pins magic, version, and field order")
+    func v1GoldenPayloadPinsMagicVersionAndFieldOrder() throws {
+        // Bytes are laid out from ADR 0005 / the encoder comment, not copied
+        // from a prior encode() run, so a field-order change fails this test
+        // instead of both sides moving together.
+        let style = TextStyle(
+            foreground: Color(r: 1, g: 2, b: 3),
+            background: .default,
+            attributes: .bold
+        )
+        let list = DrawList(
+            size: Size(width: 2, height: 1),
+            commands: [
+                .fillRect(Rect(x: 0, y: 0, width: 2, height: 1), Color(r: 8, g: 16, b: 32)),
+                .text("A", at: Point(x: 0, y: 0), style: style),
+            ]
+        )
+        let golden: [UInt8] = [
+            0x47, 0x41, 0x4D, 0x41,  // magic "GAMA" = 0x414D4147 LE
+            0x01, 0x00, 0x00, 0x00,  // version 1
+            0x02, 0x00, 0x00, 0x00,  // gridW
+            0x01, 0x00, 0x00, 0x00,  // gridH
+            0x02, 0x00, 0x00, 0x00,  // commandCount
+            0x00,  // fillRect
+            0x00, 0x00, 0x00, 0x00,  // x
+            0x00, 0x00, 0x00, 0x00,  // y
+            0x02, 0x00, 0x00, 0x00,  // w
+            0x01, 0x00, 0x00, 0x00,  // h
+            0x08, 0x10, 0x20, 0x00,  // r,g,b, flags (painted)
+            0x01,  // text
+            0x00, 0x00, 0x00, 0x00,  // x
+            0x00, 0x00, 0x00, 0x00,  // y
+            0x01, 0x02, 0x03, 0x00,  // fg r,g,b, flags
+            0x00, 0x00, 0x00, 0x01,  // bg default
+            0x01, 0x00,  // sgr bold
+            0x01, 0x00, 0x00, 0x00,  // utf-8 length
+            0x41,  // "A"
+        ]
+        #expect(list.encode() == golden)
+        #expect(try DrawList.decode(golden) == list)
+    }
+
     @Test("decode rejects garbage")
     func decodeRejectsGarbage() {
         #expect(throws: DrawList.DecodeError.truncated) { try DrawList.decode([]) }

@@ -284,8 +284,10 @@ Target layering (all under `Sources/`, single test target `GamaTests` at
 `Tests/gamaTests`):
 
 - **GamaCore** — scenes, views, identity, state, layout, events,
-  `FrameHost`, and the per-host `@Reactive` state store it owns
-  (`ReactiveState.swift`). Embedded-Swift-safe: stdlib only. `check-boundaries.sh`
+  `FrameHost`, the per-host `@Reactive` state store it owns
+  (`ReactiveState.swift`), and `CompletionStatus` (`Completion.swift`): a
+  declared process outcome, never inferred from quiescence. Embedded-Swift-safe:
+  stdlib only. `check-boundaries.sh`
   rejects any import of Foundation, AppKit, UIKit, Darwin, Glibc, WinSDK, or
   Synchronization in GamaCore *and* GamaPlugin, and rejects process-global
   registries anywhere. `FrameHost` and `AppRuntime` are `~Copyable`: each
@@ -333,7 +335,12 @@ Target layering (all under `Sources/`, single test target `GamaTests` at
   (double-buffered grid + ANSI diff), CellPainter (IR → cells), DrawList
   (cells → vector commands + versioned little-endian binary, magic `GAMA`,
   version 1), and `AccessibilitySnapshot` (`DrawList` → text plus per-line
-  frames). Accessibility is therefore a *portable* concern computed here, not
+  frames). Two presentation families sit on the same buffer and must not be
+  unified: `CellPresenter` (`StreamPresenter.swift`) is mutating and swaps
+  planes (`AnsiPresenter` / `StreamPresenter`, TUI only); `CellSerializer`
+  (`CellSerializer.swift`) is non-mutating and does not swap
+  (`DrawListSerializer` for Embed/Apple, `HTMLSerializer` in GamaWASM).
+  Accessibility is therefore a *portable* concern computed here, not
   an Apple-only one: `AccessibilitySnapshotTests` pins the platform-free
   derivation and `AppleHostAccessibilityTests` pins the AppKit/UIKit bridge in
   `Sources/GamaAppleUI/GamaHostAccessibility.swift`.
@@ -341,7 +348,14 @@ Target layering (all under `Sources/`, single test target `GamaTests` at
   application semantics. GamaTUI (POSIX termios + Windows Console VT; its
   signal handling lives in the **C-only** `GamaTUISignal` target so that
   dispositions, restore bytes, and `sig_atomic_t` latches never run Swift
-  runtime code in async-signal context — do not reimplement it in Swift),
+  runtime code in async-signal context — do not reimplement it in Swift;
+  `AdaptiveSurface.swift` adds `SurfaceMode` / `StreamRenderer` /
+  `App.runAdaptive()` so a TTY gets `TUIRenderer` and a pipe gets plain
+  lines with no termios, overridable by `--gama-plain` / `--gama-tui`;
+  an input-less stream run ends at the first quiescent frame unless the
+  app declared `CompletionStatus`; `gama-demo` still drives `TUIRenderer`
+  itself because of its plugin loop — use the `run-gama` skill, not a
+  redirected `swift run`),
   GamaAppleUI (`@MainActor` NSView/UIView via CoreGraphics), GamaAppleShell
   (NSApplication/NSWindow ownership, multi-window and per-shell command
   routing; compiles to an inert target without AppKit — it is the one
