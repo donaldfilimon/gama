@@ -119,11 +119,14 @@ Node smoke drivers (`wasm-runtime-smoke.mjs`, `browser-runtime-smoke.mjs`,
 each self-tested first and then run against the built artifact), so **node is a
 prerequisite of the WASM gate**, not just Python. `check-boundaries.sh` chains
 `check-portable-symbols.sh`, `check-toolchain-pins.sh`, and
-`scripts/portable-global-state.py` (which rejects `nonisolated(unsafe)` and
-global-actor isolation in `GamaCore`, `GamaPlugin`, `GamaDraw`, `GamaEmbed`,
-and `GamaMLIR` — Swift 6 language mode already rejects a bare stored `static
-var`, so those two hatches are all that is left to police; backends are out of
-scope, `GamaWASM/WASMHost.swift:89` being a justified single-threaded use), and
+`scripts/portable-global-state.py` (which owns **both** portable-target rules
+over one `TARGETS` list — `GamaCore`, `GamaPlugin`, `GamaDraw`, `GamaEmbed`,
+`GamaMLIR`: it rejects imports of Foundation, AppKit, UIKit, Darwin, Glibc,
+WinSDK, and Synchronization, and it rejects `nonisolated(unsafe)` and
+global-actor isolation. Swift 6 language mode already rejects a bare stored
+`static var`, so those two hatches are all that is left to police; backends are
+out of scope, `GamaWASM/WASMHost.swift:89` being a justified single-threaded
+use), and
 `check-doc-coverage.sh` chains `scripts/doc-coverage.py`, so **python3 is a
 prerequisite of the documentation gates**, not only the WASM one. The pre-push
 documentation checklist is the block in `CONTRIBUTING.md`:
@@ -323,16 +326,21 @@ Target layering (all under `Sources/`, single test target `GamaTests` at
   cannot build a failure an eight-bit process status reads as success; the
   unvalidated `failure(code:_:)` factory still accepts zero, `code` stays
   mutable, and the application still owns `exit`. Embedded-Swift-safe:
-  stdlib only. `check-boundaries.sh`
-  rejects any import of Foundation, AppKit, UIKit, Darwin, Glibc, WinSDK, or
-  Synchronization across all five portable targets — GamaCore, GamaPlugin,
-  GamaDraw, GamaEmbed, and GamaMLIR — and rejects process-global registries
-  anywhere. That list is deliberately identical to
-  `scripts/portable-global-state.py`'s `TARGETS`: the import ban and the
-  global-state ban answer the same question, and until 2026-09-06 the import
-  half covered only the first two, so GamaDraw, GamaEmbed, and GamaMLIR were
-  policed for global state while free to import Foundation. Keep both lists in
-  step. `FrameHost` and `AppRuntime` are `~Copyable`: each
+  stdlib only. `scripts/portable-global-state.py`, which
+  `check-boundaries.sh` runs, rejects any import of Foundation, AppKit, UIKit,
+  Darwin, Glibc, WinSDK, or Synchronization across all five portable targets —
+  GamaCore, GamaPlugin, GamaDraw, GamaEmbed, and GamaMLIR — and
+  `check-boundaries.sh` itself rejects the three named process-global registry
+  literals. The import ban and the global-state ban now share one list, that
+  script's `TARGETS` — the libm symbol scan keeps its own narrower
+  `portable_targets=(GamaCore GamaPlugin GamaDraw GamaMLIR)` in
+  `check-boundaries.sh`, and the `GamaPlatformServices` inverse ban a third,
+  wider one. The two that merged answer the same question,
+  so they are enforced together and cannot drift apart. Until 2026-09-06 the
+  import half was a separate `if grep` over its own copy of the list, which
+  both let the two diverge and failed open on a renamed directory — a nonexistent
+  path plus `--include` makes BSD grep exit 1 with no output, which reads as "no
+  violation". `FrameHost` and `AppRuntime` are `~Copyable`: each
   host uniquely owns focus, actions, `@Reactive` state, subscriptions, dirty
   state, and frames; out-of-band changes go through the host's
   `SubscriptionContext`, a bound `@Reactive` write, or explicit
