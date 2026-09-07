@@ -96,7 +96,7 @@ public enum LayoutEngine {
                 mainUsed += 1
                 continue
             }
-            if case .flexible(let w) = child.flexPriority {
+            if case .flexible(let w) = child.flexPriority(along: axis) {
                 flexWeight += w
                 mainUsed += flexMinimum(of: child, axis: axis)
                 // Only the main axis is deferred to `layout`; the child
@@ -255,7 +255,7 @@ public enum LayoutEngine {
                 fixedMain += 1
                 continue
             }
-            if case .flexible(let w) = child.flexPriority {
+            if case .flexible(let w) = child.flexPriority(along: axis) {
                 flexTotal += w
                 mins[i] = flexMinimum(of: child, axis: axis)
                 fixedMain += mins[i]
@@ -273,7 +273,7 @@ public enum LayoutEngine {
             var weightLeft = flexTotal
             for (i, child) in children.enumerated() {
                 if case .divider = child { continue }
-                guard case .flexible(let w) = child.flexPriority else { continue }
+                guard case .flexible(let w) = child.flexPriority(along: axis) else { continue }
                 let share = weightLeft > 0 ? (remaining * w + weightLeft - 1) / weightLeft : 0
                 let granted = min(share, remaining)
                 remaining -= granted

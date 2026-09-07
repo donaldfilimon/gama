@@ -203,6 +203,29 @@ struct LayoutTests {
         #expect(laid.children[1].frame.minX == 5)
     }
 
+    @Test("a maxWidth child is not flexible on a column's main axis")
+    func flexibilityIsResolvedPerAxis() {
+        let column = RenderNode.stack(
+            axis: .vertical, spacing: 0, alignment: .topLeading,
+            children: [
+                .flexFrame(
+                    minWidth: nil, maxWidth: .max,
+                    minHeight: nil, maxHeight: nil,
+                    alignment: .topLeading,
+                    child: .text("A", style: .plain)
+                ),
+                .text("B", style: .plain),
+            ]
+        )
+        let m = LayoutEngine.measure(column, proposal: .unspecified)
+        #expect(m.height == 2)
+
+        let laid = LayoutEngine.layout(column, in: Rect(x: 0, y: 0, width: 10, height: 10))
+        #expect(laid.children[0].frame.size.height == 1)
+        #expect(laid.children[0].frame.size.width == 10)
+        #expect(laid.children[1].frame.minY == 1)
+    }
+
     @Test("border reserves two cells")
     func borderReservesTwoCells() {
         let node = RenderNode.border(
