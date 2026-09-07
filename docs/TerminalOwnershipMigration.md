@@ -18,7 +18,7 @@ Windows job. Evidence vocabulary is defined in
 ## API diff
 
 One line changed on each of the two platform declarations
-(`Sources/GamaTUI/Terminal.swift:85` POSIX, `:493` Windows Console):
+(`Sources/GamaTUI/Terminal.swift:85` POSIX, `:497` Windows Console):
 
 ```diff
 -public struct Terminal {
