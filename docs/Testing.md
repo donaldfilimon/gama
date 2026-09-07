@@ -33,32 +33,51 @@ That is the same snapshot `swiftly run` selects. Do not invoke PATH `swift`
 
 All suites live in `Tests/gamaTests/`:
 
-| File | Suites |
+| File | Suites (filter the source identifier, not the `@Suite` title) |
 | --- | --- |
 | `ActionTests.swift` | Actions |
+| `AdaptiveSurfaceTests.swift` | Adaptive terminal surface |
+| `AccessibilitySnapshotTests.swift` | Accessibility snapshot |
+| `AppleHostAccessibilityTests.swift` | AppKit accessibility bridge |
+| `AppleHostFontCacheTests.swift` | AppKit host styled-font cache |
+| `AppleHostTests.swift` | AppKit host |
+| `AppleShellTests.swift` | AppKit scene shell |
+| `CellSerializerTests.swift` | Cell serializer |
+| `CompletionStatusTests.swift` | Completion status |
 | `DrawListTests.swift` | Cell buffer, DrawList, Cell painter |
+| `EmbedABITests.swift` | Embed ABI additions |
+| `EmbedTests.swift` | C embedding context |
+| `FormControlTests.swift` | Form controls and identity |
 | `FrameHostTests.swift` | FrameHost |
 | `GeometryTests.swift` | Geometry |
+| `HostPumpTests.swift` | Host pump |
 | `LayoutTests.swift` | Layout |
+| `MacroExpansionTests.swift` | Macro expansion |
+| `MacroUsageTests.swift` | Macro public surface; reactive state lifetime |
+| `MLIRFixtureTests.swift` | MLIR fixtures |
 | `MLIRTests.swift` | MLIR |
-| `RunIterationTests.swift` | Run iteration |
-| `SignalTests.swift` | Signal |
-| `StyleTests.swift` | Style |
-| `ViewBuilderTests.swift` | View builder (including ZStack overlay vs group); filter `--filter ViewBuilderTests` |
-| `TestSupport.swift` | No suite; shared helpers, including `TestBox` |
-| `ModernTests.swift` | DrawList codec hostility, CellPainter ↔ DrawList, Overflow-safe geometry |
-| `FormControlTests.swift` | TextField, Toggle, ProgressView |
-| `EmbedTests.swift` | Independent C-embed contexts |
-| `MacroUsageTests.swift` | `@Component` / `@Reactive` / `#rgb` compile-and-render; reactive state lifetime across frames under keyboard and pointer activation |
-| `MacroExpansionTests.swift` | Macro expansion via `SwiftSyntaxMacrosGenericTestSupport` (no XCTest): `ReactiveSlot` peer and binding `render(in:)` expansion, `@Reactive` outside `@Component` and hand-written `render(in:)` diagnostics |
-| `ViewStateIdentityTests.swift` | Per-surface `@Reactive` storage: inline persistence, `WindowGroup` independence, hoisted-instance per-surface writes, branch-flip eviction, out-of-band invalidation, `transientStateIDs`, `stateScope`, host-less local storage and transitions from a live host |
-| `EmbedABITests.swift` | Embed ABI additions: `gama_embed_v1_abi_version`, hostile-resize clamps, frame-storage reuse |
-| `WebDemoStateTests.swift` | Native tests of the explicit-slot browser demo: inline counter persistence across rebuilds and independent inline/hoisted `WindowGroup` surfaces |
-| `WASMSerializerTests.swift` | WASM HTML serializer (compiled off wasm32) |
-| `AppleHostTests.swift` | Embeddable AppKit host (macOS only) |
-| `AppleShellTests.swift` | Offscreen AppKit scene/window ownership (macOS only) |
+| `ModernTests.swift` | DrawList codec; overflow-safe geometry; CellPainter ↔ DrawList |
+| `P1LayoutTests.swift` | Border title, divider axis, TextField C0, emoji presentation, button focus |
+| `PluginCommandTests.swift` | Plugin commands |
+| `PluginRuntimeTests.swift` | Plugin runtime: manifest, grants, lifecycle |
+| `PluginSceneTests.swift` | Plugin scene contributions |
+| `PluginSlotTests.swift` | Plugin slots |
 | `POSIXTerminalIntegrationTests.swift` | PTY raw-mode restore (Darwin) |
-| `WindowsTerminalTests.swift` | Native console translators (Windows only) |
+| `ProgressViewTests.swift` | ProgressView scale awareness |
+| `RunIterationTests.swift` | Run iteration |
+| `RuntimeLoopTests.swift` | Runtime loop |
+| `SceneTests.swift` | Scene graph; window actions; lifecycle — filter `SceneGraphTests` |
+| `SignalTests.swift` | Signal |
+| `StreamOutputTests.swift` | Author-declared stream output |
+| `StreamPresenterTests.swift` | Stream presenter |
+| `StyleTests.swift` | Style |
+| `TerminalRescueTests.swift` | Terminal process-global rescue |
+| `TestSupport.swift` | No suite; shared helpers, including `TestBox` |
+| `ViewBuilderTests.swift` | View builder (including ZStack overlay vs group); filter `--filter ViewBuilderTests` |
+| `ViewStateIdentityTests.swift` | View-state identity |
+| `WASMSerializerTests.swift` | WASM HTML serializer (compiled off wasm32) |
+| `WebDemoStateTests.swift` | Web demo state |
+| `WindowsTerminalTests.swift` | Native Windows console translation |
 
 ## Conventions
 
