@@ -61,7 +61,10 @@ Swift exports (called from `WebHost/gama.js`):
 The v1 exports retain their original void-returning WebAssembly signatures.
 Status-reporting hosts may call the argument-compatible `gama_web_v2_*`
 family instead: it returns `0` when accepted, `-1` when no app host is
-installed, and `-2` from `gama_web_v2_key` for an invalid key code. Changing
+installed, and `-2` from `gama_web_v2_key` for an invalid key code. The
+installed-host check precedes argument validation, so an invalid key code with
+no host installed returns `-1`, not `-2`; `-2` reports only that an otherwise
+deliverable event carried a code the backend cannot translate. Changing
 the result type of a published symbol is an ABI break even when JavaScript
 callers ignore the result, so new result contracts require a new symbol
 family. `GamaWebDemo` owns all eight exports as WASI-conditioned target-local
