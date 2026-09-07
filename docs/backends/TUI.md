@@ -1,8 +1,8 @@
 # Terminal backend (GamaTUI)
 
-Status: Locally proven (PTY escape/UTF-8 and raw-mode-restore suites) and
-hosted proven on the macOS job; the Windows console path runs hosted on
-Swift 6.4.x (see the Windows exception in `../Toolchain.md`). Interactive
+Status: Unverified. POSIX TUI and Windows console status live in
+[`Capabilities.md`](../Capabilities.md); this guide does not restate
+hosted, locally-proven, implemented, or blocked proof. Interactive
 human-facing smoke remains supplemental, not automated acceptance.
 
 ## Running
@@ -36,12 +36,12 @@ no signal dispositions, no input, layout extent fixed at 80×24.
 `StreamRenderer.waitsForInput` is `false`, so the first quiescent frame ends
 the run. Async work must declare `CompletionStatus` via `complete(_:)`;
 quiescence is not success, and `complete` does not exit the process.
-This path is implemented and locally proven by `AdaptiveSurfaceTests` and
-`StreamOutputTests`. It is not hosted proven.
+This path is pinned by `AdaptiveSurfaceTests` and `StreamOutputTests`. It
+is not hosted proven.
 
 On Windows, detection reports a non-terminal, so `runAdaptive()` takes the
-stream path unless `--gama-tui` is passed. The Windows console row remains
-Blocked.
+stream path unless `--gama-tui` is passed. The Windows console row in the
+evidence ledger is Unverified; it is not Blocked.
 
 ## Terminal ownership and restoration
 

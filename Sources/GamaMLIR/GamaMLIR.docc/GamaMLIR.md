@@ -22,11 +22,9 @@ while `gama.group` is the ViewBuilder/ForEach flatten sentinel, and
 `dense<[r, g, b]> : tensor<3xi8>` with `"default"` for the terminal
 default, and strings are escaped deterministically.
 
-Per the evidence ledger (`docs/Capabilities.md`), the emitter is Locally
-proven (deterministic emission, the `mlir-opt` parse gate
-`scripts/check-mlir.sh`, and op-level test assertions including the
-`gama.group` sentinel). The hosted macOS MLIR job is remaining proof, not
-current evidence. The canonical
+Capability status for the emitter lives in `docs/Capabilities.md` and is
+currently Unverified (catalog edits after anchor `0f498d5`). This catalog
+does not restate hosted or local proof. The canonical
 op-by-op reference with attributes is `docs/MLIRDialect.md`; try the
 emitter with `swiftly run swift run gama-demo --emit-mlir`.
 

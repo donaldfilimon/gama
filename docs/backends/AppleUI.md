@@ -1,11 +1,9 @@
 # Apple backend (GamaAppleUI)
 
-Status: AppKit host locally runtime proven (instantiation, layout,
-invalidation, draw-list production) and hosted proven on the macOS job;
-iOS/tvOS/visionOS are compile proven only (simulator builds — no hosted
-runtime execution). VoiceOver accessibility from the draw list is
-implemented and locally proven on AppKit; UIKit shares the derivation but
-is compile proven only, and no screen-reader acceptance pass is claimed.
+Status: Unverified for the AppKit host. Capability status lives in
+[`Capabilities.md`](../Capabilities.md); this guide does not restate
+hosted or local proof. iOS/tvOS/visionOS compile proof and VoiceOver
+status are in that ledger; no screen-reader acceptance pass is claimed.
 Deployment floors: macOS 14, iOS 17, tvOS 17, visionOS 1.
 
 ## Embedding

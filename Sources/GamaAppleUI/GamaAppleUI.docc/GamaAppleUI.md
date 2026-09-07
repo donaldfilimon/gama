@@ -22,11 +22,10 @@ state changes request a frame through the non-mutating
 read-only as ``GamaHostView/currentDrawList`` for accessibility adapters
 and diagnostics.
 
-Per the evidence ledger (`docs/Capabilities.md`), the AppKit host is
-locally runtime proven by the Swift Testing AppKit suite (instantiation,
-layout, invalidation, draw-list production); the iOS/tvOS/visionOS UIKit
-host is compile proven only: simulator builds, no hosted runtime
-execution.
+Capability status for the AppKit host lives in `docs/Capabilities.md` and
+is currently Unverified (the `AppleHostTests` suite identifier changed
+after anchor `0f498d5`). This catalog does not restate hosted or local
+proof. iOS/tvOS/visionOS compile status is in that ledger.
 
 VoiceOver reads the frame the host already rendered.
 ``GamaHostView/accessibilitySnapshot`` derives reading-order text from
@@ -34,9 +33,9 @@ VoiceOver reads the frame the host already rendered.
 `AccessibilitySnapshot`, and the host publishes itself as a container whose
 children are one ``GamaAccessibilityLineElement`` per non-blank grid row.
 The adapter exposes text only: it adds no actions and no parallel account of
-what the application means. It is locally proven on AppKit by the Swift
-Testing accessibility suite; UIKit shares the derivation but is compile
-proven only, and no screen-reader acceptance pass is claimed.
+what the application means. The VoiceOver / assistive-text row in
+`docs/Capabilities.md` is Locally proven on AppKit; UIKit compile status
+and the absence of a screen-reader pass are in that ledger.
 
 This module embeds a view; it does not own the application. Applications
 that want Gama to own `NSApplication`, windows, and lifecycle use the
