@@ -189,12 +189,15 @@ public struct FrameHost: ~Copyable {
 
     /// Routes one input event through the shared interaction policy:
     /// Ctrl-C/Ctrl-Q set `wantsQuit`; Tab and Shift-Tab cycle focus in tab
-    /// order; arrow keys move focus spatially; Enter or Space activates the
-    /// focused node; a pointer press hit-tests the topmost interactive node
-    /// (focusing it only when focusable) and invokes its action; a resize
-    /// just marks the host dirty; any other key is offered to the focused
-    /// node's key handler. Whenever an event changes state, the dirty flag
-    /// is set so the next `pump` re-renders.
+    /// order; arrow keys move focus spatially; every remaining key — Enter
+    /// and Space included — is offered to the focused node's key handler
+    /// first, and Enter or Space activates the focused node only when that
+    /// handler declines, so a text field can accept a space as content
+    /// while a button still activates on one; a pointer press hit-tests the
+    /// topmost interactive node (focusing it only when focusable) and
+    /// invokes its action; a resize just marks the host dirty. Whenever an
+    /// event changes state, the dirty flag is set so the next `pump`
+    /// re-renders.
     public mutating func handle(_ event: InputEvent) {
         switch event {
         case .key(.ctrl("c")), .key(.ctrl("q")):
@@ -225,10 +228,17 @@ public struct FrameHost: ~Copyable {
         case .key(.right):
             moveFocusSpatially(dx: 1, dy: 0)
 
-        case .key(.enter), .key(.character(" ")):
+        case .key(let key) where key == .enter || key == .character(" "):
             if let id = focusedID {
                 stateStore.activate()
-                actions.invoke(id)
+                // First refusal to the focused node's key handler: an editor
+                // has to be able to type a space, and Enter has to be able to
+                // mean "newline" rather than "activate". Activation is the
+                // fallback for a node that declines the key — a `Button`
+                // registers no handler at all, so it still activates.
+                if !actions.invokeKey(key, for: id) {
+                    actions.invoke(id)
+                }
                 dirty.set(true)
             }
 
