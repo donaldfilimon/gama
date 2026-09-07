@@ -24,6 +24,11 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          # check-evidence-freshness.sh resolves capability anchors against
+          # history; the default depth-1 clone has none of them, so the gate
+          # would fail closed on every run.
+          fetch-depth: 0
       - name: Install pinned Swift 6.5-dev snapshot toolchain
         env:
           GAMA_MACOS_TOOLCHAIN_URL: https://download.swift.org/development/xcode/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a-osx.pkg
@@ -42,7 +47,7 @@ jobs:
       - name: iOS, tvOS, and visionOS compile
         run: ./scripts/check-apple-platforms.sh
       - name: Source boundaries and documentation
-        run: ./scripts/check-boundaries.sh && ./scripts/check-concurrency-negative.sh && ./scripts/check-docs.sh && ./scripts/check-doc-coverage.sh
+        run: ./scripts/check-boundaries.sh && ./scripts/check-concurrency-negative.sh && ./scripts/check-docs.sh && ./scripts/check-doc-coverage.sh && ./scripts/check-evidence-freshness.sh && ./scripts/check-package-graph.sh
       - name: MLIR parse
         run: |
           brew install llvm

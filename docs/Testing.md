@@ -35,7 +35,17 @@ All suites live in `Tests/gamaTests/`:
 
 | File | Suites |
 | --- | --- |
-| `gamaTests.swift` | Geometry, Style, Layout, View builder (including ZStack overlay vs group), Signal, Actions, Cell buffer, MLIR, DrawList, Cell painter, FrameHost |
+| `ActionTests.swift` | Actions |
+| `DrawListTests.swift` | Cell buffer, DrawList, Cell painter |
+| `FrameHostTests.swift` | FrameHost |
+| `GeometryTests.swift` | Geometry |
+| `LayoutTests.swift` | Layout |
+| `MLIRTests.swift` | MLIR |
+| `RunIterationTests.swift` | Run iteration |
+| `SignalTests.swift` | Signal |
+| `StyleTests.swift` | Style |
+| `ViewBuilderTests.swift` | View builder (including ZStack overlay vs group); note the file name and its `struct BuilderTests` differ, so `--filter ViewBuilderTests` matches nothing and **exits zero** — filter on `BuilderTests` |
+| `TestSupport.swift` | No suite; shared helpers, including `TestBox` |
 | `ModernTests.swift` | DrawList codec hostility, CellPainter ↔ DrawList, Overflow-safe geometry |
 | `FormControlTests.swift` | TextField, Toggle, ProgressView |
 | `EmbedTests.swift` | Independent C-embed contexts |
@@ -54,7 +64,9 @@ All suites live in `Tests/gamaTests/`:
 
 - `@Suite("…")` + `@Test("…")`. Prefer `#expect` over `Issue.record` except
   when a `guard case` must exit early.
-- Observer counters use a file-local `@unchecked Sendable` box. Do not add
+- Observer counters use `TestBox`, an `@unchecked Sendable` box in
+  `TestSupport.swift`. It became target-internal when the catch-all split, so
+  it is no longer file-local. Do not add
   `nonisolated(unsafe)` in GamaCore; tests may, but the box is the default.
 - Macro expansion tests call `assertMacroExpansion` from
   `SwiftSyntaxMacrosGenericTestSupport` with a `failureHandler` that records

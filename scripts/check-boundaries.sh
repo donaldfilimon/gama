@@ -16,6 +16,12 @@ fi
 if grep -R -n -E --include='*.swift' 'ActionRegistry|Invalidator\.shared|nonisolated\(unsafe\).*_host' "$ROOT/Sources/GamaCore" "$ROOT/Sources/GamaPlugin" "$ROOT/Sources/GamaEmbed"; then
   echo "error: process-global framework state detected" >&2; exit 1
 fi
+# The three literals above name known offenders; a global called anything else
+# passed them. Swift 6 language mode rejects nonisolated global mutable state on
+# its own, so what is left to police is the two hatches around it —
+# `nonisolated(unsafe)` and global-actor isolation — across every portable
+# target, not just the three listed here.
+python3 "$ROOT/scripts/portable-global-state.py" --self-test "$ROOT"
 # POSIX handlers must terminate at the C support boundary. A Swift handler
 # closure or Swift-owned signal storage can enter runtime initialization or
 # exclusivity machinery from asynchronous signal context.
@@ -263,6 +269,23 @@ MODULEMAP
   done
   echo "OK — Terminal ownership fixtures ($own_n fixtures)"
 fi
+
+# ADR 0003 (Accepted) bans XCTest, and until now nothing enforced it: the
+# decision lived in prose while an `import XCTest` would have compiled and
+# merged green. Discovered by scanning every Swift source rather than by
+# listing files, so a new directory cannot silently escape the rule.
+xctest_hits=0
+while IFS= read -r hit; do
+  xctest_hits=$((xctest_hits + 1))
+  echo "error: XCTest import at ${hit#"$ROOT"/}" >&2
+done < <(grep -rnE \
+  '^[[:space:]]*(@testable[[:space:]]+)?(public|internal|package|private|fileprivate)?[[:space:]]*import[[:space:]]+XCTest([[:space:]]|$)' \
+  --include='*.swift' "$ROOT/Sources" "$ROOT/Tests" || true)
+if [[ "$xctest_hits" -ne 0 ]]; then
+  echo "  ADR 0003 bans XCTest; use Swift Testing (import Testing)" >&2
+  exit 1
+fi
+echo "OK — Swift Testing only, no XCTest import (ADR 0003)"
 
 grep -q 'swift-tools-version: 6.4' "$ROOT/Package.swift"
 "$ROOT/scripts/check-toolchain-pins.sh"

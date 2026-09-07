@@ -54,7 +54,7 @@ struct StreamOutputTests {
         try renderer.begin()
         try renderer.emit(["step 1/3 building"])
 
-        var host = try FrameHost(app: PlainApp())
+        let host = try FrameHost(app: PlainApp())
         var pump = HostPump(host: consume host, size: renderer.size)
         let produced = pump.advance()
         let advanced = try #require(produced)
@@ -70,7 +70,7 @@ struct StreamOutputTests {
         var renderer = StreamRenderer(sink: sink)
         try renderer.begin()
 
-        var host = try FrameHost(app: PlainApp())
+        let host = try FrameHost(app: PlainApp())
         var pump = HostPump(host: consume host, size: renderer.size)
         let produced = pump.advance()
         let advanced = try #require(produced)

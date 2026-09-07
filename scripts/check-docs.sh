@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Checks repository Markdown links and the mirrored run-gama skill, then builds every
+# Checks repository Markdown links, evidence-claim locality, documented path
+# existence, and the mirrored run-gama skill, then builds every
 # `Sources/<Module>/<Module>.docc` catalog with DocC, warnings as errors.
 # GamaCore's catalog is required; new catalogs are discovered automatically.
 set -euo pipefail
@@ -8,6 +9,17 @@ SCRATCH="${GAMA_DOCC_SCRATCH_PATH:-/private/tmp/gama-docc-swiftpm}"
 test -f "$ROOT/Sources/GamaCore/GamaCore.docc/GamaCore.md"
 test -f "$ROOT/docs/Capabilities.md"
 python3 "$ROOT/scripts/check-doc-links.py" --self-test "$ROOT"
+# Anchored evidence claims must live in docs/Capabilities.md, the one file
+# check-evidence-freshness.sh checks for staleness. docs/Packaging.md carried a
+# hand-maintained second copy for two days; when the ledger retired its byte
+# figure as stale the copy silently stopped agreeing, with every gate green.
+python3 "$ROOT/scripts/evidence-locality.py" --self-test "$ROOT"
+# Documentation may not name a repository path the commit does not contain.
+# Commit a69566a landed todo.md bullets describing two gate scripts that were
+# still uncommitted; the ledger asserted gates the tree did not have and every
+# gate stayed green. Freshness asks whether a claim's sources moved, never
+# whether the thing it names exists.
+python3 "$ROOT/scripts/referenced-paths.py" --self-test "$ROOT"
 "$ROOT/scripts/check-run-gama-skill.sh"
 unset TOOLCHAINS || true
 /usr/bin/xcrun --toolchain "${GAMA_TOOLCHAIN_ID:-org.swift.65202608211a}" swift package --package-path "$ROOT" dump-package >/dev/null

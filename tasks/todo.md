@@ -99,7 +99,7 @@ with it.
 
 Candidates, in order:
 
-- [ ] **Duplicated gate preamble in `scripts/`.** The `SCRATCH_ROOT` fallback
+- [x] **Duplicated gate preamble in `scripts/`.** The `SCRATCH_ROOT` fallback
       chain is repeated in 8 scripts, a Swift-version assertion in 12, and a
       `GAMA_TOOLCHAIN_ID` default in 11; `scripts/lib/manifest.sh` is existing
       precedent for a shared helper. **Corrected: this is not cosmetic.**
@@ -121,7 +121,7 @@ Candidates, in order:
       `bash -n` plus the byte-identical path proof here, and hosted Pages CI is
       its only real exercise. The `SCRATCH_ROOT` and Swift-version repetitions above are
       untouched and remain cosmetic: no defect was demonstrated for either.
-- [ ] `Sources/GamaTUI/Terminal.swift` holds POSIX and Windows Console in one
+- [x] `Sources/GamaTUI/Terminal.swift` holds POSIX and Windows Console in one
       678-line file (`// MARK` at :77 and :442). Pure file split, no
       demonstrated defect, and it sits under the unpushed `AnsiPresenter`
       work. Not recommended.
@@ -152,7 +152,7 @@ Open questions blocking implementation:
       candidate replaces it; candidates 3-5 remain not recommended for the
       same reason.
 
-- [ ] **PR #85 carries the uncorrected `CellSerializer` spec, and the fix is
+- [x] **PR #85 carries the uncorrected `CellSerializer` spec, and the fix is
       unpushed.** Its head `cf0c369` has the code but not `eeb2426` /
       `0f498d5`, so merging it as-is lands a spec asserting that a one-byte
       HTML change breaks the WASM browser marker and that an encoding change
@@ -164,6 +164,468 @@ Open questions blocking implementation:
       2026-09-06 15:5x; no reply yet. **Publishing needs the user's
       authorization, which has not been given, so this is recorded rather than
       resolved.**
+
+- [x] **PR #84 merged as `dfc0f95`; the two `docs/Testing.md` lines it
+      falsified are now fixed (2026-09-06).** Both were verified false on the
+      merged tree before editing: `gamaTests.swift` is deleted yet line 38 still
+      listed it, and `TestBox` moved to `TestSupport.swift` as target-internal
+      while line 57 still called it "file-local". The table now carries all ten
+      topic files plus `TestSupport.swift`, mapped from the actual `@Suite`
+      names in each file rather than from the PR description, and it records
+      that `ViewBuilderTests.swift` declares `struct BuilderTests`, so
+      `--filter ViewBuilderTests` matches nothing and exits zero.
+      Original review finding, kept for the record: The split is genuinely
+      move-only: 55 `@Test` names, 12 `@Suite` names, and the suite-to-test
+      binding are byte-identical across the diff, the only semantic change
+      being `TestBox` losing `private` because two split files now need it.
+      All six required jobs pass on the exact head `e014217`. After merge,
+      `docs/Testing.md:38` still lists the deleted `gamaTests.swift` and none
+      of the ten new files, and `:57` still calls `TestBox` "file-local" when
+      it is now target-internal. `check-doc-links.py` validates relative links,
+      not backticked file references, which is exactly why CI stays green while
+      the table is wrong. Also worth deciding: `ViewBuilderTests.swift`
+      declares `struct BuilderTests`, so `--filter ViewBuilderTests` matches
+      nothing and **exits zero** — the documented silent-filter hazard, in a
+      file this PR creates.
+- [x] **Baseline correction to my own reporting.** I cited "304 tests in 55
+      suites" as the suite size. That is the **local** figure at `148b6da`,
+      which includes the unpushed `CellSerializerTests` (5 tests, 1 suite).
+      `origin/main` at `98c150d` measures **299 in 54**, and 299 + 5 = 304,
+      54 + 1 = 55, so the two reconcile exactly. Anywhere the hosted baseline
+      is meant, 299/54 is the number.
+
+- [x] **PR 1 delivered 2026-09-06: `scripts/evidence-freshness.py` +
+      `scripts/check-evidence-freshness.sh`, self-test green, deliberately NOT
+      in the `gates=(...)` array.** Run against the real ledger it exits 1 and
+      names all 20 unannotated rows, which is the correct red state before
+      PR 2. Its self-test proves ten cases on a scratch repo under `$TMPDIR`
+      (never inside this iCloud tree): fresh passes; committed drift fails;
+      uncommitted drift fails; `unverified` with drift passes; `unverified`
+      *without* drift fails; a missing anchor fails; a non-ancestor anchor
+      fails; an unannotated row fails; a renamed table header fails with "zero
+      rows parsed"; a shallow clone fails. The self-test caught a real fixture
+      bug on first run — it wrote "Hosted proven" prose while setting
+      `layer=unverified`, and the lead-word binding rejected it, which is the
+      binding working.
+- [x] **PR 2 delivered 2026-09-06: all 20 rows annotated, gate enabled as the
+      fourteenth entry in `scripts/check.sh`, `fetch-depth: 0` added to the
+      macOS CI job.** Mutation-proven red and green in both shapes that matter:
+      a modified file inside an annotated path, and an **untracked new file**
+      inside an annotated directory — the second is the shape the original
+      drift actually took, since `Sources/GamaCore/Completion.swift` was new
+      rather than modified.
+      The gate immediately caught two things during its own enablement.
+      `Android/JNI` claimed hosted proof while linking a `GamaEmbed` that had
+      changed. And adding the gate to `.github/workflows/ci.yml` demoted four
+      rows that list the workflow as a dependency. I considered narrowing those
+      paths to `Toolchains.toml` to keep them green and **rejected it**:
+      narrowing a gate's scope to suit the person who just tripped it is the
+      failure mode this repository exists to prevent. The run at `3f180f1` did
+      execute a different workflow than the tree now holds, so the demotion is
+      true, and the next hosted run re-anchors them.
+      Resulting picture, which is an accurate description of a tree with 18
+      unpushed commits and no hosted run over them: 1 hosted, 10 locally,
+      1 implemented, 8 unverified.
+      A fail-closed fourteenth gate that fails when a capability row's anchor
+      commit predates changes to the files that row depends on. Design decided:
+      a strict inline HTML-comment annotation per row
+      (`layer=`/`anchor=`/`paths=`), parsed by `scripts/evidence-freshness.py`
+      behind a thin bash wrapper, in the `check-docs.sh`/`check-doc-links.py`
+      shape. Locality is the anti-drift property — a separate manifest
+      reintroduces the very split-file drift being fixed. Totality is the
+      fail-closed hinge: zero rows parsed, or any row without an annotation, is
+      a hard failure, mirroring `check-toolchain-pins.sh`'s count guard.
+      Introduces an **Unverified** vocabulary term whose rule is inverted —
+      absence of drift fails — so a row cannot be parked there after the drift
+      is repaired. Needs `fetch-depth: 0` on the macOS CI job, since anchors are
+      unreachable in a depth-1 clone. Land as two PRs: script plus self-test
+      first, then annotate all twenty rows and enable in one commit, never in
+      batches.
+      Known limits worth keeping: it proves freshness, not that the anchor's run
+      passed (no network); `paths` remains human judgment; it is content-blind,
+      so a comment fix counts as drift; and it couples to true merges — a switch
+      to squash-merge would break the ancestry check loudly.
+
+- [x] **ADR 0003 was Accepted and unenforced; now gated (2026-09-06).**
+      "Swift Testing only; XCTest is banned" was a live decision that nothing
+      checked — every mention of XCTest under `scripts/` and
+      `.github/workflows/` was a *comment*. An `import XCTest` would have
+      compiled and merged green. `check-boundaries.sh` now scans every Swift
+      source under `Sources/` and `Tests/` by discovery rather than by a file
+      list, so a new directory cannot escape it. Mutation-proven three ways:
+      green on a clean tree, exit 1 on a planted import naming the file, and
+      **green on a commented-out import**, which is the false-positive a naive
+      `grep XCTest` would have produced.
+
+- [x] **Spike 2026-09-06: can the Windows console path be gated locally?
+      No — and the attempt would be worse than the gap.** Measured on this Mac
+      with the pinned compiler:
+      - The triple is recognized (`-print-target-info -target
+        x86_64-unknown-windows-msvc` returns a valid target block), so it
+        *looks* checkable.
+      - It is not. `swiftc -typecheck -target x86_64-unknown-windows-msvc`
+        fails with `unable to load standard library for target
+        'x86_64-unknown-windows-msvc'`. The installed SDKs are static-linux,
+        android, and wasm only, and `Toolchains.toml [windows_exception]` pins
+        a Windows `.exe` installer, not a cross-compilation SDK. Unlike Linux,
+        Android, and WASM, Windows has no local cross route by design.
+      - **The trap:** a plain `swiftc -typecheck` of
+        `Sources/GamaWindowsConsoleSmoke/main.swift` on macOS **exits 0**. It
+        proves nothing, because `#if os(Windows)` elides the real code and only
+        the three-line `#else` fallback (lines 35-37) is compiled. A gate built
+        that way would pass forever while the Windows implementation rotted —
+        the same vacuous-pass family this repo already documents for
+        `-typecheck` on `~Copyable` code, and the same shape as the
+        `HTMLSerializer` call site that only `check-wasm.sh` type-checks.
+      **Recommendation: leave Windows ungated locally and keep this record**, so
+      the gap is not later "fixed" by a gate that is green by construction.
+      Windows proof stays the CI job, and the capability row must keep saying so.
+
+- [x] **Two live policy violations fixed 2026-09-06, both mine.**
+      (1) `docs/Capabilities.md` asserted "no randomized or fuzz codec test
+      exists anywhere under `Tests/`" and deleted the word "randomized" from
+      the DrawList/C ABI row on that basis. The claim was **false**:
+      `Tests/gamaTests/ModernTests.swift:101` is
+      `@Test("deterministic randomized frames round-trip")`, 256 LCG-driven
+      frames through encode/decode. I had grepped three files and none of them
+      was `ModernTests.swift`, then stated a universal. The word is restored
+      and the correction recorded in the row. No hostile-input *fuzzer* exists,
+      which is a different and unclaimed thing.
+      (2) `AGENTS.md`, `CONTRIBUTING.md`, and `docs/Verification.md` all said
+      thirteen gates while `scripts/check.sh` ran fourteen — I added the
+      fourteenth and updated none of them. All three now say fourteen and both
+      tables carry the new row.
+- [x] **H3 + H6(b) + L1 closed 2026-09-06 by `scripts/check-package-graph.sh`,
+      the fifteenth gate.** It reads `swift package dump-package` and asserts
+      ADR 0012's strict-memory-safety scope on every shipped Swift target, the
+      zero-runtime-package-dependency guarantee, `Extern` scoped to `GamaWASM`,
+      and the `NonisolatedNonsendingByDefault` ban. Mutation-proven on all
+      three: dropping `strictMemorySafety` from `GamaDraw`, giving `GamaTUI` a
+      `SwiftSyntax` product dependency, and leaking `Extern` to a second target
+      each fail with the offending target named.
+      The exemption is **derived, not listed**: a target escapes the strict
+      requirement only if it has no `.swift` file on disk. `GamaEmbedABI` and
+      `GamaTUISignal` qualify today (0 Swift, 2 C files each), and either would
+      stop qualifying the moment it gained Swift — a name-based allowlist would
+      not have noticed. It also fails when zero shipped targets are inspected,
+      so a manifest reshape cannot silently reduce it to checking nothing.
+      All three gate-counting documents were updated in the same commit, which
+      is the omission that made M2 a live violation an hour ago.
+- [x] **H4 closed 2026-09-06: the Embedded size gate ADR 0009 cites now
+      exists.** `check-embedded.sh` computed the byte count, printed it, and
+      asserted nothing, so an artifact could double while the gate said OK and
+      an Accepted ADR kept naming it as zero-cost evidence. It now compares
+      against `scripts/embedded-size-baseline.txt`, pinned at **641,464 bytes**
+      (measured, and reproducible to the byte — the artifact is deterministic
+      for a fixed compiler and source).
+      The pin names the compiler revision the script already requires
+      unconditionally, so bumping the snapshot fails here first and forces a
+      deliberate re-measure instead of a silently rebased number. The tolerance
+      is **two-sided**: growth is the regression ADR 0009 cares about, and a
+      shrink is either a real win worth recording or a sign the link did not
+      produce the whole module — both want a human, not a stale baseline
+      absorbing them. Note ADR 0011's recorded +8.1% identity-store cost would
+      have tripped this, which is the point.
+      Mutation-proven four ways: apparent growth, apparent shrink, a mismatched
+      compiler revision, and a malformed baseline line each fail with a
+      specific message.
+- [x] **H2 closed 2026-09-06: ADR 0006's `~Copyable` hosts are now pinned by a
+      compile-fail fixture.** The ADR promises "accidental sharing is a compile
+      error" and nothing enforced it: `check-boundaries.sh` pinned `~Sendable`
+      for four types and the ownership fixtures pinned `Terminal` (ADR 0010),
+      but neither host type was covered. `Tests/Fixtures/Ownership/error.FrameHostMustNotBeCopied.swift`
+      closes it, driven by the existing harness with `swiftc -c` — never
+      `-typecheck`, since move-only enforcement runs in SIL.
+      **Mutation-proven against the real defect**: deleting `: ~Copyable` from
+      `Sources/GamaCore/FrameHost.swift:38` — the exact edit the audit named —
+      makes the gate fail with "ownership negative compiled but must not", and
+      restoring it returns green.
+      Scope justified by measurement rather than assumed: `AppRuntime` needs no
+      fixture because it stores a `HostPump`, which is itself `~Copyable`, and a
+      `Copyable` struct cannot store a non-`Copyable` one ("stored property ...
+      has non-Copyable type"). Dropping its annotation fails to compile on the
+      spot. `FrameHost`'s stored properties are all `Copyable`, which is why it
+      alone was reachable.
+- [x] **H1 is closed — by a peer session, not by me, verified empirically
+      2026-09-06 before I duplicated it.** `scripts/portable-global-state.py`
+      exists (untracked in this checkout, so it is that session's work in
+      flight), covers five portable targets rather than the audit's three, and
+      its own docstring names "gap H1 of the unenforced-policy audit". I tested
+      the audit's exact violation — a `nonisolated(unsafe)` global planted in
+      `GamaPlugin` — and it fails with a precise message. The audit agent had
+      read the tree before this landed. The same peer has extended my
+      `scripts/package-graph.py` with a Swift-6-language-mode assertion, which
+      is the ground their gate stands on, and has `scripts/evidence-locality.py`
+      in flight for H5. **Left alone deliberately: not mine to commit.**
+- [x] **Corrected a self-contradiction I introduced in the Packaged wasm site
+      row.** It declared the 9,297,539-byte figure "removed rather than carried
+      forward" and then restated the number three clauses later in the same
+      cell. The historical clause no longer repeats it.
+- [x] **The audit's other H5 instance is not reproducible.** It reported a
+      stale 9,297,539-byte figure at `docs/Packaging.md:48`; that file contains
+      no such figure and no `application/wasm` claim. Either it was fixed
+      before I looked or the agent misread. Recorded rather than acted on.
+- [x] **Remaining unenforced-policy backlog, from a full audit of ADRs, AGENTS.md,
+      CONTRIBUTING.md and docs (15 gaps: 6 HIGH, 6 MEDIUM, 3 LOW).** The
+      highest-leverage single fix is a `swift package dump-package` assertion
+      gate, which would close three at once (H3 `strictLibrary` is hand-attached
+      per target so a new shipped library escapes ADR 0012 silently; H6(b)
+      nothing stops a shipped library gaining a package dependency, breaking the
+      zero-runtime-dependency guarantee; L1 `Extern` scoping and the
+      `NonisolatedNonsendingByDefault` ban are prose only) using output
+      `check-docs.sh` already generates. Others worth naming: **H4** ADR 0009
+      cites "the Embedded size gate not regressing" as evidence and **no size
+      gate exists** — `check-embedded.sh` prints the byte count and asserts
+      nothing; **H2** ADR 0006's `~Copyable` on `FrameHost`/`AppRuntime` has no
+      pin, so deleting `: ~Copyable` would pass every gate; **H1** the
+      no-process-global rule is three string literals wide, so a
+      `nonisolated(unsafe) static var` in `GamaPlugin` passes; **H5** the
+      evidence policy is enforced in one file, and `docs/Packaging.md:48` still
+      carries the 9,297,539-byte figure the ledger removed as stale.
+      **Status 2026-09-06: H3, H6(b), L1, H4 and H2 are closed by the gates and
+      fixture recorded above; H1 and H5 are closed below. No HIGH gap remains
+      open.**
+
+- [x] **Re-derived 2026-09-06, because the MEDIUM/LOW half was never written
+      down.** Across `tasks/` and `docs/` the only identifiers ever named were
+      `L1` (closed by the package-graph gate) and `M2`; the other seven existed
+      solely as the count "6 MEDIUM, 3 LOW" above. So this is a fresh pass over
+      the ten Accepted ADRs rather than a box-ticking exercise, and it replaces
+      that number with an inventory. Two gaps found and closed, three recorded
+      open with their reasons.
+
+      **Closed — ADR 0012's second half was unasserted.** The record pairs
+      strict memory safety with "explicit import access levels everywhere", and
+      `scripts/package-graph.py` checked only the first.
+      `ExistentialAny`, `MemberImportVisibility`, and `InternalImportsByDefault`
+      live in `Package.swift`'s `strictCore`, which every Swift target takes
+      directly or through `strictLibrary`, so a target assembling its own
+      settings list keeps one promise and drops the other silently. Now
+      required on every Swift target, in the same place and shape as the
+      language-mode rule. **Mutation-proven in the realistic shape**: a
+      hand-rolled list on `GamaPlugin` that keeps `.strictMemorySafety()` and
+      the error promotion — so the pre-existing checks all pass — fails naming
+      the three absent features. Baseline before the change: 0 of 21 Swift
+      targets missing any of the three.
+
+      **Closed — ADR 0008's stated reason for the pump's location was not
+      asserted.** The record says the pump *policy* stays in
+      `Sources/GamaCore/HostPump.swift` precisely because
+      `scripts/check-embedded.sh` compiles GamaCore alone, so a pump in
+      GamaDraw would sit outside the Embedded proof. Nothing checked it: moving
+      that file would have kept every gate green while quietly removing the
+      pump from the only Embedded evidence there is. `check-embedded.sh` now
+      requires the file, rejects a `HostPump.swift` appearing in GamaDraw, and
+      — the part that makes the first two mean something — asserts the file was
+      actually collected into the compile it performs.
+      **Mutation-proven**: moving `Sources/GamaCore/HostPump.swift` away fails
+      with the ADR named. The `GamaDraw/HostPump+CellBuffer.swift` half is
+      deliberately *not* covered; that is the `CellBuffer` side and belongs
+      there, since GamaDraw cannot be Embedded. Stated limit: the GamaDraw
+      half of the check matches the exact name `HostPump.swift`, so a policy
+      file arriving there under another name would slip past; the positive
+      assertion (the file exists in GamaCore *and* was collected into the
+      compile) is the half that actually carries the guarantee.
+
+      **Open — ADR 0005's wire format is under-pinned.** The record fixes magic
+      `GAMA`, version `1`, a field order, and "version 1 payloads stay
+      decodable". Checked: `Tests/gamaTests/DrawListTests.swift` contains no
+      magic, version, or byte-literal assertion, and `scripts/check-c-abi.sh`
+      pins neither. `Examples/CEmbed/main.c` checks length and the magic, which
+      is the only thing standing between a silent field-order change and a
+      broken consumer. A golden-bytes fixture — one encoded payload committed
+      as literal bytes, decoded and compared — would pin the whole decision.
+      Not built here: it is a test-authoring slice, not a gate wiring one.
+
+      **Open — ADR 0001's "no backend forks layout, paint order, or the dirty
+      gate" has no mechanical form.** `check-boundaries.sh` polices imports and
+      ownership, which is adjacent but different. A backend calling
+      `LayoutEngine` with its own policy would pass everything. Recording it as
+      genuinely hard rather than pretending a grep covers it; the honest
+      candidate is a per-backend golden `DrawList` for one shared scene, which
+      is again test authoring.
+
+      **Open — the `docs/` half of the original audit was never re-derived
+      here.** This pass covered the ten Accepted ADRs. `AGENTS.md`,
+      `CONTRIBUTING.md`, and the prose in `docs/` have not been swept for
+      asserted-but-unenforced policy in this slice, and claiming otherwise
+      would repeat the "nine gaps" fiction this bullet replaced.
+
+- [x] **H1 closed 2026-09-06, and measurement made the rule much smaller than
+      the audit assumed.** `check-boundaries.sh` policed process-global state
+      with three string literals — `ActionRegistry`, `Invalidator.shared`,
+      `nonisolated(unsafe).*_host` — so a global named anything else passed.
+      The obvious fix was a stored-versus-computed `static var` heuristic.
+      Measured against the pinned compiler first, that turned out to be
+      unnecessary: every target builds in Swift 6 language mode, which rejects
+      the common case by itself — planting `static var probeCounter = 0` in
+      `GamaPlugin` fails with "static property 'probeCounter' is not
+      concurrency-safe because it is nonisolated global shared mutable state".
+      The compiler is self-enforcing here exactly as ADR 0006's `AppRuntime`
+      turned out to be, so `Scene.swift:428`'s computed `static var` never
+      needed distinguishing.
+      What the compiler still accepts, both verified to build clean with zero
+      errors, are the two deliberate hatches: `nonisolated(unsafe) static var`
+      and `@MainActor static var`. `scripts/portable-global-state.py`, chained
+      from `check-boundaries.sh`, rejects both across `GamaCore`, `GamaPlugin`,
+      `GamaDraw`, `GamaEmbed`, and `GamaMLIR` — an **extension** of the old
+      three-target scope, justified because `GamaDraw` and `GamaMLIR` are
+      equally platform-free. Backends stay out: `GamaWASM/WASMHost.swift:89`
+      is a justified single-threaded use and would fail.
+      **Mutation-proven against the exact line the audit named**: with
+      `nonisolated(unsafe) static var probeCounter = 0` in `GamaPlugin` the old
+      three-literal rule still passes and the new gate exits 1 naming the file
+      and line; same for the `@MainActor` form; removing them returns 0.
+      The self-test pins the non-obvious half — that a *mention* is not a use,
+      so the doc comment at `WASMHost.swift:87` and a string literal quoting
+      the attribute both stay green, while a trailing `// justified` comment
+      does not launder a real declaration on the same line.
+      Two deliberate over-reaches, both green today and both fail-closed. The
+      global-actor pattern is `@[A-Z]\w*Actor\b`, which matches any attribute
+      ending in `Actor` rather than only real global actors. And the
+      comment/string walk is line-scoped, so rather than let it misread a
+      multi-line `"""` literal's interior as code the script refuses any file
+      containing one; none exists in these targets, and one appearing is a
+      reason to write a real lexer, not to trust this walk. An earlier draft of
+      that docstring claimed the multi-line case "fails closed" on its own,
+      which was false — the refusal is what makes the claim true.
+      Two things stated rather than papered over. The global-actor ban is one
+      step wider than "no global state" (it rejects the attribute on a function
+      too), on the ground that isolation couples a portable target to a
+      concurrency runtime it must not require; only `GamaCore` is compiled by
+      `check-embedded.sh`, so for the other four this gate is the only thing
+      saying so. And a `static let` bound to a reference type with mutable
+      interior is process-global state that neither the compiler nor this
+      script rejects; none exists in these targets today (every `static let` is
+      a value-type constant) and catching it needs type information, not text.
+      Green locally: `check-boundaries.sh`, `check-docs.sh`,
+      `check-doc-coverage.sh`, all exit 0. Local evidence only.
+
+- [x] **Closed 2026-09-06: the compiler half of H1 is now asserted.**
+      `scripts/portable-global-state.py` is only the smaller rule because Swift
+      6 language mode rejects the common case, and nothing gated that mode.
+      `scripts/package-graph.py` now requires it on **every Swift target**, not
+      only shipped ones: an executable or the test target dropping to Swift 5
+      reopens bare mutable globals just as quietly. `swiftLanguageVersions` is
+      unset package-wide, so the mode is hand-attached per target exactly like
+      the strict-memory-safety settings that script already policed.
+      **The mutation test caught a real defect in the first draft of this
+      gate, and the defect was the very false green the gate exists to
+      prevent.** Planting `strictLibrary + [.swiftLanguageMode(.v5)]` on
+      `GamaPlugin` dumps as `[{"_0": "6"}, {"_0": "5"}]` — SwiftPM appends
+      rather than replaces — and the *last* declaration wins at compile time.
+      Verified at the compiler, not inferred: with that manifest a bare
+      `static var probeCounter = 0` in `GamaPlugin` builds with **zero**
+      concurrency errors, where the unmutated package rejects it. The
+      first-match accessor read `'6'` off that manifest and passed. It now
+      collects every declared mode and fails if any is not `6`, so the
+      duplicate-declaration shape fails with both values named. Self-test pins
+      the `["6", "5"]` case specifically.
+      Green locally: `check-package-graph.sh`, `check-boundaries.sh`,
+      `check-docs.sh`, `check-doc-coverage.sh`, `check-evidence-freshness.sh`,
+      all exit 0. `Package.swift` and `Sources/` restored byte-identical after
+      every mutation. Local evidence only.
+
+- [x] **H5 closed 2026-09-06: anchored evidence claims are now confined to the
+      one file that is checked for staleness.** Two halves. The live defect:
+      `docs/Packaging.md:48` held a second, hand-maintained copy of the
+      packaged-wasm evidence — anchored to `77812d99`, naming Pages run
+      `33919361438` and the 9,297,539-byte artifact. Measured, not inferred:
+      both copies were written together by `8bb838b` on 2026-09-04; the ledger
+      retired that figure as stale in `a4c7a5c` on 2026-09-06 15:36, because
+      both `scripts/bundle-web.sh` and the wasm source it bundles had changed;
+      `docs/Packaging.md` was still asserting it under two hours later when
+      this gate landed. The duplicate stood for two days, the divergence for
+      about two hours, and nothing would have caught either. That
+      cell now points at the `Packaged wasm site` row of `Capabilities.md`
+      instead of restating it, which is the ledger's own "update once and link"
+      rule applied. The structural half: `scripts/evidence-locality.py`, chained
+      from `check-docs.sh`, fails an anchored evidence claim or a CI run id in
+      any document other than the ledger, because
+      `scripts/evidence-freshness.py` reaches exactly one file
+      (`LEDGER = "docs/Capabilities.md"`) and everything else could go stale in
+      silence with every gate green — which is precisely what happened.
+      **Mutation-proven against the real historical defect**: restoring the
+      exact retired `docs/Packaging.md` cell makes the gate fail with both
+      messages and exit 1; removing it returns exit 0. The self-test asserts
+      both directions, including that measurement conditions are *not* claims,
+      so `docs/Performance.md` naming the commits a benchmark ran at and
+      `docs/Toolchain.md` naming a compiler revision stay untouched. A sweep of
+      `docs/` plus the four root documents found no other instance. Green
+      locally: `check-docs.sh`, `check-doc-coverage.sh`,
+      `check-evidence-freshness.sh`, `check-boundaries.sh`, all exit 0. Local
+      evidence only; no hosted run has seen this.
+
+- [x] **Closed 2026-09-06 by `a69566a`, in another session.** The
+      `Packaged wasm site` cell said the 9,297,539-byte figure was "removed
+      rather than carried forward" and then carried it forward in the same cell
+      as "historical detail". It now states the byte count is deliberately not
+      repeated, and names the earlier revision's contradiction as the reason.
+      The one surviving mention is the clause declaring the figure retired,
+      which is what a retirement notice has to name. Recording the general
+      lesson, because no gate covers it: freshness passes here because the
+      anchor is fresh, and staleness of a *number inside* a row is not
+      something an anchor can express.
+
+- [x] **Closed 2026-09-06. A ledger entry could describe a script the commit
+      did not contain, and nothing caught it.** Observed on this very file:
+      `a69566a` committed the
+      H1 and H5 bullets — which name `scripts/evidence-locality.py` and
+      `scripts/portable-global-state.py`, and say they are chained from
+      `check-docs.sh` and `check-boundaries.sh` — while both scripts and both
+      chain lines were still uncommitted in the working tree. At that commit
+      the documentation asserts two gates that do not exist in it, and every
+      gate stays green, because nothing checks that a path named in
+      `tasks/` or `docs/` is present. The same shape would let a `docs/`
+      reference to a deleted script survive indefinitely.
+      Note this is the *inverse* of the drift `check-evidence-freshness.sh`
+      catches: that gate asks whether a claim's sources have moved since it was
+      proven, not whether the thing a claim names exists at all.
+      `scripts/referenced-paths.py`, chained from `check-docs.sh`, now fails
+      any document naming a repository path the tree does not contain.
+      **Mutation-proven by reproducing the real split state**: moving both
+      scripts out of `scripts/` makes it report all 11 references across
+      `tasks/goals.md`, `tasks/todo.md`, and `CLAUDE.md` and exit 1, while
+      `check-evidence-freshness.sh` run against the same tree exits 0 — the
+      blindness measured, not asserted.
+      **Scope was set by measurement and is deliberately narrow.** A first pass
+      over every backticked filename reported 121 broken references that were
+      nothing of the kind: prose naming a file by bare name (`FrameHost.swift`)
+      or by a module-relative fragment (`GamaCore/HostPump.swift`). That is how
+      people write, and failing it would have forced 121 edits to buy nothing.
+      Only a **root-anchored** path counts as a claim, which cut the false set
+      from 121 to 7. All 7 remaining were in `docs/superpowers/plans/` and
+      `docs/superpowers/specs/drafts/`, naming files those documents propose to
+      create; CLAUDE.md defines drafts as open questions and neither tree as a
+      capability claim, so both are excluded. Accepted specs are **not**
+      excluded: an accepted design naming a missing path is the defect this
+      gate is for. Baseline after the exclusions: 322 claims across 56
+      documents, zero broken.
+      Green locally: `check-docs.sh`, `check-boundaries.sh`,
+      `check-doc-coverage.sh`, `check-evidence-freshness.sh`,
+      `check-package-graph.sh`, all exit 0. Local evidence only.
+
+## Acceptance-matrix drift (observed 2026-09-06 17:1x, local `main` `8c9d1c7`)
+
+Two `CLAUDE.md` statements no longer match `scripts/check.sh`. Recorded here
+rather than edited because that file is dirty under a concurrent session, and
+because this command's scope is the ledger.
+
+- [x] `CLAUDE.md:86` says the `gates=(…)` array is "thirteen entries at time of
+      writing". It is **fifteen**: the thirteen plus `check-evidence-freshness.sh`
+      and `check-package-graph.sh`. The surrounding sentence already tells the
+      reader the array is the authority, so the prose is self-protecting, but
+      the number is wrong.
+- [x] The in-flight `CLAUDE.md` paragraph describes `check-evidence-freshness.sh`
+      as "a **third** script outside the array … unwired on purpose", with the
+      remaining step being "adding it to `gates=(…)`". Commit `67377af`
+      ("enable evidence freshness as the fourteenth gate") already did that, so
+      the paragraph is stale on landing. It does hedge — it tells the reader to
+      check `git status` and re-run rather than trust either state — so this is
+      staleness, not a false claim.
+
+Both are for whoever owns `CLAUDE.md` next; re-read the array before fixing
+either, since the count moved twice today.
 
 ## Manual and credential-gated acceptance
 

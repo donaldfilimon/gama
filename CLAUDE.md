@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Read `AGENTS.md` first; it is the canonical project guide. This file adds the
 operational detail (commands, architecture map, environment traps) that agents
-need to be productive.
+need to be productive. `GEMINI.md` is tracked but **empty** (0 bytes, added by
+`1b07bcb` on 2026-09-04); it is a placeholder, not a third guide, and no gate
+reads it — do not treat its emptiness as missing documentation to fill.
 
 This is the canonical checkout of `donaldfilimon/gama` — the Gama Framework
 umbrella (retained UI core, plugins, macros, drawing,
@@ -81,7 +83,8 @@ together.
 Full acceptance matrix: `./scripts/check.sh` runs every gate in order. **The
 `gates=(…)` array at the top of `scripts/check.sh` is the authority — read it
 rather than any list written down elsewhere, including this file.** It is
-thirteen entries at time of writing. Parts require pinned SDKs, the NDK, node,
+fifteen entries as of 2026-09-06, having been thirteen earlier the same day —
+the count moves, the array does not lie. Parts require pinned SDKs, the NDK, node,
 or CI/Linux, and the matrix intentionally fails when a prerequisite or a
 required runtime proof is unavailable. Do not weaken or skip a gate to make it
 green.
@@ -103,12 +106,24 @@ the fixtures, not `GamaTests`.
 
 Gates also chain helpers that fail on their own, so a gate's name understates
 what it covers. `check-docs.sh` runs `scripts/check-doc-links.py` (relative
-Markdown links) **and `scripts/check-run-gama-skill.sh`** before DocC;
+Markdown links), `scripts/evidence-locality.py` (no anchored evidence claim or
+CI run id outside `docs/Capabilities.md` — measurement conditions such as the
+commits `docs/Performance.md` benchmarks ran at are deliberately not claims),
+`scripts/referenced-paths.py` (no document may name a root-anchored repository
+path the tree lacks; bare filenames and module-relative fragments are prose,
+not claims, and `docs/superpowers/plans/` and `specs/drafts/` are excluded
+because a proposal may name what it proposes), **and
+`scripts/check-run-gama-skill.sh`** before DocC;
 `check-wasm.sh` runs `scripts/check-wasm-unsafe-declarations.py` and then two
 Node smoke drivers (`wasm-runtime-smoke.mjs`, `browser-runtime-smoke.mjs`,
 each self-tested first and then run against the built artifact), so **node is a
 prerequisite of the WASM gate**, not just Python. `check-boundaries.sh` chains
-`check-portable-symbols.sh` and `check-toolchain-pins.sh`, and
+`check-portable-symbols.sh`, `check-toolchain-pins.sh`, and
+`scripts/portable-global-state.py` (which rejects `nonisolated(unsafe)` and
+global-actor isolation in `GamaCore`, `GamaPlugin`, `GamaDraw`, `GamaEmbed`,
+and `GamaMLIR` — Swift 6 language mode already rejects a bare stored `static
+var`, so those two hatches are all that is left to police; backends are out of
+scope, `GamaWASM/WASMHost.swift:89` being a justified single-threaded use), and
 `check-doc-coverage.sh` chains `scripts/doc-coverage.py`, so **python3 is a
 prerequisite of the documentation gates**, not only the WASM one. The pre-push
 documentation checklist is the block in `CONTRIBUTING.md`:
@@ -119,6 +134,34 @@ the first is a hosted-Linux LeakSanitizer proof (it exits non-zero on macOS by
 design — macOS can build `gama-leak-check` but cannot produce the evidence),
 and the second is a helper the platform gates call to scan emitted objects for
 forbidden libm/libc symbols.
+
+**Gates 14 and 15 landed on 2026-09-06 and both mechanize a policy that was
+previously prose.** `check-evidence-freshness.sh` (gate 14, `67377af`) runs
+`scripts/evidence-freshness.py`, which fails a `docs/Capabilities.md` row whose
+evidence anchor predates the last change to the paths that row's claim depends
+on. Each row carries one annotation in its third cell:
+`<!-- evidence: layer=<token> anchor=<40-hex-sha> paths=<comma,separated> -->`.
+It is fail-closed three ways — an unannotated row fails, zero parsed rows fails
+(a table reformat must break loudly rather than quietly check nothing), and a
+vocabulary term with no rule fails — and its lead-word rule additionally
+requires the row's second cell to *start* with its declared layer word. Never
+invent a different annotation grammar; the regexes in that script are the
+authority. **Its reach is one file:** `LEDGER = "docs/Capabilities.md"`, so
+hosted-evidence prose anywhere else (`docs/Packaging.md` carries a table of the
+same shape) is still unchecked and can go stale silently.
+`check-package-graph.sh` (gate 15, `f267270`) dumps the manifest and asserts
+ADR 0012's `strictLibrary` scope, the zero-runtime-package-dependency
+guarantee, and experimental-feature scoping — three properties that were
+previously enforced only by whoever remembered to type them into
+`Package.swift`.
+
+`check-embedded.sh` gained a real size gate the same day (`8c9d1c7`, the
+evidence ADR 0009 had been citing without it existing). It reads
+`scripts/embedded-size-baseline.txt`, which pins a compiler revision, a byte
+count, and a tolerance percent, and it fails if the artifact moves outside the
+band **in either direction** or if the baseline's pinned revision is not the
+compiler in use — so a toolchain bump fails this gate until the baseline is
+deliberately re-measured.
 
 **The `run-gama` skill is tracked twice and the docs gate enforces parity.**
 `.agents/skills/run-gama/{SKILL.md,driver.sh}` and
