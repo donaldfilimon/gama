@@ -10,6 +10,13 @@ explicit `begin()`, `present(_:)`, `nextEvent(timeoutMillis:)`, and `end()`
 lifecycle. `AppRuntime` guarantees an `end()` attempt after a successful
 `begin()`, including error and quit paths.
 
+``Renderer/waitsForInput`` defaults to `true`. Report `false` when the
+backend can never produce an event — a redirected stream, a one-shot
+render — so a clean iteration ends the run instead of waiting for a key
+that cannot arrive. Process outcome is declared through
+``SubscriptionContext/complete(_:)`` as a ``CompletionStatus``; quiescence
+is not success, and `complete` does not exit the process.
+
 Terminal implementations should make raw-console ownership noncopyable or
 reference-unique and restore modes, cursor visibility, alternate screen, code
 page, and mouse reporting during teardown.

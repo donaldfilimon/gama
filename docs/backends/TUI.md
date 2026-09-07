@@ -15,7 +15,33 @@ GAMA_EMIT_MLIR=1 swiftly run swift run gama-demo --emit-mlir   # non-interactive
 
 `TUIRenderer` implements the poll-style `Renderer` protocol with
 `Failure == TerminalError`; `AppRuntime` (or `MyApp.main(renderer:)`) owns
-the blocking loop.
+the blocking loop. `gama-demo` still constructs `TUIRenderer` itself
+because of its plugin loop, so interactive proof remains
+`.agents/skills/run-gama/driver.sh smoke`, not a redirected `swift run`.
+
+## Adaptive surface
+
+Ordinary apps that should follow stdout use `App.runAdaptive()`:
+
+```swift
+let status = try MyApp.runAdaptive()
+exit(status.code)
+```
+
+A terminal selects `TUIRenderer` (raw mode, differential ANSI, input loop).
+A pipe, file, or CI log selects `StreamRenderer`: plain lines, no termios,
+no signal dispositions, no input, layout extent fixed at 80×24.
+`--gama-plain` and `--gama-tui` override detection; the last flag wins.
+
+`StreamRenderer.waitsForInput` is `false`, so the first quiescent frame ends
+the run. Async work must declare `CompletionStatus` via `complete(_:)`;
+quiescence is not success, and `complete` does not exit the process.
+This path is implemented and locally proven by `AdaptiveSurfaceTests` and
+`StreamOutputTests`. It is not hosted proven.
+
+On Windows, detection reports a non-terminal, so `runAdaptive()` takes the
+stream path unless `--gama-tui` is passed. The Windows console row remains
+Blocked.
 
 ## Terminal ownership and restoration
 
@@ -65,7 +91,9 @@ session close restores every host-installed managed disposition.
 
 ## Output
 
-Frames paint through the shared `CellPainter` into `CellBuffer`, and the
-terminal receives the buffer's differential ANSI stream (`presentDiff()`);
-both true-color and 256-color modes are supported via
-`CellBuffer.trueColor`.
+Frames paint through the shared `CellPainter` into `CellBuffer`. An
+interactive run presents through `AnsiPresenter`, which wraps
+`CellBuffer.presentDiff()`; both true-color and 256-color modes are
+supported via `CellBuffer.trueColor`. A stream run presents through
+`StreamPresenter`: one line per row whose content changed, then a swap.
+Not every terminal-family run writes differential ANSI.

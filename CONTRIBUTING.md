@@ -32,7 +32,7 @@ sequential, fail-closed. Do not weaken or skip a gate to make it green.
 | `check-android.sh` | Android SDK cross-compile + JNI packaging | Android — "Cross-compile GamaEmbed" |
 | `check-android-emulator.sh` | API 36 emulator input/frame round trip | Android — "Required emulator input/frame round trip" |
 | `check-mlir.sh` | Emitted dialect parses under `mlir-opt --allow-unregistered-dialect` | macOS — "MLIR parse" |
-| `check-docs.sh` | Relative Markdown links pass; run-gama mirrors, paths, modes, and failure cleanup agree; DocC builds with zero warnings; Capabilities ledger present with its status legend | macOS — "Source boundaries and documentation" |
+| `check-docs.sh` | Relative Markdown links pass; evidence claims stay in `docs/Capabilities.md`; named repository paths exist; run-gama mirrors, paths, modes, and failure cleanup agree; DocC builds with zero warnings | macOS — "Source boundaries and documentation" |
 | `check-doc-coverage.sh` | Every public declaration has a symbol-graph doc comment, excluding only justified allowlist entries | macOS — "Source boundaries and documentation" |
 | `check-evidence-freshness.sh` | Every `docs/Capabilities.md` row carries an evidence annotation, and no row's anchor commit predates a change to the paths it depends on | macOS — "Source boundaries and documentation" |
 | `check-package-graph.sh` | Every shipped Swift target enables strict memory safety with `StrictMemorySafety` promoted to an error; no shipped library depends on a package product; `Extern` stays scoped to `GamaWASM` | macOS — "Source boundaries and documentation" |

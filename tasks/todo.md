@@ -187,6 +187,11 @@ Open questions blocking implementation:
       declares `struct BuilderTests`, so `--filter ViewBuilderTests` matches
       nothing and **exits zero** — the documented silent-filter hazard, in a
       file this PR creates.
+- [x] **`ViewBuilderTests` filter hazard closed 2026-09-06.** The suite
+      struct is now `ViewBuilderTests`; `--filter ViewBuilderTests` ran 5
+      tests in 1 suite (exit 0 with a non-zero count). `AppleHostTests`
+      likewise matches `--filter AppleHostTests` (2 tests). `docs/Testing.md`
+      no longer tells the reader to filter on `BuilderTests`.
 - [x] **Baseline correction to my own reporting.** I cited "304 tests in 55
       suites" as the suite size. That is the **local** figure at `148b6da`,
       which includes the unpushed `CellSerializerTests` (5 tests, 1 suite).
@@ -427,15 +432,13 @@ Open questions blocking implementation:
       assertion (the file exists in GamaCore *and* was collected into the
       compile) is the half that actually carries the guarantee.
 
-      **Open — ADR 0005's wire format is under-pinned.** The record fixes magic
-      `GAMA`, version `1`, a field order, and "version 1 payloads stay
-      decodable". Checked: `Tests/gamaTests/DrawListTests.swift` contains no
-      magic, version, or byte-literal assertion, and `scripts/check-c-abi.sh`
-      pins neither. `Examples/CEmbed/main.c` checks length and the magic, which
-      is the only thing standing between a silent field-order change and a
-      broken consumer. A golden-bytes fixture — one encoded payload committed
-      as literal bytes, decoded and compared — would pin the whole decision.
-      Not built here: it is a test-authoring slice, not a gate wiring one.
+      **Closed — ADR 0005's wire format golden payload.**
+      `DrawListTests.v1GoldenPayloadPinsMagicVersionAndFieldOrder` encodes a
+      two-command list through the shipped `DrawList.encode()` and compares it
+      to little-endian bytes laid out from the ADR (magic `GAMA`, version 1,
+      fill then text field order), then decodes those same bytes. The expected
+      array is not a copy of a prior encode() dump. Filter
+      `--filter DrawListTests` ran 8 tests including this one.
 
       **Open — ADR 0001's "no backend forks layout, paint order, or the dirty
       gate" has no mechanical form.** `check-boundaries.sh` polices imports and

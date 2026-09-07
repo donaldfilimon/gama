@@ -7,7 +7,7 @@ import Testing
 
 @Suite("AppKit host")
 @MainActor
-struct AppleHostRuntimeTests {
+struct AppleHostTests {
     private struct SmokeApp: App {
         var scenes: some Scene {
             Window("Auxiliary", id: "auxiliary") {

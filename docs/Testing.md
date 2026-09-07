@@ -14,7 +14,7 @@ FileProvider-managed: tests must use a scratch path outside iCloud.
 unset TOOLCHAINS
 swiftly run swift --version          # must report 6.5-dev
 swiftly run swift test --scratch-path /private/tmp/gama-framework-swiftpm
-swiftly run swift test --scratch-path /private/tmp/gama-framework-swiftpm --filter BuilderTests
+swiftly run swift test --scratch-path /private/tmp/gama-framework-swiftpm --filter ViewBuilderTests
 ```
 
 Everyday local gate (debug + test + release):
@@ -44,7 +44,7 @@ All suites live in `Tests/gamaTests/`:
 | `RunIterationTests.swift` | Run iteration |
 | `SignalTests.swift` | Signal |
 | `StyleTests.swift` | Style |
-| `ViewBuilderTests.swift` | View builder (including ZStack overlay vs group); note the file name and its `struct BuilderTests` differ, so `--filter ViewBuilderTests` matches nothing and **exits zero** — filter on `BuilderTests` |
+| `ViewBuilderTests.swift` | View builder (including ZStack overlay vs group); filter `--filter ViewBuilderTests` |
 | `TestSupport.swift` | No suite; shared helpers, including `TestBox` |
 | `ModernTests.swift` | DrawList codec hostility, CellPainter ↔ DrawList, Overflow-safe geometry |
 | `FormControlTests.swift` | TextField, Toggle, ProgressView |

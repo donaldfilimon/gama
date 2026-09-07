@@ -101,15 +101,22 @@ when the workflow runs again, report its result separately.
 
 ## Documentation evidence
 
-`check-docs.sh` performs four distinct checks:
+`check-docs.sh` runs these checks in order; the script is the authority,
+not a remembered count:
 
-1. The standard-library-only link scanner rejects broken relative Markdown
-   links in root guides, `docs/`, `Examples/`, and DocC articles.
-2. The run-gama checker rejects drift or wrong self-paths between the tracked
-   `.agents` and `.claude` entry points, requires executable drivers, and uses
-   negative controls to prove stale-frame removal and owned-session cleanup.
-3. SwiftPM emits public symbol graphs under the pinned toolchain.
-4. Every discovered DocC catalog builds with warnings as errors.
+1. `scripts/check-doc-links.py` rejects broken relative Markdown links in
+   root guides, `docs/`, `Examples/`, and DocC articles.
+2. `scripts/evidence-locality.py` rejects an anchored evidence claim or CI
+   run id outside `docs/Capabilities.md`.
+3. `scripts/referenced-paths.py` rejects a root-anchored repository path
+   the tree lacks (`docs/superpowers/plans/` and `specs/drafts/` are
+   excluded because a proposal may name what it proposes).
+4. `scripts/check-run-gama-skill.sh` rejects drift or wrong self-paths
+   between the tracked `.agents` and `.claude` entry points, requires
+   executable drivers, and uses negative controls to prove stale-frame
+   removal and owned-session cleanup.
+5. SwiftPM emits public symbol graphs under the pinned toolchain.
+6. Every discovered DocC catalog builds with warnings as errors.
 
 `check-doc-coverage.sh` separately verifies public symbol comments. Passing
 one does not imply the other.

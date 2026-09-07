@@ -56,6 +56,7 @@ process-global invalidation.
 - ``State``
 - ``Binding``
 - ``SubscriptionContext``
+- ``CompletionStatus``
 
 ### Layout and style
 
