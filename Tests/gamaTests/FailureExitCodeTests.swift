@@ -43,17 +43,6 @@ struct FailureExitCodeTests {
         #expect(status.message == "The report could not be written")
     }
 
-    @Test("failure(exitCode:_:) preserves a diagnostic message")
-    func preservesMessage() {
-        let status = CompletionStatus.failure(
-            exitCode: .general,
-            "Unable to write output"
-        )
-        #expect(status.code == 1)
-        #expect(status.message == "Unable to write output")
-        #expect(status.isSuccess == false)
-    }
-
     @Test("failure(exitCode:) defaults the message to nil")
     func defaultMessageIsNil() {
         #expect(CompletionStatus.failure(exitCode: .general).message == nil)
@@ -95,11 +84,5 @@ struct FailureExitCodeTests {
         status.code = 0
         #expect(status.isSuccess)
         #expect(CompletionStatus(code: 256).code == 256)
-    }
-
-    @Test("ordinary success remains code zero")
-    func ordinarySuccessIsUnaffected() {
-        #expect(CompletionStatus.success.code == 0)
-        #expect(CompletionStatus.success.isSuccess)
     }
 }

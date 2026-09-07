@@ -1,6 +1,23 @@
 #!/usr/bin/env python3
-"""Close the two escape hatches Swift 6 leaves open for process-global state.
+"""Police the portable-target boundary: platform imports and process-global state.
 
+Two rules, one target list. Both answer the same question — may this target
+require a platform or concurrency runtime — so they are enforced together over
+a single `TARGETS` tuple, and divergence is structurally impossible rather than
+merely commented against.
+
+Rule 1, the platform-import ban. It lived in `check-boundaries.sh` as an
+`if grep -R --include='*.swift' … "$ROOT/Sources/GamaCore" …; then` block, and
+that shape fails OPEN: measured on this machine, BSD grep given a nonexistent
+directory together with `--include` exits 1 and writes nothing to stderr. Under
+`if grep …; then` exit 1 means "no violation found", so renaming or misspelling
+any listed directory silently unbanned that target while the gate still printed
+its OK line. Moving the regex here puts it behind the fail-closed `check` below,
+which reports a missing or empty target instead of skipping it. It also gains
+the comment and string-literal stripping the grep never had: an `import
+Foundation` inside a `/* */` block matched the grep and does not match here.
+
+Rule 2, the two escape hatches Swift 6 leaves open for process-global state.
 AGENTS.md: "framework state must not move into process-global registries."
 `check-boundaries.sh` enforced that with three string literals — `ActionRegistry`,
 `Invalidator.shared`, and `nonisolated(unsafe).*_host` — so a global named
@@ -54,6 +71,30 @@ from pathlib import Path
 # GamaWASM justification above.
 TARGETS = ("GamaCore", "GamaPlugin", "GamaDraw", "GamaEmbed", "GamaMLIR")
 
+BANNED_MODULES = (
+    "Foundation",
+    "AppKit",
+    "UIKit",
+    "Darwin",
+    "Glibc",
+    "WinSDK",
+    "Synchronization",
+)
+
+# A faithful port of the extended regex `check-boundaries.sh` used, so every
+# import spelling it caught is still caught: plain, indented, access-scoped
+# (`public import`), attributed (`@preconcurrency`, `@_implementationOnly`), and
+# submodule/decl imports (`import struct Foundation.Data`). An anchored
+# `^import X$` form would be blind to all but the plain spelling; do not
+# simplify back to one.
+PLATFORM_IMPORT = re.compile(
+    r"^\s*(?:@[A-Za-z_]+\s+)*"
+    r"(?:public|package|internal|private|fileprivate)?\s*"
+    r"import\s+"
+    r"(?:(?:struct|class|enum|protocol|typealias|func|var|let)\s+)?"
+    r"(" + "|".join(BANNED_MODULES) + r")\b"
+)
+
 UNSAFE = re.compile(r"nonisolated\s*\(\s*unsafe\s*\)")
 GLOBAL_ACTOR = re.compile(r"@(?:MainActor|globalActor|[A-Z]\w*Actor)\b")
 
@@ -106,6 +147,13 @@ def strip_noncode(text: str) -> str:
 def scan_text(text: str, name: str) -> list[str]:
     failures: list[str] = []
     for number, line in enumerate(strip_noncode(text).splitlines(), start=1):
+        platform_import = PLATFORM_IMPORT.match(line)
+        if platform_import:
+            failures.append(
+                f"error: {name}:{number}: portable target imports "
+                f"`{platform_import.group(1)}`. A portable target is stdlib-only: "
+                f"it must not require a platform, POSIX, or concurrency runtime."
+            )
         if UNSAFE.search(line):
             failures.append(
                 f"error: {name}:{number}: `nonisolated(unsafe)` in a portable "
@@ -193,7 +241,103 @@ def self_test() -> None:
         "multi-line literal interiors are read as code; the refusal in check() "
         "is what keeps that from mattering"
     )
-    print("OK — portable global-state checker self-test")
+
+    # --- The platform-import ban -------------------------------------------
+    # Every spelling the `check-boundaries.sh` grep caught must still be
+    # caught. A regression to an anchored `^import X$` form passes the first
+    # probe and fails the rest.
+    for spelling in (
+        "import Foundation",
+        "    import Foundation",
+        "public import Foundation",
+        "package import Darwin",
+        "@preconcurrency import Foundation",
+        "@_implementationOnly import Glibc",
+        "import struct Foundation.Data",
+        "  @preconcurrency public import class UIKit.UIView",
+    ):
+        caught = scan_text(spelling, "probe.swift")
+        assert len(caught) == 1, f"expected one failure for {spelling!r}: {caught}"
+        assert "portable target imports" in caught[0], caught[0]
+
+    # Every banned module, named individually, so dropping one from the list
+    # fails here rather than silently.
+    for module in BANNED_MODULES:
+        assert scan_text(f"import {module}", "probe.swift"), module
+
+    # A permitted import, and a module whose name merely starts with a banned
+    # one, must not fail. `\b` is what keeps the second true.
+    for allowed in (
+        "import GamaCore",
+        "import Testing",
+        "import FoundationExtras",
+        "import DarwinCompat",
+        "    let importFoundation = 1",
+    ):
+        assert not scan_text(allowed, "probe.swift"), f"false positive: {allowed}"
+
+    # The payoff over the grep this replaced: a mention of an import is not an
+    # import. The old `grep -R -E` matched all three of these.
+    for mention in (
+        "// import Foundation",
+        "/// See `import Foundation` in the ADR",
+        "/* import Foundation */",
+        'let note = "import Foundation"',
+    ):
+        assert not scan_text(mention, "probe.swift"), f"false positive: {mention}"
+
+    _self_test_check()
+    print("OK — portable boundary checker self-test")
+
+
+def _self_test_check() -> None:
+    """Exercise `check` itself, whose fail-closed behavior is the whole point.
+
+    The bash `if grep --include=… <dir>` this rule came from exited 1 and wrote
+    nothing when a listed directory did not exist, which read as "no violation".
+    The missing-target probe below is that exact defect.
+    """
+    import tempfile
+
+    def build(root: Path, targets: tuple[str, ...]) -> None:
+        for target in targets:
+            directory = root / "Sources" / target
+            directory.mkdir(parents=True)
+            (directory / "Probe.swift").write_text(
+                "import GamaCore\nlet probe = 1\n", encoding="utf-8"
+            )
+
+    with tempfile.TemporaryDirectory() as raw:
+        # `resolve()` because macOS reports /var, and `check` calls
+        # `relative_to(root)` on paths that come back as /private/var.
+        root = Path(raw).resolve()
+        build(root, TARGETS)
+        assert not check(root), check(root)
+
+        # B1: a renamed or misspelled target directory must FAIL, not pass.
+        missing = root / "Sources" / TARGETS[-1]
+        missing.rename(root / "Sources" / f"{TARGETS[-1]}Renamed")
+        failures = check(root)
+        assert len(failures) == 1, failures
+        assert "missing from Sources/" in failures[0], failures[0]
+        (root / "Sources" / f"{TARGETS[-1]}Renamed").rename(missing)
+
+        # An empty target is the same class of silent reduction.
+        (missing / "Probe.swift").unlink()
+        failures = check(root)
+        assert len(failures) == 1 and "no Swift sources" in failures[0], failures
+        (missing / "Probe.swift").write_text("let probe = 1\n", encoding="utf-8")
+
+        # A real violation is reported with its file and line.
+        offender = root / "Sources" / TARGETS[0] / "Probe.swift"
+        offender.write_text(
+            "let a = 1\nlet b = 2\n@preconcurrency import Foundation\n",
+            encoding="utf-8",
+        )
+        failures = check(root)
+        assert len(failures) == 1, failures
+        assert f"Sources/{TARGETS[0]}/Probe.swift:3:" in failures[0], failures[0]
+        assert "`Foundation`" in failures[0], failures[0]
 
 
 def main() -> int:
@@ -207,7 +351,10 @@ def main() -> int:
     if failures:
         print("\n".join(failures), file=sys.stderr)
         return 1
-    print(f"OK — no process-global hatches in {', '.join(TARGETS)}")
+    print(
+        "OK — no platform imports and no process-global hatches in "
+        f"{', '.join(TARGETS)}"
+    )
     return 0
 
 

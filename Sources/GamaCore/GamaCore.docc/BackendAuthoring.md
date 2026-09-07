@@ -15,7 +15,11 @@ backend can never produce an event — a redirected stream, a one-shot
 render — so a clean iteration ends the run instead of waiting for a key
 that cannot arrive. Process outcome is declared through
 ``SubscriptionContext/complete(_:)`` as a ``CompletionStatus``; quiescence
-is not success, and `complete` does not exit the process.
+is not success, and `complete` does not exit the process. Opt-in
+``FailureExitCode`` accepts only `1...255` and rejects `0`, negatives, and
+`256+` by failing construction (``CompletionStatus/failure(exitCode:_:)``);
+the unvalidated ``CompletionStatus/failure(code:_:)`` factory still accepts
+zero.
 
 Terminal implementations should make raw-console ownership noncopyable or
 reference-unique and restore modes, cursor visibility, alternate screen, code

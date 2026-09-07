@@ -4,23 +4,19 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TOOLCHAIN="${GAMA_TOOLCHAIN_ID:-org.swift.65202608211a}"
 swift_bin="$(xcrun --toolchain "$TOOLCHAIN" --find swift)"
 swiftc_bin="${GAMA_SWIFTC_64:-$(xcrun --toolchain "$TOOLCHAIN" --find swiftc)}"
-# Catches every import spelling: plain, indented, access-scoped
-# (`public import`), attributed (`@preconcurrency`, `@_implementationOnly`),
-# and submodule/decl imports (`import struct Foundation.Data`). The old
-# anchored `^import X$` form was blind to all but the plain spelling.
-if grep -R -n -E --include='*.swift' \
-  '^[[:space:]]*(@[A-Za-z_]+[[:space:]]+)*(public|package|internal|private|fileprivate)?[[:space:]]*import[[:space:]]+((struct|class|enum|protocol|typealias|func|var|let)[[:space:]]+)?(Foundation|AppKit|UIKit|Darwin|Glibc|WinSDK|Synchronization)\b' \
-  "$ROOT/Sources/GamaCore" "$ROOT/Sources/GamaPlugin"; then
-  echo "error: GamaCore/GamaPlugin imported a platform/runtime module" >&2; exit 1
-fi
 if grep -R -n -E --include='*.swift' 'ActionRegistry|Invalidator\.shared|nonisolated\(unsafe\).*_host' "$ROOT/Sources/GamaCore" "$ROOT/Sources/GamaPlugin" "$ROOT/Sources/GamaEmbed"; then
   echo "error: process-global framework state detected" >&2; exit 1
 fi
 # The three literals above name known offenders; a global called anything else
-# passed them. Swift 6 language mode rejects nonisolated global mutable state on
-# its own, so what is left to police is the two hatches around it —
-# `nonisolated(unsafe)` and global-actor isolation — across every portable
-# target, not just the three listed here.
+# passed them. The general rules live in scripts/portable-global-state.py below,
+# over a single TARGETS list: the platform-import ban, plus the two hatches
+# Swift 6 language mode leaves open around nonisolated global mutable state
+# (`nonisolated(unsafe)` and global-actor isolation). The import ban was an
+# `if grep --include=… <dir>` here until 2026-09-06, and that shape fails open —
+# BSD grep exits 1 and prints nothing for a directory that does not exist, which
+# reads as "no violation" — so a renamed target was silently unbanned. The
+# python fails closed on a missing or empty target instead. Do not reintroduce a
+# second copy of either list here.
 python3 "$ROOT/scripts/portable-global-state.py" --self-test "$ROOT"
 # POSIX handlers must terminate at the C support boundary. A Swift handler
 # closure or Swift-owned signal storage can enter runtime initialization or

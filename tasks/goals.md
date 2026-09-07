@@ -34,6 +34,11 @@ status: done
   Freshness stayed green with no ledger promotion. Embedded 642,084 bytes
   within 2% of 641,464; pin not re-measured. `FailureExitCodeTests` still 12
   on 6.5-dev; docs and doc-coverage green. Local evidence only.
+- Catalog follow-up 2026-09-06: `docs/backends/TUI.md` and
+  `GamaCore.docc/BackendAuthoring.md` now carry the same opt-in `1...255` /
+  legacy-zero see-also next to `complete(_:)`. `AGENTS.md` / `CLAUDE.md`
+  sentences kept. Freshness green, no ledger promotion. `FailureExitCodeTests`
+  still 12; docs and doc-coverage green. Local evidence only.
 
 ## Toolchain selection and 6.5-dev spelling audit
 status: done

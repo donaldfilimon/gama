@@ -81,8 +81,8 @@ public indirect enum RenderNode: Hashable, Sendable {
     /// to the child) and aligns the child inside the fixed bounds.
     case frame(width: Int?, height: Int?, alignment: Alignment, child: RenderNode)
     /// Range-constrained frame: each axis is clamped between its
-    /// min/max, and a `.max` bound turns the node flexible (see
-    /// `flexPriority`).
+    /// min/max, and a `.max` bound turns the node flexible on *that*
+    /// axis (see `flexPriority`).
     case flexFrame(
         minWidth: Int?, maxWidth: Int?, minHeight: Int?, maxHeight: Int?,
         alignment: Alignment, child: RenderNode
@@ -94,10 +94,14 @@ public indirect enum RenderNode: Hashable, Sendable {
     /// Interactive region: backends route key/pointer events by `id`.
     case interactive(id: NodeID, focusable: Bool, child: RenderNode)
 
-    /// How this node competes for stack space. Single-child wrappers
-    /// are transparent and report their child's priority; a `flexFrame`
-    /// is flexible only when an axis is unbounded (`.max`); everything
-    /// else is fixed.
+    /// Whether this node competes for stack space on *at least one*
+    /// axis. Single-child wrappers are transparent and report their
+    /// child's priority; a `flexFrame` is flexible only when an axis is
+    /// unbounded (`.max`); everything else is fixed. A stack resolves
+    /// flexibility against its own main axis, so this axis-agnostic
+    /// answer is advisory: a `.frame(maxWidth: .max)` reports
+    /// `.flexible` but competes for space only inside a horizontal
+    /// stack.
     public var flexPriority: FlexPriority {
         switch self {
         case .spacer: return .flexible(weight: 1)
@@ -106,6 +110,27 @@ public indirect enum RenderNode: Hashable, Sendable {
         case .padding(_, let c), .border(_, _, _, let c), .background(_, let c),
              .styled(_, let c), .interactive(_, _, let c):
             return c.flexPriority
+        // Exhaustive on purpose: a new case must choose its flex behavior
+        // here instead of silently inheriting `.fixed`.
+        case .empty, .text, .stack, .overlay, .group, .divider, .frame:
+            return .fixed
+        }
+    }
+
+    /// How this node competes for space along `axis` — the answer the
+    /// stack solver uses, because absorbing leftover space is a
+    /// per-axis property: a `flexFrame` is flexible on `axis` only when
+    /// *that axis'* maximum is unbounded (`.max`), so a `maxWidth: .max`
+    /// child of a `VStack` stays fixed-height and merely fills the
+    /// width. A spacer is flexible on whichever axis it is asked about.
+    func flexPriority(along axis: Axis) -> FlexPriority {
+        switch self {
+        case .spacer: return .flexible(weight: 1)
+        case .flexFrame(_, let maxW, _, let maxH, _, _):
+            return (axis == .horizontal ? maxW : maxH) == .max ? .flexible(weight: 1) : .fixed
+        case .padding(_, let c), .border(_, _, _, let c), .background(_, let c),
+             .styled(_, let c), .interactive(_, _, let c):
+            return c.flexPriority(along: axis)
         // Exhaustive on purpose: a new case must choose its flex behavior
         // here instead of silently inheriting `.fixed`.
         case .empty, .text, .stack, .overlay, .group, .divider, .frame:

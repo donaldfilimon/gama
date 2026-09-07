@@ -53,8 +53,9 @@ declaration) and an unused one (`#UnusedImportAccess`), so the set is checked
 in both directions: annotate exactly what the compiler asks for. Platform
 imports that appear only in private storage and internal helpers (`Darwin`,
 `Glibc`, `Musl`, `Android`, `WinSDK` in `GamaTUI`) stay plain `import`.
-`scripts/check-boundaries.sh` matches access-scoped spellings, so `public
-import Foundation` is still rejected in the portable targets.
+`scripts/portable-global-state.py`, which `scripts/check-boundaries.sh` runs,
+matches access-scoped spellings, so `public import Foundation` is still
+rejected in the portable targets.
 
 Strict memory safety (SE-0458) is **enabled with `-Werror
 StrictMemorySafety`** on every shipped library and macro target through

@@ -51,6 +51,46 @@ struct FormControlTests {
         #expect(app.enabled.get())
     }
 
+    @Test("a space typed into a focused text field becomes content, not activation")
+    func spaceIsTextNotActivation() throws {
+        let app = FormApp()
+        var host = try FrameHost(app: app)
+        _ = host.pump(size: Size(width: 40, height: 8))
+        for character in "hi there" {
+            host.handle(.key(.character(character)))
+        }
+        #expect(app.text.get() == "hi there")
+    }
+
+    @Test("space still activates a focused button-backed control")
+    func spaceStillActivatesToggle() throws {
+        let app = FormApp()
+        var host = try FrameHost(app: app)
+        _ = host.pump(size: Size(width: 40, height: 8))
+        host.handle(.key(.tab))
+        _ = host.pump(size: Size(width: 40, height: 8))
+        host.handle(.key(.character(" ")))
+        #expect(app.enabled.get())
+    }
+
+    @Test("enter on a focused text field still falls through to activation")
+    func enterFallsBackToActivation() throws {
+        let app = FormApp()
+        var host = try FrameHost(app: app)
+        _ = host.pump(size: Size(width: 40, height: 8))
+        host.handle(.key(.character("A")))
+        _ = host.pump(size: Size(width: 40, height: 8))
+
+        host.handle(.key(.enter))
+        // The field's handler declines `.enter`, so it must reach the
+        // activation path: the text is untouched and the host is dirty.
+        // The generic key route sets dirty only for a handled key, so this
+        // flag is what distinguishes activation from a swallowed keystroke.
+        let dirtyAfterEnter = host.needsFrame
+        #expect(app.text.get() == "A")
+        #expect(dirtyAfterEnter)
+    }
+
     @Test("duplicate explicit identities are reported once")
     func duplicateIdentity() throws {
         struct DuplicateApp: App {
