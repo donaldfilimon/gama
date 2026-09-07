@@ -39,6 +39,11 @@ status: done
   legacy-zero see-also next to `complete(_:)`. `AGENTS.md` / `CLAUDE.md`
   sentences kept. Freshness green, no ledger promotion. `FailureExitCodeTests`
   still 12; docs and doc-coverage green. Local evidence only.
+- Integration 2026-09-07: merge commit `bd727e9` on `origin/main` (PRs #89
+  and #90, including the four source defects). Hosted six-job Gama
+  acceptance run `34081434868` concluded success on that SHA (all six
+  required jobs). Pages run `34081434925` deployed successfully for the
+  same SHA. This integration is hosted proven, not local-only.
 
 ## Toolchain selection and 6.5-dev spelling audit
 status: done
