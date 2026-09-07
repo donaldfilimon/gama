@@ -36,6 +36,9 @@ no signal dispositions, no input, layout extent fixed at 80×24.
 `StreamRenderer.waitsForInput` is `false`, so the first quiescent frame ends
 the run. Async work must declare `CompletionStatus` via `complete(_:)`;
 quiescence is not success, and `complete` does not exit the process.
+Opt-in `FailureExitCode` accepts only `1...255` and rejects `0`, negatives,
+and `256+` by failing construction (`failure(exitCode:_:)`); the unvalidated
+`failure(code:_:)` factory still accepts zero.
 This path is pinned by `AdaptiveSurfaceTests` and `StreamOutputTests`. It
 is not hosted proven.
 
