@@ -113,7 +113,11 @@ public enum GamaWeb {
 // them on whatever thread the wasm host runs. The v1 family preserves its
 // original void-returning WebAssembly signatures. The v2 family returns `0`
 // when accepted and fails closed with `-1` when no host is installed or `-2`
-// when an input code is invalid.
+// when an input code is invalid. The installed-host check runs *before* any
+// argument validation, so an invalid code with no host installed reports the
+// lifecycle failure (`-1`), not the argument failure — the fail-closed
+// contract in `docs/backends/WASM.md`, and the same precedence
+// `gama_embed_v1_key` uses in the sibling C ABI.
 
 @_cdecl("gama_web_v1_frame")
 nonisolated func gama_web_v1_frame() {
@@ -144,6 +148,12 @@ nonisolated func gama_web_v2_key(
     _ shift: Int32,
     _ ctrl: Int32
 ) -> Int32 {
+    // The lifecycle check precedes translation, so a call with no host
+    // installed reports `-1` whatever the key code is. Sits above the switch
+    // rather than merely ahead of the `-2` return — equivalent, since the
+    // switch is pure — so this reads like `gama_embed_v1_key`, where the
+    // context guard is likewise the first statement.
+    guard let host = GamaWeb.current else { return -1 }
     // code: JS KeyboardEvent mapping done host-side (see gama.js):
     //   1=up 2=down 3=left 4=right 5=enter 6=escape 7=tab 8=backspace
     //   9=delete 10=home 11=end 12=pageUp 13=pageDown 100+n=Fn
@@ -175,7 +185,6 @@ nonisolated func gama_web_v2_key(
         key = nil
     }
     guard let key else { return -2 }
-    guard let host = GamaWeb.current else { return -1 }
     host.handle(.key(key))
     return 0
 }
