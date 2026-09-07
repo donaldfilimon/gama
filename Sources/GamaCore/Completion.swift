@@ -11,7 +11,10 @@
 ///
 /// `code` is carried as `Int32` because that is the width a process exit
 /// status is ultimately narrowed to; GamaCore itself never exits a
-/// process, and translating this into one is a backend's job.
+/// process, and translating this into one is a backend's job. A
+/// process-facing failure that must remain nonzero at a conventional
+/// eight-bit boundary uses ``FailureExitCode`` and
+/// ``failure(exitCode:_:)``.
 public struct CompletionStatus: Hashable, Sendable {
     /// The reportable outcome, where zero means success by POSIX convention.
     public var code: Int32

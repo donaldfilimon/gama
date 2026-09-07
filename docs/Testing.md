@@ -47,6 +47,7 @@ All suites live in `Tests/gamaTests/`:
 | `DrawListTests.swift` | Cell buffer, DrawList, Cell painter |
 | `EmbedABITests.swift` | Embed ABI additions |
 | `EmbedTests.swift` | C embedding context |
+| `FailureExitCodeTests.swift` | Validated failure exit codes — filter `--filter FailureExitCodeTests` |
 | `FormControlTests.swift` | Form controls and identity |
 | `FrameHostTests.swift` | FrameHost |
 | `GeometryTests.swift` | Geometry |
