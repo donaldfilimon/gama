@@ -33,9 +33,9 @@ VoiceOver reads the frame the host already rendered.
 `AccessibilitySnapshot`, and the host publishes itself as a container whose
 children are one ``GamaAccessibilityLineElement`` per non-blank grid row.
 The adapter exposes text only: it adds no actions and no parallel account of
-what the application means. It is locally proven on AppKit by the Swift
-Testing accessibility suite; UIKit shares the derivation but is compile
-proven only, and no screen-reader acceptance pass is claimed.
+what the application means. The VoiceOver / assistive-text row in
+`docs/Capabilities.md` is Locally proven on AppKit; UIKit compile status
+and the absence of a screen-reader pass are in that ledger.
 
 This module embeds a view; it does not own the application. Applications
 that want Gama to own `NSApplication`, windows, and lifecycle use the
