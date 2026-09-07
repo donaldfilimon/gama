@@ -129,6 +129,27 @@ prerequisite of the documentation gates**, not only the WASM one. The pre-push
 documentation checklist is the block in `CONTRIBUTING.md`:
 `./scripts/check-docs.sh` followed by `./scripts/check-doc-coverage.sh`.
 
+**Both of those scanners read this file.** `referenced-paths.py` and
+`evidence-locality.py` scan the four root documents — `README.md`,
+`CONTRIBUTING.md`, `AGENTS.md`, and `CLAUDE.md` — alongside `docs/**` and
+`tasks/*.md`, so editing `CLAUDE.md` or `AGENTS.md` can break `check-docs.sh`.
+Two ways to do it: backticking a root-anchored path that does not exist (any
+`docs/`, `Sources/`, `scripts/`, `Tests/`, `Examples/`, `WebHost/`,
+`Distribution/`, `.github/`, `.agents/`, or `.claude/` path, or one of the seven
+root files, with a real extension — a bare filename stays prose), and writing a
+commit-anchored evidence claim, which is a layer word plus "proven" plus a
+backticked 7-40 hex sha within one paragraph, or a CI run id. Naming a commit is
+fine on its own; the two together outside the ledger are not. Verify a doc edit
+by running the three checkers directly rather than the whole gate — they need no
+toolchain and no scratch path, and each takes `--self-test` plus the root, the
+same form `check-docs.sh` uses:
+
+```bash
+for c in check-doc-links evidence-locality referenced-paths; do
+  python3 "scripts/$c.py" --self-test . ; echo "$c: $?"
+done
+```
+
 `check-linux-leaks.sh` and `check-portable-symbols.sh` are not in that array:
 the first is a hosted-Linux LeakSanitizer proof (it exits non-zero on macOS by
 design — macOS can build `gama-leak-check` but cannot produce the evidence),
@@ -146,8 +167,15 @@ It is fail-closed three ways — an unannotated row fails, zero parsed rows fail
 vocabulary term with no rule fails — and its lead-word rule additionally
 requires the row's second cell to *start* with its declared layer word. Never
 invent a different annotation grammar; the regexes in that script are the
-authority. **Its reach is one file:** `LEDGER = "docs/Capabilities.md"`, so
-hosted-evidence prose anywhere else (`docs/Packaging.md` carries a table of the
+authority. Four rules that surprise people: the allowed `layer=` tokens are
+**derived from the ledger's own status vocabulary**, the `- **Term** —` bullets
+at the top of `docs/Capabilities.md`, so adding a status word there is what adds
+a token — the list is not hardcoded in the script; `paths=` must be sorted; the
+ledger may not list itself as one of its own paths; and `layer=unverified` is
+checked *in both directions*, so a row parked at `unverified` when nothing has
+changed since its anchor fails too, and must be returned to the layer its
+evidence supports. **Its reach is one file:** `LEDGER =
+"docs/Capabilities.md"`, so hosted-evidence prose anywhere else (`docs/Packaging.md` carries a table of the
 same shape) is still unchecked and can go stale silently.
 `check-package-graph.sh` (gate 15, `f267270`) dumps the manifest and asserts
 ADR 0012's `strictLibrary` scope, the zero-runtime-package-dependency
@@ -233,7 +261,10 @@ than the exit status. Plugin and capability-service coverage lives in
 `PluginRuntimeTests`, `PluginSlotTests`, `PluginSceneTests`,
 `PluginCommandTests`, and `PlatformServicesTests`.
 Do not add `import XCTest`. Macro expansion tests use
-`SwiftSyntaxMacrosGenericTestSupport`. See `docs/Testing.md` and
+`SwiftSyntaxMacrosGenericTestSupport`. **`docs/Testing.md` now carries a table of
+every `GamaTests` source file and the suites inside it**, so look the target up
+there rather than guessing — note a single file can hold several suites, and the
+filter is still the source identifier, never the `@Suite` title. See also
 `docs/Toolchain.md`.
 
 **`#expect` cannot read a bare property off a `~Copyable` host.**
@@ -286,7 +317,12 @@ Target layering (all under `Sources/`, single test target `GamaTests` at
 - **GamaCore** — scenes, views, identity, state, layout, events,
   `FrameHost`, the per-host `@Reactive` state store it owns
   (`ReactiveState.swift`), and `CompletionStatus` (`Completion.swift`): a
-  declared process outcome, never inferred from quiescence. Embedded-Swift-safe:
+  declared process outcome, never inferred from quiescence. Opt-in
+  `FailureExitCode` accepts only `1...255` and rejects `0`, negatives, and
+  `256+` by failing construction, so `CompletionStatus.failure(exitCode:_:)`
+  cannot build a failure an eight-bit process status reads as success; the
+  unvalidated `failure(code:_:)` factory still accepts zero, `code` stays
+  mutable, and the application still owns `exit`. Embedded-Swift-safe:
   stdlib only. `check-boundaries.sh`
   rejects any import of Foundation, AppKit, UIKit, Darwin, Glibc, WinSDK, or
   Synchronization in GamaCore *and* GamaPlugin, and rejects process-global
@@ -461,9 +497,17 @@ the argued `WindowGroup` behavior flip.
 
 Implementation presence is not platform proof. `docs/Capabilities.md` is the
 evidence ledger: a backend is Current only when its declared compile/runtime
-gate passes, and documentation must distinguish implemented, locally proven,
-hosted proven, provisional, and blocked states. Never describe a blocked
-capability (e.g. Windows console native proof) as shipped.
+gate passes. Its status vocabulary is the authority on the words to use —
+implemented, locally proven, hosted proven, provisional, blocked, and
+unverified — and, as gate 14 above notes, that bullet list is also what defines
+the `layer=` tokens, so read the ledger's own vocabulary rather than a list
+copied elsewhere. `docs/Verification.md` is the finer instrument behind it: an
+eight-rung ladder from source inspection through compiler probe, local build,
+local runtime smoke, hosted CI, artifact verification, deployment check, and
+manual acceptance, each rung stating what it does **not** establish. Consult it
+before writing a status word, and report the revision, toolchain, target, and
+command beside any result. Never describe a blocked capability (e.g. Windows
+console native proof) as shipped.
 
 ## Conventions
 
