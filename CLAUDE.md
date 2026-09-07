@@ -331,8 +331,11 @@ Target layering (all under `Sources/`, single test target `GamaTests` at
   Darwin, Glibc, WinSDK, or Synchronization across all five portable targets —
   GamaCore, GamaPlugin, GamaDraw, GamaEmbed, and GamaMLIR — and
   `check-boundaries.sh` itself rejects the three named process-global registry
-  literals. There is now exactly one portable-target list, that script's
-  `TARGETS`: the import ban and the global-state ban answer the same question,
+  literals. The import ban and the global-state ban now share one list, that
+  script's `TARGETS` — the libm symbol scan keeps its own narrower
+  `portable_targets=(GamaCore GamaPlugin GamaDraw GamaMLIR)` in
+  `check-boundaries.sh`, and the `GamaPlatformServices` inverse ban a third,
+  wider one. The two that merged answer the same question,
   so they are enforced together and cannot drift apart. Until 2026-09-06 the
   import half was a separate `if grep` over its own copy of the list, which
   both let the two diverge and failed open on a renamed directory — a nonexistent
