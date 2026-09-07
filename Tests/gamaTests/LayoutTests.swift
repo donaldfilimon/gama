@@ -164,6 +164,68 @@ struct LayoutTests {
         #expect(child.frame.minY == laid.frame.minY + 1)
     }
 
+    @Test("flexible child still contributes its cross extent")
+    func flexibleChildContributesCrossExtent() {
+        let column = RenderNode.stack(
+            axis: .vertical, spacing: 0, alignment: .topLeading,
+            children: [
+                .flexFrame(
+                    minWidth: nil, maxWidth: nil,
+                    minHeight: nil, maxHeight: .max,
+                    alignment: .topLeading,
+                    child: .text("Hello", style: .plain)
+                )
+            ]
+        )
+        let m = LayoutEngine.measure(column, proposal: .unspecified)
+        #expect(m.width == 5)
+    }
+
+    @Test("a flexible column measured inside a row keeps its text unwrapped")
+    func flexibleColumnInsideRowIsNotStarvedOnCross() {
+        let column = RenderNode.stack(
+            axis: .vertical, spacing: 0, alignment: .topLeading,
+            children: [
+                .flexFrame(
+                    minWidth: nil, maxWidth: nil,
+                    minHeight: nil, maxHeight: .max,
+                    alignment: .topLeading,
+                    child: .text("Hello", style: .plain)
+                )
+            ]
+        )
+        let row = RenderNode.stack(
+            axis: .horizontal, spacing: 0, alignment: .topLeading,
+            children: [column, .text("X", style: .plain)]
+        )
+        let laid = LayoutEngine.layout(row, in: Rect(x: 0, y: 0, width: 20, height: 3))
+        #expect(laid.children[0].frame.size.width == 5)
+        #expect(laid.children[1].frame.minX == 5)
+    }
+
+    @Test("a maxWidth child is not flexible on a column's main axis")
+    func flexibilityIsResolvedPerAxis() {
+        let column = RenderNode.stack(
+            axis: .vertical, spacing: 0, alignment: .topLeading,
+            children: [
+                .flexFrame(
+                    minWidth: nil, maxWidth: .max,
+                    minHeight: nil, maxHeight: nil,
+                    alignment: .topLeading,
+                    child: .text("A", style: .plain)
+                ),
+                .text("B", style: .plain),
+            ]
+        )
+        let m = LayoutEngine.measure(column, proposal: .unspecified)
+        #expect(m.height == 2)
+
+        let laid = LayoutEngine.layout(column, in: Rect(x: 0, y: 0, width: 10, height: 10))
+        #expect(laid.children[0].frame.size.height == 1)
+        #expect(laid.children[0].frame.size.width == 10)
+        #expect(laid.children[1].frame.minY == 1)
+    }
+
     @Test("border reserves two cells")
     func borderReservesTwoCells() {
         let node = RenderNode.border(

@@ -16,7 +16,8 @@ public enum LayoutEngine {
     /// the proposal is unconstrained: content replies with its ideal
     /// extent on that axis. Inside stacks, flexible children contribute
     /// only their main-axis floors here — the leftover space is
-    /// distributed to them during `layout`.
+    /// distributed to them during `layout` — but they still contribute
+    /// their measured cross extent.
     public static func measure(_ node: RenderNode, proposal: ProposedSize) -> Size {
         switch node {
         case .empty:
@@ -95,9 +96,17 @@ public enum LayoutEngine {
                 mainUsed += 1
                 continue
             }
-            if case .flexible(let w) = child.flexPriority {
+            if case .flexible(let w) = child.flexPriority(along: axis) {
                 flexWeight += w
                 mainUsed += flexMinimum(of: child, axis: axis)
+                // Only the main axis is deferred to `layout`; the child
+                // still has a natural cross extent the stack must report.
+                // A spacer is the exception: `minLength` is a main-axis
+                // floor, so its axis-agnostic measurement says nothing
+                // about the cross axis.
+                if case .spacer = child { continue }
+                let m = measure(child, proposal: openProposal(proposal, along: axis))
+                crossMax = max(crossMax, axis == .horizontal ? m.height : m.width)
                 continue
             }
             let m = measure(child, proposal: openProposal(proposal, along: axis))
@@ -246,7 +255,7 @@ public enum LayoutEngine {
                 fixedMain += 1
                 continue
             }
-            if case .flexible(let w) = child.flexPriority {
+            if case .flexible(let w) = child.flexPriority(along: axis) {
                 flexTotal += w
                 mins[i] = flexMinimum(of: child, axis: axis)
                 fixedMain += mins[i]
@@ -264,7 +273,7 @@ public enum LayoutEngine {
             var weightLeft = flexTotal
             for (i, child) in children.enumerated() {
                 if case .divider = child { continue }
-                guard case .flexible(let w) = child.flexPriority else { continue }
+                guard case .flexible(let w) = child.flexPriority(along: axis) else { continue }
                 let share = weightLeft > 0 ? (remaining * w + weightLeft - 1) / weightLeft : 0
                 let granted = min(share, remaining)
                 remaining -= granted
