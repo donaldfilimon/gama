@@ -29,6 +29,11 @@ status: done
   debug/test/release. Docs, doc-coverage, and boundaries green. Local
   evidence only — not hosted six-job proof. Handbook HTML/JS and the Linux
   6.2.1 harness were not imported.
+- Follow-up 2026-09-06: `AGENTS.md` and `CLAUDE.md` now name the opt-in
+  `1...255` path and still say unvalidated `failure(code:_:)` accepts zero.
+  Freshness stayed green with no ledger promotion. Embedded 642,084 bytes
+  within 2% of 641,464; pin not re-measured. `FailureExitCodeTests` still 12
+  on 6.5-dev; docs and doc-coverage green. Local evidence only.
 
 ## Toolchain selection and 6.5-dev spelling audit
 status: done
