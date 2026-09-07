@@ -27,8 +27,8 @@ scene from its initial payload, and only explicit Quit terminates. Per the
 evidence ledger (`docs/Capabilities.md`), the shell is currently
 Unverified against merge commit `98c150d`. This catalog does not restate
 hosted or local proof. The Dock/Command-Q smoke remains
-supplemental and manual. The implemented macOS bundle and ad-hoc signing path
-have separate packaging checks; Developer ID signing and notarization remain
+supplemental and manual. The macOS bundle and ad-hoc signing path have separate packaging checks
+in the evidence ledger; Developer ID signing and notarization remain
 credential-gated. Placement restoration, close veto, UIKit scene delegates,
 and a Windows GUI are not shipped.
 
