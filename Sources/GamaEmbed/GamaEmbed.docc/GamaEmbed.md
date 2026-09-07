@@ -23,10 +23,9 @@ context returns no frame at all: a NULL frame with length zero means
 construction; two contexts share no state, which the independent-context
 suite proves.
 
-Per the evidence ledger (`docs/Capabilities.md`), the C embedding surface
-is Locally proven by the Swift Testing ABI suites plus the compiled,
-linked, and executed pure-C consumer gate (`scripts/check-c-abi.sh`). The
-hosted Linux C consumer job is remaining proof, not current evidence.
+Capability status for the C embedding surface lives in
+`docs/Capabilities.md` and is currently Unverified (catalog edits after
+anchor `0f498d5`). This catalog does not restate hosted or local proof.
 The static product folds the entry points
 into the host binary; on Darwin and Android hosts the consumer also
 carries the Swift runtime, a boundary `docs/backends/CEmbed.md` states

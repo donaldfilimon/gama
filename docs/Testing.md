@@ -62,6 +62,7 @@ All suites live in `Tests/gamaTests/`:
 | `PluginRuntimeTests.swift` | Plugin runtime: manifest, grants, lifecycle |
 | `PluginSceneTests.swift` | Plugin scene contributions |
 | `PluginSlotTests.swift` | Plugin slots |
+| `PlatformServicesTests.swift` | Platform services: scoped filesystem, clock, log |
 | `POSIXTerminalIntegrationTests.swift` | PTY raw-mode restore (Darwin) |
 | `ProgressViewTests.swift` | ProgressView scale awareness |
 | `RunIterationTests.swift` | Run iteration |

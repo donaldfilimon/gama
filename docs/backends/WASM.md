@@ -1,10 +1,9 @@
 # Browser backend (GamaWASM)
 
-Status: Locally runtime proven with the pinned WASM SDK (Node event/frame
-smoke plus headless-Chrome DOM/key/pointer/resize/rAF/accessibility smoke)
-and hosted proven on the WebAssembly job. The HTML serializer additionally
-compiles and unit-tests on every host platform (it lives outside
-`#if arch(wasm32)`).
+Status: Unverified. Capability status lives in
+[`Capabilities.md`](../Capabilities.md); this guide does not restate
+hosted or local proof. The HTML serializer additionally compiles and
+unit-tests on every host platform (it lives outside `#if arch(wasm32)`).
 
 ## Hosting model
 

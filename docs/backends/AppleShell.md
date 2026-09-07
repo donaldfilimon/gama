@@ -1,9 +1,8 @@
 # macOS application shell (GamaAppleShell)
 
-Status: implemented and locally proven by the pinned Apple build and six
-offscreen AppKit tests. Hosted evidence is recorded by the delivery pull
-request's complete acceptance matrix; this guide does not substitute source
-presence for that proof.
+Status: Unverified. Capability status lives in
+[`Capabilities.md`](../Capabilities.md); this guide does not restate
+hosted, locally-proven, or implemented proof.
 
 `GamaAppleShell` is the opt-in owner for a complete macOS application. It is
 separate from `GamaAppleUI`, whose `GamaHostView` remains available to custom

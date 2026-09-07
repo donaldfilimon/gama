@@ -24,9 +24,9 @@ activation, focus, close, and termination callbacks become portable
 Close is deliberately non-vetoable in this version, closing the final
 window leaves the application resident, a Dock reopen recreates the primary
 scene from its initial payload, and only explicit Quit terminates. Per the
-evidence ledger (`docs/Capabilities.md`), the shell is implemented and
-locally proven by the pinned Apple build plus offscreen AppKit tests that
-never enter the global event loop; the Dock/Command-Q smoke remains
+evidence ledger (`docs/Capabilities.md`), the shell is currently
+Unverified against merge commit `98c150d`. This catalog does not restate
+hosted or local proof. The Dock/Command-Q smoke remains
 supplemental and manual. The implemented macOS bundle and ad-hoc signing path
 have separate packaging checks; Developer ID signing and notarization remain
 credential-gated. Placement restoration, close veto, UIKit scene delegates,
