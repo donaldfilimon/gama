@@ -713,14 +713,13 @@ either, since the count moved twice today.
       evidence-freshness, package-graph, all exit 0. `check-apple.sh` was not
       re-run because this slice changes no Swift source. Local evidence only.
 
-- [x] **All four defects below are FIXED and merged into local `main`, verified
-      on the merged tree rather than per-branch.** Eleven runnable gates exit 0
-      and the suite is **321 tests in 56 suites**. The count reconciles exactly:
-      317 before, +3 for the TextField space tests, +3 for the layout tests, −2
-      for two duplicate cases deleted during review, so nothing was silently
-      dropped by the merges. Embedded 643,432 bytes, +0.31% on the 641,464 pin.
-      Not run, unchanged prerequisites: Android (no NDK/SDK), MLIR (no
-      `mlir-opt`). Local evidence only.
+- [x] **All four source defects are FIXED and merged into `origin/main`
+      at `bd727e9` (PRs #89 and #90).** Hosted six-job Gama acceptance run
+      `34081434868` concluded success on that SHA; Pages run `34081434925`
+      deployed. Eleven runnable gates had exited 0 on the merged tree, and
+      the suite was **321 tests in 56 suites** (317 before, +3 TextField
+      space, +3 layout, −2 duplicate cases). Embedded 643,432 bytes, +0.31%
+      on the 641,464 pin. This integration is hosted proven, not local-only.
 
 - [ ] **Residuals from this pass, each real and none of them fixed.** Recorded
       rather than quietly dropped.
@@ -752,28 +751,6 @@ either, since the count moved twice today.
       existing test only pins that `connect` fires at all.
       (5) `CONTRIBUTING.md` still calls the boundary gate "GamaCore import bans"
       when it has covered five targets since 2026-09-06.
-      (1) **A space can never be typed into a `TextField`.**
-      `Sources/GamaCore/FrameHost.swift` matches `.key(.character(" "))` in the
-      activation case before the generic `case .key(let key)` that would reach
-      `invokeKey`, and `TextField` registers only a key handler in
-      `Sources/GamaCore/Primitives.swift`, never an action — so the keystroke is
-      consumed by a no-op. Its own guard admits scalars `>= 0x20`, so it means to
-      accept U+0020. Untested: `Tests/gamaTests/FormControlTests.swift` types a
-      letter, a letter, and backspace.
-      (2) **`measureStack` drops the cross-axis extent of flexible children.**
-      `Sources/GamaCore/Layout.swift` continues past the child before the cross
-      maximum is updated, then floors it to 1, while the placement pass grants
-      those same children the full cross extent — measure and place disagree.
-      (3) **Flexibility is recorded axis-blind.** `Sources/GamaCore/RenderNode.swift`
-      returns flexible when *either* frame maximum is unbounded, so a node
-      declared flexible on width absorbs leftover height in a vertical stack.
-      This one is a design call on a `public` property, not a clear defect.
-      (4) **`gama_web_v2_key` returns `-2` where the backend guide promises
-      `-1`.** `Sources/GamaWASM/WASMHost.swift` checks the key code before it
-      checks for an installed host, inverting the documented fail-closed order;
-      `Sources/GamaEmbed/CInterface.swift` checks the context first. Nothing pins
-      it, because the v2 exports are inside `#if arch(wasm32)` and the WASM gate
-      drives only the v1 tier.
 
 ## Manual and credential-gated acceptance
 
