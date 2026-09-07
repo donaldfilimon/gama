@@ -121,7 +121,8 @@ Backends normalize native events into `InputEvent`:
 
 - Tab and Shift-Tab traverse focus order.
 - Arrow keys choose a spatial neighbor, with tab-order fallback.
-- Enter and Space invoke the focused action.
+- Enter and Space reach the focused node's key handler first, and invoke its
+  action only when that handler declines the key.
 - Pointer presses hit-test the topmost interactive region.
 - Resize records the new size and dirties the host.
 - Lifecycle events may address one scene/window instance.
