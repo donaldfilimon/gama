@@ -713,9 +713,45 @@ either, since the count moved twice today.
       evidence-freshness, package-graph, all exit 0. `check-apple.sh` was not
       re-run because this slice changes no Swift source. Local evidence only.
 
-- [ ] **Four source defects confirmed by reading the code, fixes in flight and
-      NOT yet landed.** Recorded now so they are not lost if the fixes are
-      abandoned; none may be called fixed until a gate says so.
+- [x] **All four defects below are FIXED and merged into local `main`, verified
+      on the merged tree rather than per-branch.** Eleven runnable gates exit 0
+      and the suite is **321 tests in 56 suites**. The count reconciles exactly:
+      317 before, +3 for the TextField space tests, +3 for the layout tests, −2
+      for two duplicate cases deleted during review, so nothing was silently
+      dropped by the merges. Embedded 643,432 bytes, +0.31% on the 641,464 pin.
+      Not run, unchanged prerequisites: Android (no NDK/SDK), MLIR (no
+      `mlir-opt`). Local evidence only.
+
+- [ ] **Residuals from this pass, each real and none of them fixed.** Recorded
+      rather than quietly dropped.
+      (1) **The fail-open `if grep --include` shape survives in two more places,
+      and the larger one was missed by my own review.** `scripts/check-boundaries.sh`
+      still greps a nonexistent-directory-tolerant pattern for the three
+      process-global literals over three directories, and for the
+      `GamaPlatformServices` inverse ban over **thirteen** — that second one is
+      the biggest remaining exposure by target count and fails silently exactly
+      as the import ban did. The `TerminalRescue.swift` check is a milder case:
+      no `--include`, so a missing file exits 2 with a diagnostic — fail-open but
+      noisy, not silent.
+      (2) **`flexPriority` is now advisory.** The public property still collapses
+      both axes and is no longer what the layout solver consults; an internal
+      `flexPriority(along:)` in `Sources/GamaCore/RenderNode.swift` is. Its doc
+      comment says so. Needs a decision record to deprecate it or promote the
+      axis-aware form to public — deliberately not decided, because that is a
+      public API change.
+      (3) **The WASM no-host path has zero coverage in either export tier.**
+      Nothing anywhere asserts `-1`, and the state is reachable:
+      `Sources/GamaWASM/WASMHost.swift` documents that a first install throwing
+      `SceneConfigurationError` leaves no host installed. Closing it needs a
+      fixture app whose `install` throws, plus changes to the Node smoke driver.
+      Note the `-2` defect just fixed was established by source inspection, not
+      measurement — probing the pre-fix build traps with a signature mismatch on
+      exactly the discriminating key codes.
+      (4) **No regression test pins a `complete` issued from `connect`.** The
+      corrected `docs/backends/TUI.md` example is correct by construction; the
+      existing test only pins that `connect` fires at all.
+      (5) `CONTRIBUTING.md` still calls the boundary gate "GamaCore import bans"
+      when it has covered five targets since 2026-09-06.
       (1) **A space can never be typed into a `TextField`.**
       `Sources/GamaCore/FrameHost.swift` matches `.key(.character(" "))` in the
       activation case before the generic `case .key(let key)` that would reach
