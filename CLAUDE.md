@@ -325,8 +325,14 @@ Target layering (all under `Sources/`, single test target `GamaTests` at
   mutable, and the application still owns `exit`. Embedded-Swift-safe:
   stdlib only. `check-boundaries.sh`
   rejects any import of Foundation, AppKit, UIKit, Darwin, Glibc, WinSDK, or
-  Synchronization in GamaCore *and* GamaPlugin, and rejects process-global
-  registries anywhere. `FrameHost` and `AppRuntime` are `~Copyable`: each
+  Synchronization across all five portable targets — GamaCore, GamaPlugin,
+  GamaDraw, GamaEmbed, and GamaMLIR — and rejects process-global registries
+  anywhere. That list is deliberately identical to
+  `scripts/portable-global-state.py`'s `TARGETS`: the import ban and the
+  global-state ban answer the same question, and until 2026-09-06 the import
+  half covered only the first two, so GamaDraw, GamaEmbed, and GamaMLIR were
+  policed for global state while free to import Foundation. Keep both lists in
+  step. `FrameHost` and `AppRuntime` are `~Copyable`: each
   host uniquely owns focus, actions, `@Reactive` state, subscriptions, dirty
   state, and frames; out-of-band changes go through the host's
   `SubscriptionContext`, a bound `@Reactive` write, or explicit

@@ -690,6 +690,29 @@ either, since the count moved twice today.
       `check-android-emulator.sh` (no `ANDROID_HOME`, and no booted emulator),
       `check-mlir.sh` (no `mlir-opt`). Local evidence only.
 
+- [x] **The docs sweep's one HIGH gap is closed: the platform-import ban now
+      covers every portable target.** `check-boundaries.sh` banned Foundation,
+      AppKit, UIKit, Darwin, Glibc, WinSDK, and Synchronization in `GamaCore` and
+      `GamaPlugin` only, while `scripts/portable-global-state.py` policed global
+      state across five targets. The two rules answer the same question — may
+      this target require a platform or concurrency runtime — so the mismatch
+      left `GamaDraw`, `GamaEmbed`, and `GamaMLIR` forbidden a
+      `nonisolated(unsafe)` global yet free to `import Foundation`, which would
+      have taken the platform dependency the global was banned for.
+      The ban now uses the same five-target list, and both the list and the
+      reason are stated beside it so they cannot drift apart silently.
+      **Green by measurement, not by hope**: all three newly covered targets
+      import only `GamaCore` (and `GamaDraw` in `GamaEmbed`'s case) today, so the
+      extension was verified clean before it was made.
+      **Mutation-proven in both directions**: `import Foundation` planted at the
+      top of `Sources/GamaDraw/CellSerializer.swift` makes the gate exit 1 and
+      name the file and line; restoring the file byte-identically returns exit 0.
+      The pre-change target list was re-read from `HEAD` to confirm it names only
+      the two targets and would have passed that same mutation.
+      Gates green after the change: boundaries, docs, doc-coverage,
+      evidence-freshness, package-graph, all exit 0. `check-apple.sh` was not
+      re-run because this slice changes no Swift source. Local evidence only.
+
 - [ ] **Four source defects confirmed by reading the code, fixes in flight and
       NOT yet landed.** Recorded now so they are not lost if the fixes are
       abandoned; none may be called fixed until a gate says so.

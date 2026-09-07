@@ -10,9 +10,15 @@ swiftc_bin="${GAMA_SWIFTC_64:-$(xcrun --toolchain "$TOOLCHAIN" --find swiftc)}"
 # anchored `^import X$` form was blind to all but the plain spelling.
 if grep -R -n -E --include='*.swift' \
   '^[[:space:]]*(@[A-Za-z_]+[[:space:]]+)*(public|package|internal|private|fileprivate)?[[:space:]]*import[[:space:]]+((struct|class|enum|protocol|typealias|func|var|let)[[:space:]]+)?(Foundation|AppKit|UIKit|Darwin|Glibc|WinSDK|Synchronization)\b' \
-  "$ROOT/Sources/GamaCore" "$ROOT/Sources/GamaPlugin"; then
-  echo "error: GamaCore/GamaPlugin imported a platform/runtime module" >&2; exit 1
+  "$ROOT/Sources/GamaCore" "$ROOT/Sources/GamaPlugin" \
+  "$ROOT/Sources/GamaDraw" "$ROOT/Sources/GamaEmbed" "$ROOT/Sources/GamaMLIR"; then
+  echo "error: a portable target imported a platform/runtime module" >&2; exit 1
 fi
+# The five targets above are exactly scripts/portable-global-state.py's TARGETS.
+# Both rules answer the same question — may this target require a platform or
+# concurrency runtime — so covering different sets let GamaDraw, GamaEmbed, and
+# GamaMLIR be policed for global state while staying free to import Foundation.
+# Keep the two lists identical; they are two halves of one boundary.
 if grep -R -n -E --include='*.swift' 'ActionRegistry|Invalidator\.shared|nonisolated\(unsafe\).*_host' "$ROOT/Sources/GamaCore" "$ROOT/Sources/GamaPlugin" "$ROOT/Sources/GamaEmbed"; then
   echo "error: process-global framework state detected" >&2; exit 1
 fi
