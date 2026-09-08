@@ -721,8 +721,10 @@ either, since the count moved twice today.
       space, +3 layout, −2 duplicate cases). Embedded 643,432 bytes, +0.31%
       on the 641,464 pin. This integration is hosted proven, not local-only.
 
-- [ ] **Residuals from this pass, each real and none of them fixed.** Recorded
-      rather than quietly dropped.
+- [x] **Residuals from this pass, each real and none of them fixed.** Recorded
+      rather than quietly dropped. **Partly closed 2026-09-08: (1) and (5) are
+      fixed; (2), (3) and (4) are still open and are re-listed as their own
+      boxes below, so this box being checked does not mean the pass is clean.**
       (1) **The fail-open `if grep --include` shape survives in two more places,
       and the larger one was missed by my own review.** `scripts/check-boundaries.sh`
       still greps a nonexistent-directory-tolerant pattern for the three
@@ -751,6 +753,36 @@ either, since the count moved twice today.
       existing test only pins that `connect` fires at all.
       (5) `CONTRIBUTING.md` still calls the boundary gate "GamaCore import bans"
       when it has covered five targets since 2026-09-06.
+
+## Fail-open boundary scans and two carried residuals (2026-09-08)
+
+- [x] **Closed residual (1): the fail-open `if grep … <paths>` shape.**
+      `scripts/check-boundaries.sh` now defines `require_paths` and asserts
+      every scanned path before the grep, at all three sites — the three
+      process-global literals, the `GamaPlatformServices` inverse ban over
+      thirteen targets, and the single-file `TerminalRescue.swift` check.
+      Measured rather than argued, because the mechanism was easy to get wrong:
+      with a target renamed and a real `import GamaPlatformServices` planted in
+      the renamed directory, the unguarded grep exits 0 and the gate **passes**;
+      the guarded form exits 1 and names the missing path. Note the exposure is
+      narrower than the original bullet implied — a violation that coexists with
+      a missing directory is still caught, because BSD grep exits 0 when it
+      matches anywhere. What was lost was the renamed target being scanned at
+      all. `./scripts/check-boundaries.sh` exits 0 after the change.
+- [x] **Closed residual (5):** `CONTRIBUTING.md` called the boundary gate
+      "GamaCore import bans"; it now says all five portable targets.
+- [ ] **Carried residual (2): `flexPriority` is advisory.** The public property
+      collapses both axes and is not what the solver consults; the internal
+      `flexPriority(along:)` in `Sources/GamaCore/RenderNode.swift` is. Still
+      needs a decision record to deprecate it or promote the axis-aware form —
+      deliberately not decided here, because it is a public API change.
+- [ ] **Carried residual (3): the WASM no-host path has no coverage in either
+      export tier.** Nothing asserts `-1`, and the state is reachable. Closing
+      it needs a fixture app whose `install` throws plus Node smoke-driver
+      changes.
+- [ ] **Carried residual (4): no regression test pins a `complete` issued from
+      `connect`.** The `docs/backends/TUI.md` example is correct by
+      construction; the existing test only pins that `connect` fires.
 
 ## Manual and credential-gated acceptance
 
