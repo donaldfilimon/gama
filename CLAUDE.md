@@ -199,7 +199,14 @@ deliberately re-measured.
 `.claude/skills/run-gama/{SKILL.md,driver.sh}` must stay equivalent after the
 gate normalizes each entry-point path to `<run-gama-skill>`. Editing one mirror
 alone fails `check-docs.sh` — a documentation gate failing on a shell script,
-which reads as an unrelated break. Change both, or neither.
+which reads as an unrelated break. Change both, or neither. A plain `diff` of
+the two `SKILL.md` files always reports differences — every line naming the
+entry point — so the gate, not `diff`, is the parity authority.
+
+`.codex/agents/ledger-evidence-auditor.toml` is a third agent definition
+tracked here, for Codex rather than Claude. It sits outside the mirror-parity
+rule and nothing under `scripts/`, `.github/`, `.agents/`, or `.claude/`
+references it; do not mirror it into either skill directory.
 
 Run tests directly (single test, filtered) — must use a scratch path outside
 iCloud:
@@ -246,6 +253,20 @@ Run the terminal demo:
 unset TOOLCHAINS
 swiftly run swift run gama-demo
 ```
+
+Never drive `gama-demo` through a pipe or a redirect. It constructs
+`TUIRenderer` directly because of its plugin loop and never calls
+`App.runAdaptive()`, so it has no pipe mode to fall back to. The `run-gama`
+skill wraps it in a real tmux TTY, and its `smoke` verb is the automated
+focus-and-activation proof:
+
+```bash
+.agents/skills/run-gama/driver.sh smoke
+```
+
+Its other verbs — `build`, `launch`, `text`, `snap`, `focus`, `count`,
+`keys <key>`, `quit`, plus `mlir` and `apple` — drive the session step by step;
+`SKILL.md` beside it is the reference.
 
 `gama-demo --emit-mlir` prints the MLIR dialect form. Android needs
 `ANDROID_NDK_HOME=… ./scripts/check-android.sh`. Other executables:
