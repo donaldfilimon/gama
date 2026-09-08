@@ -382,9 +382,10 @@ status: in_progress
 - A `complete` issued from `connect` is now pinned by a mutation-proven
   regression test, so that residual is closed.
 - Open, and the reason this is not `done`: one residual from the 2026-09-06
-  source review is still real — advisory `flexPriority`, which needs a
-  decision record because it is a public API change. Itemised in
-  [`todo.md`](todo.md).
+  source review is still real — advisory `flexPriority`, a public API change.
+  Its decision record now exists as ADR 0013 (Provisional) with three
+  options and a recommendation; choosing one is the remaining step.
+  Itemised in [`todo.md`](todo.md).
 
 ## Delivered foundation
 

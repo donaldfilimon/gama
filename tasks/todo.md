@@ -776,6 +776,12 @@ either, since the count moved twice today.
       `flexPriority(along:)` in `Sources/GamaCore/RenderNode.swift` is. Still
       needs a decision record to deprecate it or promote the axis-aware form —
       deliberately not decided here, because it is a public API change.
+      **Record drafted 2026-09-08:** `docs/adr/0013-flex-priority-is-per-axis.md`
+      (Provisional) states the three options and recommends promoting
+      `flexPriority(along:)` with a deprecation window. Verified while
+      drafting: the public property has no reader outside its own
+      declaration. This box stays open until the ADR's status flips; the
+      choice is the remaining step, not more code.
 - [x] **Carried residual (3): the WASM no-host path has no coverage in either
       export tier.** Closed 2026-09-08 on this same branch by `99890ed`:
       `Tests/Fixtures/WASMFailedInstall/main.swift` is an app whose `install`
