@@ -776,10 +776,13 @@ either, since the count moved twice today.
       `flexPriority(along:)` in `Sources/GamaCore/RenderNode.swift` is. Still
       needs a decision record to deprecate it or promote the axis-aware form —
       deliberately not decided here, because it is a public API change.
-- [ ] **Carried residual (3): the WASM no-host path has no coverage in either
-      export tier.** Nothing asserts `-1`, and the state is reachable. Closing
-      it needs a fixture app whose `install` throws plus Node smoke-driver
-      changes.
+- [x] **Carried residual (3): the WASM no-host path has no coverage in either
+      export tier.** Closed 2026-09-08 on this same branch by `99890ed`:
+      `Tests/Fixtures/WASMFailedInstall/main.swift` is an app whose `install`
+      throws, `check-wasm.sh` builds it, and `wasm-runtime-smoke.mjs` asserts
+      the `-1` no-host result in both export tiers. Proven hosted, not only
+      written: the WebAssembly job passed on that commit. Recorded here after
+      review pointed out the box was still open one commit after it closed.
 - [ ] **Carried residual (4): no regression test pins a `complete` issued from
       `connect`.** The `docs/backends/TUI.md` example is correct by
       construction; the existing test only pins that `connect` fires.

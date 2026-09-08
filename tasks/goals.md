@@ -377,10 +377,11 @@ status: in_progress
   planting a real violation in a renamed target: unguarded the gate passes,
   guarded it fails and names the path. Gate exits 0 after the change.
 - `CONTRIBUTING.md` no longer calls the boundary gate "GamaCore import bans".
-- Open, and the reason this is not `done`: three residuals from the 2026-09-06
-  source review are still real — advisory `flexPriority`, no coverage of the
-  WASM no-host `-1` path in either export tier, and no regression test pinning
-  a `complete` issued from `connect`. They are itemised in
+- The WASM no-host `-1` path now has coverage in both export tiers
+  (`99890ed`, WebAssembly job green), so that residual is closed.
+- Open, and the reason this is not `done`: two residuals from the 2026-09-06
+  source review are still real — advisory `flexPriority`, and no regression
+  test pinning a `complete` issued from `connect`. They are itemised in
   [`todo.md`](todo.md).
 
 ## Delivered foundation

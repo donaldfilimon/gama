@@ -68,6 +68,25 @@ class BoundaryPathsTests(unittest.TestCase):
                     path.unlink()
                     path.symlink_to(ROOT / "Sources" / target)
 
+    def test_directory_cannot_replace_target_file(self):
+        # The inverse of the directory case: a same-named directory passes -e,
+        # and the non-recursive grep that follows exits 2 on a directory, which
+        # the `if` reads as no match — nested Swift would go unscanned.
+        target = self.root / "Sources" / "GamaTUI"
+        target.unlink()
+        target.mkdir()
+        shadow = target / "TerminalRescue.swift"
+        shadow.mkdir()
+        (shadow / "Nested.swift").write_text("let handler = sigaction(1, nil, nil)\n")
+        try:
+            self.assert_failure(
+                "error: boundary scan path is not a regular file: Sources/GamaTUI/TerminalRescue.swift")
+        finally:
+            (shadow / "Nested.swift").unlink()
+            shadow.rmdir()
+            target.rmdir()
+            target.symlink_to(ROOT / "Sources" / "GamaTUI")
+
     def test_existing_grep_policies_still_reject_violations(self):
         for target, source, diagnostic in (
             ("GamaCore", "let registry = ActionRegistry()", "process-global framework state detected"),

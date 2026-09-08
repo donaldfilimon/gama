@@ -16,6 +16,11 @@ require_paths() {
     elif [[ "$kind" == directory && ! -d "$path" ]]; then
       echo "error: boundary scan path is not a directory: ${path#"$ROOT/"}" >&2
       missing=1
+    elif [[ "$kind" == file && ! -f "$path" ]]; then
+      # A same-named directory passes -e, and the non-recursive grep that
+      # follows exits 2 on a directory, which the `if` reads as no match.
+      echo "error: boundary scan path is not a regular file: ${path#"$ROOT/"}" >&2
+      missing=1
     fi
   done
   [[ "$missing" -eq 0 ]] || {
@@ -57,6 +62,14 @@ fi
 # python fails closed on a missing or empty target instead. Do not reintroduce a
 # second copy of either list here.
 python3 "$ROOT/scripts/portable-global-state.py" --self-test "$ROOT"
+# POSIX handlers must terminate at the C support boundary. A Swift handler
+# closure or Swift-owned signal storage can enter runtime initialization or
+# exclusivity machinery from asynchronous signal context.
+require_paths file "$ROOT/Sources/GamaTUI/TerminalRescue.swift"
+if grep -n -E 'nonisolated\(unsafe\)|@convention\(c\)|sigaction\(|atexit\(' \
+  "$ROOT/Sources/GamaTUI/TerminalRescue.swift"; then
+  echo "error: GamaTUI signal handler state or installation escaped into Swift" >&2; exit 1
+fi
 # Keep source-policy regression probes independent of compiler/SDK availability.
 if [[ "${1:-}" == --source-policies-only ]]; then
   echo "OK — portable and platform-services source policies"
@@ -67,14 +80,6 @@ TOOLCHAIN="${GAMA_TOOLCHAIN_ID:-org.swift.65202608211a}"
 swift_bin="$(xcrun --toolchain "$TOOLCHAIN" --find swift)"
 swiftc_bin="${GAMA_SWIFTC_64:-$(xcrun --toolchain "$TOOLCHAIN" --find swiftc)}"
 
-# POSIX handlers must terminate at the C support boundary. A Swift handler
-# closure or Swift-owned signal storage can enter runtime initialization or
-# exclusivity machinery from asynchronous signal context.
-require_paths file "$ROOT/Sources/GamaTUI/TerminalRescue.swift"
-if grep -n -E 'nonisolated\(unsafe\)|@convention\(c\)|sigaction\(|atexit\(' \
-  "$ROOT/Sources/GamaTUI/TerminalRescue.swift"; then
-  echo "error: GamaTUI signal handler state or installation escaped into Swift" >&2; exit 1
-fi
 grep -q 'static struct termios gama_tui_saved_termios' \
   "$ROOT/Sources/GamaTUISignal/GamaTUISignal.c"
 grep -q 'static struct sigaction gama_tui_saved_actions' \
