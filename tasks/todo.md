@@ -771,11 +771,20 @@ either, since the count moved twice today.
       all. `./scripts/check-boundaries.sh` exits 0 after the change.
 - [x] **Closed residual (5):** `CONTRIBUTING.md` called the boundary gate
       "GamaCore import bans"; it now says all five portable targets.
-- [ ] **Carried residual (2): `flexPriority` is advisory.** The public property
-      collapses both axes and is not what the solver consults; the internal
-      `flexPriority(along:)` in `Sources/GamaCore/RenderNode.swift` is. Still
-      needs a decision record to deprecate it or promote the axis-aware form —
-      deliberately not decided here, because it is a public API change.
+- [x] **Carried residual (2): `flexPriority` is advisory.** Closed 2026-09-08
+      by ADR 0013 (Accepted, option A): `flexPriority(along:)` is public and
+      the axis-agnostic `flexPriority` is deprecated with a message naming
+      its replacement. Verified before deciding: the property had no reader
+      outside its own declaration, and the solver has been per-axis since
+      `318561e`. Closed on implementation and the ADR's stated verification,
+      not on the status flip: `check-doc-coverage.sh` passes on the promoted
+      declaration's existing `///`, `check-boundaries.sh` passes,
+      `check-apple.sh` passes with the new `LayoutTests` case that pins the
+      public per-axis answer for the case the old property got wrong, and a
+      compile probe against the built module emits exactly one deprecation
+      warning for the property and none for the per-axis form. Removal of
+      the deprecated property is a later pre-release break, to be recorded
+      like `App.content`.
 - [x] **Carried residual (3): the WASM no-host path has no coverage in either
       export tier.** Closed 2026-09-08 on this same branch by `99890ed`:
       `Tests/Fixtures/WASMFailedInstall/main.swift` is an app whose `install`

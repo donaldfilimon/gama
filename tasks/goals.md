@@ -369,7 +369,7 @@ status: done
   stay in `todo.md` and are not this goal.
 
 ## Fail-closed boundary scans
-status: in_progress
+status: done
 
 - Closed 2026-09-08: `scripts/check-boundaries.sh` asserted no scanned path
   before grepping, so a renamed target stopped being checked while the gate
@@ -381,10 +381,14 @@ status: in_progress
   (`99890ed`, WebAssembly job green), so that residual is closed.
 - A `complete` issued from `connect` is now pinned by a mutation-proven
   regression test, so that residual is closed.
-- Open, and the reason this is not `done`: one residual from the 2026-09-06
-  source review is still real — advisory `flexPriority`, which needs a
-  decision record because it is a public API change. Itemised in
-  [`todo.md`](todo.md).
+- Closed 2026-09-08: ADR 0013 (Accepted) promotes `flexPriority(along:)` to
+  public and deprecates the axis-agnostic property, the last of the five
+  2026-09-06 residuals. Outcome: every scan in `check-boundaries.sh` fails
+  closed on a renamed or shadowed path and is pinned by a harness the gate
+  runs itself; the WASM no-host path and a completion declared from
+  `connect` each have a regression test; the public flex API says what the
+  solver does. Remaining manual and credential-gated acceptance is tracked
+  in [`todo.md`](todo.md) as separate evidence layers, not as this goal.
 
 ## Delivered foundation
 

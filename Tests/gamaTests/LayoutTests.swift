@@ -10,6 +10,32 @@ import Testing
 
 @Suite("Layout")
 struct LayoutTests {
+    /// ADR 0013: flexibility is per-axis, and the public API now says so.
+    /// This is the case the deprecated axis-agnostic property got wrong — a
+    /// `maxWidth: .max` frame reported `.flexible` outright, but it only
+    /// competes for space inside a horizontal stack.
+    @Test("flexPriority(along:) answers per axis")
+    func flexPriorityIsPerAxis() {
+        let wide = RenderNode.flexFrame(
+            minWidth: nil, maxWidth: .max, minHeight: nil, maxHeight: nil,
+            alignment: .center, child: .empty)
+        #expect(wide.flexPriority(along: .horizontal) == .flexible(weight: 1))
+        #expect(wide.flexPriority(along: .vertical) == .fixed)
+
+        let tall = RenderNode.flexFrame(
+            minWidth: nil, maxWidth: nil, minHeight: nil, maxHeight: .max,
+            alignment: .center, child: .empty)
+        #expect(tall.flexPriority(along: .horizontal) == .fixed)
+        #expect(tall.flexPriority(along: .vertical) == .flexible(weight: 1))
+
+        // A spacer is flexible on whichever axis it is asked about, and a
+        // wrapper is transparent to its child's answer.
+        #expect(RenderNode.spacer(minLength: 0).flexPriority(along: .vertical) == .flexible(weight: 1))
+        let wrapped = RenderNode.padding(EdgeInsets(top: 1, leading: 1, bottom: 1, trailing: 1), child: wide)
+        #expect(wrapped.flexPriority(along: .horizontal) == .flexible(weight: 1))
+        #expect(wrapped.flexPriority(along: .vertical) == .fixed)
+    }
+
     @Test("text measure")
     func textMeasure() {
         let s = LayoutEngine.measure(.text("hello", style: .plain), proposal: .unspecified)
