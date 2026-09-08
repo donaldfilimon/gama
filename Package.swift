@@ -35,6 +35,20 @@ let wasmSettings: [SwiftSetting] = strictLibrary + [
     .enableExperimentalFeature("Extern")
 ]
 
+// Both runtime fixtures exercise the same published WASI export tiers.
+let wasmReactorLinkerSettings: [LinkerSetting] = [
+    .unsafeFlags([
+        "-Xlinker", "--export=gama_web_v1_frame",
+        "-Xlinker", "--export=gama_web_v1_key",
+        "-Xlinker", "--export=gama_web_v1_pointer",
+        "-Xlinker", "--export=gama_web_v1_resize",
+        "-Xlinker", "--export=gama_web_v2_frame",
+        "-Xlinker", "--export=gama_web_v2_key",
+        "-Xlinker", "--export=gama_web_v2_pointer",
+        "-Xlinker", "--export=gama_web_v2_resize",
+    ], .when(platforms: [.wasi])),
+]
+
 let package = Package(
     name: "Gama",
     platforms: [.macOS(.v14), .iOS(.v17), .tvOS(.v17), .visionOS(.v1)],
@@ -221,18 +235,14 @@ let package = Package(
             // These are properties of this WASI reactor's public ABI, not
             // command-global build flags. Keeping them target-local prevents
             // SwiftPM from forwarding them to the host-side macro plugin.
-            linkerSettings: [
-                .unsafeFlags([
-                    "-Xlinker", "--export=gama_web_v1_frame",
-                    "-Xlinker", "--export=gama_web_v1_key",
-                    "-Xlinker", "--export=gama_web_v1_pointer",
-                    "-Xlinker", "--export=gama_web_v1_resize",
-                    "-Xlinker", "--export=gama_web_v2_frame",
-                    "-Xlinker", "--export=gama_web_v2_key",
-                    "-Xlinker", "--export=gama_web_v2_pointer",
-                    "-Xlinker", "--export=gama_web_v2_resize",
-                ], .when(platforms: [.wasi])),
-            ]
+            linkerSettings: wasmReactorLinkerSettings
+        ),
+        .executableTarget(
+            name: "GamaWASMFailedInstall",
+            dependencies: ["GamaCore", "GamaWASM"],
+            path: "Tests/Fixtures/WASMFailedInstall",
+            swiftSettings: strictCore,
+            linkerSettings: wasmReactorLinkerSettings
         ),
         .executableTarget(
             name: "GamaAppleDemo",

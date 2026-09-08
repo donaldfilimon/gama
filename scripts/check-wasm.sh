@@ -37,6 +37,10 @@ done
 grep -q -E 'gama_web_v1_(frame|key|pointer|resize)' "$ROOT/WebHost/gama.js"
 artifact="$(find "$SCRATCH" -type f -name 'gama-web-demo.wasm' -print -quit)"
 [[ -n "$artifact" ]] || { echo "error: executable WASM artifact not produced" >&2; exit 1; }
+"$SWIFT" build --package-path "$ROOT" --scratch-path "$SCRATCH" --swift-sdk "$SDK" --product GamaWASMFailedInstall
+failed_install_artifact="$(find "$SCRATCH" -type f -name 'GamaWASMFailedInstall.wasm' -print -quit)"
+[[ -n "$failed_install_artifact" ]] || { echo "error: failed-install WASM fixture not produced" >&2; exit 1; }
+node "$ROOT/scripts/wasm-runtime-smoke.mjs" "$failed_install_artifact" --failed-install
 node "$ROOT/scripts/wasm-runtime-smoke.mjs" "$artifact"
 node "$ROOT/scripts/browser-runtime-smoke.mjs" "$artifact" "$ROOT/WebHost"
 mkdir -p "$ROOT/.build/artifacts"

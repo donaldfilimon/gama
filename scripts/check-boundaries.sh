@@ -1,30 +1,50 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-TOOLCHAIN="${GAMA_TOOLCHAIN_ID:-org.swift.65202608211a}"
-swift_bin="$(xcrun --toolchain "$TOOLCHAIN" --find swift)"
-swiftc_bin="${GAMA_SWIFTC_64:-$(xcrun --toolchain "$TOOLCHAIN" --find swiftc)}"
-
 # Every `if grep … <paths>` below fails open when a path is missing: BSD grep
 # exits 1 with no output, which the `if` reads as "no violation", so a renamed
 # target is silently unbanned while the gate stays green. Assert the paths
 # first so a rename fails closed and names itself.
 require_paths() {
+  local kind="$1"
+  shift
   local missing=0 path
   for path in "$@"; do
-    [[ -e "$path" ]] || { echo "error: boundary scan path is missing: ${path#"$ROOT/"}" >&2; missing=1; }
+    if [[ ! -e "$path" ]]; then
+      echo "error: boundary scan path is missing: ${path#"$ROOT/"}" >&2
+      missing=1
+    elif [[ "$kind" == directory && ! -d "$path" ]]; then
+      echo "error: boundary scan path is not a directory: ${path#"$ROOT/"}" >&2
+      missing=1
+    fi
   done
   [[ "$missing" -eq 0 ]] || {
-    echo "error: a scanned target was renamed or removed; update the list in $(basename "$0")" >&2
+    echo "error: restore the expected scan paths or update the list in $(basename "$0")" >&2
     exit 1
   }
 }
 global_state_dirs=(
   "$ROOT/Sources/GamaCore" "$ROOT/Sources/GamaPlugin" "$ROOT/Sources/GamaEmbed"
 )
-require_paths "${global_state_dirs[@]}"
+require_paths directory "${global_state_dirs[@]}"
 if grep -R -n -E --include='*.swift' 'ActionRegistry|Invalidator\.shared|nonisolated\(unsafe\).*_host' "${global_state_dirs[@]}"; then
   echo "error: process-global framework state detected" >&2; exit 1
+fi
+# Inverse boundary: GamaPlatformServices (Foundation-backed service
+# implementations) must never leak into a portable or framework target.
+# Only demos, examples, and tests may import it.
+platform_services_ban_dirs=(
+  "$ROOT/Sources/GamaCore" "$ROOT/Sources/GamaPlugin" "$ROOT/Sources/GamaDraw"
+  "$ROOT/Sources/GamaMacros" "$ROOT/Sources/GamaMacrosImpl" "$ROOT/Sources/gama"
+  "$ROOT/Sources/GamaTUI" "$ROOT/Sources/GamaWASM" "$ROOT/Sources/GamaAppleUI"
+  "$ROOT/Sources/GamaAppleShell" "$ROOT/Sources/GamaEmbed" "$ROOT/Sources/GamaEmbedABI"
+  "$ROOT/Sources/GamaMLIR"
+)
+require_paths directory "${platform_services_ban_dirs[@]}"
+if grep -R -n -E --include='*.swift' \
+  '^[[:space:]]*(@[A-Za-z_]+[[:space:]]+)*(public|package|internal|private|fileprivate)?[[:space:]]*import[[:space:]]+((struct|class|enum|protocol|typealias|func|var|let)[[:space:]]+)?GamaPlatformServices\b' \
+  "${platform_services_ban_dirs[@]}"; then
+  echo "error: a portable/framework target imported GamaPlatformServices" >&2; exit 1
 fi
 # The three literals above name known offenders; a global called anything else
 # passed them. The general rules live in scripts/portable-global-state.py below,
@@ -37,10 +57,20 @@ fi
 # python fails closed on a missing or empty target instead. Do not reintroduce a
 # second copy of either list here.
 python3 "$ROOT/scripts/portable-global-state.py" --self-test "$ROOT"
+# Keep source-policy regression probes independent of compiler/SDK availability.
+if [[ "${1:-}" == --source-policies-only ]]; then
+  echo "OK — portable and platform-services source policies"
+  exit 0
+fi
+python3 "$ROOT/scripts/test-boundary-paths.py"
+TOOLCHAIN="${GAMA_TOOLCHAIN_ID:-org.swift.65202608211a}"
+swift_bin="$(xcrun --toolchain "$TOOLCHAIN" --find swift)"
+swiftc_bin="${GAMA_SWIFTC_64:-$(xcrun --toolchain "$TOOLCHAIN" --find swiftc)}"
+
 # POSIX handlers must terminate at the C support boundary. A Swift handler
 # closure or Swift-owned signal storage can enter runtime initialization or
 # exclusivity machinery from asynchronous signal context.
-require_paths "$ROOT/Sources/GamaTUI/TerminalRescue.swift"
+require_paths file "$ROOT/Sources/GamaTUI/TerminalRescue.swift"
 if grep -n -E 'nonisolated\(unsafe\)|@convention\(c\)|sigaction\(|atexit\(' \
   "$ROOT/Sources/GamaTUI/TerminalRescue.swift"; then
   echo "error: GamaTUI signal handler state or installation escaped into Swift" >&2; exit 1
@@ -122,22 +152,6 @@ trap 'rm -rf "$signal_probe_dir"' EXIT
   "$ROOT/Tests/Fixtures/TerminalSignal/TerminalSignalProbe.c" \
   -o "$signal_probe_dir/terminal-signal-probe"
 "$signal_probe_dir/terminal-signal-probe"
-# Inverse boundary: GamaPlatformServices (Foundation-backed service
-# implementations) must never leak into a portable or framework target.
-# Only demos, examples, and tests may import it.
-platform_services_ban_dirs=(
-  "$ROOT/Sources/GamaCore" "$ROOT/Sources/GamaPlugin" "$ROOT/Sources/GamaDraw"
-  "$ROOT/Sources/GamaMacros" "$ROOT/Sources/GamaMacrosImpl" "$ROOT/Sources/gama"
-  "$ROOT/Sources/GamaTUI" "$ROOT/Sources/GamaWASM" "$ROOT/Sources/GamaAppleUI"
-  "$ROOT/Sources/GamaAppleShell" "$ROOT/Sources/GamaEmbed" "$ROOT/Sources/GamaEmbedABI"
-  "$ROOT/Sources/GamaMLIR"
-)
-require_paths "${platform_services_ban_dirs[@]}"
-if grep -R -n -E --include='*.swift' \
-  '^[[:space:]]*(@[A-Za-z_]+[[:space:]]+)*(public|package|internal|private|fileprivate)?[[:space:]]*import[[:space:]]+((struct|class|enum|protocol|typealias|func|var|let)[[:space:]]+)?GamaPlatformServices\b' \
-  "${platform_services_ban_dirs[@]}"; then
-  echo "error: a portable/framework target imported GamaPlatformServices" >&2; exit 1
-fi
 # Compile the platform-free targets before any cross-platform product link,
 # then inspect the actual undefined references. Import greps cannot see
 # compiler-emitted libm dependencies such as FloatingPoint.rounded().
