@@ -73,6 +73,19 @@ to an untested working tree.
 | Packaged wasm site | Hosted proven at merge commit `e735cb4`: Pages workflow run `34090312540` ran and deployed successfully for that commit. The previously recorded 9,297,539-byte `application/wasm` figure remains **removed rather than carried forward**; no re-measurement has been taken. Historical detail: `scripts/bundle-web.sh` assembled and browser-smoked the site in both the acceptance matrix and Pages run `33919361438`, and Pages deployed successfully. A live fetch at that time returned `<title>Gama</title>` and an HTTP 200 `application/wasm` payload; the byte count is deliberately not repeated here, because an earlier revision of this row said the figure was removed and then restated it three clauses later (anchor `3f180f1`)| Keep both hosted paths green. A successful workflow plus a live asset fetch proves deployment and delivery, not every interactive browser behavior on the public URL <!-- evidence: layer=hosted anchor=3f180f13cc97b91dd604ba89907427ba12eb4001 paths=.github/workflows/pages.yml,Distribution/gama-web-demo.toml,Sources/GamaWebDemo,WebHost,scripts/bundle-web.sh -->|
 | macOS `.app` bundle (ad-hoc) | Locally proven (2026-08-27): `scripts/bundle-macos.sh` end to end on the exact pinned toolchain: canonical outside-repo staging, plist-aware manifest branding, `plutil -lint`, ad-hoc codesign with deep-strict verify, and the `--smoke` offscreen launch gate (non-empty DrawList, exit 0). A `ditto` transport archive preserves payload modes and its extracted signature verifies. Ad-hoc output runs on the building machine only; no Gatekeeper claim (anchor `0f498d5`)| Keep the hosted macOS job's archive + `macos-app` upload green. Developer ID + notarization are credential-gated: `scripts/release-macos.sh` is implemented, rebuilds the downloadable ZIP after stapling, and its fail-closed gating is locally proven, but no credentialed run has occurred; the notarized artifact is not claimed until one passes <!-- evidence: layer=locally anchor=0f498d5d2d25ff01a57a0495cea0dcf5624e0566 paths=Distribution,Sources/GamaAppleDemo,scripts/bundle-macos.sh,scripts/lib/manifest.sh,scripts/release-macos.sh -->|
 
+Focused WASM regression evidence (local working tree, 2026-09-08):
+`./scripts/check-wasm.sh` passed on the pinned Swift 6.5-dev/WASM SDK.
+`Tests/Fixtures/WASMFailedInstall` confirms its first and only install throws
+`SceneConfigurationError.noPrimaryScene`. The Node smoke checks seven calls
+per export tier after startup: v1 returns void without callbacks, and v2
+returns `-1` without callbacks for frame, key, pointer, and resize, including
+unknown key codes and invalid Unicode scalars. The installed-demo smoke
+separately requires `-2` for both invalid-key forms and retains the exact
+counter transition; the existing browser smoke also passed. This is local
+proof of the failed-first-install contract, not failed-reinstall preservation,
+recovery, hosted CI, or a new Pages deployment. The broader table statuses
+above are unchanged by this focused run.
+
 The full `./scripts/check.sh` and pull-request matrix remain required. Local
 green evidence does not substitute for hosted jobs, and a green Windows 6.4.x
 job does not prove Windows 6.5-dev. No blocked capability may be described as

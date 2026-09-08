@@ -23,7 +23,7 @@ sequential, fail-closed. Do not weaken or skip a gate to make it green.
 | --- | --- | --- |
 | `check-apple.sh` | Debug build, full test suite, release build on the pinned snapshot | macOS — "Core, macros, POSIX TUI, Apple UI" |
 | `check-apple-platforms.sh` | iOS/tvOS/visionOS compile via xcodebuild | macOS — "iOS, tvOS, and visionOS compile" |
-| `check-boundaries.sh` | GamaCore import bans, no process-global state, tools-version pin; chains `check-toolchain-pins.sh` | macOS — "Source boundaries and documentation" |
+| `check-boundaries.sh` | portable-target import bans (all five portable targets, not GamaCore alone), no process-global state, tools-version pin; chains `check-toolchain-pins.sh` | macOS — "Source boundaries and documentation" |
 | `check-concurrency-negative.sh` | Host-confined types cannot cross `Sendable` boundaries | macOS — "Source boundaries and documentation" |
 | `check-c-abi.sh` | C consumer compiles against `GamaEmbed.h` with -Werror, links `libGamaEmbed.a`, runs | Linux — "C ABI consumer compile, link, and run" |
 | `check-embedded.sh` | Embedded-Swift whole-module compile + relocatable link of GamaCore at the exact snapshot | Embedded job |
