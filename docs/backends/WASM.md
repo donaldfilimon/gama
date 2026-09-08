@@ -23,6 +23,15 @@ single host. A successful reinstall replaces that host wholesale, releasing
 its subscriptions, frame state, and component state; a construction failure
 leaves the previously installed host in place.
 
+The gate also builds `Tests/Fixtures/WASMFailedInstall`, whose first and only
+install throws `SceneConfigurationError.noPrimaryScene`. After WASI startup,
+the Node smoke requires the fixture's exact-error marker and checks both
+export tiers: v1 returns void with no callbacks; v2 frame, key, pointer, and
+resize return `-1` with no callbacks. Unknown key codes and invalid Unicode
+scalars also return `-1` in this state, while the installed demo separately
+requires `-2` for those inputs. This fixture does not exercise reinstall or
+recovery after failure.
+
 `gama-web-demo` declares its inline counter with a direct `ReactiveSlot`,
 keeping the host macro plugin out of the wasm32 dependency graph. Its
 `render(in:)` binds slot zero at the component's identity before rendering
@@ -67,8 +76,9 @@ no host installed returns `-1`, not `-2`; `-2` reports only that an otherwise
 deliverable event carried a code the backend cannot translate. Changing
 the result type of a published symbol is an ABI break even when JavaScript
 callers ignore the result, so new result contracts require a new symbol
-family. `GamaWebDemo` owns all eight exports as WASI-conditioned target-local
-linker settings; build commands do not apply reactor exports to host tools.
+family. `GamaWebDemo` and the failed-install fixture use the same eight exports as
+WASI-conditioned target-local linker settings; build commands do not apply
+reactor exports to host tools.
 
 JS imports the module provides to Swift (module `"gama"`): `setHTML`,
 `setTitle`, `requestFrame`.

@@ -368,6 +368,22 @@ status: done
   `GamaMLIR`) now defer to `docs/Capabilities.md`. Manual/credential items
   stay in `todo.md` and are not this goal.
 
+## Fail-closed boundary scans
+status: in_progress
+
+- Closed 2026-09-08: `scripts/check-boundaries.sh` asserted no scanned path
+  before grepping, so a renamed target stopped being checked while the gate
+  stayed green. `require_paths` now guards all three scan sites. Proven by
+  planting a real violation in a renamed target: unguarded the gate passes,
+  guarded it fails and names the path. Gate exits 0 after the change.
+- `CONTRIBUTING.md` no longer calls the boundary gate "GamaCore import bans".
+- The WASM no-host `-1` path now has coverage in both export tiers
+  (`99890ed`, WebAssembly job green), so that residual is closed.
+- Open, and the reason this is not `done`: two residuals from the 2026-09-06
+  source review are still real — advisory `flexPriority`, and no regression
+  test pinning a `complete` issued from `connect`. They are itemised in
+  [`todo.md`](todo.md).
+
 ## Delivered foundation
 
 The current `main` line includes the Swift 6.5-dev umbrella, scene-first core,
