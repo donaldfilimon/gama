@@ -783,9 +783,15 @@ either, since the count moved twice today.
       the `-1` no-host result in both export tiers. Proven hosted, not only
       written: the WebAssembly job passed on that commit. Recorded here after
       review pointed out the box was still open one commit after it closed.
-- [ ] **Carried residual (4): no regression test pins a `complete` issued from
-      `connect`.** The `docs/backends/TUI.md` example is correct by
-      construction; the existing test only pins that `connect` fires.
+- [x] **Carried residual (4): no regression test pins a `complete` issued from
+      `connect`.** Closed 2026-09-08: `completionFromConnectEndsTheRun` in
+      `Tests/gamaTests/StreamOutputTests.swift` mirrors the documented example
+      and pins the status reaching `AppRuntime.completion`, that an input-less
+      stream run ends on its own, and that exactly one frame reaches the
+      renderer. Regression, not merely passing: with
+      `app.connect(subscriptions)` disabled it fails at its first assertion.
+      A first mutation attempt applied nothing (BSD `sed` ignores `\s`) and
+      reported a pass; the recorded run asserts the substitution took first.
 
 ## Manual and credential-gated acceptance
 
