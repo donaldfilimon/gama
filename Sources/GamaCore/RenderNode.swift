@@ -101,7 +101,11 @@ public indirect enum RenderNode: Hashable, Sendable {
     /// flexibility against its own main axis, so this axis-agnostic
     /// answer is advisory: a `.frame(maxWidth: .max)` reports
     /// `.flexible` but competes for space only inside a horizontal
-    /// stack.
+    /// stack. Deprecated in favor of ``flexPriority(along:)``, which
+    /// answers for the axis a stack actually resolves; this property
+    /// reports the disjunction of both axes and is consulted by nothing
+    /// in layout.
+    @available(*, deprecated, message: "Flexibility is per-axis; use flexPriority(along:). This answer is the disjunction of both axes and layout does not consult it.")
     public var flexPriority: FlexPriority {
         switch self {
         case .spacer: return .flexible(weight: 1)
@@ -123,7 +127,7 @@ public indirect enum RenderNode: Hashable, Sendable {
     /// *that axis'* maximum is unbounded (`.max`), so a `maxWidth: .max`
     /// child of a `VStack` stays fixed-height and merely fills the
     /// width. A spacer is flexible on whichever axis it is asked about.
-    func flexPriority(along axis: Axis) -> FlexPriority {
+    public func flexPriority(along axis: Axis) -> FlexPriority {
         switch self {
         case .spacer: return .flexible(weight: 1)
         case .flexFrame(_, let maxW, _, let maxH, _, _):

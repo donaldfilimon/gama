@@ -1,14 +1,13 @@
 # 0013 — Flex priority is per-axis; the axis-agnostic public property is advisory
 
-Status: Provisional.
+Status: Accepted.
 
-This record exists so the decision it describes can be made against a
-written statement of the options rather than re-derived from source. It
-becomes Accepted when one of the three decisions below is chosen; until
-then nothing in the public API changes, and the layout solver's behavior
-is not in question. It closes the "needs a decision record" half of the
-`flexPriority` residual that `../../tasks/todo.md` has carried since the
-2026-09-06 source review; the other half is the choice itself.
+Closes the `flexPriority` residual that `../../tasks/todo.md` carried since
+the 2026-09-06 source review. The record was first drafted Provisional
+with three options so the choice could be made against a written statement
+rather than re-derived from source; the choice is option A below, and the
+same change ships the implementation. The layout solver's behavior was
+never in question and does not change.
 
 ## Context
 
@@ -17,12 +16,14 @@ space", and they disagree by design:
 
 - `public var flexPriority: FlexPriority` is axis-agnostic. A
   `flexFrame` reports `.flexible` when *either* `maxWidth` or `maxHeight`
-  is `.max`; wrappers forward their child's answer; everything else is
-  `.fixed`.
+  is `.max`; a `spacer` is always `.flexible`; wrappers forward their
+  child's answer; every other node is `.fixed`.
 - `func flexPriority(along axis: Axis) -> FlexPriority` is internal and
   per-axis. The same `flexFrame` is flexible on `axis` only when *that
   axis'* maximum is `.max`, so a `maxWidth: .max` child of a `VStack`
-  stays fixed-height and merely fills the width.
+  stays fixed-height and merely fills the width. A `spacer` is flexible on
+  whichever axis it is asked about, so the two forms agree on it; they
+  disagree only on a `flexFrame` bounded on one axis.
 
 `318561e` ("resolve stack flexibility per axis") moved the stack solver in
 `../../Sources/GamaCore/Layout.swift` onto the per-axis form at all three of
@@ -41,16 +42,18 @@ axis semantics honestly rather than by allowlist.
 
 ## Decision
 
-Not yet made. The three coherent options, with the recommendation stated
-so it can be argued against:
+**Option A.** `flexPriority(along:)` is public with its existing doc
+comment, and the axis-agnostic `flexPriority` is deprecated with a message
+naming its replacement and stating what its answer actually is. It will be
+removed in a later pre-release break recorded the way `../SceneMigration.md`
+records `App.content`. The three options considered:
 
 **A — promote the per-axis form; deprecate the axis-agnostic one.**
-Make `flexPriority(along:)` public with its existing doc comment. Mark
-`flexPriority` `@available(*, deprecated, message:)` pointing at the
-per-axis form, and remove it in a later pre-release break recorded the way
-`../SceneMigration.md` records `App.content`. Recommended: the public API
-then says what the solver does, there are no internal callers to migrate,
-and the deprecation window costs one attribute.
+Chosen. The public API then says what the solver does, there are no
+internal callers to migrate, and the deprecation window costs one
+attribute. A test in `../../Tests/gamaTests/LayoutTests.swift` pins the
+public per-axis answer for the case the old property got wrong: a
+`maxWidth: .max` frame is flexible horizontally and fixed vertically.
 
 **B — keep the property as a documented convenience.** Leave it public and
 unchanged (the either-axis reading), rewrite its doc comment to say
@@ -65,10 +68,11 @@ period for any external caller.
 
 ## What this does not claim
 
-No code changes ship with this record. Layout behavior is unchanged under
-every option; the stack solver has been per-axis since `318561e` and the
-layout suites pin that. This is not a capability claim and adds no row to
-`../Capabilities.md`.
+Layout behavior is unchanged: the stack solver has been per-axis since
+`318561e` and the layout suites pin that; this change touches one
+declaration's visibility and one attribute. The deprecated property still
+compiles and still returns the disjunction of both axes until its removal.
+This is not a capability claim and adds no row to `../Capabilities.md`.
 
 ## Verification
 
