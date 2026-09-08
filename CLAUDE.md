@@ -199,7 +199,14 @@ deliberately re-measured.
 `.claude/skills/run-gama/{SKILL.md,driver.sh}` must stay equivalent after the
 gate normalizes each entry-point path to `<run-gama-skill>`. Editing one mirror
 alone fails `check-docs.sh` — a documentation gate failing on a shell script,
-which reads as an unrelated break. Change both, or neither.
+which reads as an unrelated break. Change both, or neither. A plain `diff` of
+the two `SKILL.md` files always reports differences — every line naming the
+entry point — so the gate, not `diff`, is the parity authority.
+
+`.codex/agents/ledger-evidence-auditor.toml` is a third agent definition
+tracked here, for Codex rather than Claude. It sits outside the mirror-parity
+rule and nothing under `scripts/`, `.github/`, `.agents/`, or `.claude/`
+references it; do not mirror it into either skill directory.
 
 Run tests directly (single test, filtered) — must use a scratch path outside
 iCloud:
@@ -246,6 +253,26 @@ Run the terminal demo:
 unset TOOLCHAINS
 swiftly run swift run gama-demo
 ```
+
+Never drive the *interactive* `gama-demo` through a pipe or a redirect. It
+constructs `TUIRenderer` directly because of its plugin loop and never calls
+`App.runAdaptive()`, so it has no pipe mode to fall back to. **`--emit-mlir` is
+exempt**: that flag takes an earlier branch that prints the dialect and exits
+before the renderer is ever built, and `docs/MLIRDialect.md` documents piping it
+into `mlir-opt`, so redirecting *that* invocation is the intended workflow. The
+`run-gama` skill wraps the interactive path in a real tmux TTY, and its `smoke`
+verb is the automated focus-and-activation proof:
+
+```bash
+.agents/skills/run-gama/driver.sh smoke
+```
+
+Only the TUI verbs compose into a step-by-step session: `build`, `launch`,
+`text`, `snap`, `focus`, `count`, `keys <key>`, `quit`. The remaining two stand
+alone and touch no tmux session — `mlir` is a one-shot print-and-exit, and
+`apple` runs `gama-apple-demo` in the **foreground and blocks** until Command-Q
+or Ctrl-C, so nothing can follow it in the same shell. `SKILL.md` beside the
+driver is the reference.
 
 `gama-demo --emit-mlir` prints the MLIR dialect form. Android needs
 `ANDROID_NDK_HOME=… ./scripts/check-android.sh`. Other executables:
