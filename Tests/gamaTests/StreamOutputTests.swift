@@ -89,6 +89,42 @@ struct StreamOutputTests {
         #expect(probe.connected)
     }
 
+    /// The `docs/backends/TUI.md` example, pinned: an outcome declared from
+    /// `connect` must be the outcome the run ends with. `appIsConnected` only
+    /// proves the hook fires; this proves the status it issues travels the
+    /// whole path `runAdaptive` walks — `AppRuntime` → `run()` → `completion`
+    /// — and ends an input-less stream run rather than leaving it waiting.
+    /// `runAdaptive` itself is not called because it reads the real stdout
+    /// and writes the message to the real stderr; `AppRuntime` is the unit.
+    @Test("A completion declared from connect ends the run with that status")
+    func completionFromConnectEndsTheRun() throws {
+        let sink = Recorder()
+        var runtime = try AppRuntime(
+            app: FailsFromConnectApp(), renderer: StreamRenderer(sink: sink))
+
+        try runtime.run()
+
+        let recorded = runtime.completion
+        let completion = try #require(recorded)
+        #expect(completion == .failure(exitCode: .general, "2 targets failed"))
+        #expect(completion.code == 1)
+        #expect(completion.message == "2 targets failed")
+        #expect(completion.isSuccess == false)
+        // Completion was declared before the first frame, and the loop
+        // checks completion only after presenting, so exactly one frame —
+        // the one completion dirtied — must have reached the renderer.
+        #expect(sink.lines == ["drawn text"])
+    }
+
+    private struct FailsFromConnectApp: App {
+        var scenes: some Scene {
+            Window("Main", id: "main", role: .primary) { Panel() }
+        }
+        func connect(_ context: SubscriptionContext) {
+            context.complete(.failure(exitCode: .general, "2 targets failed"))
+        }
+    }
+
     private final class ConnectionProbe {
         var connected = false
     }

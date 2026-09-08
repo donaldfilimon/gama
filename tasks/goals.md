@@ -379,9 +379,11 @@ status: in_progress
 - `CONTRIBUTING.md` no longer calls the boundary gate "GamaCore import bans".
 - The WASM no-host `-1` path now has coverage in both export tiers
   (`99890ed`, WebAssembly job green), so that residual is closed.
-- Open, and the reason this is not `done`: two residuals from the 2026-09-06
-  source review are still real — advisory `flexPriority`, and no regression
-  test pinning a `complete` issued from `connect`. They are itemised in
+- A `complete` issued from `connect` is now pinned by a mutation-proven
+  regression test, so that residual is closed.
+- Open, and the reason this is not `done`: one residual from the 2026-09-06
+  source review is still real — advisory `flexPriority`, which needs a
+  decision record because it is a public API change. Itemised in
   [`todo.md`](todo.md).
 
 ## Delivered foundation
