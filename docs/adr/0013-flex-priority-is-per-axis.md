@@ -18,12 +18,13 @@ space", and they disagree by design:
   `flexFrame` reports `.flexible` when *either* `maxWidth` or `maxHeight`
   is `.max`; a `spacer` is always `.flexible`; wrappers forward their
   child's answer; every other node is `.fixed`.
-- `func flexPriority(along axis: Axis) -> FlexPriority` is internal and
-  per-axis. The same `flexFrame` is flexible on `axis` only when *that
-  axis'* maximum is `.max`, so a `maxWidth: .max` child of a `VStack`
-  stays fixed-height and merely fills the width. A `spacer` is flexible on
-  whichever axis it is asked about, so the two forms agree on it; they
-  disagree only on a `flexFrame` bounded on one axis.
+- `func flexPriority(along axis: Axis) -> FlexPriority` is per-axis, and
+  was internal until this record made it public (see Decision). The same
+  `flexFrame` is flexible on `axis` only when *that axis'* maximum is
+  `.max`, so a `maxWidth: .max` child of a `VStack` stays fixed-height and
+  merely fills the width. A `spacer` is flexible on whichever axis it is
+  asked about, so the two forms agree on it; they disagree only on a
+  `flexFrame` bounded on one axis.
 
 `318561e` ("resolve stack flexibility per axis") moved the stack solver in
 `../../Sources/GamaCore/Layout.swift` onto the per-axis form at all three of
