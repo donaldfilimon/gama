@@ -852,6 +852,49 @@ either, since the count moved twice today.
       on the billing item above. If `main` moves first the branch needs its
       base updated before the checks can satisfy the strict policy.
 
+## Web demo showcase (2026-09-16)
+
+- [x] **The browser demo showed four widgets on a bare page.** It is now a
+      showcase panel — a count/step/notify readout, a five-button command row,
+      a text field and toggle, a live greeting, a progress bar, and a feature
+      list — in a page shell with a status line, a boot overlay, an error
+      overlay that names the failing stage, and light and dark palettes. Still
+      macro-free: four hand-bound `ReactiveSlot`s in declaration order.
+      Checked in a real browser, not only by the smokes: buttons by click and
+      keyboard, text entry by real key events, the toggle, progress tracking,
+      a deliberately missing module surfacing its error overlay, and both
+      colour schemes. One automation step typed nothing, and it was the
+      automation's input method rather than the demo — per-key events landed.
+
+- [x] **Two layout traps the demo fell into, now pinned.** The first gate run
+      failed: `wasm-runtime-smoke.mjs` matches `count <n>` against the raw
+      HTML, where each styled run is its own span, so rendering the label and
+      value as two `Text`s put a tag between them. The browser smoke passed
+      throughout, because `textContent` concatenates spans. The same run showed
+      the panel clipped at the 40x8 grid that driver pins. Fixed by rendering
+      the count as one `Text` and spending vertical cells on content. A new
+      host test serializes through `HTMLSerializer` at 40x8 and asserts the
+      count reads contiguously before and after activation; mutating the count
+      back into two spans makes it fail while both older demo tests still
+      pass, which is the blind spot that let this reach the gate.
+
+- [x] **The packaged-site capability row demoted to unverified.** The
+      evidence-freshness gate failed its hosted claim, correctly: the row
+      depends on the demo source and both host files, all three changed, and
+      the public site still serves the earlier demo. No hosted run can exist
+      for this tree while hosted Actions are account-locked, so the row now
+      records its last proof and the invalidating change and makes no stronger
+      claim. Re-anchor it after a Pages run succeeds for a commit carrying
+      this change.
+
+- [x] `docs/backends/WASM.md` describes the panel, the four slot indices as
+      half of each storage key, both layout constraints, the two-file ship
+      rule, the padding read-back, and the decision to stay on the `v1`
+      export tier. Checked rather than asserted: `scripts/check-wasm.sh` and
+      `scripts/bundle-web.sh` each exit 0 on the pinned snapshot and SDK, as
+      do the web demo tests, the evidence-freshness gate, the boundary source
+      policies, and the three document scanners.
+
 ## Manual and credential-gated acceptance
 
 - [ ] Exercise the AppKit accessibility adapter with VoiceOver and the UIKit
