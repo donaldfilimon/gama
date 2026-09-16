@@ -33,6 +33,7 @@ swiftly run swift run gama-demo
 
 - Fast Apple gate: `./scripts/check-apple.sh` (debug build, all tests, release build).
 - Portable ownership/import/symbol rules: `./scripts/check-boundaries.sh`.
+- Source policies alone: `./scripts/check-boundaries.sh --source-policies-only` stops before `scripts/test-boundary-paths.py` and any `xcrun`, so it needs no toolchain. Unflagged, the gate runs that unittest, whose target tuple is a deliberate fourth copy of the scan scope: rename or remove anything under `Sources/` and it fails until the shell arrays, `portable-global-state.py`, and the tuple all agree.
 - Documentation gates: `./scripts/check-docs.sh && ./scripts/check-doc-coverage.sh`. New public declarations need `///`; do not expand the coverage allowlist without a genuine baseline exception.
 - Android cross-build/JNI packaging requires `ANDROID_NDK_HOME=... ./scripts/check-android.sh`.
 - Full acceptance is `./scripts/check.sh`. Its `gates` array is authoritative and currently runs 15 fail-closed gates: Apple, Apple platforms, boundaries, concurrency negatives, C ABI, Embedded, Linux, WASM, Android, Android emulator, MLIR, DocC, doc coverage, evidence freshness, and package graph.
@@ -48,6 +49,7 @@ swiftly run swift run gama-demo
 - `FrameHost` and `AppRuntime` are `~Copyable`; each host uniquely owns focus, actions, `@Reactive` state, subscriptions, dirty state, and frames. Out-of-band changes use host subscriptions or explicit `invalidate()`.
 - `GamaPlatformServices` contains Foundation-backed host-service implementations. Only apps, demos, examples, and tests may import it; portable/framework targets must depend on service interfaces instead.
 - `GamaMacrosImpl` is a host compiler plugin. `swift-syntax` is revision-pinned and build-time-only; shipped products must retain zero runtime package dependencies.
+- Layout flexibility is per-axis: use `flexPriority(along:)`. The axis-agnostic `RenderNode.flexPriority` property is deprecated and layout does not consult it (ADR 0013).
 - Backends translate events and present shared `DrawList` output; do not fork layout, paint, or application semantics. Keep C `gama_embed_v1_*` and WASM `gama_web_v1_*`/`gama_web_v2_*` symbols versioned and separately namespaced; the WASM backend ships both tiers, `v2` being the argument-compatible status-reporting form (`docs/backends/WASM.md`).
 - `CellPresenter` (mutating, swaps planes: TUI `AnsiPresenter` / `StreamPresenter`) and `CellSerializer` (non-mutating, no swap: WASM, Embed, and Apple `DrawListSerializer`) are distinct families. Do not unify them (`docs/superpowers/specs/2026-09-06-cell-serializer-design.md`).
 - `App.runAdaptive()` selects interactive versus stream from stdout (`--gama-plain` / `--gama-tui`). An input-less stream run ends at the first quiescent frame; async work must declare `CompletionStatus` via `complete(_:)`. `FailureExitCode` is an opt-in `1...255` constructor used with `failure(exitCode:_:)`; it rejects `0`, negatives, and `256+` by failing construction. The unvalidated `failure(code:_:)` factory still accepts zero.

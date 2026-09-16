@@ -802,6 +802,27 @@ either, since the count moved twice today.
       A first mutation attempt applied nothing (BSD `sed` ignores `\s`) and
       reported a pass; the recorded run asserts the substitution took first.
 
+- [x] **The agent guides described a boundary-gate surface the gate had already
+      outgrown.** Neither `CLAUDE.md` nor `AGENTS.md` named
+      `scripts/test-boundary-paths.py` or the `--source-policies-only` fast path
+      that arrived with the fail-closed scan work, and neither carried the
+      per-axis `flexPriority` rule from ADR 0013. Added 2026-09-16: the
+      toolchain-free source-policy loop and where it exits; what the path
+      unittest pins (missing, not-a-directory, and not-a-regular-file scan
+      paths, each asserted against the real script through a temporary root
+      with `Sources/` symlinked, plus why the not-a-regular-file case exists at
+      all); the fourth copy of the scan scope that unittest deliberately keeps,
+      so a rename under `Sources/` fails until every list agrees; the shared
+      `--self-test` convention; and the deprecation. Checked rather than
+      asserted: `check-doc-links.py`, `evidence-locality.py`, and
+      `referenced-paths.py` each exit 0 under `--self-test`,
+      `./scripts/check-boundaries.sh --source-policies-only` exits 0 and stops
+      at its own OK line, and the `CONTRIBUTING.md` pre-push pair
+      (`check-docs.sh`, then `check-doc-coverage.sh`) both exit 0 against a
+      session-private `GAMA_SCRATCH_ROOT`. Exit codes were read from each
+      command directly, never through a pipe. Documentation only: no source,
+      gate, or capability status changed.
+
 ## Manual and credential-gated acceptance
 
 - [ ] Exercise the AppKit accessibility adapter with VoiceOver and the UIKit
