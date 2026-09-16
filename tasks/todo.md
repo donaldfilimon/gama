@@ -895,6 +895,24 @@ either, since the count moved twice today.
       do the web demo tests, the evidence-freshness gate, the boundary source
       policies, and the three document scanners.
 
+- [ ] **The showcase is on `origin` as a pull request stacked on the
+      guide-surface one, not merged.** Its base is that branch rather than
+      `main`, because both insert a section at the same anchor in this file and
+      whichever merged second would otherwise have conflicted. Merge the
+      guide-surface request first, with a merge commit, and the showcase
+      retargets to `main` cleanly; a squash or rebase merge would instead leave
+      it showing the three already-applied commits and needing a rebase. The
+      stacked request reads as mergeable only because the ruleset targets
+      `main`, so that status says nothing about reaching `main`.
+
+- [ ] **Re-anchor the packaged-site capability row.** It is `unverified`
+      because the showcase changed the demo source and both host files the row
+      depends on. It can only move back to `hosted` after a Pages workflow
+      succeeds for a commit carrying the showcase, followed by a live asset
+      fetch, and neither is possible while the billing item above holds. This
+      was recorded only inside a checked entry until 2026-09-16, where a scan
+      for open items could not find it.
+
 ## Manual and credential-gated acceptance
 
 - [ ] Exercise the AppKit accessibility adapter with VoiceOver and the UIKit
