@@ -1,11 +1,14 @@
 // gama.js — browser host for a Gama WASM reactor module.
 // Instantiates gama-web-demo.wasm with WASI stubs + the "gama" import module,
-// then forwards DOM events into the exported gama_web_v1_* entry points.
+// then forwards DOM events into the exported gama_web_v2_* entry points.
 //
-// Stays on the v1 export tier. The v2 tier is argument-compatible and returns
-// a status instead of void (docs/backends/WASM.md); adopting it is a separate
-// change that also updates the export grep in scripts/check-wasm.sh, and
-// folding it in here would make a smoke failure ambiguous.
+// Uses the v2 export tier only. It is argument-compatible with v1 but returns
+// a status: 0 accepted, -1 no host installed, -2 invalid input
+// (docs/backends/WASM.md). The status matters here because the demo installs
+// with `try?`: a failed install is silent inside the module, v1 calls then
+// no-op forever, and the page would sit on its boot overlay. v2 reports -1 on
+// the very first call, which is what turns that into a named failure.
+// scripts/check-wasm.sh requires all four v2 calls and rejects any v1 call.
 
 const root = document.getElementById("gama");
 const boot = document.getElementById("boot");
@@ -17,6 +20,15 @@ let memory = null;
 let exports = null;
 let framePending = false;
 let booted = false;
+// `ready` flips only when boot has fully succeeded, and input before that is
+// dropped: a click during a multi-megabyte load would otherwise reach a
+// module with no exports yet, and `guarded` would read the resulting
+// TypeError as a lost host and leave a page that says ready but ignores
+// everything. `dead` is set once the host is gone for good, and every
+// listener checks it, so a failure is reported once, not per keystroke.
+let ready = false;
+let dead = false;
+let warnedRejectedKey = false;
 const smoke = { frames: 0, keys: 0, pointers: 0, resizes: 0 };
 let grid = { cols: 0, rows: 0 };
 
@@ -28,11 +40,17 @@ let wasiText = "";
 // page may drop the chrome entirely, so every element above is addressed
 // defensively rather than assumed present.
 function setStatus(state, text) {
+  // A reported failure is final; a frame or resize that lands afterwards must
+  // not paint the status line back to ready.
+  if (dead && state !== "failed") return;
   if (statusRow) statusRow.dataset.state = state;
   if (statusText) statusText.textContent = text;
 }
 
+// A machine-readable failure marker on the surface itself, so a driver can
+// read it without depending on the page shell around it.
 function showFatal(stage, error) {
+  root.dataset.gamaFailure = stage;
   setStatus("failed", `failed during ${stage}`);
   boot?.setAttribute("hidden", "");
   if (!fatal) return;
@@ -41,6 +59,37 @@ function showFatal(stage, error) {
   heading.textContent = `Gama failed to start during ${stage}.`;
   fatal.append(heading, document.createTextNode(String(error?.stack || error)));
   fatal.removeAttribute("hidden");
+}
+
+// ── v2 status handling ─────────────────────────────────────────────────
+class HostMissing extends Error {}
+
+// Every export result passes through here: an integer compare per call, and
+// work only on the rare non-zero result. -2 is returned to the caller, which
+// is the only one that knows what an invalid input means for its event.
+function checked(result, name) {
+  if (result === 0 || result === -2) return result;
+  if (result === -1) {
+    const output = wasiText.trim();
+    throw new HostMissing(
+      `${name} returned -1: no Gama host is installed.`
+      + (output ? `\nmodule output: ${output}` : ""),
+    );
+  }
+  throw new Error(`${name} returned unexpected status ${result}`);
+}
+
+// After boot, a host that reports -1 was installed and then lost, which is an
+// invariant break rather than a user error: surface it once, then stop.
+function guarded(work) {
+  if (dead) return undefined;
+  try {
+    return work();
+  } catch (error) {
+    dead = true;
+    showFatal(error instanceof HostMissing ? "host lost" : "event handling", error);
+    throw error;
+  }
 }
 
 // ── Imports the module expects (module "gama") ─────────────────────────
@@ -61,7 +110,7 @@ const gamaImports = {
     framePending = true;
     requestAnimationFrame(() => {
       framePending = false;
-      exports.gama_web_v1_frame();
+      guarded(() => checked(exports.gama_web_v2_frame(), "gama_web_v2_frame"));
     });
   },
 };
@@ -156,7 +205,7 @@ function notifyResize() {
   const rows = Math.max(1, Math.floor(usableHeight / cell.h));
   if (cols === grid.cols && rows === grid.rows) return;
   grid = { cols, rows };
-  exports.gama_web_v1_resize(cols, rows);
+  checked(exports.gama_web_v2_resize(cols, rows), "gama_web_v2_resize");
   smoke.resizes += 1;
   if (booted) setStatus("ready", `ready · ${cols}×${rows} cells · wasm32`);
 }
@@ -171,6 +220,7 @@ const keyCodes = {
 };
 
 root.addEventListener("keydown", (e) => {
+  if (dead || !ready) return;
   let code = keyCodes[e.key] ?? 0;
   if (code === 0 && /^F(\d{1,2})$/.test(e.key)) {
     code = 99 + Number(e.key.slice(1));
@@ -180,8 +230,22 @@ root.addEventListener("keydown", (e) => {
     if (e.key.length !== 1) return;          // unmapped special key
     ch = e.key.codePointAt(0);
   }
+  const status = guarded(() => checked(
+    exports.gama_web_v2_key(code, ch, e.shiftKey ? 1 : 0, e.ctrlKey ? 1 : 0),
+    "gama_web_v2_key",
+  ));
+  // -2 means Gama did not take the key (F14 and up, or a lone surrogate), so
+  // leave it to the browser instead of swallowing it. preventDefault therefore
+  // runs after the call, not before it. Warn once; a keypress is not an error
+  // worth putting on the page.
+  if (status === -2) {
+    if (!warnedRejectedKey) {
+      warnedRejectedKey = true;
+      console.warn(`Gama did not accept key ${JSON.stringify(e.key)}; leaving it to the browser`);
+    }
+    return;
+  }
   e.preventDefault();
-  exports.gama_web_v1_key(code, ch, e.shiftKey ? 1 : 0, e.ctrlKey ? 1 : 0);
   smoke.keys += 1;
 });
 
@@ -195,14 +259,17 @@ function gridPos(e) {
   };
 }
 root.addEventListener("mousedown", (e) => {
+  // Focus even while loading, so the first key after boot lands here.
   root.focus();
+  if (dead || !ready) return;
   const p = gridPos(e);
-  exports.gama_web_v1_pointer(p.col, p.row, 1);
+  guarded(() => checked(exports.gama_web_v2_pointer(p.col, p.row, 1), "gama_web_v2_pointer"));
   smoke.pointers += 1;
 });
 root.addEventListener("mouseup", (e) => {
+  if (dead || !ready) return;
   const p = gridPos(e);
-  exports.gama_web_v1_pointer(p.col, p.row, 0);
+  guarded(() => checked(exports.gama_web_v2_pointer(p.col, p.row, 0), "gama_web_v2_pointer"));
   smoke.pointers += 1;
 });
 
@@ -222,18 +289,29 @@ try {
   );
   exports = instance.exports;
   memory = exports.memory;
+  const tier = ["frame", "key", "pointer", "resize"].map((event) => `gama_web_v2_${event}`);
+  const missing = tier.filter((name) => typeof exports[name] !== "function");
+  if (missing.length > 0) {
+    throw new Error(`module does not export the v2 tier: ${missing.join(", ")}`);
+  }
 
   stage = "initialize";
   // Reactor init runs top-level code (GamaWeb.install) exactly once.
   if (typeof exports._initialize === "function") exports._initialize();
   else exports._start?.();
 
-  stage = "first frame";
+  // The first export call is the install check: a module whose install failed
+  // answers -1 here, and `checked` turns that into a HostMissing named for
+  // this stage rather than a page that never paints.
+  stage = "install";
   cell = cellMetrics();
-  new ResizeObserver(notifyResize).observe(root);
   notifyResize();
+
+  stage = "first frame";
+  new ResizeObserver(() => guarded(notifyResize)).observe(root);
   root.focus();
-  exports.gama_web_v1_frame();
+  checked(exports.gama_web_v2_frame(), "gama_web_v2_frame");
+  ready = true;
 
   // A webfont that resolves after first paint changes the cell advance, so
   // re-measure and re-fit once the font set settles. Guarded: document.fonts
@@ -242,9 +320,10 @@ try {
     const measured = cellMetrics();
     if (Math.abs(measured.w - cell.w) < 0.01 && Math.abs(measured.h - cell.h) < 0.01) return;
     cell = measured;
-    notifyResize();
+    guarded(notifyResize);
   }).catch(() => {});
 } catch (error) {
+  dead = true;
   showFatal(stage, error);
   throw error;
 }
