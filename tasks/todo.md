@@ -823,6 +823,35 @@ either, since the count moved twice today.
       command directly, never through a pipe. Documentation only: no source,
       gate, or capability status changed.
 
+## Hosted acceptance refused, and the guide-surface pull request (2026-09-16)
+
+- [ ] **The six required checks cannot report for any new commit, so hosted
+      evidence is unobtainable rather than negative.** Measured 2026-09-16 on
+      the pull request carrying the boundary-gate guide update: all six were
+      refused in two to seven seconds with zero steps and an empty runner name,
+      each check-run annotation reading `The job was not started because your
+      account is locked due to a billing issue.` A sibling repository under
+      this account was refused identically the same morning, so the cause is
+      account-wide. Nothing local survives it either:
+      `gh api repos/donaldfilimon/gama/actions/runners` reports zero
+      self-hosted runners, and the macOS job — whose `xcode-27` label was the
+      one that could plausibly have been self-hosted — was refused alongside
+      the five `ubuntu-24.04` and `windows-2025` jobs. Read the annotation, not
+      the conclusion: `gh run view --log-failed` answers `log not found` for a
+      job that never started, which reads like a missing log rather than a
+      refused job. No source, gate, or capability status is implicated; the
+      local driver is unaffected. Resume by re-running the refused jobs once
+      billing clears.
+
+- [ ] **The guide-surface change is on `origin` as an open pull request, not
+      merged.** The entry above it is checked because the documentation work
+      and its verification are finished, which is a separate question from
+      integration. `main` is governed by a ruleset that requires a pull request
+      and all six checks under the strict policy, with no bypass actors, so
+      there is no local or administrative route to finish it — the merge waits
+      on the billing item above. If `main` moves first the branch needs its
+      base updated before the checks can satisfy the strict policy.
+
 ## Manual and credential-gated acceptance
 
 - [ ] Exercise the AppKit accessibility adapter with VoiceOver and the UIKit
