@@ -391,7 +391,6 @@ status: done
   in [`todo.md`](todo.md) as separate evidence layers, not as this goal.
 
 ## Hosted acceptance evidence
-
 status: blocked
 
 - Blocked 2026-09-16: the six-job "Gama acceptance" workflow can no longer
