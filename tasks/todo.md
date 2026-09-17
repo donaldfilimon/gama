@@ -913,6 +913,40 @@ either, since the count moved twice today.
       was recorded only inside a checked entry until 2026-09-16, where a scan
       for open items could not find it.
 
+## Browser host on the v2 export tier (2026-09-16)
+
+- [x] **The page hung silently when the module's install failed.** The demo
+      installs with `try?`, and a `v1` call returns nothing, so a failed
+      install left the boot overlay up forever with no diagnosis. The host now
+      calls only the `v2` tier and names the failure `install` on the first
+      `-1`, including the module's own output. A later `-1` is a lost host; a
+      `-2` key is left to the browser and warned about once. This reverses
+      the showcase entry's decision to stay on `v1`, which is why that entry
+      reads the way it does.
+
+- [x] **The gate now proves the page consumes `v2`, not merely that the
+      string appears.** The export check was one alternation that any single
+      `v1` name satisfied. It now requires each of the four `v2` calls and
+      fails on any remaining `v1` call; three mutants (unchanged, one `v1`
+      call reintroduced, one `v2` call removed) gave 0, 1, 1. The browser
+      smoke's new `--failed-install` mode serves the failed-install fixture
+      through the real page and requires stage `install`; run against the
+      pre-migration host it failed with the status still `loading` and no
+      failure recorded, which is the hang itself.
+
+- [x] **A regression the migration introduced, caught before commit.** Input
+      delivered before boot finished reached a module with no exports yet;
+      the new fail-closed wrapper read that TypeError as a lost host, and boot
+      then painted the status back to ready, leaving a page that looked live
+      and ignored everything. Found by hand in the browser pane, then
+      reproduced in the smoke, which now fires a key and a pointer press at
+      `WebAssembly.instantiate` time: the broken host failed with no keys or
+      pointers counted. Fixed by dropping pre-boot input, making a reported
+      failure final for the status line, and naming non-host errors
+      `event handling` instead of `host lost`. The pre-migration `v1` host
+      passes the strengthened smoke, so the defect was new here, not
+      inherited.
+
 ## Manual and credential-gated acceptance
 
 - [ ] Exercise the AppKit accessibility adapter with VoiceOver and the UIKit
