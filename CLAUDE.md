@@ -132,6 +132,27 @@ prerequisite of the documentation gates**, not only the WASM one. The pre-push
 documentation checklist is the block in `CONTRIBUTING.md`:
 `./scripts/check-docs.sh` followed by `./scripts/check-doc-coverage.sh`.
 
+**The boundary gate has a toolchain-free fast path and a unittest that pins its
+own scan scope.** `./scripts/check-boundaries.sh --source-policies-only` runs
+the import, global-state, and signal-handler policies plus
+`portable-global-state.py --self-test`, then exits before
+`scripts/test-boundary-paths.py` and before the first `xcrun`, so it is the
+loop to iterate a policy edit in with no toolchain and no build. Unflagged, the
+gate runs that unittest, which copies the gate and its checker into a temporary
+root with `Sources/` symlinked, then deletes each scanned path, replaces each
+scanned directory with a file, and replaces a scanned file with a same-named
+directory, asserting the real script fails closed with a named diagnostic every
+time. `require_paths` distinguishes those three cases for the last one's sake:
+a directory named like a scanned file passes `-e`, and the non-recursive `grep`
+that follows exits 2 on a directory, which the surrounding `if` reads as no
+violation. **That unittest keeps a fourth copy of the scan scope**, deliberately
+independent of the shell arrays, so renaming or removing anything under
+`Sources/` fails it until every list agrees: the two arrays in
+`check-boundaries.sh`, `TARGETS` in `portable-global-state.py`, and the tuple in
+`test-boundary-paths.py`. `--self-test` is the shared convention across these
+checkers — `portable-global-state.py`, `package-graph.py`, and the three
+document scanners each take it, and each gate invokes it that way.
+
 **Both of those scanners read this file.** `referenced-paths.py` and
 `evidence-locality.py` scan the four root documents — `README.md`,
 `CONTRIBUTING.md`, `AGENTS.md`, and `CLAUDE.md` — alongside `docs/**` and
@@ -558,6 +579,12 @@ only merge after required checks are green. Design specs live in
 `docs/superpowers/specs/` (`drafts/` are open questions, not commitments) and
 dated execution plans in `docs/superpowers/plans/`; neither is a capability
 claim. The running goal ledger is `tasks/goals.md` + `tasks/todo.md`.
+
+Use `flexPriority(along:)` for layout flexibility. The axis-agnostic
+`RenderNode.flexPriority` property is deprecated: it answers the disjunction of
+both axes and layout does not consult it (ADR 0013,
+`docs/adr/0013-flex-priority-is-per-axis.md`). Removing it is a later
+pre-release break, to be recorded the way `App.content` was.
 
 Before changing a backend or a settled design, read its record rather than
 re-deriving it: `docs/README.md` is the index, `docs/adr/0000-index.md`
