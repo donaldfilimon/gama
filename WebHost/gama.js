@@ -171,6 +171,8 @@ exports.gama_web_v1_frame();
 // listeners, ResizeObserver-compatible sizing, requestAnimationFrame, WASM,
 // and accessible output; normal hosts never enable it.
 if (new URLSearchParams(location.search).get("gama-smoke") === "1") {
+  const renderedCount = () => /\bcount ([0-9]+)\b/.exec(root.textContent)?.[1] ?? "none";
+  const state = [renderedCount()];
   root.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true }));
   const bounds = root.getBoundingClientRect();
   root.dispatchEvent(new MouseEvent("mousedown", {
@@ -181,12 +183,20 @@ if (new URLSearchParams(location.search).get("gama-smoke") === "1") {
   }));
   notifyResize();
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  state.push(renderedCount());
+
+  // Only this real Enter keydown activates the focused button. The three
+  // readings distinguish initial state, non-activating event coverage, and
+  // activation of an inline @Reactive component (ADR 0011).
+  root.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  state.push(renderedCount());
   const accessible = root.getAttribute("role") === "application"
     && root.getAttribute("aria-label")?.includes("Gama Web");
   const rendered = root.textContent.includes("Gama Web");
   root.dataset.gamaSmoke = [
     "OK", `frames=${smoke.frames}`, `keys=${smoke.keys}`,
     `pointers=${smoke.pointers}`, `resizes=${smoke.resizes}`,
-    `rendered=${rendered}`, `accessible=${accessible}`,
+    `rendered=${rendered}`, `accessible=${accessible}`, `state=${state.join("->")}`,
   ].join(";");
 }

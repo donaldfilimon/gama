@@ -1,7 +1,7 @@
 # Gama umbrella — plugin runtime + capability model (sub-project 2)
 
-Date: 2026-08-27. Status: **approved**. Delivery evidence is maintained in
-`docs/Capabilities.md`; approval alone is not an implementation claim.
+Date: 2026-08-27. Status: **Tier 1 implemented**. Delivery evidence and the
+deferred Tier 2/3 boundary are maintained in `docs/Capabilities.md`.
 
 This specification finalizes the 2026-08-26 draft
 (`drafts/2026-08-26-plugin-runtime-draft.md`, kept for rationale and the

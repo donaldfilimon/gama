@@ -1,8 +1,8 @@
 //  State.swift — GamaCore
 //  Reactivity without Combine, without weak references (Embedded Swift
-//  has no weak/unowned-safe). Subscriptions are explicit tokens the
-//  runtime cancels between build passes — no retain cycles possible
-//  because Signal never captures its observers' owners.
+//  has no weak/unowned-safe). Subscriptions are explicit tokens, with
+//  SubscriptionContext owning cancellation for a host lifetime. Observer
+//  closures retain their captures; callers must avoid ownership cycles.
 
 /// Opaque handle for one observer registration on a `Signal`; hand it
 /// back to `Signal.cancel(_:)` to detach that observer. Tokens are the
@@ -49,6 +49,50 @@ public final class SubscriptionContext {
     /// changes that no observed signal carries.
     public func invalidate() { invalidateHost() }
 
+    private var pendingStreamLines: [String] = []
+
+    /// Emits one semantic line for any presenter that consumes a chronology
+    /// rather than a grid, and invalidates the host so it reaches a frame.
+    ///
+    /// This is a channel beside the view tree, not a node inside it, because
+    /// a log line is event-shaped: it happens once, at a moment. A view node
+    /// exists continuously and is re-evaluated every frame, so deriving a
+    /// chronology from one would either replay lines or need a second diff.
+    /// Emitting is exactly-once by construction.
+    ///
+    /// Backends that present a grid ignore these entirely.
+    public func emit(_ line: String) {
+        pendingStreamLines.append(line)
+        invalidateHost()
+    }
+
+    /// Takes the lines emitted since the last call, leaving none behind.
+    /// Backends drain once per frame; a chronology must never replay.
+    package func drainStreamLines() -> [String] {
+        let pending = pendingStreamLines
+        pendingStreamLines.removeAll(keepingCapacity: true)
+        return pending
+    }
+
+    private var completionStatus: CompletionStatus?
+
+    /// The outcome the application reported, or `nil` while it is still
+    /// running. Backends that must terminate read this; interactive
+    /// backends may ignore it.
+    public var completion: CompletionStatus? { completionStatus }
+
+    /// Records that the application has finished, with the outcome to
+    /// report, and invalidates the host so the result travels the frame
+    /// path a backend already runs.
+    ///
+    /// The first status wins: later calls are ignored rather than
+    /// replacing it, so a late success cannot mask an earlier failure.
+    public func complete(_ status: CompletionStatus) {
+        guard completionStatus == nil else { return }
+        completionStatus = status
+        invalidateHost()
+    }
+
     /// Detaches every observation and forgets which signals were seen,
     /// so they may be observed afresh. The invalidation callback stays,
     /// making the context reusable across host resets.
@@ -74,14 +118,15 @@ public final class SubscriptionContext {
 /// **Not `Sendable`, and unavailably so.** A signal belongs to exactly one
 /// host at a time. That was previously an `@unchecked Sendable` class with
 /// the rule written in this comment and enforced by nobody; it is now a
-/// fact the compiler checks. The unavailable conformance below is
-/// load-bearing: it stops any consumer from "fixing" the conformance
-/// retroactively and quietly reintroducing cross-host sharing.
+/// fact ordinary `Sendable` use must confront. The unavailable conformance
+/// below is load-bearing: it produces a named diagnostic at the declaration.
+/// A consumer can still add a retroactive `@unchecked` conformance, but only
+/// by accepting the pinned compiler's explicit data-race warning.
 ///
 /// Moving a signal between contexts is still possible — use `sending`
 /// parameters, which transfer the region instead of sharing it. See
-/// [ADR 0009](../../docs/adr/0009-noncopyable-signal-confinement.md).
-public final class Signal<Value: Sendable> {
+/// [ADR 0009](../../docs/adr/0009-signal-is-not-sendable.md).
+public final class Signal<Value: Sendable>: ~Sendable {
     private var value: Value
     private var observers: [(UInt64, () -> Void)] = []
     private var nextID: UInt64 = 0
@@ -169,12 +214,13 @@ extension Signal where Value: Equatable {
     }
 }
 
-/// Signals are single-host by construction; see ``Signal``.
+/// Signals explicitly opt out of implicit `Sendable` inference because they
+/// are single-host by construction; see ``Signal``.
 ///
-/// Spelled `@available(*, unavailable)` rather than simply omitted so the
-/// conformance cannot be added retroactively by a consumer module, which
-/// is what makes single-host confinement a compiler-checked fact instead
-/// of a documented convention.
+/// Spelled `@available(*, unavailable)` rather than simply omitted so normal
+/// `Sendable` use fails at this declaration and a retroactive `@unchecked`
+/// conformance emits `#UnavailableSendableConformance` instead of silently
+/// overriding the host-confinement contract.
 @available(*, unavailable)
 extension Signal: @unchecked Sendable {}
 
@@ -244,8 +290,9 @@ public struct State<Value: Sendable> {
     private let signal: Signal<Value>
 
     /// Allocates the backing `Signal`. The wrapper stores only that
-    /// reference, so copies of the enclosing view value share one cell
-    /// and state survives rebuilds of the view struct.
+    /// reference, so copies of the enclosing view value share one cell.
+    /// Constructing a new wrapper creates new storage; use `@Reactive` in
+    /// a `@Component` for state that survives fresh values on every frame.
     public init(wrappedValue: Value) {
         self.signal = Signal(wrappedValue)
     }

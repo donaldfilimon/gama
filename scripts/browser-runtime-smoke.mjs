@@ -5,10 +5,24 @@ import { tmpdir } from "node:os";
 import { extname, join } from "node:path";
 
 const artifact = process.argv[2];
+const successMarker = /^OK;frames=[1-9]\d*;keys=[2-9]\d*;pointers=[2-9]\d*;resizes=[1-9]\d*;rendered=true;accessible=true;state=0->0->1$/;
+
+// Pin the exact state sequence. In particular, a later multi-digit state of
+// 10 must not satisfy the expected final state of 1.
+const markerExample = "OK;frames=1;keys=2;pointers=2;resizes=1;rendered=true;accessible=true;state=0->0->1";
+if (!successMarker.test(markerExample)
+    || successMarker.test(markerExample.replace("state=0->0->1", "state=0->1->1"))
+    || successMarker.test(markerExample.replace(/1$/, "10"))) {
+  throw new Error("browser state-marker parser self-test did not enforce exact 0->0->1");
+}
+if (artifact === "--self-test") {
+  console.log("OK — browser state-marker parser self-test");
+  process.exit(0);
+}
 const root = process.argv[3];
 const expectedTitle = process.argv[4];
 if (!artifact || !root) {
-  throw new Error("usage: browser-runtime-smoke.mjs <gama.wasm> <WebHost>");
+  throw new Error("usage: browser-runtime-smoke.mjs <gama.wasm> <WebHost> | --self-test");
 }
 
 const chromeCandidates = [
@@ -53,6 +67,14 @@ const child = spawn(chrome, [
 ], { stdio: ["ignore", "ignore", "pipe"] });
 let errors = "";
 child.stderr.on("data", (chunk) => { errors += chunk; });
+// Without these two listeners a launch failure is indistinguishable from a
+// slow start: `spawn` reports ENOENT/EACCES through an `error` event, and a
+// browser that dies on startup can exit before writing a byte to stderr, so
+// the wait below would otherwise time out carrying an empty diagnostic.
+let spawnError = "";
+child.on("error", (error) => { spawnError = error.message; });
+let exit = null;
+child.on("exit", (code, signal) => { exit = { code, signal }; });
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 let socket;
 let marker = "";
@@ -60,8 +82,27 @@ let pageTitle = "";
 const runtimeErrors = [];
 try {
   const activePort = join(profile, "DevToolsActivePort");
-  for (let attempt = 0; attempt < 150 && !existsSync(activePort); attempt += 1) await delay(100);
-  if (!existsSync(activePort)) throw new Error(`Chrome DevTools endpoint did not start: ${errors}`);
+  // Startup budget, not a proof budget. A hosted runner measured Chrome alive
+  // and retrying `dbus/bus.cc` connections for the whole of a 15s window
+  // without ever publishing the endpoint, so 15s failed a browser that was
+  // still coming up. Every assertion below is unchanged: this waits longer
+  // for a live browser and gives up immediately on a dead one, which fails a
+  // genuinely broken browser sooner than the old fixed wait did.
+  const startupBudgetMs = 60_000;
+  const deadline = Date.now() + startupBudgetMs;
+  while (!existsSync(activePort) && exit === null && !spawnError && Date.now() < deadline) {
+    await delay(100);
+  }
+  if (!existsSync(activePort)) {
+    const waited = `${((startupBudgetMs - Math.max(deadline - Date.now(), 0)) / 1000).toFixed(1)}s`;
+    const cause = [
+      `binary=${chrome}`,
+      spawnError ? `spawn=${spawnError}` : null,
+      exit ? `exited early: code=${exit.code} signal=${exit.signal}` : spawnError ? null : "still running",
+      `stderr=${errors.trim() || "<empty>"}`,
+    ].filter(Boolean).join("; ");
+    throw new Error(`Chrome DevTools endpoint did not start after ${waited}: ${cause}`);
+  }
   const debugPort = (await import("node:fs/promises")).readFile(activePort, "utf8")
     .then((contents) => contents.split("\n", 1)[0]);
   const target = await fetch(
@@ -98,7 +139,7 @@ try {
       returnByValue: true,
     });
     marker = result.result?.result?.value ?? "";
-    if (/^OK;frames=[1-9]\d*;keys=[1-9]\d*;pointers=[2-9]\d*;resizes=[1-9]\d*;rendered=true;accessible=true$/.test(marker)) break;
+    if (successMarker.test(marker)) break;
     await delay(100);
   }
   const titleResult = await command("Runtime.evaluate", {
@@ -114,8 +155,8 @@ try {
   server.close();
   rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
-if (!/^OK;frames=[1-9]\d*;keys=[1-9]\d*;pointers=[2-9]\d*;resizes=[1-9]\d*;rendered=true;accessible=true$/.test(marker)) {
-  throw new Error(`browser event/frame/accessibility marker missing; marker=${marker}; runtime=${runtimeErrors.join(" | ")}; stderr=${errors}`);
+if (!successMarker.test(marker)) {
+  throw new Error(`browser event/frame/accessibility/state marker missing (state must be exactly 0->0->1, with only Enter activating the inline counter); marker=${marker}; runtime=${runtimeErrors.join(" | ")}; stderr=${errors}`);
 }
 if (expectedTitle !== undefined && pageTitle !== expectedTitle) {
   throw new Error(`browser title mismatch; expected=${expectedTitle}; actual=${pageTitle}`);

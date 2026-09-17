@@ -11,11 +11,42 @@ let strictCore: [SwiftSetting] = [
     // SE-0444: members are visible only in files that import their module.
     // GamaCore is stdlib-only, so this is a conservative 6.5-dev hygiene flag.
     .enableUpcomingFeature("MemberImportVisibility"),
+    // SE-0409: an unannotated `import` is internal, so a module named in a
+    // public declaration must be `public import`ed. Every import carries its
+    // access level already (annotated one commit before this flip so the flip
+    // is a semantic no-op); the compiler diagnoses over-annotation too
+    // (#UnusedImportAccess), so the set is checked in both directions.
+    .enableUpcomingFeature("InternalImportsByDefault"),
+]
+
+// Shipped library and macro targets additionally build under strict memory
+// safety (SE-0458) with the StrictMemorySafety diagnostic group promoted to
+// an error, so every memory-unsafe operation is spelled `unsafe` at its site
+// and a new one cannot land as a warning. Executables and the test target
+// are consumers of that surface and stay on `strictCore`; ADR 0012 records
+// the measured diagnostic counts behind that scope.
+let strictLibrary: [SwiftSetting] = strictCore + [
+    .strictMemorySafety(),
+    .treatWarning("StrictMemorySafety", as: .error),
 ]
 
 // @_extern(wasm) is still experimental — scoped to the WASM target only.
-let wasmSettings: [SwiftSetting] = strictCore + [
+let wasmSettings: [SwiftSetting] = strictLibrary + [
     .enableExperimentalFeature("Extern")
+]
+
+// Both runtime fixtures exercise the same published WASI export tiers.
+let wasmReactorLinkerSettings: [LinkerSetting] = [
+    .unsafeFlags([
+        "-Xlinker", "--export=gama_web_v1_frame",
+        "-Xlinker", "--export=gama_web_v1_key",
+        "-Xlinker", "--export=gama_web_v1_pointer",
+        "-Xlinker", "--export=gama_web_v1_resize",
+        "-Xlinker", "--export=gama_web_v2_frame",
+        "-Xlinker", "--export=gama_web_v2_key",
+        "-Xlinker", "--export=gama_web_v2_pointer",
+        "-Xlinker", "--export=gama_web_v2_resize",
+    ], .when(platforms: [.wasi])),
 ]
 
 let package = Package(
@@ -40,6 +71,12 @@ let package = Package(
         .executable(name: "gama-web-demo", targets: ["GamaWebDemo"]),
         .executable(name: "gama-apple-demo", targets: ["GamaAppleDemo"]),
         .executable(name: "gama-windows-console-smoke", targets: ["GamaWindowsConsoleSmoke"]),
+        // Acceptance lifecycle probe: runs as a plain process so Linux
+        // LeakSanitizer observes Gama without SwiftPM's XCTest harness.
+        .executable(name: "gama-leak-check", targets: ["GamaLeakCheck"]),
+        // Measurement harness, not a gate: it prints numbers and asserts no
+        // threshold, so it cannot fail a build on a loaded machine.
+        .executable(name: "gama-bench", targets: ["GamaBench"]),
     ],
     dependencies: [
         // Build-time ONLY: macro plugins execute on the host compiler.
@@ -55,12 +92,12 @@ let package = Package(
             name: "Gama",
             dependencies: ["GamaCore"],
             path: "Sources/gama",
-            swiftSettings: strictCore
+            swiftSettings: strictLibrary
         ),
         // ── Core: Embedded-Swift-safe. No Foundation. No existential
         //    views in hot paths. No weak refs. Pure value render IR.
         //    Owns FrameHost — the backend-shared event/focus engine.
-        .target(name: "GamaCore", swiftSettings: strictCore),
+        .target(name: "GamaCore", swiftSettings: strictLibrary),
 
         // ── Plugin runtime: Tier-1 capability model (manifest, grants,
         //    unforgeable handles, per-host PluginRuntime, PluginSlot).
@@ -69,7 +106,7 @@ let package = Package(
         .target(
             name: "GamaPlugin",
             dependencies: ["GamaCore"],
-            swiftSettings: strictCore
+            swiftSettings: strictLibrary
         ),
 
         // ── Platform-conditional HostServices implementations (stderr
@@ -79,14 +116,14 @@ let package = Package(
         .target(
             name: "GamaPlatformServices",
             dependencies: ["GamaCore", "GamaPlugin"],
-            swiftSettings: strictCore
+            swiftSettings: strictLibrary
         ),
 
         // ── Macro declarations (what user code imports)
         .target(
             name: "GamaMacros",
             dependencies: ["GamaCore", "GamaMacrosImpl"],
-            swiftSettings: strictCore
+            swiftSettings: strictLibrary
         ),
 
         // ── Macro implementations (host-side compiler plugin)
@@ -96,7 +133,7 @@ let package = Package(
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
             ],
-            swiftSettings: strictCore
+            swiftSettings: strictLibrary
         ),
 
         // ── Draw: platform-free rasterizer shared by every backend —
@@ -105,16 +142,21 @@ let package = Package(
         .target(
             name: "GamaDraw",
             dependencies: ["GamaCore"],
-            swiftSettings: strictCore
+            swiftSettings: strictLibrary
         ),
 
         // ── TUI backend: POSIX terminals (Darwin/Glibc — termios/ioctl
         //    import cleanly) and Windows Console (WinSDK — VT output,
         //    ReadConsoleInputW input). One Renderer, three OS families.
+        // Private POSIX rescue boundary: handlers, termios, displaced signal
+        // dispositions, restore bytes, and sig_atomic_t latches stay in C so
+        // asynchronous signal context never enters the Swift runtime.
+        .target(name: "GamaTUISignal"),
+
         .target(
             name: "GamaTUI",
-            dependencies: ["GamaCore", "GamaDraw"],
-            swiftSettings: strictCore
+            dependencies: ["GamaCore", "GamaDraw", "GamaTUISignal"],
+            swiftSettings: strictLibrary
         ),
 
         // ── WASM backend: browser reactor. Compiles to inert stubs off
@@ -130,7 +172,7 @@ let package = Package(
         .target(
             name: "GamaAppleUI",
             dependencies: ["GamaCore", "GamaDraw"],
-            swiftSettings: strictCore + [
+            swiftSettings: strictLibrary + [
                 .enableUpcomingFeature("InferIsolatedConformances"),
             ]
         ),
@@ -141,7 +183,7 @@ let package = Package(
         .target(
             name: "GamaAppleShell",
             dependencies: ["GamaCore", "GamaDraw", "GamaAppleUI"],
-            swiftSettings: strictCore
+            swiftSettings: strictLibrary
         ),
 
         // ── Embed backend: flat C ABI (events in, DrawList bytes out)
@@ -149,7 +191,7 @@ let package = Package(
         .target(
             name: "GamaEmbed",
             dependencies: ["GamaCore", "GamaDraw", "GamaEmbedABI"],
-            swiftSettings: strictCore
+            swiftSettings: strictLibrary
         ),
         .target(
             name: "GamaEmbedABI",
@@ -161,18 +203,18 @@ let package = Package(
         .target(
             name: "GamaMLIR",
             dependencies: ["GamaCore"],
-            swiftSettings: strictCore
+            swiftSettings: strictLibrary
         ),
 
         // Sample-only Android shared library. JNI and Gradle remain under
         // Examples/Android and never enter the portable framework targets.
         .target(
             name: "GamaAndroidDemo",
-            dependencies: ["GamaCore", "GamaEmbed"],
+            dependencies: ["GamaCore", "GamaEmbed", "GamaMacros"],
             path: "Examples/Android",
             exclude: ["app", "build.gradle.kts", "settings.gradle.kts", "gradle.properties"],
             sources: ["AndroidDemoBootstrap.swift"],
-            swiftSettings: strictCore
+            swiftSettings: strictLibrary
         ),
 
         .executableTarget(
@@ -187,8 +229,20 @@ let package = Package(
         // and the experimental Extern feature stays scoped to GamaWASM.
         .executableTarget(
             name: "GamaWebDemo",
+            // Bind ReactiveSlot directly so wasm32 never needs the host macro plugin.
             dependencies: ["GamaCore", "GamaWASM"],
-            swiftSettings: strictCore
+            swiftSettings: strictCore,
+            // These are properties of this WASI reactor's public ABI, not
+            // command-global build flags. Keeping them target-local prevents
+            // SwiftPM from forwarding them to the host-side macro plugin.
+            linkerSettings: wasmReactorLinkerSettings
+        ),
+        .executableTarget(
+            name: "GamaWASMFailedInstall",
+            dependencies: ["GamaCore", "GamaWASM"],
+            path: "Tests/Fixtures/WASMFailedInstall",
+            swiftSettings: strictCore,
+            linkerSettings: wasmReactorLinkerSettings
         ),
         .executableTarget(
             name: "GamaAppleDemo",
@@ -204,6 +258,17 @@ let package = Package(
             dependencies: ["GamaTUI"],
             swiftSettings: strictCore
         ),
+        .executableTarget(
+            name: "GamaLeakCheck",
+            dependencies: ["GamaCore"],
+            swiftSettings: strictCore
+        ),
+
+        .executableTarget(
+            name: "GamaBench",
+            dependencies: ["GamaCore", "GamaDraw"],
+            swiftSettings: strictCore
+        ),
 
         .testTarget(
             name: "GamaTests",
@@ -211,7 +276,7 @@ let package = Package(
                 "Gama", "GamaCore", "GamaPlugin", "GamaPlatformServices",
                 "GamaMacros", "GamaMLIR",
                 "GamaTUI", "GamaDraw", "GamaEmbed", "GamaMacrosImpl",
-                "GamaAppleUI", "GamaAppleShell", "GamaWASM",
+                "GamaAppleUI", "GamaAppleShell", "GamaWASM", "GamaWebDemo",
                 .product(name: "SwiftSyntaxMacroExpansion", package: "swift-syntax"),
                 .product(name: "SwiftSyntaxMacrosGenericTestSupport", package: "swift-syntax")
             ],

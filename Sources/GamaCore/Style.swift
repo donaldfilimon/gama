@@ -172,6 +172,17 @@ public enum BorderStyle: Hashable, Sendable {
     }
 }
 
+/// Package-wide geometry shared by border measurement and painting.
+package enum BorderTitleLayout {
+    /// Two corner cells plus one padding cell on each side of a non-empty title.
+    package static func minimumWidth(for title: String?) -> Int {
+        guard let title, !title.isEmpty else { return 0 }
+        let (width, overflow) = TextLayout.displayWidth(of: title)
+            .addingReportingOverflow(4)
+        return overflow ? .max : width
+    }
+}
+
 /// The eight box-drawing characters of one ``BorderStyle``, named by
 /// position (the old unlabeled 8-tuple forced positional destructuring).
 public struct BorderGlyphs: Hashable, Sendable {

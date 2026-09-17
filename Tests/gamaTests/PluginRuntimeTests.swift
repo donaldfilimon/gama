@@ -19,6 +19,22 @@ private final class LogRecorder: @unchecked Sendable {
     func sink(_ id: PluginID, _ line: String) { lines.append((id, line)) }
 }
 
+/// Deliberately bypasses the public non-Sendable contract so cleanup tests can
+/// keep a hostile external alias to plugin state after `sending` transfer.
+/// Production code must never wrap a Signal this way; the compile-fail fixtures
+/// prove ordinary clients cannot perform the same access accidentally.
+private final class UnsafeSharedSignalProbe: @unchecked Sendable {
+    let signal: Signal<Int>
+
+    init(_ value: Int) {
+        signal = Signal(value)
+    }
+
+    func set(_ value: Int) {
+        signal.set(value)
+    }
+}
+
 private struct ProbePlugin: GamaPluginProtocol {
     let manifest: PluginManifest
     let recorder: LifecycleRecorder
@@ -291,7 +307,7 @@ struct PluginRuntimeTests {
     func uninstallCancelsPluginObservations() throws {
         var host = try FrameHost(app: HostedApp())
         let hostSignal = Signal(0)
-        let pluginSignal = Signal(0)
+        let pluginSignal = UnsafeSharedSignalProbe(0)
         host.observe(hostSignal)
         let runtime = PluginRuntime(
             grants: .denyAll,
@@ -300,7 +316,8 @@ struct PluginRuntimeTests {
         )
         _ = host.pump(size: Size(width: 20, height: 2))
         try runtime.install(
-            ObservingPlugin(id: "test.observe", signal: pluginSignal, failAfterObserve: false))
+            ObservingPlugin(
+                id: "test.observe", signal: pluginSignal.signal, failAfterObserve: false))
         _ = host.pump(size: Size(width: 20, height: 2))
 
         pluginSignal.set(1)
@@ -321,7 +338,7 @@ struct PluginRuntimeTests {
     @Test("failed activation cancels observations and leaves the host clean")
     func failedActivationCancelsObservations() throws {
         var host = try FrameHost(app: HostedApp())
-        let signal = Signal(0)
+        let signal = UnsafeSharedSignalProbe(0)
         let runtime = PluginRuntime(
             grants: .denyAll,
             services: recordedServices(),
@@ -331,7 +348,8 @@ struct PluginRuntimeTests {
 
         #expect(throws: PluginError.activationFailed("test.fail")) {
             try runtime.install(
-                ObservingPlugin(id: "test.fail", signal: signal, failAfterObserve: true))
+                ObservingPlugin(
+                    id: "test.fail", signal: signal.signal, failAfterObserve: true))
         }
         #expect(runtime.installed.isEmpty)
         let cleanAfterFailedActivation = host.needsFrame

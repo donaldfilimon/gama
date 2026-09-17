@@ -16,14 +16,15 @@ Details and traps (iCloud checkout, Windows exception): `docs/Toolchain.md`.
 
 ## Gate reference
 
-`./scripts/check.sh` runs the full local acceptance matrix — eleven gates,
+`./scripts/check.sh` runs the full local acceptance matrix — fifteen gates,
 sequential, fail-closed. Do not weaken or skip a gate to make it green.
 
 | Gate | Proves | Hosted CI job / step |
 | --- | --- | --- |
 | `check-apple.sh` | Debug build, full test suite, release build on the pinned snapshot | macOS — "Core, macros, POSIX TUI, Apple UI" |
 | `check-apple-platforms.sh` | iOS/tvOS/visionOS compile via xcodebuild | macOS — "iOS, tvOS, and visionOS compile" |
-| `check-boundaries.sh` | GamaCore import bans, no process-global state, tools-version pin; chains `check-toolchain-pins.sh` | macOS — "Source boundaries and documentation" |
+| `check-boundaries.sh` | portable-target import bans (all five portable targets, not GamaCore alone), no process-global state, tools-version pin; chains `check-toolchain-pins.sh` | macOS — "Source boundaries and documentation" |
+| `check-concurrency-negative.sh` | Host-confined types cannot cross `Sendable` boundaries | macOS — "Source boundaries and documentation" |
 | `check-c-abi.sh` | C consumer compiles against `GamaEmbed.h` with -Werror, links `libGamaEmbed.a`, runs | Linux — "C ABI consumer compile, link, and run" |
 | `check-embedded.sh` | Embedded-Swift whole-module compile + relocatable link of GamaCore at the exact snapshot | Embedded job |
 | `check-linux.sh` | Static Linux SDK cross-compile | Linux — "Static Linux SDK" |
@@ -31,7 +32,10 @@ sequential, fail-closed. Do not weaken or skip a gate to make it green.
 | `check-android.sh` | Android SDK cross-compile + JNI packaging | Android — "Cross-compile GamaEmbed" |
 | `check-android-emulator.sh` | API 36 emulator input/frame round trip | Android — "Required emulator input/frame round trip" |
 | `check-mlir.sh` | Emitted dialect parses under `mlir-opt --allow-unregistered-dialect` | macOS — "MLIR parse" |
-| `check-docs.sh` | DocC builds with zero warnings; Capabilities ledger present with its status legend | macOS — "Source boundaries and documentation" |
+| `check-docs.sh` | Relative Markdown links pass; evidence claims stay in `docs/Capabilities.md`; named repository paths exist; run-gama mirrors, paths, modes, and failure cleanup agree; DocC builds with zero warnings | macOS — "Source boundaries and documentation" |
+| `check-doc-coverage.sh` | Every public declaration has a symbol-graph doc comment, excluding only justified allowlist entries | macOS — "Source boundaries and documentation" |
+| `check-evidence-freshness.sh` | Every `docs/Capabilities.md` row carries an evidence annotation, and no row's anchor commit predates a change to the paths it depends on | macOS — "Source boundaries and documentation" |
+| `check-package-graph.sh` | Every shipped Swift target enables strict memory safety with `StrictMemorySafety` promoted to an error; no shipped library depends on a package product; `Extern` stays scoped to `GamaWASM` | macOS — "Source boundaries and documentation" |
 
 The Linux job additionally runs the native test suite under Address and
 Thread Sanitizer; the Windows job runs the console smoke on Swift 6.4.x (the
@@ -44,6 +48,25 @@ locally by design — the hosted matrix is their proof.
 (Implemented / Locally proven / Hosted proven / Provisional / Blocked) is
 the only sanctioned wording. Never document unproven capability as shipped,
 and never state a proof a gate does not actually perform.
+
+The reader-facing documentation map is `docs/README.md`. Put current concepts
+and workflows in `docs/`, backend contracts in `docs/backends/`, symbol/API
+navigation in the owning `.docc` catalog, irreversible decisions in
+`docs/adr/`, and proposed designs in `docs/superpowers/specs/`. Dated plans are
+not a second capability ledger.
+
+Before pushing documentation changes:
+
+```bash
+python3 scripts/check-doc-links.py --self-test .
+./scripts/check-docs.sh
+./scripts/check-doc-coverage.sh
+```
+
+The first layer catches broken repository-relative links without a Swift
+build. DocC then checks catalog/symbol resolution with warnings as errors, and
+the coverage gate checks public declaration comments. Passing one layer does
+not imply the others.
 
 ## Workflow
 

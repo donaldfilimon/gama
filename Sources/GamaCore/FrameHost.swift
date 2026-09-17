@@ -5,10 +5,9 @@
 //  own event sources. One implementation of focus, actions, and dirty
 //  tracking — identical behavior on every platform.
 
-/// Action tables for one `FrameHost`. `@unchecked Sendable` because GamaCore
-/// cannot import Synchronization; the store is confined to the host's owning
-/// executor and is never shared across concurrent hosts.
-private final class HostActionStore: @unchecked Sendable {
+/// Action tables for one `FrameHost`. The store is confined to the host's
+/// owning executor and is never shared across concurrent hosts.
+private final class HostActionStore {
     var actions: [NodeID: () -> Void] = [:]
     var keyHandlers: [NodeID: (Key) -> Bool] = [:]
 
@@ -30,8 +29,9 @@ private final class HostActionStore: @unchecked Sendable {
 /// semantics shared by every backend. Poll-style renderers wrap it in
 /// `AppRuntime`; retained-mode hosts (AppKit/UIKit, DOM, C embed) call
 /// `pump(size:)` and `handle(_:)` from their own event sources. Out-of-band
-/// changes reach it only through `subscriptions` or an explicit
-/// `invalidate()`; there is no process-global registry to go around it.
+/// changes reach it through bound `@Reactive` writes, `subscriptions`, or
+/// an explicit `invalidate()`; there is no process-global registry to go
+/// around it.
 /// Noncopyable: the host owns live reference state (action tables, the
 /// dirty signal, subscriptions); a copy would silently share all of it.
 /// Single ownership is a compile-time guarantee.
@@ -57,12 +57,23 @@ public struct FrameHost: ~Copyable {
     /// Backends can surface this as a development diagnostic without making a
     /// malformed application crash in production.
     public private(set) var duplicateIDs: [NodeID] = []
+    /// Nodes with a reactive slot whose storage was replaced at the same
+    /// key since the previous frame, such as a slot value-type change.
+    /// New or removed keys and positional reorders that reuse the same
+    /// storage are not reported. An empty list therefore does not prove
+    /// that collection state follows the intended element identities.
+    public private(set) var transientStateIDs: [NodeID] = []
 
     private let dirty: Signal<Bool>
+    private let stateStore: HostStateStore
     /// Explicit model observation lifetime owned by this host.
     public let subscriptions: SubscriptionContext
     /// Set when the host wants to stop (Ctrl-C on TUI; hosts may ignore).
     public private(set) var wantsQuit = false
+    /// The outcome the application reported through ``subscriptions``, or
+    /// `nil` while it is still running. Distinct from ``wantsQuit``, which
+    /// records a user's request to stop rather than the work's own result.
+    public var completion: CompletionStatus? { subscriptions.completion }
     /// Last size applied by `pump(size:)` or a `.resize` event.
     public private(set) var lastSize: Size = .zero
 
@@ -73,6 +84,7 @@ public struct FrameHost: ~Copyable {
         let graph = try compileSceneGraph(app)
         let surface = try graph.makePrimarySurface()
         self.init(surface: surface)
+        app.connect(subscriptions)
     }
 
     package init(surface: SceneSurface) {
@@ -84,7 +96,12 @@ public struct FrameHost: ~Copyable {
         let dirty = Signal(true)
         self.dirty = dirty
         self.subscriptions = SubscriptionContext { dirty.set(true) }
+        self.stateStore = HostStateStore { dirty.set(true) }
     }
+
+    /// Number of live `@Reactive` signals this host stores. Tests use it to
+    /// prove eviction returns the store to its baseline.
+    package var reactiveStateCount: Int { stateStore.count }
 
     /// True when state changed since the last `pump`.
     public var needsFrame: Bool { dirty.get() }
@@ -111,25 +128,10 @@ public struct FrameHost: ~Copyable {
         lastSize = size
         dirty.set(false)
 
-        actions.beginBuildPass()
         var env = EnvironmentValues()
         env.focusedID = focusedID
         env.windowContext = windowContext
-        let actionStore = actions
-        let ctx = BuildContext(
-            id: .root,
-            inheritedStyle: .plain,
-            environment: env,
-            registerAction: { id, action in actionStore.register(id, action: action) },
-            registerKeyHandler: { id, handler in actionStore.registerKey(id, handler: handler) }
-        )
-        let ir = renderScene(ctx)
-        var laid = LayoutEngine.layout(ir, in: Rect(origin: .zero, size: size))
-
-        interactive.removeAll(keepingCapacity: true)
-        laid.collectInteractive(into: &interactive)
-        validateIdentities()
-        focusables = interactive.compactMap { $0.isFocusable ? (id: $0.id, rect: $0.frame) : nil }
+        var laid = buildFrame(size: size, environment: env)
 
         // Reconcile focus with the new tree.
         if let id = focusedID, !focusables.contains(where: { $0.id == id }) {
@@ -139,23 +141,34 @@ public struct FrameHost: ~Copyable {
         if env.focusedID != focusedID {
             // Rebuild once so the frame returned by this pump already
             // contains the reconciled focus highlight.
-            actions.beginBuildPass()
             env.focusedID = focusedID
-            let focusedContext = BuildContext(
-                id: .root,
-                inheritedStyle: .plain,
-                environment: env,
-                registerAction: { id, action in actionStore.register(id, action: action) },
-                registerKeyHandler: { id, handler in actionStore.registerKey(id, handler: handler) }
-            )
-            let focusedIR = renderScene(focusedContext)
-            laid = LayoutEngine.layout(focusedIR, in: Rect(origin: .zero, size: size))
-            interactive.removeAll(keepingCapacity: true)
-            laid.collectInteractive(into: &interactive)
-            validateIdentities()
-            focusables = interactive.compactMap { $0.isFocusable ? (id: $0.id, rect: $0.frame) : nil }
+            laid = buildFrame(size: size, environment: env)
         }
+        // Sweep once, after whichever build painted: the reconciliation
+        // build's marks are the live set.
+        stateStore.sweep()
+        transientStateIDs = stateStore.transientIDs
         return laid
+    }
+
+    /// Rebuilds the tree and its interaction tables with one consistent
+    /// context. State eviction belongs to `pump`, after its final build.
+    private mutating func buildFrame(size: Size, environment: EnvironmentValues) -> LaidOutNode {
+        actions.beginBuildPass()
+        stateStore.beginBuildPass()
+        let actionStore = actions
+        var context = BuildContext(
+            environment: environment,
+            registerAction: { id, action in actionStore.register(id, action: action) },
+            registerKeyHandler: { id, handler in actionStore.registerKey(id, handler: handler) }
+        )
+        context.stateStore = stateStore
+        let frame = LayoutEngine.layout(renderScene(context), in: Rect(origin: .zero, size: size))
+        interactive.removeAll(keepingCapacity: true)
+        frame.collectInteractive(into: &interactive)
+        validateIdentities()
+        focusables = interactive.compactMap { $0.isFocusable ? (id: $0.id, rect: $0.frame) : nil }
+        return frame
     }
 
     private var focusedIndex: Int? {
@@ -176,12 +189,15 @@ public struct FrameHost: ~Copyable {
 
     /// Routes one input event through the shared interaction policy:
     /// Ctrl-C/Ctrl-Q set `wantsQuit`; Tab and Shift-Tab cycle focus in tab
-    /// order; arrow keys move focus spatially; Enter or Space activates the
-    /// focused node; a pointer press hit-tests the topmost interactive node
-    /// (focusing it only when focusable) and invokes its action; a resize
-    /// just marks the host dirty; any other key is offered to the focused
-    /// node's key handler. Whenever an event changes state, the dirty flag
-    /// is set so the next `pump` re-renders.
+    /// order; arrow keys move focus spatially; every remaining key — Enter
+    /// and Space included — is offered to the focused node's key handler
+    /// first, and Enter or Space activates the focused node only when that
+    /// handler declines, so a text field can accept a space as content
+    /// while a button still activates on one; a pointer press hit-tests the
+    /// topmost interactive node (focusing it only when focusable) and
+    /// invokes its action; a resize just marks the host dirty. Whenever an
+    /// event changes state, the dirty flag is set so the next `pump`
+    /// re-renders.
     public mutating func handle(_ event: InputEvent) {
         switch event {
         case .key(.ctrl("c")), .key(.ctrl("q")):
@@ -212,9 +228,17 @@ public struct FrameHost: ~Copyable {
         case .key(.right):
             moveFocusSpatially(dx: 1, dy: 0)
 
-        case .key(.enter), .key(.character(" ")):
+        case .key(let key) where key == .enter || key == .character(" "):
             if let id = focusedID {
-                actions.invoke(id)
+                stateStore.activate()
+                // First refusal to the focused node's key handler: an editor
+                // has to be able to type a space, and Enter has to be able to
+                // mean "newline" rather than "activate". Activation is the
+                // fallback for a node that declines the key — a `Button`
+                // registers no handler at all, so it still activates.
+                if !actions.invokeKey(key, for: id) {
+                    actions.invoke(id)
+                }
                 dirty.set(true)
             }
 
@@ -223,6 +247,7 @@ public struct FrameHost: ~Copyable {
             // the focusable subset — non-focusable targets stay clickable.
             if let hit = interactive.last(where: { $0.frame.contains(p) }) {
                 if hit.isFocusable { focusedID = hit.id }
+                stateStore.activate()
                 actions.invoke(hit.id)
                 dirty.set(true)
             }
@@ -232,6 +257,7 @@ public struct FrameHost: ~Copyable {
             dirty.set(true)
 
         case .key(let key):
+            stateStore.activate()
             if let id = focusedID, actions.invokeKey(key, for: id) {
                 dirty.set(true)
             }

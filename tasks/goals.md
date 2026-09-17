@@ -1,350 +1,421 @@
 # Goals
 
-## Ship the Swift 6.4 Gama Framework
+## Current objective
 
+Keep Gama a portable, retained Swift UI framework whose documentation and
+evidence match the exact source, toolchain, and acceptance matrix.
+
+The accepted foundation designs are implemented. Current maintenance keeps
+state ownership, diagnostics, and documentation aligned with that foundation;
+[`todo.md`](todo.md) records the delivery requirements, manual and
+credential-gated acceptance, and deferred product scope. New product scope
+needs a new accepted design. Extending strict memory safety to executables
+and the test target remains a separate decision documented in ADR 0012.
+
+## Validated failure exit codes
 status: done
 
-- Apple Swift 6.4 debug, 73 tests, release, and iOS/tvOS/visionOS compile:
-  locally green.
-- Portable core, macros, drawing, TUI, Apple UI, C ABI, WASM, MLIR, and Qt
-  adapter sources: implemented; Qt 6.11 and MLIR parser gates are locally green.
-- Exact 2026-08-14 Swift 6.4 snapshot and matching Linux, WASM, and Android
-  SDKs: checksum-pinned and locally installed; Linux, WASM runtime, Android
-  arm64/x86_64 cross-build, JNI packaging, API 36 emulator input/frame round
-  trip, and Embedded compile/link gates pass.
-- Hosted Linux, Windows, WASM, Android/emulator, and required PR checks: pending.
-- Merge is forbidden until the required matrix is green.
-- Outcome: merged as PR #6; hosted "Gama acceptance" matrix green on main at
-  f509e2c (2026-08-24). Superseded going forward by the umbrella goal below
-  (6.5-dev snapshot, Qt adapter removed 2026-08-26).
+- Landed 2026-09-06 as an additive GamaCore API, not a rewrite of
+  `failure(code:_:)`. Public `FailureExitCode` accepts only `1...255`
+  (failable, immutable `Int32` raw, `RawRepresentable`/`Hashable`/`Sendable`,
+  `.general` raw `1`). `CompletionStatus.failure(exitCode:_:)` writes that
+  raw into a status that starts `isSuccess == false`. Legacy
+  `failure(code: 0)` still reports success; negatives and 256 still construct
+  through the raw surfaces; `code` stays mutable.
+- RED on pinned 6.5-dev: tests failed to compile (`cannot find
+  'FailureExitCode'`; only `failure(code:_:)` existed). GREEN:
+  `FailureExitCodeTests` 12 tests (255 accepted-range cases plus 5 rejection
+  cases); `CompletionStatusTests` still 6. Apple gate 317 tests in 56 suites,
+  debug/test/release. Docs, doc-coverage, and boundaries green. Local
+  evidence only — not hosted six-job proof. Handbook HTML/JS and the Linux
+  6.2.1 harness were not imported.
+- Follow-up 2026-09-06: `AGENTS.md` and `CLAUDE.md` now name the opt-in
+  `1...255` path and still say unvalidated `failure(code:_:)` accepts zero.
+  Freshness stayed green with no ledger promotion. Embedded 642,084 bytes
+  within 2% of 641,464; pin not re-measured. `FailureExitCodeTests` still 12
+  on 6.5-dev; docs and doc-coverage green. Local evidence only.
+- Catalog follow-up 2026-09-06: `docs/backends/TUI.md` and
+  `GamaCore.docc/BackendAuthoring.md` now carry the same opt-in `1...255` /
+  legacy-zero see-also next to `complete(_:)`. `AGENTS.md` / `CLAUDE.md`
+  sentences kept. Freshness green, no ledger promotion. `FailureExitCodeTests`
+  still 12; docs and doc-coverage green. Local evidence only.
+- Integration 2026-09-07: merge commit `bd727e9` (PRs #89 and #90, including
+  the four source defects). Hosted six-job Gama acceptance run
+  `34081434868` concluded success on that SHA (all six required jobs).
+  Pages run `34081434925` deployed successfully for the same SHA. This
+  integration is hosted proven, not local-only.
+- Catalog merge 2026-09-07: `origin/main` is now `e735cb4` (PR #91). Hosted
+  six-job Gama acceptance run `34090312518` concluded success on that SHA.
+  Pages run `34090312540` deployed successfully for the same SHA.
 
-## Merge all branches into main locally
-
+## Toolchain selection and 6.5-dev spelling audit
 status: done
 
-- Verified 2026-08-26: every branch's content is already contained in main;
-  zero merge commits were needed. All remote branches
-  (feat/swift-65-dev-umbrella, pr/tui-embedded-core, swift-refactor-c4c7b,
-  winsdk-wrapper-94d76) are ancestors of main (`git branch -a --merged main`).
-  Local feat/tui-embedded-core (39f1b35) is tree-identical to the already
-  merged origin/pr/tui-embedded-core (e79b279); local
-  pre-remote-main-20260824 (154ff82) differs only by an obsolete
-  .swift-version pin (2026-08-11, superseded by main's 2026-08-21). Both
-  local branches share no merge base with main (pre-remote history); merging
-  them literally would have deleted ~9k lines of the current framework, so
-  they were left as historical snapshots, not merged.
-- Branch cleanup 2026-08-26 (late evening, Donald's explicit instruction):
-  after PRs #8 and #9 merged, deleted every branch except main, remote and
-  local. Verified before deleting: six tips ancestors of main
-  (docs/claude-md-operational-guide 610c06c, docs/toolchain-accuracy-sweep
-  a52a273, feat/swift-65-dev-umbrella a1aa305, pr/tui-embedded-core e79b279,
-  swift-refactor-c4c7b 98e7c59, winsdk-wrapper-94d76 74f2648);
-  feat/tui-embedded-core 39f1b35 tree-identical to merged e79b279; the
-  historical snapshot pre-remote-main-20260824 154ff82 deleted on explicit
-  instruction, SHA recorded here for recovery (objects persist; gc is
-  forbidden in this tree). Honest residual: PR #9 was merged while its
-  matrix was still running (WASM + Embedded green at cleanup time, four
-  jobs in progress); Autofix watches for post-merge failures.
+- Closed a false green in `scripts/check-toolchain-pins.sh`. It enumerated
+  five scripts while ten hardcode the pinned toolchain id, so `bundle-macos`,
+  `check-boundaries`, `check-doc-coverage`, `check-portable-symbols`, and
+  `profile-apple-host` could go stale while the gate still printed OK. It now
+  discovers every `GAMA_TOOLCHAIN_ID` default and rejects any digit-leading
+  `org.swift.*` literal under `scripts/` that is not the pin. Verified by
+  mutation in both directions; `check-boundaries.sh`, which chains it, is
+  green. Local evidence only, on top of an already-unpushed line.
+- **Re-probed 2026-09-06 against the pinned compiler, not against proposal
+  titles, and the answer is still no migration.** Shipped sources carry three
+  underscored attributes: `@_cdecl` (17), `@_extern` (7), `@_exported` (2).
+  Measured, one at a time:
+  - `@extern` unprefixed **does not exist** — `error: unknown attribute
+    'extern'`. `@_extern` still requires the experimental `Extern` feature the
+    package already scopes to `GamaWASM`. No migration is available at all.
+  - `exported import` unprefixed **does not parse**. No migration available.
+  - `@c(identifier)` **works**, and accepts the real ABI names — `@c(gama_web_v2_frame)`
+    emits exactly `_gama_web_v2_frame`. But the symbol counts settle it:
+    `@c` emits **one** symbol while `@_cdecl` emits **two**, the C name plus
+    the Swift-mangled `_$s…`. Migration is therefore an ABI *narrowing* on
+    `gama_embed_v1_*` and `gama_web_v1_*`/`v2_*`, which this repository's own
+    rule treats as a public-ABI change.
+  Nothing in `Sources/`, `Examples/`, `WebHost/`, or `scripts/` references a
+  mangled Swift symbol, and the C header publishes 11 `gama_embed_v1_*` names,
+  so the removal would very likely be harmless in practice. "Very likely
+  harmless" is not a reason to narrow a shipped versioned ABI when the change
+  buys only the deletion of an underscore and no defect motivates it.
+- Audited the 6.5-dev spellings against the pinned compiler rather than
+  against proposal titles. No source migration is warranted now: `@_extern`
+  has no unprefixed form, and the one available migration is a versioned-ABI
+  change recorded under deferred scope in [`todo.md`](todo.md).
+- Hosted proven at `0d4cf12`, re-verified from run state 2026-09-06: run
+  `34049182287` completed with all six required jobs green. When this line was
+  first written that run was still `in_progress`, so the claim ran ahead of its
+  evidence by a few minutes — check `gh run view`, never a watcher's exit code.
+  The gate change went out as PR #82, cherry-picked
+  onto `origin/main` so it could be reviewed apart from PR #81, and all six
+  required acceptance jobs passed on the updated head. The hole it closes was
+  independently reproduced by mutation: with a stale id planted in
+  `check-boundaries.sh` the previous gate exited 0 and printed OK, while the
+  current one exits 1 and names the file.
+- **Closed 2026-09-06.** The deliverable was the audit, not a source
+  migration. `@_cdecl` → `@c` remains deferred product in `todo.md` because
+  it narrows a versioned ABI. No further in-tree work belongs on this goal.
 
-## Build the Gama umbrella application framework
+## Adaptive terminal surface
+status: done
 
-status: in_progress
+- **Hosted proven 2026-09-06.** PR #83 merged as `98c150d` with all six
+  required acceptance jobs green at its head `3f180f1`, whose tree is
+  byte-identical to the merge commit's — so the evidence covers the exact
+  integrated tree rather than only the branch. Phases 1-4 are shipped and
+  proven; phase 5 is closed unbuilt with a designed successor that is not
+  implemented, recorded below and in its own spec. Closing this goal does not
+  claim `CellSerializer`.
 
-- Intention (Donald, 2026-08-26): a cross-platform, macro/plugin-based
-  UI/UX/application framework in Swift — Tauri/React-Native-class — spanning
-  WASM, Windows, macOS desktop, Embedded, and more, with the retained-IR
-  renderer as the foundation (own-the-rendering decision).
-- Sub-project 1 (foundation) Current: DONE. Canonical checkout adopted at
-  ~/Desktop/Gama on the donaldfilimon/gama history; migrated to swiftly
-  main-snapshot-2026-08-21 (Swift 6.5-dev); Qt adapter removed; all eight
-  local gates green; full hosted matrix green (Linux/macOS/WASM/Embedded/
-  Android on 6.5-dev, Windows on 6.4.x — see exception below); merged as
-  PR #7 (74e77df on main, 61 commits); dev/active/gama-swift retired to
-  dev/archive/gama-swift-superseded-2026-08-26 after verifying zero unique
-  commits/stashes; ~/CLAUDE.md corrected.
-- Windows exception (Current, honest residual): swift.org has published no
-  Windows main-development snapshot since 2026-05-20-a, so the Windows job
-  runs the proven 6.4.x 2026-08-14-a installer. Windows is NOT yet verified
-  on 6.5-dev; revisit when swift.org resumes Windows main snapshots.
-  Re-verified 2026-08-26 (late evening): swift.org's newest Windows
-  main-development snapshot is still 2026-05-20-a — blocker stands.
-- Verification 2026-08-26 (evening): `swiftly run swift build` and
-  `swift test` (scratch path /private/tmp/gama-framework-swiftpm) green on the
-  pinned main-snapshot-2026-08-21 — 74 tests (56 XCTest + 18 Swift Testing),
-  0 failures (superseded 2026-08-27: the suite is Swift Testing only now,
-  92+ tests — see the Swift Testing bullet below); `check-docs.sh` zero-warning gate green. CLAUDE.md expanded into
-  the full operational guide and opened as PR #8
-  (docs/claude-md-operational-guide branch).
-- Post-merge matrix for PR #9 (toolchain-accuracy sweep): Android emulator
-  job failed once with an adb "Broken pipe" APK-install infra flake
-  (PR #9's CI changes were cosmetic renames, nowhere near the Android
-  path); rerun succeeded 2026-08-26 22:19 — matrix fully green on main.
-- DocC member coverage (2026-08-26 evening, goal-loop session): GamaCore
-  (all ten files), GamaTUI, and GamaAppleUI now have zero undocumented
-  public declarations — four comments-only commits (782 insertions, 0
-  deletions), each verified by check-docs.sh (slice 4 also by a full pinned
-  swift build), authored in worktree /private/tmp/gama-docc-wt. Open as
-  PR #10; merge only when its matrix is green.
-- Modern-Swift practices sweep (started 2026-08-27, Donald's request via
-  /plan then /goal continue): three parallel audits of the whole package
-  (portable core; backends; tests/macros/build config) produced a ranked
-  modernization backlog — granular checklist under "Modern-Swift sweep" in
-  tasks/todo.md. Executing in small gated slices on a topic branch; PR #10
-  (DocC member coverage) must merge first for GamaCore/TUI/AppleUI files
-  (its Android emulator job flaked with the same adb-offline infra failure
-  as PR #9; rerun started 2026-08-27 ~00:15).
-- Swift Testing globally (Donald, 2026-08-27): every XCTest suite moved to
-  Swift Testing. Macro expansion uses SwiftSyntaxMacrosGenericTestSupport
-  (no XCTest). Invocation is `swiftly run`. Pin-consistency gate added.
-  `ZStack(.topLeading)` no longer flattens into parent stacks (group
-  sentinel). Docs expanded: `docs/Testing.md`, `docs/Toolchain.md`,
-  Capabilities remaining-column honesty, GamaCore DocC Testing article.
-  Do not mark this umbrella goal done; sub-projects 2–4 remain Proposed.
-- Swiftly-run convention (Donald, 2026-08-27): agents run the codebase
-  with `unset TOOLCHAINS` then `swiftly run swift <build|run|test|…>`.
-  Recorded in AGENTS.md, CLAUDE.md, README.md, docs/Toolchain.md.
-- Codex P1s (2026-08-27): natural-size border titles paint; HStack 1×1
-  Divider is vertical; TextField drops C0/DEL; U+231A is two cells; focus
-  wrap wins over custom label colors. Umbrella stays in_progress.
-- Dialect validation (2026-08-27, writing-skills session): six fresh-agent
-  baseline scenarios (typed-throws decoder, ~Copyable handle, embedded-safe
-  core, XCTest-free macro tests, C-ABI error surface, no-imports Signal)
-  all reproduced the repo's modern-Swift dialect unprompted — a dedicated
-  "modern Swift 6.5" skill is unwarranted (no failing baseline; recorded in
-  session memory). Reusable finding: the baseline Signal design is the
-  leading Slice C candidate (see tasks/todo.md).
-- Integration repair (2026-08-27): merging the DocC branch after PR #11
-  resolved three source conflicts in favor of stale declarations, removing
-  RenderNode.group, the Hashable conformances, and the noncopyable
-  host/runtime declarations — main was non-compiling with a red acceptance
-  matrix, and PRs #10/#13 were merged while red (honest residual; the
-  green-matrix rule was violated). Repaired by PR #14 (fix/restore-sweep-
-  semantics, merged 5c27a32 on a fully green six-job matrix), which also
-  fixed the actual Linux failure inherited from PR #11
-  (Foundation-only components(separatedBy:) in WASMSerializerTests) and
-  the stale ZStack/TupleView flattening prose. Duplicate repair PR #15
-  closed unmerged; its unique Hashable compile test folded into the docs
-  overhaul PR.
-- Scene-first core (2026-08-27): the approved app-shell design is implemented
-  on `feat/scene-first-core` as the second delivery slice. The source-breaking
-  `App.content` migration, explicit primary-scene validation, typed group
-  payloads/actions, lifecycle events, non-generic closure-backed `FrameHost`,
-  single-surface backend migration, and Embedded-safe payload erasure are
-  locally proven on the consolidation tree: pinned Apple debug/release plus
-  113 Swift Testing cases in 31 suites, iOS/tvOS/visionOS compile, boundaries,
-  zero-undocumented-public-API DocC, C ABI, Embedded, Linux SDK, WASM
-  browser/runtime, Android cross-build plus emulator input/frame round trip,
-  and MLIR gates are green. Hosted PR and post-merge matrices remain separate
-  acceptance evidence and must be green before this slice is complete.
-- Docs overhaul (2026-08-27, Donald's /plan approved): executed in six
-  phases on docs/claim-honesty — claim-honesty (gama.group now test-
-  proven; Capabilities status vocabulary; non-tautological check-docs
-  grep; Testing.md file map), GamaCore DocC sweep alignment (noncopyable
-  hosts guidance, group-vs-overlay, Topics curation), zero undocumented
-  public declarations package-wide, backend guides + CONTRIBUTING + MLIR
-  dialect reference + docs index + ADRs 0001-0007, and the deterministic
-  check-doc-coverage.sh gate wired into check.sh and CI (empty
-  allowlist). Outcome: merged as PR #16 (acc2f88) 2026-08-27 06:11Z on a
-  fully green six-job PR matrix (green-before-merge honored); post-merge
-  main acceptance run 33044975550 also completed successfully.
-- Consolidation finalized (2026-08-27, Donald's "merge all branches into
-  main and delete old"): every branch's content is in main — scene-first
-  core + backend DocC catalogs + ledger sync via PR #19; my completion
-  work (test-migration stragglers and scene-surface docs) landed
-  independently on main before PR #20 could carry it, so #20 reduced to
-  the doc-coverage count-dedup fix plus PR #18's surviving docs delta.
-  Deleted after containment verification (ancestor or patch-equivalent):
-  remote+local docs/docc-member-coverage, fix/zstack-topleading-flatten,
-  fix/restore-modern-sweep-merge, feat/scene-first-core (PR #18 closed,
-  delta folded into #20), chore/swift-65-dev-refresh,
-  abbey/consolidate-gama-branches, plus five stale /private/tmp
-  worktrees. Post-#16 main acceptance: completed green. Honest residuals:
-  PR #19 was merged while its PR matrix was incomplete (pattern repeat),
-  and PR #20's auto-merge fired instantly because branch protection
-  requires PRs but does NOT mark the six acceptance jobs as required
-  status checks — auto-merge only waits on required checks. Marking
-  those jobs required is the settings fix (Donald's call). Post-#19 and
-  post-#20 main runs pending at ledger time — Current only when they
-  land green. Remaining branches: main and feat/apple-multiwindow-shell
-  (Remote Control session's active sub-project 3 slice 2).
-- Sub-projects 2 and 4 remain Proposed drafts under
-  docs/superpowers/specs/drafts/ (plugin runtime + capability model; packaging
-  & distribution). Sub-project 3 is approved and split into independently
-  green scene-core/migration and macOS-shell deliveries; only its first slice
-  is implemented locally at this point. Foundation spec:
-  docs/superpowers/specs/2026-08-26-gama-umbrella-foundation-design.md
-- Scene-first integration (2026-08-27): the scene API, atomic in-repository
-  migration, lifecycle channel, non-generic host, typed window commands, and
-  primary-only non-window backends reached `main` through consolidation PR
-  #19 (merge 7599a56). Honest process residual: PR #19 merged while four of
-  six acceptance jobs were still running, so the selected green-before-merge
-  policy was not followed; its merge-SHA push matrix remains the authoritative
-  hosted proof and must be recorded only after all six jobs finish green.
-  The residual scene-evidence/ADR diff remains isolated in PR #18 and must not
-  be mistaken for a second implementation.
-- macOS application shell (2026-08-27): `GamaAppleShell` and
-  `gama-apple-demo` are implemented on `feat/apple-multiwindow-shell` from the
-  consolidated main. Six offscreen AppKit tests locally prove launch
-  selection, singleton/group identity, independent hosts/draw lists, command
-  validation/draining, addressed delegate lifecycle, non-vetoable close,
-  last-window residency, Dock reopen, and once-only termination. Local full
-  gates, hosted PR proof, post-merge proof, and the supplemental manual Dock/
-  Command-Q smoke remain separate acceptance layers; do not mark the shell
-  shipped until the required automated layers are green.
-- Linux sanitizer policy repair (2026-08-27): PR #24 enabled
-  `ASAN_OPTIONS=detect_leaks=1` and merged before its hosted matrix completed;
-  that PR's own Linux Address Sanitizer step then failed. Restore the
-  previously documented `detect_leaks=0` policy while retaining the required
-  ASan job. Leak detection remains an open, separately root-caused item in
-  `tasks/todo.md`; do not describe the Swift Testing runner as leak-clean.
-  Root cause identified 2026-08-27 (goal-loop session, from PR #24's job
-  log, run 33048676959): 7 indirect leaks / 432 bytes, every stack in the
-  SwiftPM-generated runner's XCTest harness (`XCTestSuiteRun.init`,
-  `XCTMain`, `XCTMainMisc`, plus Foundation `URL.lastPathComponent` under
-  XCTMain), zero Gama frames. The generated entry point runs the XCTest
-  harness even with zero XCTest suites, so the current generated test job
-  cannot be called leak-clean while those allocations persist. A future
-  runner change or a separate harness-free leak test can provide honest
-  coverage. Competing PR #31 used a broad `leak:XCTest` suppression and was
-  closed in favor of #30; that suppression is not coverage-preserving
-  because it can also match a Gama allocation made beneath XCTest.
-- Acceptance-run continuity risk (2026-08-27): main has had no COMPLETED
-  acceptance run since 33044975550 (pre-#19). Post-#22 run 33048024225 was
-  cancelled by the #24 push and post-#24 by the #26 push — ci.yml's
-  concurrency group is `cancel-in-progress: true`, so those closely spaced
-  merges cancelled the previous merge's proof. This is missing evidence,
-  not a structural blocker: a quiet merge interval or the existing
-  `workflow_dispatch` entry point can produce a completed main run. Two
-  optional continuity improvements remain Donald's call: mark the six jobs
-  required (blocks merges until green, also fixes the merged-while-red
-  pattern), and/or exempt `refs/heads/main` from cancel-in-progress so
-  post-merge proofs are less likely to be superseded.
-- Consolidation complete + specs finalized (2026-08-27, Donald's "merge all
-  into main / finish all" session): PRs #20 (doc-coverage count), #21
-  (macOS shell + gama-apple-demo), and #22 (ledger) merged; local main ==
-  origin/main (afbb5c1); the two /private/tmp shell/consolidate worktrees
-  are gone and no branch content remains outside main. Honest residual:
-  PR #21 merged with four of six acceptance jobs still pending (Embedded +
-  WASM green at merge); the post-#21 main run was superseded/cancelled, so
-  main's hosted proof rides on the post-#22 acceptance run 33048024225 —
-  record its conclusion here. A local union gate (main + both branches:
-  119 tests / 32 suites green, apple + boundaries + docs) provides the
-  local layer.
-- Sub-projects 2 and 4 APPROVED (2026-08-27): Donald resolved all open
-  questions via decision prompt — first-party GamaPlatformServices in
-  plugin V1 (.filesystem real); full contribution surface (slots + scenes +
-  commands) in plugin V1; com.donaldfilimon.gama.* confirmed with a
-  Developer ID cert in hand (release-macos.sh is real V1 scope);
-  wasm-site and .app packaging slices proceed in parallel on the
-  scene-first shell's gama-apple-demo payload; Distribution/ manifest
-  lands now. Approved specs:
-  docs/superpowers/specs/2026-08-27-plugin-runtime-design.md and
-  docs/superpowers/specs/2026-08-27-packaging-design.md (drafts annotated
-  SUPERSEDED, kept for rationale). Implementation proceeds in gated
-  slices; green-before-merge is the rule each slice must actually honor.
-- Slice C approved in full (2026-08-27, Donald): frame-pump unification with
-  a single resize policy (ADR 0007 leaves Provisional), the validated
-  non-Sendable Signal redesign (ADR 0003 interim to be superseded), and all
-  remaining Slice C items as gated slices. It remains blocked on actual
-  wave-1 integration: packaging PR #32 is merged, but DocC-catalog PR #28
-  must merge and the plugin-runtime post-merge hardening must be green
-  before Slice C begins. Branch existence and local gates do not satisfy
-  this boundary.
-- Wave-2 structural designs authored (2026-08-27): frame-pump unification
-  (HostPump, eager resize policy, per-backend migration slices; supersedes
-  ADR 0007 when implemented) and the Signal redesign (non-Sendable with
-  unavailable conformance, sending transfer, App drops Sendable; supersedes
-  ADR 0004 when implemented). Specs:
-  docs/superpowers/specs/2026-08-27-frame-pump-unification-design.md,
-  docs/superpowers/specs/2026-08-27-signal-redesign-design.md.
-  Implementation waits for the wave-1 branches (plugin runtime, packaging,
-  DocC catalogs) to land.
-- Plugin runtime + capability model V1 (2026-08-27): sub-project 2
-  implemented on feat/plugin-runtime-v1 per the approved spec
-  (docs/superpowers/specs/2026-08-27-plugin-runtime-design.md). Delivered:
-  stdlib-only GamaPlugin (manifest/grants/typed errors/unforgeable
-  handles/executor-confined PluginRuntime/PluginSlot), the full
-  contribution surface (namespaced scene contributions with typed
-  primary-role rejection, PluginScenes scene integration consumed by the
-  existing scene graph and AppKit shell, deterministic host-bound
-  commands), GamaPlatformServices (HostServices.standard: stderr log,
-  monotonic clock, real scoped FilesystemProvider with lexical
-  containment, no symlink resolution), a demo status-line slot in
-  gama-demo, extended check-boundaries.sh greps (GamaPlugin held to the
-  GamaCore rules; inverse grep fencing GamaPlatformServices out of
-  portable targets), docs/Plugins.md with the Tier-1 enforcement-honesty
-  stance, and 34 Swift Testing cases. Evidence at delivery time: local
-  check-apple.sh, check-boundaries.sh, check-docs.sh,
-  check-doc-coverage.sh green plus a full swift test run (record exact
-  results in the PR). Deferred, recorded in tasks/todo.md: Tier 2/3,
-  .network, scope subsumption, discovery, persistence, and shell
-  teardown of contributed windows on uninstall. Hosted proof is the
-  six-job matrix on the PR; merge only when green.
-- Packaging & distribution V1 (2026-08-27): sub-project 4 approved
-  (docs/superpowers/specs/2026-08-27-packaging-design.md) and implemented on
-  feat/packaging-v1. Locally proven with real exit codes: bundle-web.sh
-  (pinned-SDK wasm build, site assembled to /private/tmp/gama-dist/web,
-  headless-Chrome smoke against the assembled directory), gama-apple-demo
-  --smoke (offscreen NSApplication, 36 draw commands, exit 0), and
-  bundle-macos.sh ("Gama Demo.app" staged outside the iCloud tree from the
-  gama-apple-demo manifest, plutil lint, ad-hoc deep-strict codesign verify,
-  smoke launch). release-macos.sh (Developer ID + notarytool + stapler) is
-  implemented with hard credential gating; the gate's fail-closed refusal is
-  locally proven and the credentialed path is deliberately unclaimed until a
-  run with GAMA_CODESIGN_IDENTITY/GAMA_NOTARY_PROFILE passes. CI now stages
-  and uploads both artifacts (macos-app, wasm-site); hosted proof rides on
-  the packaging PR's six-job matrix and must be recorded only when green.
-  Manifests in Distribution/ carry identity only, parsed by the fail-closed
-  scripts/lib/manifest.sh reader.
-- Packaging review hardening (2026-08-27, PR #32): repaired all seven active
-  review findings without weakening a gate. The flat-TOML grammar now validates
-  whole identifiers; macOS staging canonicalizes containment and uses
-  plist-aware branding; the wasm bundler verifies the exact Swift revision and
-  the manifest-configured page title; CI uploads a mode-preserving `ditto` ZIP;
-  and the credentialed release path rebuilds its downloadable ZIP after
-  stapling. Local regression probes, `check-toolchain-pins.sh`, the real macOS
-  app bundle gate, transport extraction/signature verification, and the real
-  wasm browser bundle gate are green. Exact repair head 77e3160 passed all six
-  acceptance jobs plus Devin Review and merged through PR #32 as 3b4c83a;
-  do not infer that result from an earlier head.
-- Plugin runtime post-merge hardening (2026-08-27): PR #33 merged only
-  after its original head passed all six acceptance jobs, but a later
-  review identified five substantive defects. The follow-up gives each
-  plugin a stable slot identity retained across peer removal, isolates and
-  cancels plugin-owned observations on failed activation/uninstall,
-  invalidates the host after successful install/uninstall, revokes cached
-  commands at uninstall, and rejects internal empty filesystem components
-  while retaining one trailing separator. Focused evidence is 39 Swift
-  Testing cases in six suites on the pinned toolchain; the follow-up's own
-  exact-head hosted matrix is still required and must not be conflated with
-  PR #33's already-green head.
-- Slice C wave 2, structural half (2026-08-27, /goal continue): the two
-  headline items of the audit's top structural row landed on branch
-  slice-c/wave-2-frame-pump-and-signal — frame-pump unification (ADR 0008
-  supersedes 0007) and the non-Sendable Signal redesign (ADR 0009
-  supersedes 0004). Both approved specs needed correction against reality
-  and both corrections are recorded rather than absorbed: the pump spec's
-  D2 signature could not compile (CellBuffer lives in GamaDraw, which
-  depends on GamaCore), and the Signal spec's claim that an unavailable
-  conformance "prevents" retroactive re-conformance is false — measured on
-  the pinned snapshot it is a warning (#UnavailableSendableConformance),
-  so what it actually buys is a named, attributable diagnostic. Proposed,
-  NOT Current: local gates are green (167 tests, boundaries incl. two new
-  confinement negative fixtures, c-abi, wasm, docs, doc-coverage) but no
-  PR is open and no hosted six-job matrix has run on this work.
-- Ledger truth-up (2026-08-27): sub-projects 2, 3, and 4 were closed after
-  verifying their own stated conditions were already met — PR #37 head
-  b11297d, PR #21 head ca95b220, and PR #32 head 77e3160 each passed all
-  six hosted jobs. The ledger, not the work, was stale. Sub-project 3
-  carries a named residual: its literal post-merge run was cancelled by
-  the concurrency group, so proof rides on green descendant main runs.
-- Full local acceptance matrix (2026-08-27): `./scripts/check.sh` was run
-  end to end on this machine for the first time, exit 0, 17 OK lines,
-  including the three gates the docs describe as CI-or-hardware-only. Two
-  environment facts made that possible and correct two stale notes in
-  ~/CLAUDE.md: check-linux.sh needs no Linux (it cross-compiles with the
-  installed static-linux SDK, ~1s), and `timeout` IS installed
-  (/opt/homebrew/bin, coreutils) which check-android-emulator.sh depends
-  on. The emulator gate additionally needs ANDROID_HOME, adb on PATH, and
-  an already-booted device — it does not boot one itself.
+- Phases 1-3 implemented and locally verified 2026-09-06: `CompletionStatus`
+  and the completion signal in `GamaCore`, `CellPresenter` plus
+  `AnsiPresenter`/`StreamPresenter` in `GamaDraw`, and `SurfaceMode`,
+  `StreamRenderer`, and `App.runAdaptive()` in `GamaTUI`. An application that
+  adopts `runAdaptive()` renders a live TUI on a terminal and emits plain
+  changed rows when redirected, ending on a declared completion status. Its
+  stream layout is fixed at 80 columns, so a line wider than that wraps
+  through `CellPainter`; honoring `COLUMNS` belongs to phase 4.
+- An end-to-end probe outside the repository caught a hang the unit tests
+  could not: an input-less surface with no declared completion never
+  terminated. Fixed with `Renderer.waitsForInput` (defaulted `true`, so no
+  existing backend changes). Verified at the process boundary: piped, the
+  probe now exits `0` with its content on stdout; with a declared failure it
+  exits `3` and puts the message on stderr; under a pty it selects
+  `TUIRenderer` and emits cursor-positioning ANSI. 20 new Swift
+  Testing cases in 3 suites; the suite is 291 in 53. Local only: no hosted
+  matrix has run against this work, so no ledger row may be promoted.
+- The phase 5 spike ran and rescoped that phase. One `CellBuffer`-rooted
+  shape fits `GamaTUI`, `GamaWASM`, and `GamaEmbed`; `GamaAppleUI` is excluded
+  because it mutates a retained view rather than producing an output value.
+  The macOS AppKit host row therefore no longer resets.
+- Phase 4 implemented 2026-09-06 as an emitted-line channel rather than the
+  view-tree `StreamOutput` the design sketched. `RenderNode` is an indirect
+  enum every backend switches on exhaustively, so a new case would have
+  rippled through layout, painting, MLIR, WASM, and Embed. More importantly a
+  chronology is event-shaped: a line happens once, while a view node is
+  re-evaluated every frame, so deriving one from the tree would replay lines
+  or need a second diff. `SubscriptionContext.emit(_:)` is exactly-once by
+  construction. `App.connect(_:)` (defaulted, so existing apps are
+  unaffected) hands the application its channel, which also closed a real gap:
+  before it, an app launched through `runAdaptive()` could neither report an
+  outcome nor emit anything.
+- Verified end to end at the process boundary with one declaration and one
+  binary: piped it emits `deploy: step 1/10 building` and exits `2` with the
+  message on stderr; under a pty the same binary renders the grid
+  (`[####------] 3/10`, cursor-positioning ANSI) and the emitted lines are
+  correctly absent, because grid backends ignore them.
+- Open: phase 5 (conform `GamaWASM` and `GamaEmbed` to `CellPresenter`).
+  Umbrella record in
+  [`2026-09-06-adaptive-terminal-surface-design.md`](../docs/superpowers/specs/2026-09-06-adaptive-terminal-surface-design.md);
+  phases 1-3 in
+  [`2026-09-06-adaptive-terminal-core-design.md`](../docs/superpowers/specs/2026-09-06-adaptive-terminal-core-design.md).
+- Phase 5 closed without implementation. A closer review reversed the spike:
+  `GamaWASM` and `GamaEmbed` never call `presentDiff()` and read the back plane
+  wholesale, so `CellPresenter`'s "then swaps the buffers" contract is false
+  for them; and both reach the grid through `HostPump.advance(into:emit:)`,
+  whose `emit` takes a **borrowing** `CellBuffer`, so no `inout` access can be
+  formed and a conformance would have zero call sites. Naming that family
+  honestly needs a different, non-mutating `borrowing CellBuffer -> Output`
+  abstraction, which is new design rather than this phase.
+- Correction the same review produced: `DrawList/C ABI` is **Locally proven**,
+  not hosted proven, and `Embedded core` is locally compile/link proven. An
+  earlier revision of the spec and of this ledger overstated both. Among the
+  backends phase 5 would have touched, only WebAssembly/browser and Android/JNI
+  carry hosted rows.
+- `AnsiPresenter` had no production call site when it shipped, which made the
+  protocol a claim rather than a seam. `TUIRenderer` now presents through it.
+- Phase 5's successor is designed but **not implemented**, spec at
+  [`2026-09-06-cell-serializer-design.md`](../docs/superpowers/specs/2026-09-06-cell-serializer-design.md):
+  a non-mutating `CellSerializer` (`func serialize(_ buffer: borrowing
+  CellBuffer) -> Output`) naming the wholesale family, with two conformances,
+  `DrawListSerializer` and `HTMLSerializer`. Grounded by re-reading the code
+  rather than the earlier notes: neither `GamaWASM` nor `GamaEmbed` ever swaps
+  or calls `presentDiff`, and `advance(into:emit:)` hands them a **borrow**, so
+  no `inout` access can be formed — the two reasons `CellPresenter` cannot span
+  them are one fact stated twice.
+- A third conformance was proposed and withdrawn before anything was built.
+  `AccessibilitySnapshot`'s only production consumer is `GamaAppleUI`, deriving
+  it from a retained view's `currentDrawList`, not from a borrowed buffer; and
+  `GamaWASM` has no Swift accessibility path, the gate's assertion being in the
+  browser driver. An `AccessibilitySerializer` would have had zero call sites,
+  repeating the `AnsiPresenter` defect recorded directly above it.
+- **Implemented 2026-09-06**, and materially changed by an independent design
+  review before it landed. Three factual errors were found and corrected. The
+  spec claimed a one-byte HTML change would break the browser marker and an
+  encoding change would break `check-c-abi.sh`; verified directly, the marker
+  reads `root.textContent` through a regex and `Examples/CEmbed/main.c` checks
+  length plus the `GAMA` magic but no draw command, so **both claims were
+  false** — the failure this repository's evidence policy exists to prevent.
+  Nothing pinned byte-identical HTML at all, so a test now does.
+- The review also showed `GamaAppleUI` belongs in the family:
+  `GamaHostView.swift:242` has the identical shape to `GamaEmbed`, and the
+  exclusion had been inherited from the phase 5 spike whose `inout`/swap
+  grounds a `borrowing` protocol does not have. Including it is what gives
+  `DrawListSerializer` more than one call site.
+- Open and stated rather than papered over: nothing in the tree is generic over
+  `CellSerializer`, so it constrains conformers, not consumers.
+- Verified locally: `check-apple` (304 tests in 55 suites), `check-wasm`,
+  `check-c-abi`, `check-boundaries`, `check-docs`, `check-doc-coverage`, all
+  exit 0. `check-wasm` is the only gate that type-checks the WASM call site.
 
+## Evidence-first behavior-preserving refactor
+status: done
+
+- **Hosted proven 2026-09-06.** The slice `dc7e847` and both ledger commits
+  are ancestors of `98c150d`, integrated through PR #83 rather than the
+  standalone PR the handoff report proposed. All six required jobs green.
+  Candidates 3-5 stay not recommended and are deliberately not delivered.
+
+- Audit delivered 2026-09-06 against `origin/main` `0d4cf12`, ten commits past
+  the brief's `bc2fe4d` reference snapshot. Module map, five candidates, and a
+  recommended first slice are in [`todo.md`](todo.md).
+- First slice approved and delivered 2026-09-06 as `dc7e847`: gate scripts
+  derive the pinned toolchain from `Toolchains.toml` through
+  `scripts/lib/toolchain.sh` instead of defaulting to one developer's home
+  directory, and `check-toolchain-pins.sh` fails on any checked-in home path
+  so the class cannot return. Behavior preserved: the derived path is
+  byte-identical to the removed literal on this machine. Eleven of the
+  thirteen `check.sh` gates green (two NOT RUN for missing local
+  prerequisites), including the four rewired scripts and `check-boundaries`,
+  which chains the pin gate. `bundle-web.sh` is the fifth rewired script and
+  is not a gate at all — it is the Pages deploy path, syntax-checked only.
+  Local evidence only; the six-job matrix has not run.
+- The slice shipped **narrower than approved**, on evidence. It also proposed
+  adding `unset TOOLCHAINS` to the nine scripts lacking it, on this
+  repository's documented claim that a stray value overrides explicit pins.
+  Measured, it does not: `TOOLCHAINS` overrode a bare `xcrun swift` but not
+  `xcrun --toolchain <id>`, and not the `swiftly` shim, and no script invokes
+  swift without the flag. `CLAUDE.md` was narrowed to what reproduces rather
+  than nine scripts being changed to satisfy a claim that does not.
+- Candidates 3-5 (`GamaHostView` split, `Primitives.swift` size,
+  `Terminal.swift` platform split) remain **not recommended**: each is a file
+  split with no demonstrated defect, and candidate 3 carries the highest risk
+  against hosted-proven AppKit for a presentational benefit.
+
+## Capability-ledger honesty
+status: done
+
+- **Full row audit delivered 2026-09-06.** Every one of the seven rows that
+  named a commit was stale: the files each row's claim depends on had changed
+  since the commit it named. Five (`Scene-first core`, `Strict memory safety`,
+  `WebAssembly/browser`, `Android/JNI`, `Per-surface @Reactive`) were re-proven
+  by the later merges, so they are re-pointed to `98c150d` rather than
+  downgraded, each carrying a note saying what changed and why the old anchor
+  failed. Two carried stale *measurements* and could not simply be re-pointed:
+  the packaged-wasm row's 9,297,539-byte artifact figure is **removed**, since
+  both the bundler and the bundled source changed and no re-measurement was
+  taken; the Embedded row is re-measured at **641,464 bytes** (from 636,792),
+  and its claim that `5dbdad8` is "unpushed" is corrected — that was true when
+  written and is now false.
+- **Unanchored rows surveyed 2026-09-06.** Of 20 table rows, 13 named no
+  commit. Three of those asserted **Hosted proven with neither a commit nor a
+  run id** — `Core/builders/layout/drawing`, `macOS multi-window shell`, and
+  `Plugin runtime + capability model (Tier 1)` — the weakest claims in the
+  file, since an unanchored claim cannot even be checked for staleness. All
+  three are now anchored to `98c150d`.
+- One row was overstating its own coverage: `DrawList/C ABI` claimed
+  "randomized/malformed codec tests". Verified — **no randomized or fuzz codec
+  test exists anywhere under `Tests/`**. The word is removed rather than a test
+  invented to justify it.
+- Six rows use phrases outside the declared vocabulary (`locally compile
+  proven`, `locally cross-compile proven`, `locally runtime proven`, `locally
+  compile/test proven`). On inspection these are **narrower** than "Locally
+  proven", not looser, so the honest fix was to declare them in the vocabulary
+  section as restrictions rather than normalize them away and lose precision.
+- **The defect recurred within this session, from my own commits, and that is
+  the strongest argument for mechanizing it.** `7d4feb7` anchored rows to
+  `98c150d` while `30afe99`, `a4c7a5c`, and `eeb2426` had already changed the
+  sources four of those rows describe — `GamaDraw/CellSerializer.swift`,
+  `GamaAppleUI/GamaHostView.swift`, `GamaEmbed/CInterface.swift`, and
+  `GamaWASM/WASMHost.swift`. Hand-auditing fixed the ledger and hand-editing
+  re-broke it inside a few hours, with all gates green throughout. Those four
+  rows now declare the drift explicitly rather than carrying a hosted claim
+  that does not describe the working tree.
+- Still open, and genuinely so: the remaining ten unanchored rows are
+  local-evidence claims whose anchor would have to be a local run rather than a
+  hosted commit, and `Windows console` has **no check script at all** — its job
+  is inline in `.github/workflows/ci.yml`, so `scripts/check.sh` cannot prove
+  it locally by any means.
+- **The unanchored-rows residual directly above is now closed.** All 20 rows
+  carry an evidence annotation and `check-evidence-freshness.sh` is gate 14, so
+  totality is mechanized rather than audited: an unannotated row fails, and so
+  does a table reformat that reduces the parse to zero rows. `Windows console`
+  having no local check script is unchanged and stays open.
+- **Hand-maintained duplicates of ledger evidence are now a gate failure, not a
+  convention.** The freshness gate reaches one file, so `docs/Packaging.md`
+  carried a hand-maintained second copy of the packaged-wasm claim for two
+  days; when the ledger retired its byte figure as stale the copy silently
+  stopped agreeing, and every gate stayed green. That cell now links to the ledger
+  row, and `scripts/evidence-locality.py` (chained from `check-docs.sh`) fails
+  an anchored claim or a CI run id in any other document. Mutation-proven by
+  restoring the exact retired cell. Measurement conditions are deliberately not
+  claims, so the benchmark and toolchain commit references are untouched.
+  Local evidence only. Detail in [`todo.md`](todo.md); one residual recorded
+  there: the ledger row itself restates the retired figure as "historical
+  detail", which no anchor can catch.
+- **The no-process-global rule is no longer three string literals wide.** It
+  named three known offenders, so a global called anything else passed. The
+  rule that replaced it is smaller than expected because the compiler was
+  measured before the gate was designed: Swift 6 language mode already rejects
+  a bare stored `static var` as "nonisolated global shared mutable state", so
+  only the two hatches around it — `nonisolated(unsafe)` and global-actor
+  isolation — needed policing, and no stored-versus-computed heuristic was
+  written. `scripts/portable-global-state.py` chains from
+  `check-boundaries.sh` and covers two more platform-free targets than the old
+  rule did. Mutation-proven on the exact line the audit named, where the old
+  rule still passes. Backends are deliberately out of scope. Local evidence
+  only; detail and two stated boundaries in [`todo.md`](todo.md).
+- **That residual is closed too: the Swift 6 language mode is now asserted.**
+  `scripts/package-graph.py` requires it on every Swift target, not only the
+  shipped ones. Writing the check found a real defect in its own first draft,
+  and the defect was the exact false green it exists to prevent: SwiftPM
+  *appends* rather than replaces, so a target declaring the mode twice dumps
+  both values and the last wins at compile time; a first-match read passed a
+  manifest whose compiler had already reopened bare mutable globals. Verified
+  at the compiler rather than inferred. Every declared mode is now checked.
+- **Both remaining capability residuals are closed**, the second
+  (`docs/Capabilities.md` restating its own retired byte figure) by another
+  session's `a69566a`. One new residual replaces them, recorded in
+  [`todo.md`](todo.md): a ledger entry could name a script the commit did not
+  contain, which happened to these very bullets.
+- **That residual is closed as well.** `scripts/referenced-paths.py`, chained
+  from `check-docs.sh`, fails any document naming a repository path the tree
+  does not contain. It is the inverse of evidence freshness, which asks whether
+  a claim's sources moved and never whether the thing it names exists; the
+  blindness was measured rather than asserted, by reproducing the real split
+  state and watching the freshness gate exit 0 while the new one reported all
+  eleven references. Scope came from measurement too: bare filenames and
+  module-relative fragments are prose, not claims, and plans and drafts may
+  name what they propose. Local evidence only.
+- **The unenforced-policy audit's MEDIUM/LOW half was a number, not a list, so
+  it was re-derived.** A fresh pass over the ten Accepted ADRs replaced the
+  count with an inventory: two gaps closed (ADR 0012's "explicit import access
+  levels everywhere", which `package-graph.py` never checked beside the memory
+  -safety half it did; and ADR 0008's stated reason for keeping the pump policy
+  in `GamaCore`, which nothing asserted, so moving one file would have dropped
+  the pump from the Embedded proof with every gate green), and three recorded
+  open with reasons rather than checkboxes. Detail in [`todo.md`](todo.md).
+- **The freshness gate caught this session's own edit, which is the point of
+  it.** Changing `scripts/check-embedded.sh` invalidated the `Embedded core`
+  row's anchor, because the gate compares the working tree to `HEAD` rather
+  than only commit history. The row is now `unverified` and says why: a local
+  run of the changed tree passes, but an uncommitted tree cannot carry an
+  anchor, so it must be re-anchored once the change lands. No claim was
+  strengthened to keep a gate green.
+
+- Corrected `docs/Capabilities.md` 2026-09-06. Its Evidence snapshot named
+  `bc2fe4d` as the current `origin/main` tip while the tip was `0d4cf12`,
+  thirteen commits later, and the per-surface `@Reactive` row still attached
+  its hosted claim to `77812d99` while describing four behavior changes made
+  after that merge. Both are now stated against the commits that actually
+  carry the evidence: the snapshot names run `34049182287` at `0d4cf12`, and
+  the row names run `34048029135` at `7d6e2fb`, whose six required jobs were
+  green first-attempt and which contains all four changed commits. The row's
+  "locally proven at unpushed `5dbdad8`" caveat is removed because it is no
+  longer true.
+- The recorded suite size was wrong in two places and both were low: the row
+  said 266 tests in 49 suites and the ledger said 269. Measured, it is **299
+  in 54**. Local gates re-run for this slice: `check-apple.sh`,
+  `check-docs.sh`, `check-doc-coverage.sh`, all exit 0.
+- Open: the remaining rows still keyed to `77812d99` have not been audited one
+  by one against `0d4cf12`; this slice corrected the two demonstrably stale
+  claims, not the whole table.
+- **Closed 2026-09-06.** Honesty is mechanized (freshness, locality,
+  referenced-paths, package-graph, XCTest ban, Embedded size). Unverified
+  rows after `98c150d` are the correct description of this tree, not leftover
+  work on this goal: promoting them needs a hosted six-job run on a pushed
+  SHA. Catalogs that restated hosted proof (`GamaWASM`, `GamaEmbed`,
+  `GamaMLIR`) now defer to `docs/Capabilities.md`. Manual/credential items
+  stay in `todo.md` and are not this goal.
+
+## Fail-closed boundary scans
+status: done
+
+- Closed 2026-09-08: `scripts/check-boundaries.sh` asserted no scanned path
+  before grepping, so a renamed target stopped being checked while the gate
+  stayed green. `require_paths` now guards all three scan sites. Proven by
+  planting a real violation in a renamed target: unguarded the gate passes,
+  guarded it fails and names the path. Gate exits 0 after the change.
+- `CONTRIBUTING.md` no longer calls the boundary gate "GamaCore import bans".
+- The WASM no-host `-1` path now has coverage in both export tiers
+  (`99890ed`, WebAssembly job green), so that residual is closed.
+- A `complete` issued from `connect` is now pinned by a mutation-proven
+  regression test, so that residual is closed.
+- Closed 2026-09-08: ADR 0013 (Accepted) promotes `flexPriority(along:)` to
+  public and deprecates the axis-agnostic property, the last of the five
+  2026-09-06 residuals. Outcome: every scan in `check-boundaries.sh` fails
+  closed on a renamed or shadowed path and is pinned by a harness the gate
+  runs itself; the WASM no-host path and a completion declared from
+  `connect` each have a regression test; the public flex API says what the
+  solver does. Remaining manual and credential-gated acceptance is tracked
+  in [`todo.md`](todo.md) as separate evidence layers, not as this goal.
+
+## Delivered foundation
+
+The current `main` line includes the Swift 6.5-dev umbrella, scene-first core,
+shared frame pump, non-Sendable host state, noncopyable hosts and terminal
+ownership, per-surface identity-keyed `@Reactive` state, strict memory safety
+on every shipped library and macro target, explicit import access levels on
+every Swift target, Tier-1 plugins, Apple shell, TUI, Wasm, C/Android
+embedding, MLIR, packaging,
+accessibility derivation, deterministic performance evidence, and full public
+DocC coverage.
+
+The source of truth for what is proven is
+[`docs/Capabilities.md`](../docs/Capabilities.md). The full local driver has 15
+fail-closed gates in `scripts/check.sh` as of 2026-09-06 — read the `gates=(…)`
+array rather than this sentence; hosted proof is the six-job "Gama acceptance"
+workflow for the exact pushed commit. Manual UI, accessibility,
+credentialed release, physical-device, and physical-board acceptance remain
+separate evidence layers.
+
+## Ledger rules
+
+- Keep only current work here and in `todo.md`; Git and dated design records
+  retain completed history.
+- Do not copy volatile test counts, artifact sizes, run IDs, or branch names
+  into this ledger unless they are required to explain an unresolved blocker.
+- When a claim changes, update the capability guide or owning design record
+  once and link to it instead of duplicating the prose.
+- Never promote local, hosted, generated-artifact, or manual evidence into a
+  stronger layer.

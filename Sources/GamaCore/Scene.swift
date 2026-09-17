@@ -364,6 +364,8 @@ private final class ScenePayloadBox<Value: Hashable & Sendable>: @unchecked Send
     init(_ value: Value) { self.value = value }
 }
 
+// `@safe`: the raw pointer never escapes; `value(as:)` owns the allocate/initialize/move/free cycle.
+@safe
 package struct ScenePayload: @unchecked Sendable, Hashable {
     package let typeID: ObjectIdentifier
     private let hashCode: Int
@@ -376,8 +378,11 @@ package struct ScenePayload: @unchecked Sendable, Hashable {
         value.hash(into: &hasher)
         self.typeID = ObjectIdentifier(Value.self)
         self.hashCode = hasher.finalize()
-        self.copyValue = { output in
-            output.assumingMemoryBound(to: Value.self).initialize(to: box.value)
+        unsafe self.copyValue = { output in
+            // Sound: `value(as:)` only calls this after checking
+            // `typeID == ObjectIdentifier(Value.self)`, so `output` is
+            // uninitialized storage of exactly this `Value`.
+            unsafe output.assumingMemoryBound(to: Value.self).initialize(to: box.value)
         }
         self.equalsValue = { other in
             other.value(as: Value.self) == box.value
@@ -387,9 +392,9 @@ package struct ScenePayload: @unchecked Sendable, Hashable {
     package func value<Value: Hashable & Sendable>(as type: Value.Type) -> Value? {
         guard typeID == ObjectIdentifier(Value.self) else { return nil }
         let output = UnsafeMutablePointer<Value>.allocate(capacity: 1)
-        copyValue(UnsafeMutableRawPointer(output))
-        let value = output.move()
-        output.deallocate()
+        unsafe copyValue(UnsafeMutableRawPointer(output))
+        let value = unsafe output.move()
+        unsafe output.deallocate()
         return value
     }
 
@@ -485,7 +490,7 @@ public struct WindowContextReader<Content: View>: View {
 
 // MARK: - Package-private scene compilation
 
-package struct CompiledSceneDescriptor: @unchecked Sendable {
+package struct CompiledSceneDescriptor {
     package let id: SceneID
     package let role: SceneRole
     package let launchBehavior: SceneLaunchBehavior
@@ -497,7 +502,7 @@ package struct CompiledSceneDescriptor: @unchecked Sendable {
     package var isGroup: Bool { payloadType != nil }
 }
 
-package struct CompiledSceneGraph: @unchecked Sendable {
+package struct CompiledSceneGraph {
     package let scenes: [CompiledSceneDescriptor]
     package let primaryIndex: Int
     package let handleLifecycle: (LifecycleEvent) -> Void
@@ -539,7 +544,7 @@ package struct CompiledSceneGraph: @unchecked Sendable {
     }
 }
 
-package struct SceneSurface: @unchecked Sendable {
+package struct SceneSurface {
     package let sceneID: SceneID
     package let instanceID: WindowInstanceID
     package let windowContext: WindowContext

@@ -25,13 +25,14 @@ runtime symbol gate and are not accepted.
 
 ## Evidence boundaries
 
-Embedded Swift is experimental. Gama's Embedded claim means the unchanged
+Embedded Swift is experimental. The Embedded row in `docs/Capabilities.md`
+is currently Unverified; when that row is proven it means the unchanged
 portable core compiled and linked as a whole-module artifact with recorded
-size; it is not hardware certification. `GamaMLIR` emits deterministic textual
+size, not hardware certification. `GamaMLIR` emits deterministic textual
 generic-form custom operations that parse with unregistered dialects enabled;
 it is not a Swift compiler frontend.
 
-Cross-compilation does not prove a native runtime. Android has a local arm64
-emulator input/frame proof but still requires its hosted x86_64 emulator job.
-Windows console behavior becomes current only after its native hosted job
-passes. The evidence table in `docs/Capabilities.md` is the status authority.
+Cross-compilation does not prove a native runtime. The Android/JNI and
+Windows console rows in `docs/Capabilities.md` are currently Unverified;
+hosted emulator and native console jobs remain remaining proof. That table
+is the status authority.

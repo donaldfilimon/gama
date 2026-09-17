@@ -1,0 +1,25 @@
+# Embedded artifact size pin.
+#
+# ADR 0009 cites "the Embedded size gate not regressing" as the evidence for
+# its zero-runtime-cost claim, and ADR 0011 records the per-host identity
+# store's +47,276 bytes as a deliberate cost. Until 2026-09-06 no such gate
+# existed: check-embedded.sh computed the byte count, printed it, and asserted
+# nothing at all, so an artifact could double and the gate still said OK.
+#
+# The count is specific to one compiler and one source tree. This pin names the
+# compiler revision check-embedded.sh already requires unconditionally, so a
+# snapshot bump fails here first and forces a deliberate re-measure rather than
+# a silently rebased number.
+#
+# The tolerance is two-sided on purpose. An artifact that grows past it is the
+# regression ADR 0009 cares about; one that shrinks past it is either a real
+# win worth recording or a sign the link produced something other than the
+# whole module, and both deserve a human deciding rather than a stale baseline
+# quietly absorbing them.
+#
+# Grammar is deliberately tiny: blank lines, `#` comments, and key = "value".
+# Anything else fails the read, for the same reason scripts/lib/manifest.sh is
+# strict — this is a pin, not a configuration language.
+revision = "95c5142e84b82c1"
+bytes = "641464"
+tolerance_percent = "2"

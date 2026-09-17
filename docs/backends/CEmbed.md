@@ -1,8 +1,8 @@
 # C embedding backend (GamaEmbed)
 
-Status: Locally proven (independent-context and ABI-addition suites, plus
-the pure-C consumer gate) and hosted proven on the Linux job
-(`check-c-abi.sh`). The static library folds the versioned entry points
+Status: Unverified. Capability status lives in
+[`Capabilities.md`](../Capabilities.md); this guide does not restate
+hosted or local proof. The static library folds the versioned entry points
 into the host binary.
 
 ## Contract

@@ -3,7 +3,7 @@
 //  (Terminal.swift owns the platform split). Paints via the shared
 //  CellPainter, then flushes the differential ANSI diff.
 
-import GamaCore
+public import GamaCore
 import GamaDraw
 
 /// The terminal `Renderer`: owns a `RawModeSession` and a double-buffered
@@ -18,6 +18,7 @@ public final class TUIRenderer: Renderer {
 
     private var session: RawModeSession?
     private var buffer: CellBuffer
+    private var presenter = AnsiPresenter()
     private var began = false
 
     /// Creates a renderer that has not yet touched the terminal — call
@@ -66,7 +67,7 @@ public final class TUIRenderer: Renderer {
         if current != buffer.size { buffer.resize(current) }
         buffer.clearBack()
         CellPainter.paint(root, into: &buffer)
-        let ansi = buffer.presentDiff()
+        let ansi = presenter.present(&buffer)
         if !ansi.isEmpty { try session?.write(ansi) }
     }
 

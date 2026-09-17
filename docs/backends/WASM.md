@@ -1,10 +1,9 @@
 # Browser backend (GamaWASM)
 
-Status: Locally runtime proven with the pinned WASM SDK (Node event/frame
-smoke plus headless-Chrome DOM/key/pointer/resize/rAF/accessibility smoke)
-and hosted proven on the WebAssembly job. The HTML serializer additionally
-compiles and unit-tests on every host platform (it lives outside
-`#if arch(wasm32)`).
+Status: Unverified. Capability status lives in
+[`Capabilities.md`](../Capabilities.md); this guide does not restate
+hosted or local proof. The HTML serializer additionally compiles and
+unit-tests on every host platform (it lives outside `#if arch(wasm32)`).
 
 ## Hosting model
 
@@ -14,6 +13,48 @@ exports. Frames render as an HTML grid of styled spans (one `<pre
 class="gama-row">` per row) delivered to JS, which assigns it to the mount
 point and asserts `role="application"` plus an `aria-label` (the
 accessibility contract the browser smoke checks).
+
+## Isolation and lifecycle
+
+Before installation, every v2 event/frame export fails closed with `-1`; the
+v1 compatibility exports remain no-ops because their published signatures
+cannot return status. `GamaWeb.install(app:)` transfers the app region into a
+single host. A successful reinstall replaces that host wholesale, releasing
+its subscriptions, frame state, and component state; a construction failure
+leaves the previously installed host in place.
+
+The gate also builds `Tests/Fixtures/WASMFailedInstall`, whose first and only
+install throws `SceneConfigurationError.noPrimaryScene`. After WASI startup,
+the Node smoke requires the fixture's exact-error marker and checks both
+export tiers: v1 returns void with no callbacks; v2 frame, key, pointer, and
+resize return `-1` with no callbacks. Unknown key codes and invalid Unicode
+scalars also return `-1` in this state, while the installed demo separately
+requires `-2` for those inputs. This fixture does not exercise reinstall or
+recovery after failure.
+
+`gama-web-demo` declares its inline counter with a direct `ReactiveSlot`,
+keeping the host macro plugin out of the wasm32 dependency graph. Its
+`render(in:)` binds slot zero at the component's identity before rendering
+the body under `context.child(0)`, matching the `@Component`/`@Reactive`
+expansion and retaining the host's per-surface store (ADR 0011).
+`WebDemoStateTests` exercises the same demo on the host, checking inline
+rebuilds and independent inline or hoisted `WindowGroup` surfaces.
+`scripts/check-wasm.sh` proves the direct-slot runtime path twice: the Node smoke
+sends Enter through `gama_web_v1_key` and requires an exact `0` to `1`
+transition, while the browser smoke dispatches real DOM events and requires
+`state=0->0->1`. The middle zero proves that Tab, pointer, and resize coverage
+did not activate the counter; the final one is attributable to Enter.
+These smokes prove WASM state behavior; macro expansion is covered separately
+by the host-side macro tests.
+
+The current WASI reactor is single-threaded. That is the complete
+justification for the one `nonisolated(unsafe)` declaration: the private
+installed-host slot in `WASMHost.swift`. `scripts/check-wasm.sh` scans Swift
+declarations while ignoring comments and string prose, mutation-tests the
+scanner, and fails unless there is exactly one such declaration and it is that
+exact slot. Threaded WebAssembly, multiple simultaneous hosts, or another
+unsafe global requires a new isolation and versioned ABI design; the existing
+exception does not authorize it.
 
 ## Export/import contract
 
@@ -29,10 +70,15 @@ Swift exports (called from `WebHost/gama.js`):
 The v1 exports retain their original void-returning WebAssembly signatures.
 Status-reporting hosts may call the argument-compatible `gama_web_v2_*`
 family instead: it returns `0` when accepted, `-1` when no app host is
-installed, and `-2` from `gama_web_v2_key` for an invalid key code. Changing
+installed, and `-2` from `gama_web_v2_key` for an invalid key code. The
+installed-host check precedes argument validation, so an invalid key code with
+no host installed returns `-1`, not `-2`; `-2` reports only that an otherwise
+deliverable event carried a code the backend cannot translate. Changing
 the result type of a published symbol is an ABI break even when JavaScript
 callers ignore the result, so new result contracts require a new symbol
-family.
+family. `GamaWebDemo` and the failed-install fixture use the same eight exports as
+WASI-conditioned target-local linker settings; build commands do not apply
+reactor exports to host tools.
 
 JS imports the module provides to Swift (module `"gama"`): `setHTML`,
 `setTitle`, `requestFrame`.
@@ -45,4 +91,10 @@ open it. It is a UI demonstration host, not a general WASI runtime — it
 implements only the reactor's process-metadata/clock/random/output imports
 and returns explicit WASI errors otherwise (no filesystem). Build via
 `scripts/check-wasm.sh` (requires the pinned WASM SDK from
-`Toolchains.toml`).
+`Toolchains.toml`). The gate first proves the single-private-unsafe-slot source
+policy, then preserves the existing compile, symbol, Node-runtime, and browser
+smokes. `scripts/bundle-web.sh` assembles those host files with
+`gama-web-demo.wasm` and runs the browser-runtime smoke against the assembled
+directory. `.github/workflows/pages.yml` repeats that exact pinned build and
+publishes the verified directory from `main`; Pages deployment and a live
+browser load are separate hosted evidence from the acceptance artifact upload.

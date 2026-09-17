@@ -3,7 +3,7 @@ schema = 1
 # Single pinned compiler for every gate except the xcodebuild platform gates
 # (which must use Xcode's integrated 6.4 toolchain) and the Windows job (see
 # [windows_exception]). Selected locally by `.swift-version`.
-# Re-verified 2026-08-26: swift.org's newest complete main-development set
+# Verified 2026-08-26: swift.org's newest complete main-development set
 # (macOS pkg, ubuntu24.04 tarball, static-linux / wasm / android SDKs) is
 # still 2026-08-21-a; no 08-22..08-26 main snapshot tag exists. Windows main
 # snapshots remain 2026-05-20-a, so [windows_exception] stays on 6.4.x.
@@ -33,8 +33,8 @@ sha256 = "855d0f63319043e84c8a293ee855703a9b9aa6c18686ecb88f8ee02592e879f0"
 [xcode_default]
 channel = "XcodeDefault"
 swift = "6.4"
-swiftlang = "6.4.0.30.4"
-clang = "2100.3.30.1"
+swiftlang = "6.4.0.33.1"
+clang = "2100.3.33.1"
 command = "/usr/bin/xcrun --toolchain default swift"
 used_by = "scripts/check-apple-platforms.sh"
 

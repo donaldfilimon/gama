@@ -118,6 +118,9 @@ private func runAppleDemoSmoke() throws(SceneConfigurationError) -> Never {
 
 if CommandLine.arguments.dropFirst().contains("--smoke") {
     try runAppleDemoSmoke()
+} else if CommandLine.arguments.dropFirst().contains("--scenario") {
+    // Deterministic, non-interactive profiling scenario (Scenario.swift).
+    try runAppleHostScenario()
 } else {
     try GamaShell.run(AppleDemoApp.self)
 }

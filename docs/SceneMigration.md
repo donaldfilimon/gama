@@ -82,16 +82,23 @@ pump's size and invalidates the host **before** the event is forwarded.
 If you wrote code that relied on reading the old extent during a resize on
 TUI or AppleUI, it now sees the new one:
 
+`.resize` is handled by `FrameHost` and never reaches
+`App.handleLifecycle` — `LifecycleEvent` carries no resize case and no
+extent. The extent a backend lays out against is the pump's:
+
 ```swift
-// Before (TUI/AppleUI): `size` was still the pre-resize extent here.
-// After (everywhere):   `size` is already the new extent.
-func handleLifecycle(_ event: LifecycleEvent) { /* observes new size */ }
+// Before (TUI/AppleUI): the pump still reported the pre-resize extent
+//                       while the event was being forwarded.
+// After (everywhere):   `pump.size` is already the new extent, and the
+//                       host has already been invalidated.
+pump.handle(.resize(renderer.size))
+_ = pump.size  // the new extent, before any view code runs
 ```
 
 Embed and WASM are unaffected — they already behaved this way. See
 [ADR 0008](adr/0008-one-pump-eager-resize.md).
 
-## `App`, `View`, and `Scene` are no longer `Sendable` (2026-08-27)
+## Host-confined declarations are no longer `Sendable` (2026-08-27)
 
 `Signal` is now non-`Sendable`, so every type that transitively owns one
 drops the `Sendable` claim it could only satisfy because `Signal` laundered
@@ -102,7 +109,73 @@ never was safe, it was merely unchecked.
 Host services (log, clock, filesystem), the window command channel, and
 scene payload values remain `Sendable`; those genuinely cross contexts.
 
+`PluginRuntime` follows the same rule and `PluginRuntime.install` now takes a
+`sending` plugin. App ownership transfer is explicit at the long-lived Apple,
+WASM, and C-embed install boundaries; the synchronous `AppRuntime`,
+`FrameHost`, and scene compiler remain same-executor plumbing.
+
 See [ADR 0009](adr/0009-signal-is-not-sendable.md), which also records a
 measured correction: a retroactive `@unchecked Sendable` conformance still
 compiles with a warning, so the confinement is loudly enforced, not
 impossible to defeat.
+
+## `@Reactive` state is per-surface (2026-09-04)
+
+`@Reactive var x: T` now expands to a `ReactiveSlot<T>` peer instead of a
+`Signal<T>`, and `@Component` synthesizes `render(in:)` to bind every slot to
+the `FrameHost` that owns the build, keyed by the node's structural identity.
+A component built inline in a scene closure is still a fresh value every
+frame, but its state now lives in the host and survives the rebuild. The
+hoisting workaround is no longer required:
+
+```swift
+// Before: hoisted so the instance — and the Signal it stored — outlived
+//         the per-frame closure.
+struct CounterApp: App {
+    private let panel = CounterPanel()
+    var scenes: some Scene {
+        Window("Counter", id: "main", role: .primary) { panel }
+    }
+}
+
+// After: inline is correct; state is host-owned per surface.
+struct CounterApp: App {
+    var scenes: some Scene {
+        Window("Counter", id: "main", role: .primary) { CounterPanel() }
+    }
+}
+```
+
+Hoisting still compiles and still works, with one semantic flip: a hoisted
+`@Reactive` component behind a `WindowGroup` used to share one instance's
+state across every window; it is now per-window, and the instance's
+pre-render value only seeds each surface's initial value. If you relied on
+that sharing, move the value to a `Signal` the `App` owns and observe it.
+The rule: `@Reactive` is per-surface; a `Signal` on the `App` is shared.
+
+Two new compile errors replace silent local state:
+
+- `@Reactive` outside a struct marked `@Component` (including in a class):
+  `@Reactive requires a struct marked @Component; elsewhere its state never
+  binds to a host`.
+- A hand-written `render(in:)` in a `@Component` that has `@Reactive`
+  properties: `@Component synthesizes render(in:) to bind @Reactive state;
+  remove this render(in:) or the @Reactive properties`.
+
+Raw `Signal` stored properties inside a component are unsupported; convert
+them to `@Reactive` (the demo converted its `name` and `notifications`
+signals this way). The generated `_name` peer is a `ReactiveSlot`, not a
+`Signal`: `_name.binding()` keeps working for `TextField`/`Toggle`, and any
+place that passed `_name` as a `Signal` becomes `_name.signal`. Bound
+`@Reactive` state also invalidates the host on out-of-band writes without an
+`observe()` call; raw signals still need one.
+
+Structural keying means a branch flip evicts the old subtree, while positional
+`ForEach` state follows indices through a reorder. Use `IdentifiedForEach` or
+`.stateScope(_:)` when state must follow an element. `FrameHost.transientStateIDs`
+reports storage replaced at the same key; it does not detect positional state
+being reused for a different element. Host-less rendering, including
+`gama-demo --emit-mlir`, keeps instance-local storage and emits identical
+output.
+
+See [ADR 0011](adr/0011-reactive-state-is-per-surface.md).

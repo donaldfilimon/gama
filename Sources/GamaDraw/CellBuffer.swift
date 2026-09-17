@@ -3,7 +3,7 @@
 //  into. Terminals flush `presentDiff()` ANSI; GUI/DOM/embed hosts walk
 //  `forEachRun` to vectorize cells into draw commands. Platform-free.
 
-import GamaCore
+public import GamaCore
 
 /// One grid cell: a character, its style, and wide-glyph bookkeeping.
 public struct Cell: Hashable, Sendable {
@@ -140,6 +140,41 @@ public struct CellBuffer: Hashable, Sendable {
         }
     }
 
+    // MARK: Row inspection
+
+    /// True when any cell in row `y` differs from the presented frame, or
+    /// when a full repaint is pending. Out-of-range rows report `false`.
+    ///
+    /// This is the same comparison ``presentDiff()`` makes per cell, raised
+    /// to a whole row so a presenter that emits lines rather than cursor
+    /// movements can ask the question it actually has.
+    public func rowChanged(_ y: Int) -> Bool {
+        guard y >= 0, y < size.height else { return false }
+        if forceFull { return true }
+        let start = y * size.width
+        for x in 0..<size.width where back[start + x] != front[start + x] {
+            return true
+        }
+        return false
+    }
+
+    /// The text of row `y` in the pending frame, with continuation cells of
+    /// double-width characters skipped and trailing blanks trimmed.
+    /// Out-of-range rows return an empty string.
+    public func rowText(_ y: Int) -> String {
+        guard y >= 0, y < size.height else { return "" }
+        let start = y * size.width
+        var text = ""
+        text.reserveCapacity(size.width)
+        for x in 0..<size.width {
+            let cell = back[start + x]
+            if cell.isContinuation { continue }
+            text.append(cell.character)
+        }
+        while let last = text.last, last == " " { text.removeLast() }
+        return text
+    }
+
     // MARK: Diff → ANSI
 
     /// Emit minimal escape codes reconciling front→back; swaps buffers.
@@ -212,16 +247,27 @@ public struct CellBuffer: Hashable, Sendable {
         _ body: (_ row: Int, _ col: Int, _ gridWidth: Int, _ text: String, _ style: TextStyle) -> Void
     ) {
         for y in 0..<size.height {
+            let rowBase = y * size.width
             var x = 0
             while x < size.width {
-                let start = back[y * size.width + x]
-                var text = start.isContinuation ? "" : String(start.character)
+                let start = back[rowBase + x]
+                // Find the run's extent before building its text. The break
+                // condition only ever looked at `style`, so splitting the two
+                // passes cannot change where a run ends — but it lets the
+                // string reserve its final capacity once instead of growing
+                // as it appends, which is the measured cost here.
                 var end = x + 1
-                while end < size.width {
-                    let c = back[y * size.width + end]
-                    if c.style != start.style { break }
-                    if !c.isContinuation { text.append(c.character) }
+                while end < size.width, back[rowBase + end].style == start.style {
                     end += 1
+                }
+                var text = ""
+                text.reserveCapacity(end - x)
+                if !start.isContinuation { text.append(start.character) }
+                var scan = x + 1
+                while scan < end {
+                    let c = back[rowBase + scan]
+                    if !c.isContinuation { text.append(c.character) }
+                    scan += 1
                 }
                 body(y, x, end - x, text, start.style)
                 x = end

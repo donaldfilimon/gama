@@ -27,7 +27,7 @@ API is documented here and in `docs/backends/WASM.md` (export/import
 tables, the `WebHost/` static site, and the `scripts/check-wasm.sh` build
 instructions).
 
-Per the evidence ledger (`docs/Capabilities.md`), the browser backend is
-locally runtime proven with the pinned WASM SDK (Node event/frame smoke
-plus headless-Chrome DOM/key/pointer/resize/rAF/accessibility smoke) and
-hosted proven on the WebAssembly job.
+Capability status for this backend lives in `docs/Capabilities.md` and is
+currently Unverified against merge commit `98c150d`; later reactor and
+smoke-driver changes have not been re-proven by a required job. This
+catalog does not restate hosted proof.

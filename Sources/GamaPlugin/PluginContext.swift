@@ -4,7 +4,7 @@
 //  internal initializers, so they are unforgeable outside this module:
 //  the only way to hold a LogAccess is to have been granted `.log`.
 
-import GamaCore
+public import GamaCore
 
 /// Unforgeable handle for the granted ``Capability/log`` capability.
 public struct LogAccess: Sendable {

@@ -42,6 +42,8 @@ pre-release migration from `App.content` and typed `WindowGroup` examples.
 | --- | --- |
 | `Gama` | Compatibility umbrella (`@_exported import GamaCore`) |
 | `GamaCore` | Scenes, views, identity, state, layout, events, and `FrameHost` |
+| `GamaPlugin` | Stdlib-only Tier-1 static plugin and capability model |
+| `GamaPlatformServices` | Foundation-backed `HostServices` implementations; applications, demos, examples, and tests only |
 | `GamaMacros` | Optional `@Component`, `@Reactive`, and `#rgb` sugar |
 | `GamaDraw` | Cell buffer, painter, draw list, and versioned binary codec |
 | `GamaTUI` | POSIX and Windows terminal backend |
@@ -56,6 +58,8 @@ pre-release migration from `App.content` and typed `WindowGroup` examples.
 | `gama-web-demo` | Browser reactor demo served from `WebHost/` |
 | `gama-apple-demo` | macOS scene/window lifecycle showcase |
 | `gama-windows-console-smoke` | Windows console acceptance binary |
+| `gama-leak-check` | Harness-free lifecycle probe so Linux LeakSanitizer observes Gama without the XCTest harness |
+| `gama-bench` | Deterministic frame-path measurement harness; reports numbers, asserts no threshold, and is not a gate |
 
 ## Architecture
 
@@ -102,11 +106,24 @@ decision records under `docs/adr/`, and
 Runnable samples live in `Examples/` (C, Android/JNI, AppleHost, Embedded)
 and `WebHost/` (browser).
 
+For a guided first build and application, start with
+[`docs/GettingStarted.md`](docs/GettingStarted.md). The broader reader paths
+are indexed in [`docs/README.md`](docs/README.md): architecture, state and
+identity, runnable examples, Apple integration, verification boundaries, and
+troubleshooting.
+
 Run the terminal demo with:
 
 ```bash
 unset TOOLCHAINS
 swiftly run swift run gama-demo
+```
+
+For an automated real-TTY focus-and-activation smoke with external scratch
+paths:
+
+```bash
+.agents/skills/run-gama/driver.sh smoke
 ```
 
 Run the macOS multi-window demo with:
@@ -136,3 +153,5 @@ The C declarations and ownership rules live in
 Implementation presence is not platform proof. A backend is Current only when
 its declared compile/runtime gate passes. Embedded Swift is experimental, and
 `GamaMLIR` emits a textual custom dialect; it is not a Swift MLIR frontend.
+Local, hosted, artifact, deployment, and manual proof are separate layers;
+[`docs/Verification.md`](docs/Verification.md) defines the exact boundary.

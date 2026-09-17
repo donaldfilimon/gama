@@ -9,12 +9,17 @@ import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 
+private const val ACCEPTANCE_EXTRA = "com.gama.example.ACCEPTANCE"
+
 class MainActivity : Activity() {
     private lateinit var host: GamaView
 
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
         host = GamaView()
+        if (intent.getBooleanExtra(ACCEPTANCE_EXTRA, false)) {
+            host.runAcceptanceProbe()
+        }
         setContentView(host)
     }
 
@@ -33,17 +38,32 @@ class MainActivity : Activity() {
 
         init {
             check(native.resize(40, 12) == 0)
-            val before = requireNotNull(native.frame())
+            frame = DrawListDecoder.decode(requireNotNull(native.frame()))
+            contentDescription = "Gama Android"
+            importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
+        }
+
+        fun runAcceptanceProbe() {
+            check(frame.columns == 40)
+            val beforeTapLabels = tapLabels(frame)
+            check(beforeTapLabels == listOf("Tapped 0")) {
+                "initial tap labels were $beforeTapLabels, expected [Tapped 0]"
+            }
             check(native.pointer(1, 2, true) == 0)
             val after = requireNotNull(native.frame())
             frame = DrawListDecoder.decode(after)
-            check(DrawListDecoder.decode(before).columns == 40)
-            check(!before.contentEquals(after)) { "pointer action did not mutate the rendered frame" }
-            check(frame.commands.filterIsInstance<DrawListDecoder.Text>().any { it.value == "Tapped 1" })
-            contentDescription = "GAMA_OK ${frame.columns} ${frame.rows} CHANGED"
-            importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
+            val afterTapLabels = tapLabels(frame)
+            check(afterTapLabels == listOf("Tapped 1")) {
+                "post-input tap labels were $afterTapLabels, expected [Tapped 1]"
+            }
+            contentDescription = "GAMA_OK ${frame.columns} ${frame.rows} TAPPED_0_TO_1"
             Log.i("GamaAcceptance", contentDescription.toString())
         }
+
+        private fun tapLabels(candidate: DrawListDecoder.Frame): List<String> = candidate.commands
+            .filterIsInstance<DrawListDecoder.Text>()
+            .map { it.value }
+            .filter { it.startsWith("Tapped ") }
 
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)

@@ -3,9 +3,9 @@
 
 import SwiftCompilerPlugin
 import SwiftDiagnostics
-import SwiftSyntax
+public import SwiftSyntax
 import SwiftSyntaxBuilder
-import SwiftSyntaxMacros
+public import SwiftSyntaxMacros
 
 @main
 struct GamaPlugin: CompilerPlugin {
@@ -48,23 +48,21 @@ private func removingAttribute(
     _ node: AttributeSyntax,
     from attributes: AttributeListSyntax
 ) -> AttributeListSyntax {
-    AttributeListSyntax(
-        attributes.filter { element in
-            guard case .attribute(let attribute) = element else { return true }
-            return attribute != node
-        }
-    )
+    attributes.filter { element in
+        guard case .attribute(let attribute) = element else { return true }
+        return attribute != node
+    }
 }
 
 // MARK: - @Component
 
 /// `@Component`: synthesizes a memberwise initializer over stored
-/// properties (member role) and adds the missing `GamaCore.View`
+/// properties (member role) and adds the missing `GamaCore::View`
 /// conformance (extension role). Structs only.
 public struct ComponentMacro: MemberMacro, ExtensionMacro {
-    // Extension role: add `: GamaCore.View` when the conformance is
+    // Extension role: add `: GamaCore::View` when the conformance is
     // missing (the compiler passes only missing protocols in).
-    /// Extension role: adds `: GamaCore.View` when the compiler reports
+    /// Extension role: adds `: GamaCore::View` when the compiler reports
     /// the conformance missing.
     public static func expansion(
         of node: AttributeSyntax,
@@ -74,7 +72,7 @@ public struct ComponentMacro: MemberMacro, ExtensionMacro {
         in context: some MacroExpansionContext
     ) throws -> [ExtensionDeclSyntax] {
         guard declaration.is(StructDeclSyntax.self), !protocols.isEmpty else { return [] }
-        let ext: DeclSyntax = "extension \(type.trimmed): GamaCore.View {}"
+        let ext: DeclSyntax = "extension \(type.trimmed): GamaCore::View {}"
         guard let extDecl = ext.as(ExtensionDeclSyntax.self) else { return [] }
         return [extDecl]
     }
@@ -121,8 +119,16 @@ public struct ComponentMacro: MemberMacro, ExtensionMacro {
 
         var params: [String] = []
         var assigns: [String] = []
+        var reactiveNames: [String] = []
+        var handWrittenRender: FunctionDeclSyntax? = nil
 
         for member in declaration.memberBlock.members {
+            if let function = member.decl.as(FunctionDeclSyntax.self),
+                function.name.text == "render",
+                function.signature.parameterClause.parameters.first?.firstName.text == "in"
+            {
+                handWrittenRender = function
+            }
             guard let varDecl = member.decl.as(VariableDeclSyntax.self) else { continue }
             // Skip computed properties (`var body` etc.) and static members.
             let isStatic = varDecl.modifiers.contains { $0.name.tokenKind == .keyword(.static) }
@@ -139,6 +145,7 @@ public struct ComponentMacro: MemberMacro, ExtensionMacro {
                 else { continue }
 
                 let name = pattern.identifier.text
+                if isReactive { reactiveNames.append(name) }
                 // `let x = fixed` — already initialized constants are not
                 // init parameters.
                 let isLet = varDecl.bindingSpecifier.tokenKind == .keyword(.let)
@@ -174,15 +181,72 @@ public struct ComponentMacro: MemberMacro, ExtensionMacro {
         let initDecl: DeclSyntax = """
             \(raw: access)init(\(raw: params.joined(separator: ", "))) {\(raw: body)}
             """
-        return [initDecl]
+        guard !reactiveNames.isEmpty else { return [initDecl] }
+
+        // `@Reactive` state binds to the host inside the synthesized
+        // `render(in:)`. A hand-written one would silently skip the binding
+        // and keep every slot on instance-local storage — the exact loss this
+        // synthesis exists to prevent — so it is an error, not a fallback.
+        if let handWrittenRender {
+            context.diagnose(
+                Diagnostic(
+                    node: Syntax(handWrittenRender),
+                    message: GamaDiagnostic(
+                        "@Component synthesizes render(in:) to bind @Reactive state; remove this render(in:) or the @Reactive properties",
+                        id: "component.render-collision"
+                    )
+                )
+            )
+            return [initDecl]
+        }
+        let binds = reactiveNames.enumerated().map { index, name in
+            "_\(name)._bind(in: context, slot: \(index))"
+        }
+        let renderDecl: DeclSyntax = """
+            \(raw: access)func render(in context: GamaCore::BuildContext) -> GamaCore::RenderNode {
+                \(raw: binds.joined(separator: "\n    "))
+                return body.render(in: context.child(0))
+            }
+            """
+        return [initDecl, renderDecl]
     }
 }
 
 // MARK: - @Reactive
 
-/// `@Reactive`: backs a stored `var` with a `GamaCore.Signal` peer and
-/// accessor set, so reads/writes route through host-observable state.
+/// `@Reactive`: backs a stored `var` with a `GamaCore::ReactiveSlot` peer
+/// and accessor set. The slot binds to the owning host inside the
+/// `render(in:)` that `@Component` synthesizes, so reads and writes route
+/// through host-owned, per-surface state.
 public struct ReactiveMacro: PeerMacro, AccessorMacro {
+    /// The slot only binds through `@Component`'s synthesized `render(in:)`.
+    /// Anywhere else it would silently keep instance-local storage, which
+    /// is the failure this design removes — so the enclosing declaration
+    /// must be a struct carrying `@Component`. When the expansion context
+    /// carries no lexical information the check is skipped, never guessed.
+    private static func diagnoseEnclosingDeclaration(
+        node: AttributeSyntax,
+        context: some MacroExpansionContext
+    ) {
+        guard let enclosing = context.lexicalContext.first else { return }
+        if let structDecl = enclosing.as(StructDeclSyntax.self) {
+            let hasComponent = structDecl.attributes.contains { element in
+                guard case .attribute(let attribute) = element else { return false }
+                return attribute.attributeName.trimmedDescription == "Component"
+            }
+            if hasComponent { return }
+        }
+        context.diagnose(
+            Diagnostic(
+                node: Syntax(node),
+                message: GamaDiagnostic(
+                    "@Reactive requires a struct marked @Component; elsewhere its state never binds to a host",
+                    id: "reactive.requires-component"
+                )
+            )
+        )
+    }
+
     private static func binding(
         of declaration: some DeclSyntaxProtocol,
         node: AttributeSyntax,
@@ -251,8 +315,8 @@ public struct ReactiveMacro: PeerMacro, AccessorMacro {
         return (pattern.identifier.text, type)
     }
 
-    /// Peer role: emits the `_name: GamaCore.Signal<T>` storage (and owns
-    /// the diagnostics, so each error reports exactly once).
+    /// Peer role: emits the `_name: GamaCore::ReactiveSlot<T>` storage (and
+    /// owns the diagnostics, so each error reports exactly once).
     public static func expansion(
         of node: AttributeSyntax,
         providingPeersOf declaration: some DeclSyntaxProtocol,
@@ -263,13 +327,14 @@ public struct ReactiveMacro: PeerMacro, AccessorMacro {
         ) else {
             return []
         }
+        diagnoseEnclosingDeclaration(node: node, context: context)
         return [
-            "private let _\(raw: name): GamaCore.Signal<\(type.trimmed)>"
+            "private let _\(raw: name): GamaCore::ReactiveSlot<\(type.trimmed)>"
         ]
     }
 
     /// Accessor role: emits the storage-restricted `init(initialValue)`,
-    /// `get`, and `nonmutating set` over the signal.
+    /// `get`, and `nonmutating set` over the slot.
     public static func expansion(
         of node: AttributeSyntax,
         providingAccessorsOf declaration: some DeclSyntaxProtocol,
@@ -284,7 +349,7 @@ public struct ReactiveMacro: PeerMacro, AccessorMacro {
             """
             @storageRestrictions(initializes: _\(raw: name))
             init(initialValue) {
-                _\(raw: name) = GamaCore.Signal(initialValue)
+                _\(raw: name) = GamaCore::ReactiveSlot(initialValue)
             }
             """,
             "get { _\(raw: name).get() }",
@@ -299,7 +364,7 @@ public struct ReactiveMacro: PeerMacro, AccessorMacro {
 /// optional leading `#`); malformed input diagnoses and expands to
 /// `Color.default` so the expression stays recoverable.
 public struct RGBMacro: ExpressionMacro {
-    /// Parses the literal and expands to a `GamaCore.Color` constructor.
+    /// Parses the literal and expands to a `GamaCore::Color` constructor.
     public static func expansion(
         of node: some FreestandingMacroExpansionSyntax,
         in context: some MacroExpansionContext
@@ -318,7 +383,7 @@ public struct RGBMacro: ExpressionMacro {
                     )
                 )
             )
-            return "GamaCore.Color.default"
+            return "GamaCore::Color.default"
         }
 
         var hex = segment.content.text
@@ -334,7 +399,7 @@ public struct RGBMacro: ExpressionMacro {
                     )
                 )
             )
-            return "GamaCore.Color.default"
+            return "GamaCore::Color.default"
         }
 
         if hex.count == 3 {
@@ -350,6 +415,6 @@ public struct RGBMacro: ExpressionMacro {
         }
         guard bytes.count == 3 else { return fail() }
 
-        return "GamaCore.Color(r: \(raw: bytes[0]), g: \(raw: bytes[1]), b: \(raw: bytes[2]))"
+        return "GamaCore::Color(r: \(raw: bytes[0]), g: \(raw: bytes[1]), b: \(raw: bytes[2]))"
     }
 }

@@ -8,7 +8,13 @@
 //    scripts/check-wasm.sh  (product gama-web-demo; Extern is already
 //    enabled on this target). Serve WebHost/ next to the .wasm artifact.
 
-import GamaCore
+#if arch(wasm32)
+    // `GamaWeb.install(app:)` is public and generic over `App`, so the wasm32
+    // build names GamaCore types in public API; the host-side stub does not.
+    public import GamaCore
+#else
+    import GamaCore
+#endif
 import GamaDraw
 
 #if arch(wasm32)
@@ -41,6 +47,9 @@ private protocol AnyWASMHost: AnyObject {
 private final class WASMHostBox<A: App>: AnyWASMHost {
     var pump: HostPump
     var buffer: CellBuffer
+    /// This backend reads the painted back plane whole and never swaps
+    /// it, so it holds a `CellSerializer`, not a `CellPresenter`.
+    let serializer = HTMLSerializer()
 
     init(app: A, size: Size) throws(SceneConfigurationError) {
         self.pump = HostPump(host: try FrameHost(app: app), size: size)
@@ -61,10 +70,10 @@ private final class WASMHostBox<A: App>: AnyWASMHost {
         // host is still dirty, and every backend now honors it the same
         // way. Here that means one more rAF.
         let outcome = pump.advance(into: &buffer) { painted in
-            let html = HTMLSerializer.grid(from: painted)
+            let html = serializer.serialize(painted)
             let bytes = Array(html.utf8)
             bytes.withUnsafeBufferPointer { buf in
-                gama_js_setHTML(buf.baseAddress, Int32(buf.count))
+                unsafe gama_js_setHTML(buf.baseAddress, Int32(buf.count))
             }
         }
         if outcome.followUp { gama_js_requestFrame() }
@@ -80,20 +89,22 @@ public enum GamaWeb {
     private nonisolated(unsafe) static var installed: (any AnyWASMHost)?
 
     /// Install the app. Call from the module's `main` (wasi reactor runs
-    /// top-level code once at `_initialize`). A second call replaces the
-    /// previous host wholesale (its subscriptions and state are dropped).
+    /// top-level code once at `_initialize`). A successful second call replaces
+    /// the previous host wholesale (its subscriptions and state are dropped);
+    /// construction failure leaves the previous host installed. Ownership of
+    /// the app region transfers into the installed reactor host.
     public static func install<A: App>(
-        app: A,
+        app: sending A,
         columns: Int = 100,
         rows: Int = 30
     ) throws(SceneConfigurationError) {
-        installed = try WASMHostBox(app: app, size: Size(width: columns, height: rows))
+        unsafe installed = try WASMHostBox(app: app, size: Size(width: columns, height: rows))
         let title = Array("Gama".utf8)
-        title.withUnsafeBufferPointer { gama_js_setTitle($0.baseAddress, Int32($0.count)) }
+        title.withUnsafeBufferPointer { unsafe gama_js_setTitle($0.baseAddress, Int32($0.count)) }
         gama_js_requestFrame()
     }
 
-    fileprivate static var current: (any AnyWASMHost)? { installed }
+    fileprivate static var current: (any AnyWASMHost)? { unsafe installed }
 }
 
 // MARK: - Exports (called from WebHost/gama.js)
@@ -102,7 +113,11 @@ public enum GamaWeb {
 // them on whatever thread the wasm host runs. The v1 family preserves its
 // original void-returning WebAssembly signatures. The v2 family returns `0`
 // when accepted and fails closed with `-1` when no host is installed or `-2`
-// when an input code is invalid.
+// when an input code is invalid. The installed-host check runs *before* any
+// argument validation, so an invalid code with no host installed reports the
+// lifecycle failure (`-1`), not the argument failure — the fail-closed
+// contract in `docs/backends/WASM.md`, and the same precedence
+// `gama_embed_v1_key` uses in the sibling C ABI.
 
 @_cdecl("gama_web_v1_frame")
 nonisolated func gama_web_v1_frame() {
@@ -133,6 +148,12 @@ nonisolated func gama_web_v2_key(
     _ shift: Int32,
     _ ctrl: Int32
 ) -> Int32 {
+    // The lifecycle check precedes translation, so a call with no host
+    // installed reports `-1` whatever the key code is. Sits above the switch
+    // rather than merely ahead of the `-2` return — equivalent, since the
+    // switch is pure — so this reads like `gama_embed_v1_key`, where the
+    // context guard is likewise the first statement.
+    guard let host = GamaWeb.current else { return -1 }
     // code: JS KeyboardEvent mapping done host-side (see gama.js):
     //   1=up 2=down 3=left 4=right 5=enter 6=escape 7=tab 8=backspace
     //   9=delete 10=home 11=end 12=pageUp 13=pageDown 100+n=Fn
@@ -164,7 +185,6 @@ nonisolated func gama_web_v2_key(
         key = nil
     }
     guard let key else { return -2 }
-    guard let host = GamaWeb.current else { return -1 }
     host.handle(.key(key))
     return 0
 }
@@ -207,7 +227,19 @@ nonisolated func gama_web_v2_resize(_ cols: Int32, _ rows: Int32) -> Int32 {
 // Deliberately outside `#if arch(wasm32)`: pure String code with no wasm
 // dependency, so it compiles — and is unit-tested — on every host platform.
 
-enum HTMLSerializer {
+struct HTMLSerializer: CellSerializer {
+    /// Derives this backend's DOM text from the painted grid.
+    ///
+    /// Forwards to ``grid(from:)`` rather than absorbing it: the three
+    /// members stay `static` so the unqualified `css(for:)` and
+    /// `escape(_:)` calls inside `grid` keep resolving statically, and so
+    /// the existing direct-call tests keep exercising them. The instance
+    /// method exists only to satisfy ``CellSerializer``, which requires
+    /// one; this backend never swaps the buffer's planes.
+    func serialize(_ buffer: borrowing CellBuffer) -> String {
+        Self.grid(from: buffer)
+    }
+
     /// One <pre> line per row; runs of identical style collapse into one
     /// <span style="..."> — same run-merging the DrawList uses.
     static func grid(from buffer: CellBuffer) -> String {

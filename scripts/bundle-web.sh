@@ -2,13 +2,16 @@
 # Assembles the deployable wasm site: WebHost/index.html + WebHost/gama.js +
 # gama-web-demo.wasm in one directory, then verifies the assembled directory
 # with the headless-Chrome browser smoke. Build invocation matches
-# scripts/check-wasm.sh (same pinned toolchain, SDK, and export list).
+# scripts/check-wasm.sh; the executable target owns its WASI export list.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # shellcheck source=lib/manifest.sh
 source "$ROOT/scripts/lib/manifest.sh"
 SDK="${GAMA_WASM_SDK_ID:-swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a_wasm}"
-SWIFT="${GAMA_SWIFT_64:-/Users/donaldfilimon/Library/Developer/Toolchains/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a.xctoolchain/usr/bin/swift}"
+# shellcheck source=lib/toolchain.sh
+source "$ROOT/scripts/lib/toolchain.sh"
+SWIFT="${GAMA_SWIFT_64:-}"
+[[ -n "$SWIFT" ]] || SWIFT="$(gama_snapshot_swift)" || exit 1
 SCRATCH_ROOT="${GAMA_SCRATCH_ROOT:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}}"
 SCRATCH="$SCRATCH_ROOT/gama-web-bundle-swiftpm"
 DIST="${GAMA_DIST_ROOT:-/private/tmp/gama-dist}"
@@ -38,11 +41,7 @@ grep -q 'Swift version 6.5' <<<"$version" &&
   exit 1
 }
 
-"$SWIFT" build --package-path "$ROOT" --scratch-path "$SCRATCH" --swift-sdk "$SDK" --product gama-web-demo \
-  -Xlinker --export=gama_web_v1_frame \
-  -Xlinker --export=gama_web_v1_key \
-  -Xlinker --export=gama_web_v1_pointer \
-  -Xlinker --export=gama_web_v1_resize
+"$SWIFT" build --package-path "$ROOT" --scratch-path "$SCRATCH" --swift-sdk "$SDK" --product gama-web-demo
 artifact="$(find "$SCRATCH" -type f -name 'gama-web-demo.wasm' -print -quit)"
 [[ -n "$artifact" ]] || { echo "error: executable WASM artifact not produced" >&2; exit 1; }
 

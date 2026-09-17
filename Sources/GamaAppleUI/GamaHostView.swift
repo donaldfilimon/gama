@@ -11,22 +11,27 @@
 #if canImport(AppKit) || canImport(UIKit)
 
 #if canImport(AppKit)
-    import AppKit
+    public import AppKit
     /// The platform view class `GamaHostView` extends — `NSView` on macOS.
     public typealias GamaPlatformView = NSView
-    typealias PlatformFont = NSFont
+    /// The platform font class the host paints with — `NSFont` on macOS.
+    /// Package-visible so the styled-font cache test can name the type.
+    package typealias PlatformFont = NSFont
     typealias PlatformColor = NSColor
 #else
-    import UIKit
+    public import UIKit
     /// The platform view class `GamaHostView` extends — `UIView` on
     /// iOS/tvOS/visionOS.
     public typealias GamaPlatformView = UIView
-    typealias PlatformFont = UIFont
+    /// The platform font class the host paints with — `UIFont` on
+    /// iOS/tvOS/visionOS. Package-visible so the styled-font cache test
+    /// can name the type.
+    package typealias PlatformFont = UIFont
     typealias PlatformColor = UIColor
 #endif
 
-import GamaCore
-import GamaDraw
+public import GamaCore
+public import GamaDraw
 
 /// A native AppKit/UIKit view hosting one Gama surface: it pumps the surface's
 /// `FrameHost`, paints the shared `DrawList` through CoreGraphics as a
@@ -51,18 +56,113 @@ public final class GamaHostView: GamaPlatformView {
     private var tearDownSession: (@MainActor () -> Void)?
     /// Most recently rendered shared draw list, exposed read-only for host
     /// accessibility adapters, diagnostics, and runtime smoke validation.
-    public private(set) var currentDrawList = DrawList(size: Size(width: 0, height: 0))
+    public private(set) var currentDrawList = DrawList(size: Size(width: 0, height: 0)) {
+        didSet {
+            accessibilityCacheIsStale = true
+            refreshAccessibilityIfObserved()
+        }
+    }
 
-    private let font = PlatformFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+    // MARK: Accessibility cache
+    //
+    // The VoiceOver adapter derives everything from `currentDrawList`
+    // (GamaHostAccessibility.swift). Deriving it eagerly every frame would
+    // charge every host for something only an assistive-technology client
+    // reads, so the snapshot is computed lazily, cached until the next
+    // frame, and the change notification is armed only after a client has
+    // actually queried the view.
+    /// This host derives a `DrawList` from the borrowed painted grid and
+    /// never swaps the buffer's planes, exactly as `GamaEmbed` does, so it
+    /// holds a `CellSerializer`. It was excluded from the earlier
+    /// `CellPresenter` spike for reasons — an `inout` access and a swap
+    /// contract — that a `borrowing`, non-mutating protocol does not have.
+    let drawListSerializer = DrawListSerializer()
+
+    var accessibilityCacheIsStale = true
+    var cachedAccessibilitySnapshot: AccessibilitySnapshot?
+    var cachedAccessibilityElements: [GamaAccessibilityLineElement]?
+    var lastAnnouncedAccessibilitySnapshot: AccessibilitySnapshot?
+    var accessibilityHasBeenQueried = false
+
+    /// Whether an assistive-technology client has queried this host yet, and
+    /// so whether the frame path is doing any accessibility work at all.
+    /// Package-only: it exists so a test can prove the "no cost until
+    /// queried" contract, which is otherwise invisible from outside.
+    package var accessibilityIsObserved: Bool { accessibilityHasBeenQueried }
+
+    /// The snapshot most recently announced to an assistive-technology
+    /// client, or `nil` if none has been. Package-only, for the same reason
+    /// as ``accessibilityIsObserved``.
+    package var accessibilityAnnouncedSnapshot: AccessibilitySnapshot? {
+        lastAnnouncedAccessibilitySnapshot
+    }
+
+    // Font construction is not reliably inert under CoreText pressure: the
+    // same failure described below for per-command styled fonts was observed
+    // while several hosts each measured a freshly constructed base font.
+    // Platform fonts are immutable, so construct the measurement font once
+    // and share that value; mutable render and accessibility caches remain
+    // confined to each host.
+    private static let baseFont =
+        PlatformFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+    private var font: PlatformFont { Self.baseFont }
+
+    /// Identity of the immutable measurement font. Package-only so the
+    /// regression test can pin one construction across multiple hosts.
+    package var baseFontIdentifier: ObjectIdentifier { ObjectIdentifier(font) }
+
+    // MARK: Styled-font cache
+    //
+    // `styledFont(for:)` used to build a fresh `monospacedSystemFont` for
+    // every text command of every frame. Driven hard that intermittently
+    // yields a font CoreText cannot resolve: `TAttributes::ApplyFont`
+    // inserts nil into the attribute dictionary and the process aborts
+    // inside `CTLineCreateWithAttributedString`, with `draw(_:)` on the
+    // stack. Measured on branch `perf/apple-host-baseline`, whose
+    // `gama-apple-demo --scenario` harness is NOT on this branch: 15
+    // attempts at 500-2500 frames, exactly one completed, and a diagnostic
+    // build whose only change was a four-entry cache ran 5x2000 frames
+    // clean. Those runs were made there, not here -- reproducing them
+    // requires that harness, and this branch's gates prove correctness and
+    // compilation only, not the crash rate.
+    //
+    // Only two of the six `TextAttributes` bits reach font selection —
+    // `.bold` picks the weight and `.italic` adds a symbolic trait — and
+    // the point size is fixed, so masking the style down to those two bits
+    // bounds the cache at four entries for the life of the view. The miss
+    // path is the original construction verbatim, so a cached font is the
+    // same font the uncached code would have built.
+    //
+    // The class is `@MainActor`, so this is plain unsynchronized state:
+    // every reader reaches it from `draw(_:)`, which the compiler already
+    // isolates to the main actor.
+
+    /// The attribute bits that actually select a different font.
+    private static let fontDefiningAttributes: TextAttributes = [.bold, .italic]
+    /// Fonts built so far, keyed by ``fontDefiningAttributes``; at most four.
+    private var fontCache: [TextAttributes: PlatformFont] = [:]
+    /// How many fonts this view has constructed. Uncached, this grew with
+    /// every text command drawn; cached, it stops at four. Package-only so
+    /// a test can pin the contract, for the same reason as
+    /// ``accessibilityIsObserved``.
+    package private(set) var styledFontConstructionCount = 0
+    /// How many distinct fonts the cache currently retains — the bound the
+    /// same test asserts. Package-only.
+    package var styledFontCacheCount: Int { fontCache.count }
+
     private var cellSize: CGSize = .zero
+    /// Measured monospaced cell size, for the accessibility adapter's
+    /// grid-to-view rectangle conversion.
+    var accessibilityCellSize: CGSize { cellSize }
     private let defaultForeground: PlatformColor = .white
     private let defaultBackground: PlatformColor = .black
 
     // MARK: Init
 
     /// Creates a zero-frame view with `app` installed — one-step shorthand
-    /// for `init(frame:)` followed by `install(app:)`.
-    public convenience init<A: App>(app: A) throws(SceneConfigurationError) {
+    /// for `init(frame:)` followed by `install(app:)`. Ownership of `app` is
+    /// transferred into the MainActor-hosted session.
+    public convenience init<A: App>(app: sending A) throws(SceneConfigurationError) {
         self.init(frame: .zero)
         try install(app: app)
     }
@@ -105,7 +205,8 @@ public final class GamaHostView: GamaPlatformView {
     /// Attaches `app`: creates its `FrameHost` and back buffer sized to
     /// the current cell grid, wires the frame pump and event routing, and
     /// pumps the first frame. Installing again replaces the previous app.
-    public func install<A: App>(app: A) throws(SceneConfigurationError) {
+    /// Ownership of the app region transfers into this MainActor host.
+    public func install<A: App>(app: sending A) throws(SceneConfigurationError) {
         let graph = try compileSceneGraph(app)
         let surface = try graph.makePrimarySurface()
         install(surface: surface)
@@ -138,7 +239,7 @@ public final class GamaHostView: GamaPlatformView {
             let grid = self.gridSize()
             if grid != session.pump.size { session.pump.handle(.resize(grid)) }
             let outcome = session.pump.advance(into: &session.buffer) { painted in
-                self.currentDrawList = DrawList.from(painted)
+                self.currentDrawList = self.drawListSerializer.serialize(painted)
             }
             guard outcome.produced else { return }
             self.setNeedsDisplayCompat()
@@ -230,7 +331,7 @@ public final class GamaHostView: GamaPlatformView {
         /// window, so keys flow without an extra click.
         public override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            _ = window?.makeFirstResponder(self)
+            _ = unsafe window?.makeFirstResponder(self)
         }
     #else
         /// Forwards each UIKit layout pass to the host as a `.resize`
@@ -309,11 +410,24 @@ public final class GamaHostView: GamaPlatformView {
             height: CGFloat(r.size.height) * cellSize.height)
     }
 
-    private func styledFont(for style: TextStyle) -> PlatformFont {
+    /// The font for `style`, built once per distinct bold/italic
+    /// combination and reused thereafter. See the styled-font cache note
+    /// above ``fontCache`` for why per-command construction had to stop.
+    /// Package-only so the regression test can exercise it directly.
+    package func styledFont(for style: TextStyle) -> PlatformFont {
+        let key = style.attributes.intersection(Self.fontDefiningAttributes)
+        if let cached = fontCache[key] { return cached }
+        let built = makeStyledFont(for: key)
+        fontCache[key] = built
+        return built
+    }
+
+    private func makeStyledFont(for attributes: TextAttributes) -> PlatformFont {
+        styledFontConstructionCount += 1
         var weight: PlatformFont.Weight = .regular
-        if style.attributes.contains(.bold) { weight = .bold }
+        if attributes.contains(.bold) { weight = .bold }
         var f = PlatformFont.monospacedSystemFont(ofSize: font.pointSize, weight: weight)
-        if style.attributes.contains(.italic) {
+        if attributes.contains(.italic) {
             #if canImport(AppKit)
                 // NSFontDescriptor, not the legacy NSFontManager singleton.
                 let d = f.fontDescriptor.withSymbolicTraits(.italic)
@@ -334,6 +448,65 @@ public final class GamaHostView: GamaPlatformView {
                 red: CGFloat(c.r) / 255, green: CGFloat(c.g) / 255,
                 blue: CGFloat(c.b) / 255, alpha: 1)
     }
+
+    // MARK: Accessibility
+    //
+    // The host is a container, not a single element: each non-blank grid row
+    // is published as its own static-text child so VoiceOver can walk the
+    // surface line by line instead of reading it as one opaque blob. Every
+    // accessor also arms change notifications, because a query is the only
+    // reliable signal that an assistive-technology client is attached — the
+    // frame path stays free of accessibility work until then.
+
+    #if canImport(AppKit)
+        /// Reports the host as a container rather than a single element; the
+        /// readable content is its per-row children.
+        public override func isAccessibilityElement() -> Bool {
+            accessibilityHasBeenQueried = true
+            return false
+        }
+
+        /// Exposes the host as a group so assistive technologies descend
+        /// into its per-row children.
+        public override func accessibilityRole() -> NSAccessibility.Role? {
+            accessibilityHasBeenQueried = true
+            return .group
+        }
+
+        /// Names the container itself; the rendered text lives on the
+        /// children, not here.
+        public override func accessibilityLabel() -> String? {
+            accessibilityHasBeenQueried = true
+            return "Gama surface"
+        }
+
+        /// One static-text child per non-blank row of the current frame, in
+        /// top-to-bottom reading order.
+        public override func accessibilityChildren() -> [Any]? {
+            accessibilityHasBeenQueried = true
+            return accessibilityLineElements()
+        }
+    #else
+        /// Reports the host as a container rather than a single element; the
+        /// readable content is its per-row elements.
+        public override var isAccessibilityElement: Bool {
+            get {
+                accessibilityHasBeenQueried = true
+                return false
+            }
+            set { _ = newValue }
+        }
+
+        /// One static-text element per non-blank row of the current frame,
+        /// in top-to-bottom reading order.
+        public override var accessibilityElements: [Any]? {
+            get {
+                accessibilityHasBeenQueried = true
+                return accessibilityLineElements()
+            }
+            set { _ = newValue }
+        }
+    #endif
 
     // MARK: Events — macOS
 

@@ -25,6 +25,30 @@ extension TerminalProcessGlobalTests {
             #expect(terminal.decodeForTesting() == .key(.character("🙂")))
         }
 
+        @Test("a nonblocking poll preserves a split escape sequence grace period")
+        func nonblockingPollPreservesSplitEscapeGrace() throws {
+            var descriptors: [Int32] = [-1, -1]
+            try #require(pipe(&descriptors) == 0)
+            defer {
+                close(descriptors[0])
+                close(descriptors[1])
+            }
+
+            var terminal = Terminal(
+                inputFD: descriptors[0], outputFD: STDOUT_FILENO)
+            var escape = UInt8(0x1B)
+            try #require(write(descriptors[1], &escape, 1) == 1)
+            #expect(try terminal.nextEvent(timeoutMillis: 0) == nil)
+            #expect(try terminal.nextEvent(timeoutMillis: 0) == nil)
+
+            var suffix = [UInt8(ascii: "["), UInt8(ascii: "A")]
+            let written = suffix.withUnsafeMutableBytes { bytes in
+                write(descriptors[1], bytes.baseAddress, bytes.count)
+            }
+            try #require(written == suffix.count)
+            #expect(try terminal.nextEvent(timeoutMillis: 0) == .key(.up))
+        }
+
         @Test("noncopyable raw-mode session restores PTY termios")
         func noncopyableRawModeSessionRestoresPTYTermios() throws {
             var master: Int32 = -1

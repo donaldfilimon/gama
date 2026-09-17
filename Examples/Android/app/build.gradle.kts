@@ -2,6 +2,14 @@ plugins {
     id("com.android.application")
 }
 
+layout.buildDirectory.set(
+    file(
+        providers.gradleProperty("gamaAndroidBuildDir")
+            .orElse("${System.getProperty("java.io.tmpdir")}/gama-android-gradle-build")
+            .get()
+    )
+)
+
 android {
     namespace = "com.gama.example"
     compileSdk = 36
@@ -26,6 +34,11 @@ android {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
             version = "3.22.1"
+            buildStagingDirectory = file(
+                providers.gradleProperty("gamaAndroidCxxBuildDir")
+                    .orElse("${System.getProperty("java.io.tmpdir")}/gama-android-cxx-build")
+                    .get()
+            )
         }
     }
 

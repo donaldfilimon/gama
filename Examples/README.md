@@ -1,5 +1,9 @@
 # Gama examples
 
+The task-oriented command map, proof boundary, and platform-specific caveats
+live in [`docs/Examples.md`](../docs/Examples.md). This file remains the short
+source-tree index.
+
 The examples exercise the same `GamaCore` semantics through each host:
 
 - `gama-demo` (root package): counter, form input, toggle, progress, list,

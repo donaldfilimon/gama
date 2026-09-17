@@ -5,6 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TOML="$ROOT/Toolchains.toml"
 CI="$ROOT/.github/workflows/ci.yml"
+PAGES="$ROOT/.github/workflows/pages.yml"
 
 toml_get() {
   local section="$1" key="$2"
@@ -116,29 +117,78 @@ must_contain "$CI" "$windows_url" "Windows toolchain URL"
 must_contain "$CI" "$windows_sha" "Windows toolchain SHA-256"
 must_contain "$CI" "Swift $windows_revision" "Windows Swift revision grep"
 
+# Pages independently builds the deployable WASM site, so its compiler and
+# SDK pins must drift-fail alongside the primary acceptance workflow.
+must_contain "$PAGES" "$linux_url" "Pages Linux toolchain URL"
+must_contain "$PAGES" "$linux_sha" "Pages Linux toolchain SHA-256"
+must_contain "$PAGES" "$wasm_sdk_id" "Pages WASM SDK id"
+must_contain "$PAGES" "$wasm_sdk_url" "Pages WASM SDK URL"
+must_contain "$PAGES" "$wasm_sdk_sha" "Pages WASM SDK SHA-256"
+
 must_contain "$ROOT/scripts/ci-install-swift-snapshot.sh" \
   "Swift $swift_revision" "Swift 6.5-dev revision grep"
 must_contain "$ROOT/scripts/check-embedded.sh" \
   "Swift $swift_revision" "Swift 6.5-dev revision grep"
 must_contain "$ROOT/scripts/check-embedded.sh" \
   "$swiftc_sha256" "macOS swiftc SHA-256 default"
-must_contain "$ROOT/scripts/check-embedded.sh" \
-  "$xctoolchain" "embedded toolchain directory default"
+# The snapshot directory name is no longer written into any script: they
+# derive it from [snapshot].xctoolchain through scripts/lib/toolchain.sh, so
+# the assertion is that they still go through that lib rather than that they
+# repeat the literal.
+for script in check-embedded.sh check-wasm.sh check-linux.sh check-android.sh bundle-web.sh; do
+  must_contain "$ROOT/scripts/$script" \
+    "lib/toolchain.sh" "shared toolchain resolution"
+done
 for script in bundle-macos.sh bundle-web.sh; do
   must_contain "$ROOT/scripts/$script" \
     "Swift $swift_revision" "packaging Swift 6.5-dev revision grep"
 done
 
-for script in check-apple.sh check-docs.sh check-c-abi.sh check-mlir.sh; do
-  must_contain "$ROOT/scripts/$script" "$xctoolchain_id" "GAMA_TOOLCHAIN_ID default"
-done
+# Discover the scripts that select the pinned compiler instead of listing
+# them. The enumerated list this replaces named five scripts while ten
+# hardcoded the id, so bundle-macos.sh, check-boundaries.sh,
+# check-doc-coverage.sh, check-portable-symbols.sh, and profile-apple-host.sh
+# could go stale and this gate still printed OK.
+toolchain_default_count=0
+while IFS= read -r script; do
+  while IFS= read -r found; do
+    toolchain_default_count=$((toolchain_default_count + 1))
+    must_equal "GAMA_TOOLCHAIN_ID default in ${script#"$ROOT"/}" \
+      "$xctoolchain_id" "$found"
+  done < <(grep -o 'GAMA_TOOLCHAIN_ID:-[^"}]*' "$script" \
+    | sed 's/^GAMA_TOOLCHAIN_ID:-//')
+done < <(grep -l 'GAMA_TOOLCHAIN_ID:-' "$ROOT"/scripts/*.sh \
+  | grep -v '/check-toolchain-pins\.sh$' | sort)
+
+if [[ "$toolchain_default_count" -eq 0 ]]; then
+  echo "error: no script defaults GAMA_TOOLCHAIN_ID; discovery pattern is stale" >&2
+  exit 1
+fi
+
+# Belt and braces: no script may name any snapshot toolchain id but the pinned
+# one, in any spelling, including a hardcode that no override variable guards.
+# Toolchain ids are digit-leading (org.swift.65202608211a); the leading [0-9]
+# is what keeps SwiftPM's org.swift.swiftpm data directory out of this sweep.
+while IFS= read -r found; do
+  must_equal "toolchain id literal under scripts/" "$xctoolchain_id" "$found"
+done < <(grep -rho --exclude=check-toolchain-pins.sh \
+  'org\.swift\.[0-9][A-Za-z0-9]*' "$ROOT"/scripts | sort -u)
 
 must_contain "$ROOT/scripts/check-wasm.sh" "$wasm_sdk_id" "WASM SDK id default"
 must_contain "$ROOT/scripts/check-linux.sh" "$linux_sdk_id" "static Linux SDK id default"
 must_contain "$ROOT/scripts/check-android.sh" "$android_sdk_id" "Android SDK id default"
 
-for script in check-wasm.sh check-linux.sh check-android.sh; do
-  must_contain "$ROOT/scripts/$script" "$xctoolchain" "local snapshot toolchain path default"
-done
+# A checked-in absolute home directory is correct on exactly one machine and
+# silently wrong on every other, inside gates that are supposed to fail
+# closed. CI never reached the ones this replaced, because
+# ci-install-swift-snapshot.sh exports GAMA_SWIFT_64, which is precisely why
+# they survived unnoticed: only a second developer would have found them.
+# The pattern requires a real path segment after the prefix, so prose such as
+# /Users/<name> in a comment is not a match.
+while IFS= read -r found; do
+  echo "error: checked-in home-directory path under scripts/: $found" >&2
+  echo "  derive it from Toolchains.toml via scripts/lib/toolchain.sh instead" >&2
+  exit 1
+done < <(grep -rhoE '/(Users|home)/[A-Za-z0-9_.-]+/' "$ROOT"/scripts | sort -u)
 
 echo "OK — Toolchains.toml pins match CI, check scripts, and .swift-version"

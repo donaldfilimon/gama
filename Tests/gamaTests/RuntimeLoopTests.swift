@@ -21,6 +21,8 @@ struct RuntimeLoopTests {
         var presented: [LaidOutNode] = []
         var beginCount = 0
         var endCount = 0
+        var steps: [String] = []
+        var waitTimeouts: [Int] = []
         var presentedSizes: [Size] { presented.map(\.frame.size) }
     }
 
@@ -40,12 +42,56 @@ struct RuntimeLoopTests {
 
         mutating func begin() { recorder.beginCount += 1 }
         mutating func end() { recorder.endCount += 1 }
-        mutating func present(_ root: LaidOutNode) { recorder.presented.append(root) }
+        mutating func present(_ root: LaidOutNode) {
+            recorder.presented.append(root)
+            recorder.steps.append("present")
+        }
 
         mutating func nextEvent(timeoutMillis: Int) -> InputEvent? {
+            recorder.steps.append("wait")
+            recorder.waitTimeouts.append(timeoutMillis)
             guard index < script.count else { return .key(.ctrl("q")) }
             defer { index += 1 }
             return script[index]
+        }
+    }
+
+    /// Changes its drawable extent without emitting `.resize`, which the
+    /// Renderer protocol permits. The recorder owns the observable frame count
+    /// because AppRuntime stores the renderer by value.
+    private struct SilentlyResizingRenderer: Renderer {
+        let recorder: Recorder
+        let changeAfterFrames: Int
+        let newSize: Size
+        let startSize: Size
+        private var remainingIdle: Int
+
+        var size: Size {
+            recorder.presented.count >= changeAfterFrames ? newSize : startSize
+        }
+
+        init(
+            startSize: Size,
+            newSize: Size,
+            changeAfterFrames: Int,
+            idleIterations: Int,
+            recorder: Recorder
+        ) {
+            self.startSize = startSize
+            self.newSize = newSize
+            self.changeAfterFrames = changeAfterFrames
+            self.remainingIdle = idleIterations
+            self.recorder = recorder
+        }
+
+        mutating func begin() { recorder.beginCount += 1 }
+        mutating func end() { recorder.endCount += 1 }
+        mutating func present(_ root: LaidOutNode) { recorder.presented.append(root) }
+
+        mutating func nextEvent(timeoutMillis: Int) -> InputEvent? {
+            guard remainingIdle > 0 else { return .key(.ctrl("q")) }
+            remainingIdle -= 1
+            return nil
         }
     }
 
@@ -76,6 +122,54 @@ struct RuntimeLoopTests {
     private struct PlainApp: App {
         var scenes: some Scene {
             Window("Main", id: "main", role: .primary) { Text("hello") }
+        }
+    }
+
+    private struct InvalidatingView: View {
+        typealias Body = Never_
+        let signal: Signal<Int>
+        var body: Never_ { Never_() }
+
+        func render(in context: BuildContext) -> RenderNode {
+            let value = signal.get()
+            if value == 0 { signal.set(1) }
+            return .text("frame \(value)", style: context.inheritedStyle)
+        }
+    }
+
+    private struct InvalidatingApp: App {
+        let signal: Signal<Int>
+
+        init() { signal = Signal(0) }
+        init(signal: Signal<Int>) { self.signal = signal }
+
+        var scenes: some Scene {
+            Window("Main", id: "main", role: .primary) { InvalidatingView(signal: signal) }
+        }
+    }
+
+    private struct ContinuouslyInvalidatingView: View {
+        typealias Body = Never_
+        let signal: Signal<Int>
+        var body: Never_ { Never_() }
+
+        func render(in context: BuildContext) -> RenderNode {
+            let value = signal.get()
+            signal.set(value + 1)
+            return .text("frame \(value)", style: context.inheritedStyle)
+        }
+    }
+
+    private struct ContinuouslyInvalidatingApp: App {
+        let signal: Signal<Int>
+
+        init() { signal = Signal(0) }
+        init(signal: Signal<Int>) { self.signal = signal }
+
+        var scenes: some Scene {
+            Window("Main", id: "main", role: .primary) {
+                ContinuouslyInvalidatingView(signal: signal)
+            }
         }
     }
 
@@ -112,6 +206,41 @@ struct RuntimeLoopTests {
         #expect(recorder.presented.count == 1)
     }
 
+    @Test("a requested follow-up polls input without blocking before the next frame")
+    func followUpFramePollsInputWithoutBlocking() throws {
+        let recorder = Recorder()
+        let signal = Signal(0)
+        var runtime = try AppRuntime(
+            app: InvalidatingApp(signal: signal),
+            renderer: ScriptedRenderer(
+                size: Size(width: 20, height: 4), recorder: recorder, script: [nil]))
+        runtime.observe(signal)
+
+        runtime.run()
+
+        #expect(Array(recorder.steps.prefix(3)) == ["present", "wait", "present"])
+        #expect(recorder.waitTimeouts.first == 0)
+        #expect(recorder.presented.count == 2)
+    }
+
+    @Test("continuous follow-ups cannot starve a quit event")
+    func continuousFollowUpsStillServiceInput() throws {
+        let recorder = Recorder()
+        let signal = Signal(0)
+        var runtime = try AppRuntime(
+            app: ContinuouslyInvalidatingApp(signal: signal),
+            renderer: ScriptedRenderer(
+                size: Size(width: 20, height: 4),
+                recorder: recorder,
+                script: [.key(.ctrl("q"))]))
+        runtime.observe(signal)
+
+        runtime.run()
+
+        #expect(recorder.presented.count == 1)
+        #expect(recorder.waitTimeouts == [0])
+    }
+
     @Test("a resize inside the loop re-lays out at the new extent")
     func resizeInsideTheLoopRelaysOut() throws {
         let recorder = Recorder()
@@ -128,6 +257,25 @@ struct RuntimeLoopTests {
         #expect(recorder.presentedSizes.count == 2)
         #expect(recorder.presentedSizes.first == Size(width: 20, height: 4))
         #expect(recorder.presentedSizes.last == Size(width: 44, height: 9))
+    }
+
+    @Test("a renderer that resizes without emitting an event still re-lays out")
+    func silentRendererResizeIsPickedUp() throws {
+        let recorder = Recorder()
+        var runtime = try AppRuntime(
+            app: PlainApp(),
+            renderer: SilentlyResizingRenderer(
+                startSize: Size(width: 20, height: 4),
+                newSize: Size(width: 51, height: 13),
+                changeAfterFrames: 1,
+                idleIterations: 4,
+                recorder: recorder))
+
+        runtime.run()
+
+        #expect(recorder.presentedSizes.first == Size(width: 20, height: 4))
+        #expect(recorder.presentedSizes.last == Size(width: 51, height: 13))
+        #expect(recorder.presentedSizes.count == 2)
     }
 
     @Test("run re-syncs to the renderer extent that begin established")

@@ -1,9 +1,8 @@
 # macOS application shell (GamaAppleShell)
 
-Status: implemented and locally proven by the pinned Apple build and six
-offscreen AppKit tests. Hosted evidence is recorded by the delivery pull
-request's complete acceptance matrix; this guide does not substitute source
-presence for that proof.
+Status: Unverified. Capability status lives in
+[`Capabilities.md`](../Capabilities.md); this guide does not restate
+hosted, locally-proven, or implemented proof.
 
 `GamaAppleShell` is the opt-in owner for a complete macOS application. It is
 separate from `GamaAppleUI`, whose `GamaHostView` remains available to custom
@@ -82,6 +81,9 @@ the global event loop. The supplemental manual smoke is:
 5. Click the Dock icon and confirm the primary payload reopens.
 6. Press Command-Q and confirm the process terminates.
 
-This manual path is not packaging proof. A `.app` bundle, signing,
-notarization, placement restoration, close veto, UIKit scene delegates, and a
-Windows GUI remain separate work.
+This manual path is not packaging proof. The macOS `.app` bundle and ad-hoc
+signing path are recorded as Locally proven in
+[`Capabilities.md`](../Capabilities.md); this Unverified shell guide does
+not restate that row. Developer ID signing and notarization still require a
+successful credentialed run. Placement restoration, close veto, UIKit scene delegates, and a Windows
+GUI remain deferred.

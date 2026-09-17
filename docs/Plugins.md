@@ -1,12 +1,10 @@
 # Plugins and the capability model
 
-Status: Tier 1 (static plugins) is implemented. Its original integrating
-head merged through PR #33 after all six acceptance jobs passed. A
-post-merge review then found five lifecycle, identity, and lexical-path
-defects; the hardening follow-up is locally proven by 39 focused Swift
-Testing cases, while hosted proof for that follow-up remains separate and
-must be green at its exact head. Tiers 2 and 3 are Proposed and not
-implemented. See
+Status: Tier 1 (static plugins) is implemented and hosted proven. The original
+integration and the follow-up that repaired lifecycle, identity, command
+revocation, observation ownership, and lexical-path defects each passed their
+exact-head six-job acceptance matrix before merging. Tiers 2 and 3 are
+Proposed and not implemented. See
 [Capabilities.md](Capabilities.md#status-vocabulary) for the vocabulary.
 
 Design authority:
@@ -60,6 +58,11 @@ call the OS at all; Embedded has no OS).
   (`serviceUnavailable`). Successful install and uninstall invalidate
   the owning host. Deinitializing the runtime deactivates every installed
   plugin. Two hosts, two runtimes: nothing is shared.
+- `PluginRuntime` is explicitly non-`Sendable`; its unavailable conformance
+  makes ordinary cross-executor use a compiler error. `install` takes a
+  `sending` plugin because successful installation transfers that plugin's
+  state and callbacks into the runtime. Commands, scenes, and observations
+  remain on the owning host's executor.
 - `PluginContext` carries the granted, unforgeable handles plus the
   plugin installation's observation context. That context forwards a
   plugin `Signal` change or `invalidate()` to exactly one owning host,

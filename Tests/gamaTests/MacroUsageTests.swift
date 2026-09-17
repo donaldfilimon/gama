@@ -3,6 +3,10 @@ import GamaDraw
 import GamaMacros
 import Testing
 
+/// Shadows the imported module for ordinary dotted lookup throughout this
+/// file. Generated `GamaCore::` selectors must still bind to the module.
+private enum GamaCore {}
+
 @Component
 private struct MacroBadge {
     let label: String
@@ -10,6 +14,18 @@ private struct MacroBadge {
 
     var body: some View {
         Text("\(label): \(count)").foregroundColor(#rgb("F80"))
+    }
+}
+
+/// A lexical declaration named after the imported module would capture the
+/// old dotted generated references. Module selectors keep all three macro
+/// roles bound to the intended module instead.
+@Component
+private struct ModuleShadowBadge {
+    @Reactive var count: Int = 0
+
+    var body: some View {
+        Text("shadow: \(count)").foregroundColor(#rgb("12ABEF"))
     }
 }
 
@@ -27,6 +43,20 @@ struct MacroUsageTests {
         }
         #expect(text == "count: 3")
         #expect(style.foreground == Color(r: 255, g: 136, b: 0))
+    }
+
+    @Test("module selectors survive a lexical GamaCore declaration")
+    func moduleSelectorsSurviveModuleShadowing() {
+        let badge = ModuleShadowBadge()
+        badge.count = 4
+        let rendered = badge.render(in: BuildContext())
+        guard case .styled(let style, let child) = rendered,
+              case .text(let text, _) = child else {
+            Issue.record("expected styled text render node")
+            return
+        }
+        #expect(text == "shadow: 4")
+        #expect(style.foreground == Color(r: 18, g: 171, b: 239))
     }
 }
 
@@ -46,9 +76,11 @@ private struct MacroCounter {
 }
 
 /// One component instance, stored on the app and captured by the scene
-/// closure. `@Reactive` state lives in the instance, and scene content is
-/// rebuilt every frame, so an instance constructed *inside* the closure
-/// would be replaced — along with its state — before the next frame paints.
+/// closure — the hoisted shape, one valid way to hold a component. Its
+/// `@Reactive` state binds to the host's per-surface store on render, so
+/// this pins that a hoisted instance keeps working. The inline shape
+/// (a component built fresh inside the closure every frame) is covered by
+/// `ViewStateIdentityTests`.
 private struct MacroCounterApp: App {
     let counter = MacroCounter()
     init() {}
@@ -102,7 +134,7 @@ struct ReactiveStateLifetimeTests {
         let size = Size(width: 12, height: 2)
         let app = MacroCounterApp()
         var host = try FrameHost(app: app)
-        var first = host.pump(size: size)
+        let first = host.pump(size: size)
         var regions: [InteractiveRegion] = []
         first.collectInteractive(into: &regions)
         let button = try #require(regions.first)
