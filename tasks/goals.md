@@ -408,6 +408,11 @@ status: blocked
   evidence obtainable here. Clearing the billing state is the owner's action,
   not an engineering task. See [`todo.md`](todo.md) for how it was measured and
   the resume step.
+- Re-measured 2026-09-16 about five hours later: still locked, the newest
+  refused job reporting zero steps and the same annotation. Waiting on it now:
+  two open pull requests (the guide-surface docs, and the web demo showcase
+  stacked on it) and the packaged-site capability row, which the showcase
+  moved to `unverified`. Each is an open item in [`todo.md`](todo.md).
 
 ## Delivered foundation
 

@@ -852,6 +852,101 @@ either, since the count moved twice today.
       on the billing item above. If `main` moves first the branch needs its
       base updated before the checks can satisfy the strict policy.
 
+## Web demo showcase (2026-09-16)
+
+- [x] **The browser demo showed four widgets on a bare page.** It is now a
+      showcase panel — a count/step/notify readout, a five-button command row,
+      a text field and toggle, a live greeting, a progress bar, and a feature
+      list — in a page shell with a status line, a boot overlay, an error
+      overlay that names the failing stage, and light and dark palettes. Still
+      macro-free: four hand-bound `ReactiveSlot`s in declaration order.
+      Checked in a real browser, not only by the smokes: buttons by click and
+      keyboard, text entry by real key events, the toggle, progress tracking,
+      a deliberately missing module surfacing its error overlay, and both
+      colour schemes. One automation step typed nothing, and it was the
+      automation's input method rather than the demo — per-key events landed.
+
+- [x] **Two layout traps the demo fell into, now pinned.** The first gate run
+      failed: `wasm-runtime-smoke.mjs` matches `count <n>` against the raw
+      HTML, where each styled run is its own span, so rendering the label and
+      value as two `Text`s put a tag between them. The browser smoke passed
+      throughout, because `textContent` concatenates spans. The same run showed
+      the panel clipped at the 40x8 grid that driver pins. Fixed by rendering
+      the count as one `Text` and spending vertical cells on content. A new
+      host test serializes through `HTMLSerializer` at 40x8 and asserts the
+      count reads contiguously before and after activation; mutating the count
+      back into two spans makes it fail while both older demo tests still
+      pass, which is the blind spot that let this reach the gate.
+
+- [x] **The packaged-site capability row demoted to unverified.** The
+      evidence-freshness gate failed its hosted claim, correctly: the row
+      depends on the demo source and both host files, all three changed, and
+      the public site still serves the earlier demo. No hosted run can exist
+      for this tree while hosted Actions are account-locked, so the row now
+      records its last proof and the invalidating change and makes no stronger
+      claim. Re-anchor it after a Pages run succeeds for a commit carrying
+      this change.
+
+- [x] `docs/backends/WASM.md` describes the panel, the four slot indices as
+      half of each storage key, both layout constraints, the two-file ship
+      rule, the padding read-back, and the decision to stay on the `v1`
+      export tier. Checked rather than asserted: `scripts/check-wasm.sh` and
+      `scripts/bundle-web.sh` each exit 0 on the pinned snapshot and SDK, as
+      do the web demo tests, the evidence-freshness gate, the boundary source
+      policies, and the three document scanners.
+
+- [ ] **The showcase is on `origin` as a pull request stacked on the
+      guide-surface one, not merged.** Its base is that branch rather than
+      `main`, because both insert a section at the same anchor in this file and
+      whichever merged second would otherwise have conflicted. Merge the
+      guide-surface request first, with a merge commit, and the showcase
+      retargets to `main` cleanly; a squash or rebase merge would instead leave
+      it showing the three already-applied commits and needing a rebase. The
+      stacked request reads as mergeable only because the ruleset targets
+      `main`, so that status says nothing about reaching `main`.
+
+- [ ] **Re-anchor the packaged-site capability row.** It is `unverified`
+      because the showcase changed the demo source and both host files the row
+      depends on. It can only move back to `hosted` after a Pages workflow
+      succeeds for a commit carrying the showcase, followed by a live asset
+      fetch, and neither is possible while the billing item above holds. This
+      was recorded only inside a checked entry until 2026-09-16, where a scan
+      for open items could not find it.
+
+## Browser host on the v2 export tier (2026-09-16)
+
+- [x] **The page hung silently when the module's install failed.** The demo
+      installs with `try?`, and a `v1` call returns nothing, so a failed
+      install left the boot overlay up forever with no diagnosis. The host now
+      calls only the `v2` tier and names the failure `install` on the first
+      `-1`, including the module's own output. A later `-1` is a lost host; a
+      `-2` key is left to the browser and warned about once. This reverses
+      the showcase entry's decision to stay on `v1`, which is why that entry
+      reads the way it does.
+
+- [x] **The gate now proves the page consumes `v2`, not merely that the
+      string appears.** The export check was one alternation that any single
+      `v1` name satisfied. It now requires each of the four `v2` calls and
+      fails on any remaining `v1` call; three mutants (unchanged, one `v1`
+      call reintroduced, one `v2` call removed) gave 0, 1, 1. The browser
+      smoke's new `--failed-install` mode serves the failed-install fixture
+      through the real page and requires stage `install`; run against the
+      pre-migration host it failed with the status still `loading` and no
+      failure recorded, which is the hang itself.
+
+- [x] **A regression the migration introduced, caught before commit.** Input
+      delivered before boot finished reached a module with no exports yet;
+      the new fail-closed wrapper read that TypeError as a lost host, and boot
+      then painted the status back to ready, leaving a page that looked live
+      and ignored everything. Found by hand in the browser pane, then
+      reproduced in the smoke, which now fires a key and a pointer press at
+      `WebAssembly.instantiate` time: the broken host failed with no keys or
+      pointers counted. Fixed by dropping pre-boot input, making a reported
+      failure final for the status line, and naming non-host errors
+      `event handling` instead of `host lost`. The pre-migration `v1` host
+      passes the strengthened smoke, so the defect was new here, not
+      inherited.
+
 ## Manual and credential-gated acceptance
 
 - [ ] Exercise the AppKit accessibility adapter with VoiceOver and the UIKit
