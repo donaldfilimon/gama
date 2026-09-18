@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   macos-swift-64:
-    name: macOS / Apple Swift 6.5-dev
+    name: macOS / Apple Swift 6.4
     # Preview image; Xcode 27's default toolchain stays 6.4 (xcodebuild platform
     # gates use it) while the pinned 6.5-dev snapshot is installed for primary gates.
     runs-on: xcode-27
