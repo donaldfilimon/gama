@@ -90,6 +90,24 @@ private struct OverlapApp: App {
     }
 }
 
+private struct DistinctShortcutApp: App {
+    let early = Signal(0)
+    let late = Signal(0)
+
+    init() {}
+
+    var scenes: some Scene {
+        Window("Distinct", id: "main", role: .primary) {
+            VStack {
+                Button("Early") { early.set(early.get() + 1) }
+                    .actionIdentity(ActionID("early"), shortcut: .ctrl("a"))
+                Button("Late") { late.set(late.get() + 1) }
+                    .actionIdentity(ActionID("late"), shortcut: .ctrl("a"))
+            }
+        }
+    }
+}
+
 private struct NestedIdentityApp: App {
     let count = Signal(0)
 
@@ -236,6 +254,29 @@ struct ActionIdentityTests {
 
         host.perform(ActionID("shared"))
         #expect(app.early.get() == 1)
+        #expect(app.late.get() == 2)
+    }
+
+    @Test("a shared shortcut follows the later identity and the earlier identity remains")
+    func distinctIdentitySharedShortcut() throws {
+        let app = DistinctShortcutApp()
+        var host = try FrameHost(app: app)
+        _ = host.pump(size: Size(width: 40, height: 8))
+
+        host.handle(.key(.enter))
+        #expect(app.early.get() == 1)
+        #expect(app.late.get() == 0)
+
+        host.handle(.key(.ctrl("a")))
+        #expect(app.early.get() == 1)
+        #expect(app.late.get() == 1)
+
+        host.perform(ActionID("early"))
+        #expect(app.early.get() == 2)
+        #expect(app.late.get() == 1)
+
+        host.perform(ActionID("late"))
+        #expect(app.early.get() == 2)
         #expect(app.late.get() == 2)
     }
 
