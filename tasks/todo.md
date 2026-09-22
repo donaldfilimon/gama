@@ -802,6 +802,35 @@ either, since the count moved twice today.
       A first mutation attempt applied nothing (BSD `sed` ignores `\s`) and
       reported a pass; the recorded run asserts the substitution took first.
 
+## Capability-ledger honesty, round 2 (2026-09-22, base `origin/main` `35ad8c3`)
+
+Measured by a read-only audit; every item below is verifiable locally without
+hosted CI. Anchor for promotions is `e735cb4`, six-job run `34090312518`.
+
+- [x] `docs/Capabilities.md`: snapshot paragraph no longer says `origin/main`
+      is `e735cb4`; thirteen zero-drift rows re-labelled at `e735cb4` (twelve `hosted`,
+      Windows console `implemented`) and row 73's annotation re-anchored; row 68's `origin/main` phrase corrected;
+      row 64's `ViewStateIdentityTests` count is 10.
+- [x] `docs/Packaging.md` verification table: three cells say "hosted" for
+      the wasm browser smoke while the WebAssembly row is `unverified` (its
+      `check-wasm.sh` changed after `e735cb4`); reword to defer to the ledger.
+- [x] `docs/superpowers/specs/2026-09-06-adaptive-terminal-surface-design.md`:
+      status line says phases 4-5 proposed while line 175 says phase 4 landed;
+      line 149 says WebAssembly and Android carry hosted rows.
+- [x] `docs/superpowers/specs/2026-09-06-adaptive-terminal-core-design.md`:
+      `init(surface:)` is at `GamaHostView.swift:288`, not `:282`; the
+      present-tense "291 in 53 suites" is a dated measurement (57 suites now).
+- [x] `docs/superpowers/specs/2026-09-06-cell-serializer-design.md:225` says
+      the WebAssembly row is hosted proven; it is `unverified`.
+- [x] `README.md` products table: `GamaEmbedABI` is a target, not a product
+      (row now says so). An audit sub-agent also reported `gama-leak-check`
+      and `gama-bench` missing; they were present further down the table,
+      and a first draft of this slice duplicated them before the count
+      (22 rows vs 19 products) exposed it. Corrected before commit.
+- [x] `docs/adr/0011-reactive-state-is-per-surface.md:130`: 8 tests -> 10.
+- [x] Deferred-scope bullet below on the wholesale-serialization family: its
+      tail is stale (correction bullet appended there).
+
 ## Manual and credential-gated acceptance
 
 - [ ] Exercise the AppKit accessibility adapter with VoiceOver and the UIKit
@@ -846,3 +875,13 @@ before execution:
   not catch it: that gate scans undefined symbols only. `@_extern` has no
   unprefixed `@extern` form in this snapshot (`unknown attribute 'extern'`),
   so the seven `GamaWASM` sites stay as they are.
+- **2026-09-22 correction to the wholesale-serialization bullet above.** Its
+  account of phase 5 is accurate, but its tail ("That is new design and needs
+  its own accepted record") is stale: the successor design exists as
+  `docs/superpowers/specs/2026-09-06-cell-serializer-design.md`, and
+  `Sources/GamaDraw/CellSerializer.swift` with `DrawListSerializer`, the
+  `HTMLSerializer` conformance in `GamaWASM`, and call sites in `GamaEmbed`,
+  `GamaWASM`, and `GamaAppleUI` shipped in `30afe99` (PR #85). Measured by
+  grep on 2026-09-22. What remains open is the one question that spec lists:
+  nothing in the tree is generic over `CellSerializer`. Not deferred product
+  scope any more.

@@ -52,7 +52,7 @@ pre-release migration from `App.content` and typed `WindowGroup` examples.
 | `GamaWASM` | Browser reactor using `gama_web_v1_*` exports |
 | `GamaEmbed` | Context-owned `gama_embed_v1_*` C ABI |
 | `GamaMLIR` | Deterministic generic-form `gama` dialect emitter |
-| `GamaEmbedABI` | The C header (`GamaEmbed.h`): opaque context type, status codes, `gama_embed_v1_abi_version` |
+| `GamaEmbedABI` (target, shipped inside the `GamaEmbed` product) | The C header (`GamaEmbed.h`): opaque context type, status codes, `gama_embed_v1_abi_version` |
 | `GamaAndroidDemo` | Sample dynamic library bootstrapping an app for the JNI example |
 | `gama-demo` | Interactive TUI and `--emit-mlir` showcase |
 | `gama-web-demo` | Browser reactor demo served from `WebHost/` |

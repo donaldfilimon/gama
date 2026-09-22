@@ -127,7 +127,9 @@ to source, and it is deliberate:
 
 ## Verification
 
-- `Tests/gamaTests/ViewStateIdentityTests.swift` (8 tests): inline
+- `Tests/gamaTests/ViewStateIdentityTests.swift` (10 tests; the eight named
+  here plus collection state following explicit identities or positions, and
+  host-less rendering detaching a previously hosted component): inline
   persistence with an empty transient list, independent `WindowGroup`
   surfaces, a hoisted instance writing per surface with the pre-render seed,
   branch-flip eviction back to a `reactiveStateCount` baseline of zero,
