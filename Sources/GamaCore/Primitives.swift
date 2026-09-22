@@ -218,7 +218,8 @@ public struct Divider: View {
 /// default styling — a label that sets its own foreground or background
 /// keeps it, because deeper styles win through `TextStyle.merging`.
 /// Disabled buttons render dimmed, register no action, and leave the
-/// focus order.
+/// focus order. ``View/actionIdentity(_:shortcut:)`` registers this same
+/// closure under a stable identity when the button is enabled.
 public struct Button<Label: View>: View {
     /// Terminates `body` recursion; this view compiles in `render(in:)`.
     public typealias Body = Never_
@@ -255,6 +256,9 @@ public struct Button<Label: View>: View {
             )
         }
         context.registerAction(id, action)
+        if let named = context.environment.actionIdentity {
+            context.registerNamedAction(named.id, named.shortcut, action)
+        }
         let focused = context.environment.focusedID == id
         // Focus wrap is applied outside the label so CellPainter's
         // outer-wins merge paints cyan/black over a custom-colored label.
@@ -750,6 +754,28 @@ public struct _EnvTransformed<Content: View>: View {
 }
 
 extension View {
+    /// Names the action a control in this subtree registers with the host.
+    ///
+    /// ``Button`` stores one closure for `id`. While that control is
+    /// enabled, focus activation (Enter or Space when it is focused, or a
+    /// pointer press), `shortcut` when the focused node does not consume
+    /// the key, and ``FrameHost/perform(_:)`` all call that closure. A
+    /// disabled control registers nothing, so none of those paths run.
+    /// Tab, Shift-Tab, the arrow keys, and Ctrl-C / Ctrl-Q are dropped as
+    /// shortcuts; focus traversal and quit stay host policy. Enter and
+    /// Space stay activation keys and are not consulted as shortcuts.
+    /// A modifier closer to the control replaces one on an ancestor. When
+    /// two controls in one build claim the same identity or the same
+    /// non-reserved shortcut, the later registration wins.
+    public func actionIdentity(_ id: ActionID, shortcut: Key? = nil) -> _EnvTransformed<Self> {
+        _EnvTransformed(
+            transform: {
+                $0.actionIdentity = ActionIdentityRegistration(id: id, shortcut: shortcut)
+            },
+            content: self
+        )
+    }
+
     /// Disable all interactive descendants: buttons stop registering
     /// actions, drop out of the focus order, and draw dimmed.
     public func disabled(_ disabled: Bool = true) -> _EnvTransformed<Self> {

@@ -23,6 +23,12 @@ public struct BuildContext {
     public var registerKeyHandler: (
         NodeID, @escaping (Key) -> Bool
     ) -> Void
+    /// Registers a stable action identity with the owning host. The default
+    /// is a no-op, so a view compiled without a host still renders.
+    /// ``Button`` passes the same closure it registered for the node when
+    /// the environment names an identity. Reserved shortcuts are dropped
+    /// by the host; see ``View/actionIdentity(_:shortcut:)``.
+    public var registerNamedAction: (ActionID, Key?, @escaping () -> Void) -> Void
     /// The owning host's `@Reactive` storage; `nil` for host-less rendering,
     /// which keeps every slot on instance-local storage.
     package var stateStore: HostStateStore? = nil
@@ -37,13 +43,15 @@ public struct BuildContext {
         registerAction: @escaping (NodeID, @escaping () -> Void) -> Void = { _, _ in },
         registerKeyHandler: @escaping (
             NodeID, @escaping (Key) -> Bool
-        ) -> Void = { _, _ in }
+        ) -> Void = { _, _ in },
+        registerNamedAction: @escaping (ActionID, Key?, @escaping () -> Void) -> Void = { _, _, _ in }
     ) {
         self.id = id
         self.inheritedStyle = inheritedStyle
         self.environment = environment
         self.registerAction = registerAction
         self.registerKeyHandler = registerKeyHandler
+        self.registerNamedAction = registerNamedAction
     }
 
     /// The context for the child at `index`: identity descends one step;
@@ -53,6 +61,16 @@ public struct BuildContext {
         c.id = id.child(index)
         return c
     }
+}
+
+/// Identity and optional shortcut a control registers with the owning host
+/// for one build. Applications set it through
+/// ``View/actionIdentity(_:shortcut:)``; controls in this module read it.
+package struct ActionIdentityRegistration: Sendable {
+    /// Stable identity stored beside the control's node registration.
+    package var id: ActionID
+    /// Normalized shortcut. The host drops quit and focus keys.
+    package var shortcut: Key?
 }
 
 /// Minimal environment — a fixed-key value bag (Embedded-safe: no
@@ -67,7 +85,11 @@ public struct EnvironmentValues: Sendable {
     /// Identity and window operations for the current surface. Backends
     /// without shell ownership leave the actions unavailable.
     public var windowContext: WindowContext = WindowContext()
-    /// Creates the default environment: enabled, nothing focused.
+    /// Action identity installed by the nearest ``View/actionIdentity(_:shortcut:)``
+    /// in this subtree. `nil` when the subtree named no action. Replaced,
+    /// not accumulated, so the modifier closer to the control wins.
+    package var actionIdentity: ActionIdentityRegistration? = nil
+    /// Creates the default environment: enabled, nothing focused, no named action.
     public init() {}
 }
 
