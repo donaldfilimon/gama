@@ -455,6 +455,15 @@ status: done
 ## Hosted acceptance evidence
 status: blocked
 
+- **2026-09-22 01:03 EDT:** Re-measured: still locked. Pull request #102's six
+  checks each ended in one to six seconds with the same annotation, and two
+  pull requests in the `abbey-bot` repository under this account show it too.
+  The waiting set in the 2026-09-16 bullet below is stale: the web demo
+  showcase (#98) and the v2 web-host exports (#99) merged into the
+  guide-surface branch (#97), so the stack is now #97 with #102 (the
+  `CLAUDE.md` trim) on top; the duplicate #101 and the superseded #41 are
+  closed. Next: the owner clears the billing state; then re-run #97's checks,
+  then #102's.
 - Blocked 2026-09-16: the six-job "Gama acceptance" workflow can no longer
   report on a pushed commit. Every job is refused before it starts — zero
   steps, no runner name, two to seven seconds — and each check-run annotation
