@@ -235,6 +235,11 @@ status: done
 ## Capability-ledger honesty
 status: in_progress
 
+- **2026-09-22 01:3x EDT, pushed on approval, PR #103:** branch
+  `docs/ledger-honesty-round-2` pushed and https://github.com/donaldfilimon/gama/pull/103 opened against `main`.
+  Named stop: the GitHub billing lock leaves its required checks unmeasured
+  until Donald clears it; merge after that. Next: none in this round beyond
+  the merge.
 - **2026-09-22 01:3x EDT, count correction and execution probe:** the two
   bullets below say "twelve rows, eleven hosted"; measured from the lead-word
   scan, thirteen rows changed layer (twelve to `hosted`, Windows console to
