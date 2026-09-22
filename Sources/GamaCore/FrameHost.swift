@@ -324,6 +324,12 @@ public struct FrameHost: ~Copyable {
                 dirty.set(true)
             }
 
+        case .gamepad(let button, pressed: true):
+            // Re-enter with the equivalent keystroke rather than repeating
+            // the focus and activation logic: a controller must reach the
+            // same operation the keyboard does, by construction.
+            if let key = button.semanticKey { handle(.key(key)) }
+
         case .resize(let size):
             lastSize = size
             dirty.set(true)

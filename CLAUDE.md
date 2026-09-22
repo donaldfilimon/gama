@@ -519,11 +519,22 @@ an ADR. Three things to know before reusing its vocabulary:
 a remote UI protocol, an Inspector, a dedicated CLI beyond `gama-demo`'s
 flags, native Windows (Direct3D) or Linux (Wayland/X11/Vulkan) backends, any
 GPU compositor, plugin Tiers 2/3 (out-of-process isolation; Tier 1 is
-capability-based design, not a sandbox — see `docs/Plugins.md`), IME/bidi
-text editing, list/table virtualization, gamepad input. Building toward any
-of these starts from `docs/Plugins.md` or a new file under
-`docs/superpowers/specs/drafts/`, not from assuming the manifesto's module
-boundary already exists.
+capability-based design, not a sandbox — see `docs/Plugins.md`), IME
+composition and bidi reordering. Building toward any of these starts from
+`docs/Plugins.md` or a new file under `docs/superpowers/specs/drafts/`, not
+from assuming the manifesto's module boundary already exists.
+
+**Started, but narrower than the word suggests — do not round these up.**
+`TextField` has a cursor and a `Selection` model (ADR 0014) but no visual
+caret, no keyboard-driven selection, and no IME or bidi; the model is the
+seam those need, not those features. `GamepadButton` and the `.gamepad`
+input event exist and route through the same focus and activation path as
+the keyboard, but **no backend emits them** — a producer needs a platform
+import (GameController is Apple-only) and belongs in a backend target, so
+this is dispatch without a source today. List/table virtualization is
+blocked behind something that does not exist yet: there is no scroll or
+viewport model in `GamaCore` at all, so the work is "build a viewport, then
+virtualize," not "make `ForEach` lazy."
 
 ## Packaging
 

@@ -48,12 +48,73 @@ public enum Key: Hashable, Sendable {
     case ctrl(Character)  // ctrl("c") etc.
 }
 
+/// A controller button in one backend-neutral vocabulary, named by
+/// position rather than by vendor lettering so the same value means the
+/// same place on the pad regardless of whose controller produced it:
+/// `south` is the bottom face button (A/Cross), `east` the right one
+/// (B/Circle).
+///
+/// The host maps a subset of these onto the keyboard semantics that
+/// already exist — the d-pad navigates and `south` activates — so a
+/// controller and a keyboard reach the same operation rather than two
+/// parallel ones. Buttons with no mapping are delivered and ignored.
+public enum GamepadButton: Hashable, Sendable {
+    /// Bottom face button (A/Cross); confirm.
+    case south
+    /// Right face button (B/Circle); cancel.
+    case east
+    /// Left face button (X/Square).
+    case west
+    /// Top face button (Y/Triangle).
+    case north
+    /// Directional pad, up.
+    case dpadUp
+    /// Directional pad, down.
+    case dpadDown
+    /// Directional pad, left.
+    case dpadLeft
+    /// Directional pad, right.
+    case dpadRight
+    /// Upper left shoulder button.
+    case leftShoulder
+    /// Upper right shoulder button.
+    case rightShoulder
+    /// Start / menu / options.
+    case start
+    /// Select / view / share.
+    case select
+}
+
+extension GamepadButton {
+    /// The keyboard semantics this button stands in for, or `nil` when the
+    /// host has no operation for it. Routing through a `Key` is deliberate:
+    /// it guarantees a controller reaches the *same* focus and activation
+    /// code the keyboard does instead of a second implementation that can
+    /// drift away from it.
+    var semanticKey: Key? {
+        switch self {
+        case .dpadUp: return .up
+        case .dpadDown: return .down
+        case .dpadLeft: return .left
+        case .dpadRight: return .right
+        case .south: return .enter
+        case .east: return .escape
+        case .west, .north, .leftShoulder, .rightShoulder, .start, .select:
+            return nil
+        }
+    }
+}
+
 /// One normalized event fed to `FrameHost.handle(_:)`. Every backend maps
 /// its platform input onto this shared set, which is what keeps interaction
 /// semantics (focus, activation, quit) identical across backends.
 public enum InputEvent: Hashable, Sendable {
     /// A decoded keystroke.
     case key(Key)
+    /// A controller button transition. Only presses act; releases are
+    /// accepted so a backend can forward both edges without filtering,
+    /// and trigger nothing in the host today.
+    case gamepad(GamepadButton, pressed: Bool)
     /// The drawable area changed; the host marks itself dirty so the next
     /// pump lays out at the new size.
     case resize(Size)
