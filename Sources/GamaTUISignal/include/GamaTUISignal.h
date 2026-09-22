@@ -3,6 +3,7 @@
 
 #if !defined(_WIN32)
 
+#include <stddef.h>
 #include <termios.h>
 
 /* Process-global POSIX terminal rescue.
@@ -19,13 +20,26 @@
 
 /**
  * Saves the terminal and host dispositions, then installs Gama's handlers.
+ * `restore_sequence` is copied into the handler-owned buffer before the
+ * rescue is published. `atexit` writes those bytes; a fatal signal does not.
+ * A null sequence is allowed only when `restore_sequence_length` is zero.
  * Returns zero on success or an errno value on failure.
  */
 int gama_tui_signal_arm(
     int input_fd,
     int output_fd,
-    const struct termios *original_termios
+    const struct termios *original_termios,
+    const char *restore_sequence,
+    size_t restore_sequence_length
 );
+
+/**
+ * Copies the restore bytes stored by the latest successful arm into `out`
+ * when the rescue is armed and `capacity` is large enough, including a
+ * trailing NUL when `capacity` exceeds the stored length. Returns the
+ * stored length, or zero when the rescue is not armed. Not for signal context.
+ */
+size_t gama_tui_signal_copy_restore_sequence(char *out, size_t capacity);
 
 /**
  * Restores every host disposition and releases the saved terminal state.

@@ -1,6 +1,19 @@
 # Goals
 
 ## Current objective
+status: in_progress
+
+- **2026-09-22 17:44 EDT:** Pushed `03335bb` (the `distinctIdentitySharedShortcut` test plus the four missing `docs/Testing.md` rows) to PR #104's branch. All 6 hosted jobs failed in 2–14s; `gh api .../check-runs/106949765913/annotations` confirms the same billing-lock signature the ledger has tracked since 2026-09-08 (`"The job was not started because your account is locked due to a billing issue."`), not a code defect. The one PR comment (`chatgpt-codex-connector[bot]`) is a Codex-quota notice, not review feedback. Still blocked on the account owner clearing GitHub billing.
+
+- **2026-09-22 13:07 EDT:** `distinctIdentitySharedShortcut` drives a real `FrameHost`: Enter increments the focused control, Ctrl-A increments the later identity, and `perform` still reaches the earlier identity. The action-identity suite filter reported 8 passing tests. `docs/Testing.md` now names `ActionIdentityTests.swift` and `TerminalCapabilityTests.swift`. The filename check printed `none`. Local commands only. No hosted job.
+
+- **2026-09-22 12:24 EDT:** The scan of `Sources/`, `Tests/gamaTests/`, `tasks/todo.md`, and `tasks/goals.md` found two local items. `docs/superpowers/plans/2026-09-22-shared-shortcut-distinct-identity.md` pins two different action identities that share one shortcut. `docs/superpowers/plans/2026-09-22-testing-catalog-rows.md` names the two suite files missing from the testing catalog. Left out of those plans: VoiceOver, notarization, and Dock / Command-Q; unset Android SDK variables; the pull-request billing lock; SwiftUI, SwiftData, and Foundation or any runtime package dependency in a portable target; default main-actor isolation; unprobed InlineArray, Span, Continuation, and Ref; and moving `@_cdecl` exports to `@c`. This pass did not change production source.
+
+- **2026-09-22 12:12 EDT:** SwiftUI and SwiftData skills are for Apple apps, not `GamaCore`. Swift 6.2's default main-actor isolation, `InlineArray`/`Span`, and the June 2026 `Continuation`/`Ref` proposals stay unadopted until a probe shows they solve a current gate. Next: unchanged. PR #104 waits on the billing lock. Do not re-anchor the ledger before a green six-job run.
+
+- **2026-09-22 11:46 EDT, `2efe238`:** `ActionIdentityTests` is 7 tests. `laterRegistrationWins` and `closerModifierReplacesAncestor` each passed once, and the suite filter passed with all 7. Production code was unchanged. Next: hosted jobs on PR #104 stay blocked by the billing lock; do not re-anchor ledger rows until a six-job run on the merge SHA is green.
+
+- **2026-09-22 11:20 EDT, `41272d5`:** Action identity, capability-specific raw mode, and the arm-time restore sequence are in PR #104. Apple gate: 339 tests in 58 suites. Embedded pin re-measured to 679112 bytes at compiler revision `95c5142e84b82c1`. `check-docs.sh` passes. Android gates did not run: `ANDROID_NDK_HOME` and `ANDROID_HOME` are unset. Hosted jobs are not starting because the account is billing-locked (run `35691170330` on PR #103 failed with empty steps). The capability snapshot stays with PR #103. Next: merge #104 only after billing unlock and a green six-job run on that SHA; do not promote ledger rows whose paths these commits change until that run exists.
 
 Keep Gama a portable, retained Swift UI framework whose documentation and
 evidence match the exact source, toolchain, and acceptance matrix.
@@ -233,7 +246,56 @@ status: done
   against hosted-proven AppKit for a presentational benefit.
 
 ## Capability-ledger honesty
-status: done
+status: in_progress
+
+- **2026-09-22 01:3x EDT, pushed on approval, PR #103:** branch
+  `docs/ledger-honesty-round-2` pushed and https://github.com/donaldfilimon/gama/pull/103 opened against `main`.
+  Named stop: the GitHub billing lock leaves its required checks unmeasured
+  until Donald clears it; merge after that. Next: none in this round beyond
+  the merge.
+- **2026-09-22 01:3x EDT, count correction and execution probe:** the two
+  bullets below say "twelve rows, eleven hosted"; measured from the lead-word
+  scan, thirteen rows changed layer (twelve to `hosted`, Windows console to
+  `implemented`) and row 73 had only its annotation re-anchored, fourteen
+  annotation edits in all. Path freshness alone does not show a suite ran, so
+  the macOS job (`101642264974`) of run `34090312518` was read: 321 tests in
+  56 suites passed, zero failures, and every suite behind a promoted row
+  passed by title (POSIX terminal, Terminal rescue, AppKit host, AppKit host
+  accessibility, Accessibility snapshot, Macro expansion, Macro public
+  surface, View-state identity, DrawList codec, Embed ABI additions, C
+  embedding context, Plugin runtime, AppKit scene shell); `check-mlir.sh`,
+  `check-apple-platforms.sh`, and the `bundle-macos.sh` offscreen smoke each
+  print their OK line in that log. The round-2 checklist in `todo.md` is now
+  fully ticked (six items had been left unticked after slice 2 landed). Named
+  stop unchanged: push and PR need approval; billing lock behind that.
+- **2026-09-22 01:2x EDT, `38abedf` on `docs/ledger-honesty-round-2` (two
+  commits over `35ad8c3`):** slice 2 landed: `docs/Packaging.md` defers its
+  wasm-smoke cell to the ledger row; the two adaptive-terminal specs and the
+  CellSerializer spec carry dated corrections instead of present-tense claims
+  the ledger no longer supports; README marks `GamaEmbedABI` as a target inside
+  the `GamaEmbed` product; ADR 0011 counts 10 identity tests. One audit claim
+  was false (README "missing" two executables it already listed) and was
+  caught by a row count before commit. Gate: three doc checkers and
+  `check-evidence-freshness.sh` exit 0 in-tree on `38abedf`; full
+  `check-docs.sh` exit 0 on a clean export of `1362bff` (DocC for all eight
+  modules; slice 2 touched nothing DocC reads). Named stop: push and PR need
+  approval, and the GitHub billing lock blocks every merge regardless. Next:
+  on approval, push the branch and open the PR against `main`.
+- **2026-09-22 01:2x EDT, round 2, branch `docs/ledger-honesty-round-2`:** a
+  read-only audit measured `docs/Capabilities.md` against the tree at `35ad8c3`.
+  The snapshot paragraph still said `origin/main` was `e735cb4` (19 commits
+  stale), and twelve rows sat at `unverified` or `locally` although the paths
+  each depends on are unchanged since `e735cb4`, whose six-job run
+  `34090312518` is green per `gh run view` (headSha and every job re-read
+  2026-09-22). Slice 1 re-anchors those rows to `e735cb4` with the layer their
+  enforcing job supports (eleven `hosted`, Windows console `implemented`),
+  fixes the snapshot sentence and the row-68 `origin/main` phrase, and corrects
+  the `ViewStateIdentityTests` count (10 `@Test`, not 8). Rows whose paths
+  changed after `e735cb4` (55, 65, 68-71) stay `unverified`; that is correct.
+  Gate: three doc checkers plus `check-evidence-freshness.sh`, then
+  `check-docs.sh`. Next: slice 2, the cross-document claims that nothing gates
+  (`docs/Packaging.md`, two specs, README products table, ADR 0011 count, the
+  stale CellSerializer tail in `todo.md`); checklist in `todo.md`.
 
 - **Full row audit delivered 2026-09-06.** Every one of the seven rows that
   named a commit was stale: the files each row's claim depends on had changed

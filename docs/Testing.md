@@ -36,6 +36,7 @@ All suites live in `Tests/gamaTests/`:
 | File | Suites (filter the source identifier, not the `@Suite` title) |
 | --- | --- |
 | `ActionTests.swift` | Actions |
+| `ActionIdentityTests.swift` | Action identity — filter `ActionIdentityTests` |
 | `AdaptiveSurfaceTests.swift` | Adaptive terminal surface |
 | `AccessibilitySnapshotTests.swift` | Accessibility snapshot |
 | `AppleHostAccessibilityTests.swift` | AppKit accessibility bridge |
@@ -50,6 +51,7 @@ All suites live in `Tests/gamaTests/`:
 | `FailureExitCodeTests.swift` | Validated failure exit codes — filter `--filter FailureExitCodeTests` |
 | `FormControlTests.swift` | Form controls and identity |
 | `FrameHostTests.swift` | FrameHost |
+| `GamepadInputTests.swift` | Gamepad input — filter `GamepadInputTests` |
 | `GeometryTests.swift` | Geometry |
 | `HostPumpTests.swift` | Host pump |
 | `LayoutTests.swift` | Layout |
@@ -73,8 +75,11 @@ All suites live in `Tests/gamaTests/`:
 | `StreamOutputTests.swift` | Author-declared stream output |
 | `StreamPresenterTests.swift` | Stream presenter |
 | `StyleTests.swift` | Style |
+| `TerminalCapabilityTests.swift` | Terminal capabilities and cell diff — filter `TerminalCapabilityTests` |
 | `TerminalRescueTests.swift` | Terminal process-global rescue |
 | `TestSupport.swift` | No suite; shared helpers, including `TestBox` |
+| `TextFieldCursorTests.swift` | TextEditing pure functions; TextField cursor and selection — filter `TextFieldCursorTests` |
+| `VirtualizedListTests.swift` | Virtualized list — filter `VirtualizedListTests` |
 | `ViewBuilderTests.swift` | View builder (including ZStack overlay vs group); filter `--filter ViewBuilderTests` |
 | `ViewStateIdentityTests.swift` | View-state identity |
 | `WASMSerializerTests.swift` | WASM HTML serializer (compiled off wasm32) |

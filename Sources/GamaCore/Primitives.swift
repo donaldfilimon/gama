@@ -218,7 +218,8 @@ public struct Divider: View {
 /// default styling — a label that sets its own foreground or background
 /// keeps it, because deeper styles win through `TextStyle.merging`.
 /// Disabled buttons render dimmed, register no action, and leave the
-/// focus order.
+/// focus order. ``View/actionIdentity(_:shortcut:)`` registers this same
+/// closure under a stable identity when the button is enabled.
 public struct Button<Label: View>: View {
     /// Terminates `body` recursion; this view compiles in `render(in:)`.
     public typealias Body = Never_
@@ -255,6 +256,9 @@ public struct Button<Label: View>: View {
             )
         }
         context.registerAction(id, action)
+        if let named = context.environment.actionIdentity {
+            context.registerNamedAction(named.id, named.shortcut, action)
+        }
         let focused = context.environment.focusedID == id
         // Focus wrap is applied outside the label so CellPainter's
         // outer-wins merge paints cyan/black over a custom-colored label.
@@ -281,11 +285,15 @@ extension Button where Label == Text {
 // MARK: - Form controls
 
 /// Editable text bound to external storage, rendered as a single row.
-/// While focused, character key events append (the field itself does not
-/// filter control characters — a host that delivers `"\n"`, such as the
-/// C embedding entry point, embeds it verbatim), backspace removes the
-/// last character, and Delete clears the field; there is no cursor
-/// movement. Every keystroke writes through the binding immediately.
+/// While focused, character key events insert at the cursor (the field
+/// itself does not filter control characters — a host that delivers
+/// `"\n"`, such as the C embedding entry point, embeds it verbatim),
+/// Left/Right/Home/End move the cursor, and Backspace/Delete remove the
+/// grapheme before/at the cursor. The cursor position is host-owned state
+/// that survives the field being rebuilt every frame, like `@Reactive`
+/// storage; there is no visual caret yet and no keyboard-driven selection
+/// (extending a selection needs a modifier-key vocabulary `Key` doesn't
+/// have).
 public struct TextField: View {
     /// Terminates `body` recursion; this view compiles in `render(in:)`.
     public typealias Body = Never_
@@ -297,6 +305,9 @@ public struct TextField: View {
     /// Storage for the field's contents; edits write through on every
     /// keystroke.
     public var text: Binding<String>
+    /// Host-owned cursor/selection storage, resolved fresh against this
+    /// node's identity on every render — see `ReactiveSlot`.
+    private let cursorSlot = ReactiveSlot<Selection>(Selection(anchor: 0, head: 0))
 
     /// Creates a field editing `text`, with an optional placeholder for
     /// the empty state.
@@ -314,7 +325,11 @@ public struct TextField: View {
         let focused = context.environment.focusedID == id
         if enabled {
             let binding = text
+            cursorSlot._bind(in: context, slot: 0)
+            let cursor = cursorSlot.binding()
             context.registerKeyHandler(id) { key in
+                let value = binding.wrappedValue
+                let selection = cursor.wrappedValue.clamped(to: value.count)
                 switch key {
                 case .character(let character):
                     // C0 / DEL never enter the field, including the C embed
@@ -323,18 +338,33 @@ public struct TextField: View {
                     guard character.unicodeScalars.allSatisfy({
                         $0.value >= 0x20 && $0.value != 0x7F
                     }) else { return true }
-                    var value = binding.wrappedValue
-                    value.append(character)
-                    binding.wrappedValue = value
+                    let (newValue, newSelection) = TextEditing.insert(character, into: value, at: selection)
+                    binding.wrappedValue = newValue
+                    cursor.wrappedValue = newSelection
                     return true
                 case .backspace:
-                    var value = binding.wrappedValue
-                    guard !value.isEmpty else { return false }
-                    value.removeLast()
-                    binding.wrappedValue = value
+                    guard let (newValue, newSelection) = TextEditing.deleteBackward(value, at: selection)
+                    else { return false }
+                    binding.wrappedValue = newValue
+                    cursor.wrappedValue = newSelection
                     return true
                 case .delete:
-                    binding.wrappedValue = ""
+                    guard let (newValue, newSelection) = TextEditing.deleteForward(value, at: selection)
+                    else { return false }
+                    binding.wrappedValue = newValue
+                    cursor.wrappedValue = newSelection
+                    return true
+                case .left:
+                    cursor.wrappedValue = TextEditing.moveLeft(value, from: selection)
+                    return true
+                case .right:
+                    cursor.wrappedValue = TextEditing.moveRight(value, from: selection)
+                    return true
+                case .home:
+                    cursor.wrappedValue = TextEditing.moveToStart(value)
+                    return true
+                case .end:
+                    cursor.wrappedValue = TextEditing.moveToEnd(value)
                     return true
                 default:
                     return false
@@ -750,6 +780,28 @@ public struct _EnvTransformed<Content: View>: View {
 }
 
 extension View {
+    /// Names the action a control in this subtree registers with the host.
+    ///
+    /// ``Button`` stores one closure for `id`. While that control is
+    /// enabled, focus activation (Enter or Space when it is focused, or a
+    /// pointer press), `shortcut` when the focused node does not consume
+    /// the key, and ``FrameHost/perform(_:)`` all call that closure. A
+    /// disabled control registers nothing, so none of those paths run.
+    /// Tab, Shift-Tab, the arrow keys, and Ctrl-C / Ctrl-Q are dropped as
+    /// shortcuts; focus traversal and quit stay host policy. Enter and
+    /// Space stay activation keys and are not consulted as shortcuts.
+    /// A modifier closer to the control replaces one on an ancestor. When
+    /// two controls in one build claim the same identity or the same
+    /// non-reserved shortcut, the later registration wins.
+    public func actionIdentity(_ id: ActionID, shortcut: Key? = nil) -> _EnvTransformed<Self> {
+        _EnvTransformed(
+            transform: {
+                $0.actionIdentity = ActionIdentityRegistration(id: id, shortcut: shortcut)
+            },
+            content: self
+        )
+    }
+
     /// Disable all interactive descendants: buttons stop registering
     /// actions, drop out of the focus order, and draw dimmed.
     public func disabled(_ disabled: Bool = true) -> _EnvTransformed<Self> {

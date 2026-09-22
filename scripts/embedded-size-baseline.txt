@@ -17,9 +17,16 @@
 # whole module, and both deserve a human deciding rather than a stale baseline
 # quietly absorbing them.
 #
+# Re-measured 2026-09-22 at the same compiler revision. check-embedded.sh
+# compiles GamaCore alone, and c7e21cb added the action-identity tables there
+# (ActionID, the host action maps, and the view modifier). The linked artifact
+# is 679112 bytes, 37648 above the 2026-09-06 pin of 641464, which is outside
+# the previous 2% band. Capability detection and the C restore buffer are not
+# in this compile.
+#
 # Grammar is deliberately tiny: blank lines, `#` comments, and key = "value".
 # Anything else fails the read, for the same reason scripts/lib/manifest.sh is
 # strict — this is a pin, not a configuration language.
 revision = "95c5142e84b82c1"
-bytes = "641464"
+bytes = "679112"
 tolerance_percent = "2"
