@@ -17,8 +17,18 @@ Swift framework at `~/Desktop/Gama`.
 
 ## Build and test
 
+The gate is `Scripts/check.sh`: it runs `build` then `test` through the
+wrapper, prints `build EXIT:<n>` and `test EXIT:<n>`, and exits nonzero if
+either failed. Redirect it to a log rather than piping it.
+
 ```bash
 cd ~/dev/active/gama-qt
+Scripts/check.sh > /tmp/gama-qt-check.log 2>&1; echo EXIT:$?
+```
+
+The same steps by hand:
+
+```bash
 unset TOOLCHAINS
 /Users/donaldfilimon/.grok/skills/swift/scripts/xcode-swift.sh build
 /Users/donaldfilimon/.grok/skills/swift/scripts/xcode-swift.sh test
@@ -30,8 +40,10 @@ library. `CGamaQt` is a header-oriented Clang module: its public bridge lives in
 
 ## Run
 
-`Scripts/run.sh` builds with the supported wrapper, supplies the Qt runtime
-search path, and forwards arguments:
+`Scripts/run.sh` builds the `Gama` product with the supported wrapper and execs
+the built binary with arguments forwarded (Xcode `swift run` drops them). The
+Qt runtime search path comes from the package itself: `Package.swift` links
+with `-rpath $QT_PREFIX/lib`.
 
 ```bash
 Scripts/run.sh                 # SwiftUI browser
@@ -46,8 +58,9 @@ Foundation Models runtime is unavailable.
 
 ## Verification status
 
-Verified locally on 2026-08-27: the supported wrapper build passed, all 9 Swift
-Testing tests passed, and the help, owned-string greeting, and callback CLI
-paths completed successfully. Those checks cover the bridge and deterministic
-address behavior. Interactive WebKit/Qt embedding and on-device model output
-remain manual UI/runtime acceptance layers.
+Verified locally on 2026-09-22 (Xcode 27.2, Swift 6.4, Homebrew Qt 6.11.2):
+`Scripts/check.sh` passed with all 16 Swift Testing tests, and the help,
+owned-string greeting, and callback CLI paths completed successfully. Those
+checks cover the bridge and deterministic address behavior. Interactive
+WebKit/Qt embedding and on-device model output remain manual UI/runtime
+acceptance layers.
