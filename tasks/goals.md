@@ -1,6 +1,19 @@
 # Goals
 
 ## Current objective
+status: in_progress
+
+- **2026-09-22 17:44 EDT:** Pushed `03335bb` (the `distinctIdentitySharedShortcut` test plus the four missing `docs/Testing.md` rows) to PR #104's branch. All 6 hosted jobs failed in 2–14s; `gh api .../check-runs/106949765913/annotations` confirms the same billing-lock signature the ledger has tracked since 2026-09-08 (`"The job was not started because your account is locked due to a billing issue."`), not a code defect. The one PR comment (`chatgpt-codex-connector[bot]`) is a Codex-quota notice, not review feedback. Still blocked on the account owner clearing GitHub billing.
+
+- **2026-09-22 13:07 EDT:** `distinctIdentitySharedShortcut` drives a real `FrameHost`: Enter increments the focused control, Ctrl-A increments the later identity, and `perform` still reaches the earlier identity. The action-identity suite filter reported 8 passing tests. `docs/Testing.md` now names `ActionIdentityTests.swift` and `TerminalCapabilityTests.swift`. The filename check printed `none`. Local commands only. No hosted job.
+
+- **2026-09-22 12:24 EDT:** The scan of `Sources/`, `Tests/gamaTests/`, `tasks/todo.md`, and `tasks/goals.md` found two local items. `docs/superpowers/plans/2026-09-22-shared-shortcut-distinct-identity.md` pins two different action identities that share one shortcut. `docs/superpowers/plans/2026-09-22-testing-catalog-rows.md` names the two suite files missing from the testing catalog. Left out of those plans: VoiceOver, notarization, and Dock / Command-Q; unset Android SDK variables; the pull-request billing lock; SwiftUI, SwiftData, and Foundation or any runtime package dependency in a portable target; default main-actor isolation; unprobed InlineArray, Span, Continuation, and Ref; and moving `@_cdecl` exports to `@c`. This pass did not change production source.
+
+- **2026-09-22 12:12 EDT:** SwiftUI and SwiftData skills are for Apple apps, not `GamaCore`. Swift 6.2's default main-actor isolation, `InlineArray`/`Span`, and the June 2026 `Continuation`/`Ref` proposals stay unadopted until a probe shows they solve a current gate. Next: unchanged. PR #104 waits on the billing lock. Do not re-anchor the ledger before a green six-job run.
+
+- **2026-09-22 11:46 EDT, `2efe238`:** `ActionIdentityTests` is 7 tests. `laterRegistrationWins` and `closerModifierReplacesAncestor` each passed once, and the suite filter passed with all 7. Production code was unchanged. Next: hosted jobs on PR #104 stay blocked by the billing lock; do not re-anchor ledger rows until a six-job run on the merge SHA is green.
+
+- **2026-09-22 11:20 EDT, `41272d5`:** Action identity, capability-specific raw mode, and the arm-time restore sequence are in PR #104. Apple gate: 339 tests in 58 suites. Embedded pin re-measured to 679112 bytes at compiler revision `95c5142e84b82c1`. `check-docs.sh` passes. Android gates did not run: `ANDROID_NDK_HOME` and `ANDROID_HOME` are unset. Hosted jobs are not starting because the account is billing-locked (run `35691170330` on PR #103 failed with empty steps). The capability snapshot stays with PR #103. Next: merge #104 only after billing unlock and a green six-job run on that SHA; do not promote ledger rows whose paths these commits change until that run exists.
 
 Keep Gama a portable, retained Swift UI framework whose documentation and
 evidence match the exact source, toolchain, and acceptance matrix.

@@ -5,22 +5,66 @@
 //  own event sources. One implementation of focus, actions, and dirty
 //  tracking — identical behavior on every platform.
 
+/// Stable identity of one application action, chosen by the application
+/// rather than by the control's position in the tree.
+///
+/// ``FrameHost`` stores the control's closure under this value for the
+/// current frame. Focus activation, a matching shortcut, and
+/// ``FrameHost/perform(_:)`` call that same closure. The identity is
+/// absent after a build that did not register it — the control is
+/// disabled or not in the tree — and those paths then do nothing.
+public struct ActionID: Hashable, Sendable {
+    /// Application-supplied token. Equal tokens are the same action.
+    public var rawValue: String
+
+    /// Creates an identity from `rawValue`.
+    public init(_ rawValue: String) {
+        self.rawValue = rawValue
+    }
+}
+
+/// Keys the host already uses for quit and focus. They are not action
+/// shortcuts; registration keeps the identity and drops the shortcut.
+private func isReservedActionShortcut(_ key: Key) -> Bool {
+    switch key {
+    case .tab, .backTab, .up, .down, .left, .right, .ctrl("c"), .ctrl("q"):
+        return true
+    default:
+        return false
+    }
+}
+
 /// Action tables for one `FrameHost`. The store is confined to the host's
 /// owning executor and is never shared across concurrent hosts.
 private final class HostActionStore {
     var actions: [NodeID: () -> Void] = [:]
     var keyHandlers: [NodeID: (Key) -> Bool] = [:]
+    var named: [ActionID: () -> Void] = [:]
+    var shortcuts: [Key: ActionID] = [:]
 
     func beginBuildPass() {
         actions.removeAll(keepingCapacity: true)
         keyHandlers.removeAll(keepingCapacity: true)
+        named.removeAll(keepingCapacity: true)
+        shortcuts.removeAll(keepingCapacity: true)
     }
     func register(_ id: NodeID, action: @escaping () -> Void) { actions[id] = action }
     func registerKey(_ id: NodeID, handler: @escaping (Key) -> Bool) {
         keyHandlers[id] = handler
     }
+    func registerNamed(_ id: ActionID, shortcut: Key?, action: @escaping () -> Void) {
+        named[id] = action
+        if let shortcut, !isReservedActionShortcut(shortcut) {
+            shortcuts[shortcut] = id
+        }
+    }
     func invoke(_ id: NodeID) { actions[id]?() }
     func invokeKey(_ key: Key, for id: NodeID) -> Bool { keyHandlers[id]?(key) ?? false }
+    func effect(for id: ActionID) -> (() -> Void)? { named[id] }
+    func shortcutEffect(for key: Key) -> (() -> Void)? {
+        guard let id = shortcuts[key] else { return nil }
+        return named[id]
+    }
 }
 
 /// The backend-independent heart of a running app. Each host owns focus,
@@ -131,6 +175,7 @@ public struct FrameHost: ~Copyable {
         var env = EnvironmentValues()
         env.focusedID = focusedID
         env.windowContext = windowContext
+        env.surfaceSize = size
         var laid = buildFrame(size: size, environment: env)
 
         // Reconcile focus with the new tree.
@@ -160,7 +205,10 @@ public struct FrameHost: ~Copyable {
         var context = BuildContext(
             environment: environment,
             registerAction: { id, action in actionStore.register(id, action: action) },
-            registerKeyHandler: { id, handler in actionStore.registerKey(id, handler: handler) }
+            registerKeyHandler: { id, handler in actionStore.registerKey(id, handler: handler) },
+            registerNamedAction: { id, shortcut, action in
+                actionStore.registerNamed(id, shortcut: shortcut, action: action)
+            }
         )
         context.stateStore = stateStore
         let frame = LayoutEngine.layout(renderScene(context), in: Rect(origin: .zero, size: size))
@@ -187,17 +235,32 @@ public struct FrameHost: ~Copyable {
         }
     }
 
+    /// Invokes the closure registered for `id` during the latest build.
+    ///
+    /// Focus activation and a matching shortcut call that same closure.
+    /// An identity the latest build did not register — the control is
+    /// disabled, not in the tree, or the host has not pumped — does nothing
+    /// and does not mark the host dirty. A hit rebinds per-surface state,
+    /// runs the closure, and marks the host dirty, the same bookkeeping
+    /// ``handle(_:)`` uses for activation.
+    public func perform(_ id: ActionID) {
+        guard let effect = actions.effect(for: id) else { return }
+        stateStore.activate()
+        effect()
+        dirty.set(true)
+    }
+
     /// Routes one input event through the shared interaction policy:
     /// Ctrl-C/Ctrl-Q set `wantsQuit`; Tab and Shift-Tab cycle focus in tab
-    /// order; arrow keys move focus spatially; every remaining key — Enter
-    /// and Space included — is offered to the focused node's key handler
-    /// first, and Enter or Space activates the focused node only when that
-    /// handler declines, so a text field can accept a space as content
-    /// while a button still activates on one; a pointer press hit-tests the
-    /// topmost interactive node (focusing it only when focusable) and
-    /// invokes its action; a resize just marks the host dirty. Whenever an
-    /// event changes state, the dirty flag is set so the next `pump`
-    /// re-renders.
+    /// order; arrow keys move focus spatially; Enter and Space are offered
+    /// to the focused node's key handler and activate that node when the
+    /// handler declines. Every other key is offered to the focused handler
+    /// first, and a declared action shortcut runs only when that handler
+    /// declines, so a text field keeps the characters it consumes. Enter
+    /// and Space are not shortcuts. A pointer press hit-tests the topmost
+    /// interactive node (focusing it only when focusable) and invokes its
+    /// action; a resize just marks the host dirty. Whenever an event
+    /// changes state, the dirty flag is set so the next `pump` re-renders.
     public mutating func handle(_ event: InputEvent) {
         switch event {
         case .key(.ctrl("c")), .key(.ctrl("q")):
@@ -219,14 +282,24 @@ public struct FrameHost: ~Copyable {
         case .key(.backTab):
             moveFocus(by: -1)
 
-        case .key(.up):
-            moveFocusSpatially(dx: 0, dy: -1)
-        case .key(.down):
-            moveFocusSpatially(dx: 0, dy: 1)
-        case .key(.left):
-            moveFocusSpatially(dx: -1, dy: 0)
-        case .key(.right):
-            moveFocusSpatially(dx: 1, dy: 0)
+        case .key(let key) where key == .up || key == .down || key == .left || key == .right:
+            var handled = false
+            if let id = focusedID {
+                stateStore.activate()
+                if actions.invokeKey(key, for: id) {
+                    dirty.set(true)
+                    handled = true
+                }
+            }
+            if !handled {
+                switch key {
+                case .up: moveFocusSpatially(dx: 0, dy: -1)
+                case .down: moveFocusSpatially(dx: 0, dy: 1)
+                case .left: moveFocusSpatially(dx: -1, dy: 0)
+                case .right: moveFocusSpatially(dx: 1, dy: 0)
+                default: break
+                }
+            }
 
         case .key(let key) where key == .enter || key == .character(" "):
             if let id = focusedID {
@@ -252,6 +325,12 @@ public struct FrameHost: ~Copyable {
                 dirty.set(true)
             }
 
+        case .gamepad(let button, pressed: true):
+            // Re-enter with the equivalent keystroke rather than repeating
+            // the focus and activation logic: a controller must reach the
+            // same operation the keyboard does, by construction.
+            if let key = button.semanticKey { handle(.key(key)) }
+
         case .resize(let size):
             lastSize = size
             dirty.set(true)
@@ -259,6 +338,9 @@ public struct FrameHost: ~Copyable {
         case .key(let key):
             stateStore.activate()
             if let id = focusedID, actions.invokeKey(key, for: id) {
+                dirty.set(true)
+            } else if let effect = actions.shortcutEffect(for: key) {
+                effect()
                 dirty.set(true)
             }
 

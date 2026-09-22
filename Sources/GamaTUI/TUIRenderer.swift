@@ -22,11 +22,25 @@ public final class TUIRenderer: Renderer {
     private var began = false
 
     /// Creates a renderer that has not yet touched the terminal — call
-    /// `begin()` to enter raw mode. `trueColor` selects 24-bit ANSI color
-    /// output; pass `false` for terminals limited to the 256-color palette.
-    public init(trueColor: Bool = true) {
+    /// `begin()` to enter raw mode. The cell diff encodes only the color
+    /// depth ``GamaDraw/TerminalCapabilities/current()`` reports. Unknown color
+    /// emits no color codes.
+    public init() {
+        let capabilities = TerminalCapabilities.current()
         var b = CellBuffer(size: Size(width: 80, height: 24))
-        b.trueColor = trueColor
+        b.colorDepth = capabilities.colorDepth
+        self.buffer = b
+    }
+
+    /// Creates a renderer that forces a color depth and otherwise uses
+    /// ``GamaDraw/TerminalCapabilities/current()``. `true` selects 24-bit color;
+    /// `false` selects the 256-color palette. Raw-mode features still
+    /// follow the detected report, not this flag.
+    public init(trueColor: Bool) {
+        var capabilities = TerminalCapabilities.current()
+        capabilities.colorDepth = trueColor ? .trueColor : .ansi256
+        var b = CellBuffer(size: Size(width: 80, height: 24))
+        b.colorDepth = capabilities.colorDepth
         self.buffer = b
     }
 

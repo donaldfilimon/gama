@@ -16,7 +16,7 @@
 static void arm_rescue(int input_fd, int output_fd) {
     struct termios original;
     memset(&original, 0, sizeof(original));
-    int result = gama_tui_signal_arm(input_fd, output_fd, &original);
+    int result = gama_tui_signal_arm(input_fd, output_fd, &original, NULL, 0);
     if (result != 0) {
         _exit(100 + result % 100);
     }
