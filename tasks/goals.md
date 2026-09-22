@@ -233,7 +233,23 @@ status: done
   against hosted-proven AppKit for a presentational benefit.
 
 ## Capability-ledger honesty
-status: done
+status: in_progress
+
+- **2026-09-22 01:2x EDT, round 2, branch `docs/ledger-honesty-round-2`:** a
+  read-only audit measured `docs/Capabilities.md` against the tree at `35ad8c3`.
+  The snapshot paragraph still said `origin/main` was `e735cb4` (19 commits
+  stale), and twelve rows sat at `unverified` or `locally` although the paths
+  each depends on are unchanged since `e735cb4`, whose six-job run
+  `34090312518` is green per `gh run view` (headSha and every job re-read
+  2026-09-22). Slice 1 re-anchors those rows to `e735cb4` with the layer their
+  enforcing job supports (eleven `hosted`, Windows console `implemented`),
+  fixes the snapshot sentence and the row-68 `origin/main` phrase, and corrects
+  the `ViewStateIdentityTests` count (10 `@Test`, not 8). Rows whose paths
+  changed after `e735cb4` (55, 65, 68-71) stay `unverified`; that is correct.
+  Gate: three doc checkers plus `check-evidence-freshness.sh`, then
+  `check-docs.sh`. Next: slice 2, the cross-document claims that nothing gates
+  (`docs/Packaging.md`, two specs, README products table, ADR 0011 count, the
+  stale CellSerializer tail in `todo.md`); checklist in `todo.md`.
 
 - **Full row audit delivered 2026-09-06.** Every one of the seven rows that
   named a commit was stale: the files each row's claim depends on had changed
