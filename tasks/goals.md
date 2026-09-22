@@ -3,6 +3,8 @@
 ## Current objective
 status: in_progress
 
+- **2026-09-22 11:46 EDT, `2efe238`:** `ActionIdentityTests` is 7 tests. `laterRegistrationWins` and `closerModifierReplacesAncestor` each passed once, and the suite filter passed with all 7. Production code was unchanged. Next: hosted jobs on PR #104 stay blocked by the billing lock; do not re-anchor ledger rows until a six-job run on the merge SHA is green.
+
 - **2026-09-22 11:20 EDT, `41272d5`:** Action identity, capability-specific raw mode, and the arm-time restore sequence are in PR #104. Apple gate: 339 tests in 58 suites. Embedded pin re-measured to 679112 bytes at compiler revision `95c5142e84b82c1`. `check-docs.sh` passes. Android gates did not run: `ANDROID_NDK_HOME` and `ANDROID_HOME` are unset. Hosted jobs are not starting because the account is billing-locked (run `35691170330` on PR #103 failed with empty steps). The capability snapshot stays with PR #103. Next: merge #104 only after billing unlock and a green six-job run on that SHA; do not promote ledger rows whose paths these commits change until that run exists.
 
 Keep Gama a portable, retained Swift UI framework whose documentation and
