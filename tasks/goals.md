@@ -235,6 +235,21 @@ status: done
 ## Capability-ledger honesty
 status: in_progress
 
+- **2026-09-22 01:3x EDT, count correction and execution probe:** the two
+  bullets below say "twelve rows, eleven hosted"; measured from the lead-word
+  scan, thirteen rows changed layer (twelve to `hosted`, Windows console to
+  `implemented`) and row 73 had only its annotation re-anchored, fourteen
+  annotation edits in all. Path freshness alone does not show a suite ran, so
+  the macOS job (`101642264974`) of run `34090312518` was read: 321 tests in
+  56 suites passed, zero failures, and every suite behind a promoted row
+  passed by title (POSIX terminal, Terminal rescue, AppKit host, AppKit host
+  accessibility, Accessibility snapshot, Macro expansion, Macro public
+  surface, View-state identity, DrawList codec, Embed ABI additions, C
+  embedding context, Plugin runtime, AppKit scene shell); `check-mlir.sh`,
+  `check-apple-platforms.sh`, and the `bundle-macos.sh` offscreen smoke each
+  print their OK line in that log. The round-2 checklist in `todo.md` is now
+  fully ticked (six items had been left unticked after slice 2 landed). Named
+  stop unchanged: push and PR need approval; billing lock behind that.
 - **2026-09-22 01:2x EDT, `38abedf` on `docs/ledger-honesty-round-2` (two
   commits over `35ad8c3`):** slice 2 landed: `docs/Packaging.md` defers its
   wasm-smoke cell to the ledger row; the two adaptive-terminal specs and the
