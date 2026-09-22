@@ -531,10 +531,12 @@ seam those need, not those features. `GamepadButton` and the `.gamepad`
 input event exist and route through the same focus and activation path as
 the keyboard, but **no backend emits them** — a producer needs a platform
 import (GameController is Apple-only) and belongs in a backend target, so
-this is dispatch without a source today. List/table virtualization is
-blocked behind something that does not exist yet: there is no scroll or
-viewport model in `GamaCore` at all, so the work is "build a viewport, then
-virtualize," not "make `ForEach` lazy."
+this is dispatch without a source today. `VirtualizedList` windows a
+collection against `EnvironmentValues.surfaceSize` (ADR 0015), but it is
+not a `ScrollView` — no clipping, no nested scrolling, no pointer wheel —
+there is still no `Table` type, and `ForEach`/`IdentifiedForEach` stay
+eager by design. Its rows must be uniform height; that is a stated
+precondition, not a bug.
 
 ## Packaging
 

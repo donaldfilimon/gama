@@ -20,3 +20,4 @@ are locked until a superseding ADR says otherwise.
 | [0012](0012-strict-memory-safety-and-explicit-imports.md) | Strict memory safety with error promotion on shipped targets; explicit import access levels everywhere | Accepted |
 | [0013](0013-flex-priority-is-per-axis.md) | Flex priority is per-axis: `flexPriority(along:)` is public, the axis-agnostic `flexPriority` is deprecated | Accepted |
 | [0014](0014-cursor-relative-text-editing.md) | TextField edits relative to a cursor; arrow keys reach the focused node before spatial navigation | Accepted |
+| [0015](0015-windowed-collections-use-the-surface-as-their-bound.md) | A windowed collection bounds itself by the surface size, not its own frame; rows are uniform and element-identified | Accepted |

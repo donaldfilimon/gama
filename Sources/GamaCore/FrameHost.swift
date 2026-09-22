@@ -175,6 +175,7 @@ public struct FrameHost: ~Copyable {
         var env = EnvironmentValues()
         env.focusedID = focusedID
         env.windowContext = windowContext
+        env.surfaceSize = size
         var laid = buildFrame(size: size, environment: env)
 
         // Reconcile focus with the new tree.

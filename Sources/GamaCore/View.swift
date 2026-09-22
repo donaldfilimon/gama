@@ -82,6 +82,17 @@ public struct EnvironmentValues: Sendable {
     /// Identity of the currently focused node, set by the owning
     /// `FrameHost` before each build; `nil` when nothing has focus.
     public var focusedID: NodeID? = nil
+    /// The drawable extent of the surface being built, set by the owning
+    /// `FrameHost` before each build; `nil` for host-less rendering, where
+    /// no surface exists.
+    ///
+    /// This is the whole surface, not the space any particular subtree
+    /// received — layout runs after the build, so a view cannot know its
+    /// own final frame while compiling. It is therefore an **upper bound**
+    /// on how much a view can possibly show, which is what a windowed
+    /// collection like ``VirtualizedList`` needs to avoid building rows
+    /// that cannot fit on screen under any layout.
+    public var surfaceSize: Size? = nil
     /// Identity and window operations for the current surface. Backends
     /// without shell ownership leave the actions unavailable.
     public var windowContext: WindowContext = WindowContext()
