@@ -235,6 +235,19 @@ status: done
 ## Capability-ledger honesty
 status: in_progress
 
+- **2026-09-22 01:2x EDT, `38abedf` on `docs/ledger-honesty-round-2` (two
+  commits over `35ad8c3`):** slice 2 landed: `docs/Packaging.md` defers its
+  wasm-smoke cell to the ledger row; the two adaptive-terminal specs and the
+  CellSerializer spec carry dated corrections instead of present-tense claims
+  the ledger no longer supports; README marks `GamaEmbedABI` as a target inside
+  the `GamaEmbed` product; ADR 0011 counts 10 identity tests. One audit claim
+  was false (README "missing" two executables it already listed) and was
+  caught by a row count before commit. Gate: three doc checkers and
+  `check-evidence-freshness.sh` exit 0 in-tree on `38abedf`; full
+  `check-docs.sh` exit 0 on a clean export of `1362bff` (DocC for all eight
+  modules; slice 2 touched nothing DocC reads). Named stop: push and PR need
+  approval, and the GitHub billing lock blocks every merge regardless. Next:
+  on approval, push the branch and open the PR against `main`.
 - **2026-09-22 01:2x EDT, round 2, branch `docs/ledger-honesty-round-2`:** a
   read-only audit measured `docs/Capabilities.md` against the tree at `35ad8c3`.
   The snapshot paragraph still said `origin/main` was `e735cb4` (19 commits
