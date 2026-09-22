@@ -1,6 +1,7 @@
 #if canImport(Darwin)
 import Darwin
 import GamaCore
+import GamaDraw
 @testable import GamaTUI
 import Testing
 
@@ -86,6 +87,32 @@ extension TerminalProcessGlobalTests {
                 close(slave)
             }
             try body(slave)
+        }
+
+        @Test("armed restore bytes match the capability disable sequence")
+        func restoreBytesMatchCapabilityReport() throws {
+            // A second enter on the same slave blocks in TCSAFLUSH until the
+            // master reads the first session's bytes. Each report gets a pty.
+            try withPTY { slave in
+                let unknown = TerminalCapabilities.unknown
+                var terminal = Terminal(inputFD: slave, outputFD: slave)
+                try terminal.enterRawMode(capabilities: unknown)
+                let unknownArmed = TerminalRescue.armedRestoreSequence()
+                #expect(unknownArmed == TerminalModeSequences.disable(unknown))
+                #expect(!unknownArmed.contains("1049"))
+                terminal.exitRawMode()
+            }
+            try withPTY { slave in
+                let xterm = TerminalCapabilities.detect(
+                    environment: ["TERM": "xterm-256color"])
+                var terminal = Terminal(inputFD: slave, outputFD: slave)
+                try terminal.enterRawMode(capabilities: xterm)
+                let xtermArmed = TerminalRescue.armedRestoreSequence()
+                #expect(xtermArmed == TerminalModeSequences.disable(xterm))
+                #expect(xtermArmed.contains("2004l"))
+                #expect(xtermArmed.contains("1004l"))
+                terminal.exitRawMode()
+            }
         }
 
         @Test("entering raw mode arms the rescue and a clean close disarms it")

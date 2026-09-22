@@ -45,13 +45,36 @@ enum TerminalRescue {
     static func arm(
         inputFD: Int32,
         outputFD: Int32,
-        original: termios
+        original: termios,
+        restoreSequence: String
     ) throws(TerminalError) {
         var original = original
-        let result = unsafe gama_tui_signal_arm(inputFD, outputFD, &original)
+        let result = restoreSequence.withCString { bytes in
+            unsafe gama_tui_signal_arm(
+                inputFD,
+                outputFD,
+                &original,
+                bytes,
+                restoreSequence.utf8.count
+            )
+        }
         if result != 0 {
             throw TerminalError("terminal signal rescue setup failed (errno \(result))")
         }
+    }
+
+    /// The disable bytes copied into the C rescue buffer for the armed session.
+    /// Empty when the rescue is not armed. The pointer from C is copied here.
+    static func armedRestoreSequence() -> String {
+        let needed = Int(gama_tui_signal_copy_restore_sequence(nil, 0))
+        if needed == 0 { return "" }
+        var buffer = [CChar](repeating: 0, count: needed + 1)
+        let written = buffer.withUnsafeMutableBufferPointer { raw in
+            Int(unsafe gama_tui_signal_copy_restore_sequence(raw.baseAddress, raw.count))
+        }
+        guard written == needed, written <= buffer.count else { return "" }
+        let bytes = buffer.prefix(written).map { UInt8(bitPattern: $0) }
+        return String(decoding: bytes, as: UTF8.self)
     }
 
     /// Stops rescuing — the owning session restored the terminal itself.

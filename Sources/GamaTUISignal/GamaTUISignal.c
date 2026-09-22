@@ -27,8 +27,12 @@ static const int gama_tui_signals[GAMA_TUI_SIGNAL_COUNT] = {
     SIGWINCH,
 };
 
-static const char gama_tui_restore_sequence[] =
-    "\x1b[?1006l\x1b[?1000l\x1b[0m\x1b[?25h\x1b[?1049l";
+enum { GAMA_TUI_RESTORE_CAPACITY = 256 };
+
+/* Copied at arm time from the session's disable sequence. The handler and
+ * atexit path only read this buffer; they never call back into Swift. */
+static char gama_tui_restore_sequence[GAMA_TUI_RESTORE_CAPACITY];
+static size_t gama_tui_restore_sequence_length = 0;
 
 static struct termios gama_tui_saved_termios;
 static struct sigaction gama_tui_saved_actions[GAMA_TUI_SIGNAL_COUNT];
@@ -59,7 +63,7 @@ static void gama_tui_write_restore_sequence(void) {
     }
 
     size_t offset = 0;
-    const size_t count = sizeof(gama_tui_restore_sequence) - 1;
+    const size_t count = gama_tui_restore_sequence_length;
     while (offset < count) {
         ssize_t written = write(
             gama_tui_saved_output_fd,
@@ -307,12 +311,52 @@ static int gama_tui_install_saved_handlers(void) {
     return result;
 }
 
+static int gama_tui_store_restore_sequence(
+    const char *sequence,
+    size_t length
+) {
+    if (length > GAMA_TUI_RESTORE_CAPACITY) {
+        return EINVAL;
+    }
+    if (length > 0 && sequence == NULL) {
+        return EINVAL;
+    }
+    if (length > 0) {
+        memcpy(gama_tui_restore_sequence, sequence, length);
+    }
+    gama_tui_restore_sequence_length = length;
+    return 0;
+}
+
+size_t gama_tui_signal_copy_restore_sequence(char *out, size_t capacity) {
+    if (__atomic_load_n(&gama_tui_armed, __ATOMIC_SEQ_CST) == 0) {
+        return 0;
+    }
+    size_t length = gama_tui_restore_sequence_length;
+    if (out == NULL || capacity < length) {
+        return length;
+    }
+    if (length > 0) {
+        memcpy(out, gama_tui_restore_sequence, length);
+    }
+    if (capacity > length) {
+        out[length] = '\0';
+    }
+    return length;
+}
+
 int gama_tui_signal_arm(
     int input_fd,
     int output_fd,
-    const struct termios *original_termios
+    const struct termios *original_termios,
+    const char *restore_sequence,
+    size_t restore_sequence_length
 ) {
     if (original_termios == NULL || input_fd < 0 || output_fd < 0) {
+        return EINVAL;
+    }
+    if (restore_sequence_length > GAMA_TUI_RESTORE_CAPACITY
+        || (restore_sequence_length > 0 && restore_sequence == NULL)) {
         return EINVAL;
     }
     if (__atomic_load_n(&gama_tui_armed, __ATOMIC_SEQ_CST) != 0
@@ -330,7 +374,10 @@ int gama_tui_signal_arm(
         return errno;
     }
 
-    int result = 0;
+    int result = gama_tui_store_restore_sequence(
+        restore_sequence,
+        restore_sequence_length
+    );
     if (!gama_tui_atexit_registered) {
         if (atexit(gama_tui_signal_restore_now) != 0) {
             result = ENOMEM;
@@ -361,6 +408,7 @@ int gama_tui_signal_arm(
     }
 
     if (result != 0) {
+        gama_tui_restore_sequence_length = 0;
         __atomic_store_n(&gama_tui_armed, (sig_atomic_t)0, __ATOMIC_SEQ_CST);
         (void)gama_tui_restore_saved_actions();
         __atomic_store_n(
@@ -374,6 +422,7 @@ int gama_tui_signal_arm(
 
     if (sigprocmask(SIG_SETMASK, &previous_mask, NULL) != 0 && result == 0) {
         result = errno;
+        gama_tui_restore_sequence_length = 0;
         __atomic_store_n(&gama_tui_armed, (sig_atomic_t)0, __ATOMIC_SEQ_CST);
         (void)gama_tui_restore_saved_actions();
         __atomic_store_n(

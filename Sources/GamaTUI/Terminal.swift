@@ -121,6 +121,12 @@ public struct Terminal: ~Copyable {
     /// mode cannot be applied; a failed screen setup restores the terminal
     /// before rethrowing.
     public mutating func enterRawMode() throws(TerminalError) {
+        try enterRawMode(capabilities: .current())
+    }
+
+    /// Enters raw mode using `capabilities` for both the enable write and
+    /// the bytes the signal rescue will write from `atexit`.
+    mutating func enterRawMode(capabilities: TerminalCapabilities) throws(TerminalError) {
         guard unsafe tcgetattr(inputFD, &originalTermios) == 0 else {
             throw TerminalError("tcgetattr failed — stdin is not a tty")
         }
@@ -138,12 +144,18 @@ public struct Terminal: ~Copyable {
             throw TerminalError("tcsetattr failed")
         }
         isRaw = true
-        activeCapabilities = .current()
+        activeCapabilities = capabilities
         // Arm the process-global rescue only now that raw mode is really in
         // effect, so a terminal that was never modified is never "restored".
+        // The C buffer receives this session's disable sequence, not a
+        // fixed alternate-screen exit.
         do {
             try TerminalRescue.arm(
-                inputFD: inputFD, outputFD: outputFD, original: originalTermios)
+                inputFD: inputFD,
+                outputFD: outputFD,
+                original: originalTermios,
+                restoreSequence: TerminalModeSequences.disable(capabilities)
+            )
         } catch {
             _ = unsafe tcsetattr(inputFD, TCSANOW, &originalTermios)
             isRaw = false

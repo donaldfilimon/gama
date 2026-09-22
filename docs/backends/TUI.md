@@ -91,7 +91,7 @@ supervisor's `SIGTERM` would leave the terminal in raw mode with no echo
 and no cursor. The rescue is process-global by necessity — signal
 disposition is process-wide — but the private `GamaTUISignal` C target owns
 every byte reachable from a handler: saved `termios`, file descriptors,
-displaced `sigaction` records, fixed restore bytes, and lock-free
+displaced `sigaction` records, the restore bytes copied at arm time, and lock-free
 `sig_atomic_t` latches. Swift performs lifecycle calls only outside handler
 context. The terminating handler uses a write-free termios-only restoration,
 restores every displaced host disposition, and re-raises through the action
