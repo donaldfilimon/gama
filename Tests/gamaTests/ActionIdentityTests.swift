@@ -72,6 +72,38 @@ private struct FieldApp: App {
     }
 }
 
+private struct OverlapApp: App {
+    let early = Signal(0)
+    let late = Signal(0)
+
+    init() {}
+
+    var scenes: some Scene {
+        Window("Overlap", id: "main", role: .primary) {
+            VStack {
+                Button("Early") { early.set(early.get() + 1) }
+                    .actionIdentity(ActionID("shared"), shortcut: .ctrl("a"))
+                Button("Late") { late.set(late.get() + 1) }
+                    .actionIdentity(ActionID("shared"), shortcut: .ctrl("a"))
+            }
+        }
+    }
+}
+
+private struct NestedIdentityApp: App {
+    let count = Signal(0)
+
+    init() {}
+
+    var scenes: some Scene {
+        Window("Nested", id: "main", role: .primary) {
+            Button("Add") { count.set(count.get() + 1) }
+                .actionIdentity(ActionID("inner"), shortcut: .ctrl("i"))
+                .actionIdentity(ActionID("outer"), shortcut: .ctrl("o"))
+        }
+    }
+}
+
 private func flexWidths(_ node: LaidOutNode) -> [Int] {
     var found: [Int] = []
     if case .flexFrame = node.node {
@@ -186,5 +218,43 @@ struct ActionIdentityTests {
         host.handle(.key(.character("x")))
         #expect(app.text.get() == "x")
         #expect(app.count.get() == 1)
+    }
+
+    @Test("the later control wins a shared identity and shortcut")
+    func laterRegistrationWins() throws {
+        let app = OverlapApp()
+        var host = try FrameHost(app: app)
+        _ = host.pump(size: Size(width: 40, height: 8))
+
+        host.handle(.key(.enter))
+        #expect(app.early.get() == 1)
+        #expect(app.late.get() == 0)
+
+        host.handle(.key(.ctrl("a")))
+        #expect(app.early.get() == 1)
+        #expect(app.late.get() == 1)
+
+        host.perform(ActionID("shared"))
+        #expect(app.early.get() == 1)
+        #expect(app.late.get() == 2)
+    }
+
+    @Test("the modifier closer to the control replaces an outer one")
+    func closerModifierReplacesAncestor() throws {
+        let app = NestedIdentityApp()
+        var host = try FrameHost(app: app)
+        _ = host.pump(size: Size(width: 40, height: 6))
+
+        host.perform(ActionID("outer"))
+        #expect(app.count.get() == 0)
+
+        host.handle(.key(.ctrl("o")))
+        #expect(app.count.get() == 0)
+
+        host.perform(ActionID("inner"))
+        #expect(app.count.get() == 1)
+
+        host.handle(.key(.ctrl("i")))
+        #expect(app.count.get() == 2)
     }
 }
