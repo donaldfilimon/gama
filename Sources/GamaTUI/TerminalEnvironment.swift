@@ -20,7 +20,7 @@ extension TerminalCapabilities {
     /// Detects capabilities from the process environment.
     ///
     /// Copies `TERM`, `COLORTERM`, `NO_COLOR`, `LC_ALL`, `LC_CTYPE`, and
-    /// `LANG` into a dictionary and passes it to ``detect(environment:)``.
+    /// `LANG` into a dictionary and passes it to `detect(environment:)`.
     /// A variable that is unset is omitted, so it cannot be mistaken for
     /// support. The C string returned by the environment call is copied
     /// before this function returns.

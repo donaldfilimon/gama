@@ -23,7 +23,7 @@ public final class TUIRenderer: Renderer {
 
     /// Creates a renderer that has not yet touched the terminal — call
     /// `begin()` to enter raw mode. The cell diff encodes only the color
-    /// depth ``TerminalCapabilities/current()`` reports. Unknown color
+    /// depth ``GamaDraw/TerminalCapabilities/current()`` reports. Unknown color
     /// emits no color codes.
     public init() {
         let capabilities = TerminalCapabilities.current()
@@ -33,7 +33,7 @@ public final class TUIRenderer: Renderer {
     }
 
     /// Creates a renderer that forces a color depth and otherwise uses
-    /// ``TerminalCapabilities/current()``. `true` selects 24-bit color;
+    /// ``GamaDraw/TerminalCapabilities/current()``. `true` selects 24-bit color;
     /// `false` selects the 256-color palette. Raw-mode features still
     /// follow the detected report, not this flag.
     public init(trueColor: Bool) {

@@ -37,9 +37,10 @@ public struct CellBuffer: Hashable, Sendable {
     private var front: [Cell]
     private var back: [Cell]
     private var forceFull = true
-    /// Palette ``presentDiff()`` may encode. ``unknown`` and ``monochrome``
-    /// emit no color codes. The default is ``unknown`` so a buffer that
-    /// was not given a capability report does not assume 24-bit color.
+    /// Palette ``presentDiff()`` may encode. ``TerminalColorDepth/unknown``
+    /// and ``TerminalColorDepth/monochrome`` emit no color codes. The
+    /// default is ``TerminalColorDepth/unknown`` so a buffer that was not
+    /// given a capability report does not assume 24-bit color.
     public var colorDepth: TerminalColorDepth = .unknown
     /// Whether ANSI output uses 24-bit color.
     ///

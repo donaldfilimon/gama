@@ -113,7 +113,7 @@ public struct Terminal: ~Copyable {
 
     /// Switches the tty into raw mode (no echo, no line buffering, no
     /// signal keys), hides the cursor, and enables only the features
-    /// ``TerminalCapabilities/current()`` reports as supported: alternate
+    /// ``GamaDraw/TerminalCapabilities/current()`` reports as supported: alternate
     /// screen, SGR mouse, bracketed paste, and focus reporting. Unknown
     /// features are not enabled, and the primary screen is cleared only
     /// when the alternate screen is supported. The pre-raw termios state
@@ -544,7 +544,7 @@ enum WindowsInputTranslator {
     /// processing on output, switches input to raw key and resize events
     /// (no line buffering or echo), and selects the UTF-8 output code page.
     /// Mouse input and the alternate screen are enabled only when
-    /// ``TerminalCapabilities/current()`` reports them supported. The prior
+    /// ``GamaDraw/TerminalCapabilities/current()`` reports them supported. The prior
     /// modes and code page are saved for restoration. Throws when no console
     /// is attached or a mode cannot be set, undoing any partial setup first.
     public mutating func enterRawMode() throws(TerminalError) {
