@@ -822,8 +822,11 @@ hosted CI. Anchor for promotions is `e735cb4`, six-job run `34090312518`.
       present-tense "291 in 53 suites" is a dated measurement (57 suites now).
 - [ ] `docs/superpowers/specs/2026-09-06-cell-serializer-design.md:225` says
       the WebAssembly row is hosted proven; it is `unverified`.
-- [ ] `README.md` products table: `GamaEmbedABI` is a target, not a product;
-      `gama-leak-check` and `gama-bench` are products and are missing.
+- [x] `README.md` products table: `GamaEmbedABI` is a target, not a product
+      (row now says so). An audit sub-agent also reported `gama-leak-check`
+      and `gama-bench` missing; they were present further down the table,
+      and a first draft of this slice duplicated them before the count
+      (22 rows vs 19 products) exposed it. Corrected before commit.
 - [ ] `docs/adr/0011-reactive-state-is-per-surface.md:130`: 8 tests -> 10.
 - [ ] Deferred-scope bullet below on the wholesale-serialization family: its
       tail is stale (correction bullet appended there).
