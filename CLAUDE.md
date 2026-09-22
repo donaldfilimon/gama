@@ -469,6 +469,62 @@ Target layering (all under `Sources/`, single test target `GamaTests` at
   gate audits. Adding lifecycle coverage there means editing
   `Sources/GamaLeakCheck/main.swift`, not `GamaTests`.
 
+## Architecture vision: what's real, what's renamed, what's not started
+
+A 217-point "Gama north-star" product/architecture manifesto (semantic UI
+graph, capability negotiation, TUI as a first-class renderer, GPU
+compositor, remote UI protocol) was shared 2026-09-22. It is not committed
+to any file in this repo — treat it as background philosophy, not a
+capability claim, and never cite one of its principle numbers as if it were
+an ADR. Three things to know before reusing its vocabulary:
+
+**Already the architecture, enforced differently than the manifesto describes:**
+- No platform imports leak into the portable core: `portable-global-state.py`'s
+  single `TARGETS` list (GamaCore, GamaPlugin, GamaDraw, GamaEmbed, GamaMLIR).
+- Concurrency ownership is compiler-checked, not conventional: ADR 0009
+  (Signal/PluginRuntime non-`Sendable`) plus the `Tests/CompileFail/` and
+  `Tests/Fixtures/` Confinement/ fixtures, which must still fail to compile.
+- Stable identity drives reconciliation: ADR 0011, `IdentifiedForEach`,
+  `.stateScope(_:)`, `FrameHost.transientStateIDs`.
+- A true terminal cell model, not string-width guessing: CellBuffer /
+  CellPainter / DrawList in GamaDraw.
+- Deterministic, golden-style proof: the Ownership / Confinement /
+  PortableSymbols / TerminalSignal fixture gates and the suite table in
+  `docs/Testing.md`.
+- SPM-only, zero shipped runtime dependency: ADR 0012 plus
+  `check-package-graph.sh` (gate 15).
+- An explicit escape hatch at the boundary, not scattered through the core:
+  the `gama_embed_v1_*` C ABI in GamaEmbedABI.
+- "Measure, don't claim": `docs/Performance.md` plus `gama-bench`, which
+  reports numbers and asserts no threshold.
+- Capability negotiation and "never claim a capability you don't implement"
+  — the manifesto's own central rule, and the one most thoroughly
+  mechanized here: the `docs/Capabilities.md` status vocabulary
+  (Implemented / Locally proven / Hosted proven / Provisional / Blocked /
+  Unverified) plus `check-evidence-freshness.sh` (gate 14), which fails a
+  claim the moment the paths it depends on move.
+
+**Named differently here — don't go looking for the manifesto's module names:**
+- No GamaState/GamaUI/GamaLayout split; all three live in GamaCore.
+- No separate accessibility module; accessibility is portable and lives in
+  GamaDraw's `AccessibilitySnapshot`, bridged to AppKit/UIKit in GamaAppleUI's
+  `GamaHostAccessibility.swift`.
+- What the manifesto calls the "render graph" is `DrawList` here.
+- What it calls "platform adapters" are GamaAppleUI / GamaAppleShell /
+  GamaWASM / GamaEmbed(+ABI) / GamaMLIR, plus GamaPlatformServices for
+  Foundation-backed host services (logging, clock, contained filesystem
+  access) — not a per-OS adapter type.
+
+**Not started anywhere in this repo — no target, no gate, no evidence row:**
+a remote UI protocol, an Inspector, a dedicated CLI beyond `gama-demo`'s
+flags, native Windows (Direct3D) or Linux (Wayland/X11/Vulkan) backends, any
+GPU compositor, plugin Tiers 2/3 (out-of-process isolation; Tier 1 is
+capability-based design, not a sandbox — see `docs/Plugins.md`), IME/bidi
+text editing, list/table virtualization, gamepad input. Building toward any
+of these starts from `docs/Plugins.md` or a new file under
+`docs/superpowers/specs/drafts/`, not from assuming the manifesto's module
+boundary already exists.
+
 ## Packaging
 
 `scripts/bundle-macos.sh`, `scripts/bundle-web.sh`, and

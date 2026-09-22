@@ -281,14 +281,24 @@ public struct FrameHost: ~Copyable {
         case .key(.backTab):
             moveFocus(by: -1)
 
-        case .key(.up):
-            moveFocusSpatially(dx: 0, dy: -1)
-        case .key(.down):
-            moveFocusSpatially(dx: 0, dy: 1)
-        case .key(.left):
-            moveFocusSpatially(dx: -1, dy: 0)
-        case .key(.right):
-            moveFocusSpatially(dx: 1, dy: 0)
+        case .key(let key) where key == .up || key == .down || key == .left || key == .right:
+            var handled = false
+            if let id = focusedID {
+                stateStore.activate()
+                if actions.invokeKey(key, for: id) {
+                    dirty.set(true)
+                    handled = true
+                }
+            }
+            if !handled {
+                switch key {
+                case .up: moveFocusSpatially(dx: 0, dy: -1)
+                case .down: moveFocusSpatially(dx: 0, dy: 1)
+                case .left: moveFocusSpatially(dx: -1, dy: 0)
+                case .right: moveFocusSpatially(dx: 1, dy: 0)
+                default: break
+                }
+            }
 
         case .key(let key) where key == .enter || key == .character(" "):
             if let id = focusedID {
