@@ -34,13 +34,29 @@ for target in GamaCore GamaDraw GamaWASM; do
     "$ROOT/scripts/check-portable-symbols.sh" "$target (WASM)" "${objects[@]}"
 done
 "$SWIFT" build --package-path "$ROOT" --scratch-path "$SCRATCH" --swift-sdk "$SDK" --product gama-web-demo
-grep -q -E 'gama_web_v1_(frame|key|pointer|resize)' "$ROOT/WebHost/gama.js"
+# The browser host is v2-only: every event reaches the module through a
+# status-returning export, which is what lets the page name a failed install.
+# All four calls are required individually — an alternation would pass with
+# one — and any remaining v1 call fails closed, so a half-migration cannot.
+for event in frame key pointer resize; do
+  grep -q "exports\.gama_web_v2_${event}(" "$ROOT/WebHost/gama.js" || {
+    echo "error: WebHost/gama.js does not call gama_web_v2_${event}" >&2
+    exit 1
+  }
+done
+if grep -q 'exports\.gama_web_v1_' "$ROOT/WebHost/gama.js"; then
+  echo "error: WebHost/gama.js still calls a gama_web_v1_ export; the host is v2-only" >&2
+  exit 1
+fi
 artifact="$(find "$SCRATCH" -type f -name 'gama-web-demo.wasm' -print -quit)"
 [[ -n "$artifact" ]] || { echo "error: executable WASM artifact not produced" >&2; exit 1; }
 "$SWIFT" build --package-path "$ROOT" --scratch-path "$SCRATCH" --swift-sdk "$SDK" --product GamaWASMFailedInstall
 failed_install_artifact="$(find "$SCRATCH" -type f -name 'GamaWASMFailedInstall.wasm' -print -quit)"
 [[ -n "$failed_install_artifact" ]] || { echo "error: failed-install WASM fixture not produced" >&2; exit 1; }
 node "$ROOT/scripts/wasm-runtime-smoke.mjs" "$failed_install_artifact" --failed-install
+# The same fixture through the real page: only a host that reads v2 statuses
+# can report the missing host instead of hanging on its boot overlay.
+node "$ROOT/scripts/browser-runtime-smoke.mjs" "$failed_install_artifact" "$ROOT/WebHost" --failed-install
 node "$ROOT/scripts/wasm-runtime-smoke.mjs" "$artifact"
 node "$ROOT/scripts/browser-runtime-smoke.mjs" "$artifact" "$ROOT/WebHost"
 mkdir -p "$ROOT/.build/artifacts"

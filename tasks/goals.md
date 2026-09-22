@@ -452,6 +452,39 @@ status: done
   solver does. Remaining manual and credential-gated acceptance is tracked
   in [`todo.md`](todo.md) as separate evidence layers, not as this goal.
 
+## Hosted acceptance evidence
+status: blocked
+
+- **2026-09-22 01:03 EDT:** Re-measured: still locked. Pull request #102's six
+  checks each ended in one to six seconds with the same annotation, and two
+  pull requests in the `abbey-bot` repository under this account show it too.
+  The waiting set in the 2026-09-16 bullet below is stale: the web demo
+  showcase (#98) and the v2 web-host exports (#99) merged into the
+  guide-surface branch (#97), so the stack is now #97 with #102 (the
+  `CLAUDE.md` trim) on top; the duplicate #101 and the superseded #41 are
+  closed. Next: the owner clears the billing state; then re-run #97's checks,
+  then #102's.
+- Blocked 2026-09-16: the six-job "Gama acceptance" workflow can no longer
+  report on a pushed commit. Every job is refused before it starts — zero
+  steps, no runner name, two to seven seconds — and each check-run annotation
+  reads `The job was not started because your account is locked due to a
+  billing issue.` The same annotation appeared on a sibling repository under
+  this account the same morning, so the lock is account-wide and not a Gama
+  configuration fault; `main`'s ruleset has no bypass actors, so no pull
+  request can merge while it holds.
+- What this means for the ledger, until it clears: a red hosted check is
+  unmeasured, never a failing gate and never a reason to change source; no
+  capability row may move to a stronger evidence layer on a hosted result that
+  does not exist; and the local driver in `scripts/check.sh` remains the only
+  evidence obtainable here. Clearing the billing state is the owner's action,
+  not an engineering task. See [`todo.md`](todo.md) for how it was measured and
+  the resume step.
+- Re-measured 2026-09-16 about five hours later: still locked, the newest
+  refused job reporting zero steps and the same annotation. Waiting on it now:
+  two open pull requests (the guide-surface docs, and the web demo showcase
+  stacked on it) and the packaged-site capability row, which the showcase
+  moved to `unverified`. Each is an open item in [`todo.md`](todo.md).
+
 ## Delivered foundation
 
 The current `main` line includes the Swift 6.5-dev umbrella, scene-first core,

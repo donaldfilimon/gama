@@ -4,15 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Read `AGENTS.md` first; it is the canonical project guide. This file adds the
 operational detail (commands, architecture map, environment traps) that agents
-need to be productive. `GEMINI.md` is tracked but **empty** (0 bytes, added by
-`1b07bcb` on 2026-09-04); it is a placeholder, not a third guide, and no gate
-reads it — do not treat its emptiness as missing documentation to fill.
+need to be productive. `GEMINI.md` is tracked but **empty**; it is a
+placeholder, not a third guide, and no gate reads it — do not treat its
+emptiness as missing documentation to fill.
 
 This is the canonical checkout of `donaldfilimon/gama` — the Gama Framework
 umbrella (retained UI core, plugins, macros, drawing,
 TUI/Apple/WASM/Embed/MLIR backends, and platform capability services). The Qt
-adapter was removed on 2026-08-26; `~/dev/active/gama-qt` is an unrelated Qt
-browser app that shares only the name.
+adapter is gone; `~/dev/active/gama-qt` is an unrelated Qt browser app that
+shares only the name.
 
 ## Toolchain — this repo overrides the machine-wide Swift rule
 
@@ -23,14 +23,12 @@ package (the xcodebuild platform gates depend on that) — the 6.5-dev identity
 lives in the compiler pin, not the manifest grammar. `check-boundaries.sh`
 enforces the 6.4 tools-version line, so do not "upgrade" it.
 
-Always `unset TOOLCHAINS` first. **Measured 2026-09-06, narrower than this
-file previously claimed:** a stray value overrides a *bare* `xcrun swift`
-(6.4 becomes the snapshot, or the reverse), but it did **not** override an
-explicit `xcrun --toolchain <id>`, and it did not override the `swiftly` shim.
-Every check script passes the flag explicitly, so none of them is vulnerable
-today; `unset TOOLCHAINS` remains correct for hand-typed commands and is cheap
-insurance if a script ever drops the flag. Do not cite the old, broader claim
-as a reason to change a script.
+Always `unset TOOLCHAINS` first. A stray value overrides a *bare* `xcrun
+swift` (6.4 becomes the snapshot, or the reverse), but **not** an explicit
+`xcrun --toolchain <id>` and not the `swiftly` shim. Every check script passes
+the flag explicitly, so none of them is vulnerable; `unset TOOLCHAINS` is for
+hand-typed commands and is cheap insurance if a script ever drops the flag. It
+is not a reason to change a script.
 
 **Preferred everyday invocation: `swiftly run`.** From the repo root,
 `swiftly run swift <build|run|test|…>` reads `.swift-version` and selects the
@@ -82,9 +80,8 @@ together.
 
 Full acceptance matrix: `./scripts/check.sh` runs every gate in order. **The
 `gates=(…)` array at the top of `scripts/check.sh` is the authority — read it
-rather than any list written down elsewhere, including this file.** It is
-fifteen entries as of 2026-09-06, having been thirteen earlier the same day —
-the count moves, the array does not lie. Parts require pinned SDKs, the NDK, node,
+rather than any list written down elsewhere, including this file.** Parts
+require pinned SDKs, the NDK, node,
 or CI/Linux, and the matrix intentionally fails when a prerequisite or a
 required runtime proof is unavailable. Do not weaken or skip a gate to make it
 green.
@@ -132,6 +129,30 @@ prerequisite of the documentation gates**, not only the WASM one. The pre-push
 documentation checklist is the block in `CONTRIBUTING.md`:
 `./scripts/check-docs.sh` followed by `./scripts/check-doc-coverage.sh`.
 
+**The boundary gate has a toolchain-free fast path and a unittest that pins its
+own scan scope.** `./scripts/check-boundaries.sh --source-policies-only` runs
+the import, global-state, and signal-handler policies plus
+`portable-global-state.py --self-test`, then exits before
+`scripts/test-boundary-paths.py` and before the first `xcrun`, so it is the
+loop to iterate a policy edit in with no toolchain and no build. Unflagged, the
+gate runs that unittest, which copies the gate and its checker into a temporary
+root with `Sources/` symlinked, then deletes each scanned path, replaces each
+scanned directory with a file, and replaces a scanned file with a same-named
+directory, asserting the real script fails closed with a named diagnostic every
+time. `require_paths` distinguishes those three cases for the last one's sake:
+a directory named like a scanned file passes `-e`, and the non-recursive `grep`
+that follows exits 2 on a directory, which the surrounding `if` reads as no
+violation. **That unittest keeps a fourth copy of the scan scope**, deliberately
+independent of the shell arrays, so renaming or removing anything under
+`Sources/` fails it until every list agrees: the two arrays in
+`check-boundaries.sh`, `TARGETS` in `portable-global-state.py`, and the tuple in
+`test-boundary-paths.py`. The two arrays are `global_state_dirs` (three named
+process-global registry literals) and the wider `platform_services_ban_dirs`
+(the `GamaPlatformServices` inverse ban). The libm symbol scan keeps a fifth, narrower list, `portable_targets`, which runs
+after the fast path exits and so is outside that unittest. `--self-test` is the shared convention across these
+checkers — `portable-global-state.py`, `package-graph.py`, and the three
+document scanners each take it, and each gate invokes it that way.
+
 **Both of those scanners read this file.** `referenced-paths.py` and
 `evidence-locality.py` scan the four root documents — `README.md`,
 `CONTRIBUTING.md`, `AGENTS.md`, and `CLAUDE.md` — alongside `docs/**` and
@@ -159,8 +180,8 @@ design — macOS can build `gama-leak-check` but cannot produce the evidence),
 and the second is a helper the platform gates call to scan emitted objects for
 forbidden libm/libc symbols.
 
-**Gates 14 and 15 landed on 2026-09-06 and both mechanize a policy that was
-previously prose.** `check-evidence-freshness.sh` (gate 14, `67377af`) runs
+**`check-evidence-freshness.sh` and `check-package-graph.sh` mechanize policy
+that used to be prose.** `check-evidence-freshness.sh` runs
 `scripts/evidence-freshness.py`, which fails a `docs/Capabilities.md` row whose
 evidence anchor predates the last change to the paths that row's claim depends
 on. Each row carries one annotation in its third cell:
@@ -180,14 +201,11 @@ changed since its anchor fails too, and must be returned to the layer its
 evidence supports. **Its reach is one file:** `LEDGER =
 "docs/Capabilities.md"`, so hosted-evidence prose anywhere else (`docs/Packaging.md` carries a table of the
 same shape) is still unchecked and can go stale silently.
-`check-package-graph.sh` (gate 15, `f267270`) dumps the manifest and asserts
-ADR 0012's `strictLibrary` scope, the zero-runtime-package-dependency
-guarantee, and experimental-feature scoping — three properties that were
-previously enforced only by whoever remembered to type them into
-`Package.swift`.
+`check-package-graph.sh` dumps the manifest and asserts ADR 0012's
+`strictLibrary` scope, the zero-runtime-package-dependency guarantee, and
+experimental-feature scoping.
 
-`check-embedded.sh` gained a real size gate the same day (`8c9d1c7`, the
-evidence ADR 0009 had been citing without it existing). It reads
+`check-embedded.sh` carries a size gate (the evidence ADR 0009 cites). It reads
 `scripts/embedded-size-baseline.txt`, which pins a compiler revision, a byte
 count, and a tolerance percent, and it fails if the artifact moves outside the
 band **in either direction** or if the baseline's pinned revision is not the
@@ -209,12 +227,14 @@ rule and nothing under `scripts/`, `.github/`, `.agents/`, or `.claude/`
 references it; do not mirror it into either skill directory.
 
 Run tests directly (single test, filtered) — must use a scratch path outside
-iCloud:
+iCloud, and one of your own: `/private/tmp/gama-framework-swiftpm` is
+hardcoded by `check-mlir.sh` and is `check-apple.sh`'s default, so reusing it
+collides with a gate run.
 
 ```bash
 unset TOOLCHAINS
 swiftly run swift test \
-  --scratch-path /private/tmp/gama-framework-swiftpm --filter <TestNamePattern>
+  --scratch-path "/private/tmp/gama-test-$USER" --filter <TestNamePattern>
 ```
 
 (`/usr/bin/xcrun --toolchain org.swift.65202608211a swift test …` is the
@@ -233,17 +253,16 @@ scratch from `GAMA_SCRATCH_ROOT` → `RUNNER_TEMP` → `TMPDIR` → `/tmp`; a ba
 resolves the pinned snapshot from `Toolchains.toml`'s `[snapshot].xctoolchain`
 under `$HOME`, and `check-wasm.sh`, `check-linux.sh`, `check-android.sh`,
 `check-embedded.sh`, and `bundle-web.sh` source it. `check-toolchain-pins.sh`
-now **fails on any checked-in `/Users/<name>/` or `/home/<name>/` path under
-`scripts/`**, because those five previously defaulted to one developer's home
-directory: correct on exactly one machine, silently wrong everywhere else,
-inside gates meant to fail closed. CI never reached them, since
-`ci-install-swift-snapshot.sh` exports `GAMA_SWIFT_64`, which is why only a
-second developer would have found them. Two caveats:
+**fails on any checked-in `/Users/<name>/` or `/home/<name>/` path under
+`scripts/`**: a hardcoded home directory is correct on one machine and
+silently wrong everywhere else, and CI cannot catch it because
+`ci-install-swift-snapshot.sh` exports `GAMA_SWIFT_64`. Two caveats:
 `swiftc` aborts with `couldNotFindTmpDir` if the `TMPDIR` you pass does not
 exist, so `mkdir -p` it first; and **`check-mlir.sh` hardcodes
-`/private/tmp/gama-framework-swiftpm` with no override — the same path the
-single-test command above recommends**, so a filtered `swift test` and a
-concurrent MLIR gate collide. `check-apple-platforms.sh` likewise hardcodes
+`/private/tmp/gama-framework-swiftpm` with no override**, which is also
+`check-apple.sh`'s default, so run the Apple gate with its own
+`GAMA_APPLE_SCRATCH_PATH` when both may run at once.
+`check-apple-platforms.sh` likewise hardcodes
 `/private/tmp/gama-<platform>-derived`. Give each session its own root when a
 peer may be running gates.
 
@@ -291,7 +310,7 @@ than the exit status. Plugin and capability-service coverage lives in
 `PluginRuntimeTests`, `PluginSlotTests`, `PluginSceneTests`,
 `PluginCommandTests`, and `PlatformServicesTests`.
 Do not add `import XCTest`. Macro expansion tests use
-`SwiftSyntaxMacrosGenericTestSupport`. **`docs/Testing.md` now carries a table of
+`SwiftSyntaxMacrosGenericTestSupport`. **`docs/Testing.md` carries a table of
 every `GamaTests` source file and the suites inside it**, so look the target up
 there rather than guessing — note a single file can hold several suites, and the
 filter is still the source identifier, never the `@Suite` title. See also
@@ -353,21 +372,9 @@ Target layering (all under `Sources/`, single test target `GamaTests` at
   cannot build a failure an eight-bit process status reads as success; the
   unvalidated `failure(code:_:)` factory still accepts zero, `code` stays
   mutable, and the application still owns `exit`. Embedded-Swift-safe:
-  stdlib only. `scripts/portable-global-state.py`, which
-  `check-boundaries.sh` runs, rejects any import of Foundation, AppKit, UIKit,
-  Darwin, Glibc, WinSDK, or Synchronization across all five portable targets —
-  GamaCore, GamaPlugin, GamaDraw, GamaEmbed, and GamaMLIR — and
-  `check-boundaries.sh` itself rejects the three named process-global registry
-  literals. The import ban and the global-state ban now share one list, that
-  script's `TARGETS` — the libm symbol scan keeps its own narrower
-  `portable_targets=(GamaCore GamaPlugin GamaDraw GamaMLIR)` in
-  `check-boundaries.sh`, and the `GamaPlatformServices` inverse ban a third,
-  wider one. The two that merged answer the same question,
-  so they are enforced together and cannot drift apart. Until 2026-09-06 the
-  import half was a separate `if grep` over its own copy of the list, which
-  both let the two diverge and failed open on a renamed directory — a nonexistent
-  path plus `--include` makes BSD grep exit 1 with no output, which reads as "no
-  violation". `FrameHost` and `AppRuntime` are `~Copyable`: each
+  stdlib only, enforced with the other portable targets by
+  `check-boundaries.sh` (see Commands). `FrameHost` and `AppRuntime` are
+  `~Copyable`: each
   host uniquely owns focus, actions, `@Reactive` state, subscriptions, dirty
   state, and frames; out-of-band changes go through the host's
   `SubscriptionContext`, a bound `@Reactive` write, or explicit
@@ -451,8 +458,7 @@ Target layering (all under `Sources/`, single test target `GamaTests` at
   `gama` dialect emitter — not a Swift MLIR frontend).
 - C and WASM symbols remain versioned and separately namespaced.
 - **`gama-web-demo` deliberately keeps the macro plugin out of the wasm32
-  dependency graph, and that dependency has flipped more than once
-  (`79cccd3` added `GamaMacros`, `5dbdad8` removed it again).**
+  dependency graph, and that dependency has flipped more than once.**
   `GamaWebDemo` depends on `GamaCore` and `GamaWASM` only, declaring its
   counter with a direct `ReactiveSlot` instead of `@Component`/`@Reactive`;
   its `--export=` linker flags are target-local *and* `.when(platforms:
@@ -609,7 +615,7 @@ Implementation presence is not platform proof. `docs/Capabilities.md` is the
 evidence ledger: a backend is Current only when its declared compile/runtime
 gate passes. Its status vocabulary is the authority on the words to use —
 implemented, locally proven, hosted proven, provisional, blocked, and
-unverified — and, as gate 14 above notes, that bullet list is also what defines
+unverified — and, as the evidence-freshness gate above notes, that bullet list is also what defines
 the `layer=` tokens, so read the ledger's own vocabulary rather than a list
 copied elsewhere. `docs/Verification.md` is the finer instrument behind it: an
 eight-rung ladder from source inspection through compiler probe, local build,
@@ -627,6 +633,12 @@ only merge after required checks are green. Design specs live in
 `docs/superpowers/specs/` (`drafts/` are open questions, not commitments) and
 dated execution plans in `docs/superpowers/plans/`; neither is a capability
 claim. The running goal ledger is `tasks/goals.md` + `tasks/todo.md`.
+
+Use `flexPriority(along:)` for layout flexibility. The axis-agnostic
+`RenderNode.flexPriority` property is deprecated: it answers the disjunction of
+both axes and layout does not consult it (ADR 0013,
+`docs/adr/0013-flex-priority-is-per-axis.md`). Removing it is a later
+pre-release break, to be recorded the way `App.content` was.
 
 Before changing a backend or a settled design, read its record rather than
 re-deriving it: `docs/README.md` is the index, `docs/adr/0000-index.md`
