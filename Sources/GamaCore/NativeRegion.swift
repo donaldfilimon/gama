@@ -22,7 +22,10 @@ public struct NativeRegionID: Hashable, Sendable {
 /// Compiles to `RenderNode.interactive` around `fallback`, stretched to fill
 /// the space the region is given, so every backend lays it out, focuses it,
 /// hit-tests it, and paints the fallback. A host that attaches a view to
-/// ``NativeRegionID`` shows that view instead, inside the region only.
+/// ``NativeRegionID`` shows that view instead, inside the region only. A
+/// disabled environment removes the region from focus order but still
+/// registers it, so a host keeps showing an attached view even while
+/// disabled.
 public struct NativeRegion<Fallback: View>: View {
     /// A primitive: compiles directly through ``render(in:)``.
     public typealias Body = Never_

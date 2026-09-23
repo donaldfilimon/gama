@@ -165,7 +165,9 @@ requires it, and no allowlist entries are added.
   - Attaching a different view to an already attached id detaches the first.
     Attaching to an id not yet laid out is allowed: the view stays hidden until
     its region appears.
-  - `detach`, or tearing the host down, removes the subview.
+  - `detach` removes the subview. Tearing the host down (`tearDown()`) does
+    not — attached views stay in place, left to the application, which owns
+    them.
   - Gama never creates, configures, or retains a platform view on its own.
 - **Accessibility.** Each shown attached view is inserted as an accessibility
   child, ordered by frame among the per-line elements from

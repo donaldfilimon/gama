@@ -2,6 +2,7 @@
     import AppKit
     import GamaAppleUI
     import GamaCore
+    import GamaDraw
     import Testing
 
     @Suite("AppKit host native regions")
@@ -49,7 +50,34 @@
             #expect(native.superview === host)
             #expect(native.isHidden == false)
             #expect(native.frame.width > 0 && native.frame.height > 0)
+            // The region's published frame, in cells, converted to points the
+            // same way the host does (its own `cellSize`).
+            let region = host.nativeRegions.first { $0.id == NativeRegionID("viewport") }
+            let expectedFrame = try #require(region).frame
+            let expectedPointFrame = CGRect(
+                x: CGFloat(expectedFrame.minX) * host.cellSize.width,
+                y: CGFloat(expectedFrame.minY) * host.cellSize.height,
+                width: CGFloat(expectedFrame.size.width) * host.cellSize.width,
+                height: CGFloat(expectedFrame.size.height) * host.cellSize.height)
+            #expect(native.frame == expectedPointFrame)
             #expect(host.isCoveredByNativeRegion(Rect(origin: Point(x: Int(native.frame.minX / host.cellSize.width), y: Int(native.frame.minY / host.cellSize.height)), size: Size(width: 1, height: 1))))
+        }
+
+        @Test("a region focused before the host joins a window still hands off first responder once it does")
+        func focusHandoffAfterDeferredWindow() throws {
+            // TwoRegionApp's region "a" is the first focusable node, so Gama
+            // focus is already on it as soon as the app is installed — before
+            // any window exists. Attach happens in that state, so the initial
+            // handoff attempt inside `attach` is a no-op (no `window`).
+            let host = try installed(TwoRegionApp())
+            let native = FocusableView()
+            host.attach(native, to: NativeRegionID("a"))
+            #expect(native.isHidden == false)
+
+            let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: true)
+            window.contentView = host
+            host.invalidate()
+            #expect(window.firstResponder === native)
         }
 
         @Test("the view hides when its region goes away and stays attached")
@@ -131,6 +159,15 @@
             host.attach(native, to: NativeRegionID("viewport"))
             let children = host.accessibilityChildren() ?? []
             #expect(children.contains { ($0 as AnyObject) === native })
+            // "Panel" is the row above the region; the native view's index
+            // must come after it, consistent with its own row being lower.
+            let nativeIndex = children.firstIndex { ($0 as AnyObject) === native }
+            let panelIndex = children.firstIndex {
+                ($0 as? GamaAccessibilityLineElement)?.line.text.contains("Panel") == true
+            }
+            let resolvedNativeIndex = try #require(nativeIndex)
+            let resolvedPanelIndex = try #require(panelIndex)
+            #expect(resolvedPanelIndex < resolvedNativeIndex)
         }
 
         private final class FocusableView: NSView {
