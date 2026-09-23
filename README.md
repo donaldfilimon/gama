@@ -12,7 +12,7 @@ unset TOOLCHAINS
 swiftly run swift run gama-studio
 ```
 
-There is no camera/light authoring, USD support, or command console yet. See `AGENTS.md` for the gate and what comes next, and `docs/adr/` for decisions.
+Cameras and lights are authored document components too — a camera never drives the viewport, and lights fall back to a fixed editor light only when the document has none of its own (ADR 0004). There is no USD support or command console yet. See `AGENTS.md` for the gate and what comes next, and `docs/adr/` for decisions.
 
 ```swift
 import GamaAuthoring

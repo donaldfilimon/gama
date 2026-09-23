@@ -144,11 +144,13 @@ own views, but a `NativeRegion`'s content is opaque to Gama.
   toolbar's "Frame" button aims the camera at the primary selection's
   visual bounds (or the whole scene with nothing selected), keeping the
   viewing direction; it reaches the viewport through a closure the host
-  injects into `StudioApp(model:onFrameSelection:)`, so `StudioModel` stays
+  injects into `StudioApp(model:viewport: ViewportActions)`, so `StudioModel` stays
   free of camera state and framing is not an edit. The camera
   is not a document command: it is not undoable, not saved, and not shared
   with any other view. Camera components in the document remain unbuilt
-  (AGENTS.md "Not built").
+  (AGENTS.md "Not built") — **now built; see ADR 0004**, which keeps this
+  camera-is-editor-state decision unchanged even after the document gained
+  its own `CameraSettings` component.
 - **Click picking is exactly as good as ADR 0002's collision projection.**
   A primitive with no `ModelComponent`, or a future primitive kind added to
   `GamaReality` without a matching `CollisionComponent`, becomes unpickable
@@ -163,6 +165,6 @@ own views, but a `NativeRegion`'s content is opaque to Gama.
   of `./tools/check.sh` here is evidence about this repo against that one
   pinned commit, not about gama's `main`.
 - **This ADR does not cover:** camera or light authoring in the document
-  (still Phase 2), a command console, a typed graph framework, USD
-  save/load, or any non-macOS backend. Those remain future ADRs, not
-  silent extensions of this one.
+  (still Phase 2 when this ADR was written — **now ADR 0004**), a command
+  console, a typed graph framework, USD save/load, or any non-macOS
+  backend. Those remain future ADRs, not silent extensions of this one.

@@ -9,7 +9,8 @@ StudioApp (toolbar, HierarchyPanel, InspectorPanel)  ──┐
 NativeRegion(viewportRegion) ──► GamaHostView.attach ──┤  gama's Apple shell (GamaAppleUI, unmerged gama #107/#108)
                                                         │
 ViewportController ──► StudioViewportView: ARView      │  click ──► pickedEntityID(for:in:) ──┐
-   fixed PerspectiveCamera + DirectionalLight           │                                       │
+   orbit PerspectiveCamera + fallback DirectionalLight  │  lookThrough(_:) sets orbit from an   │
+   (fallback on only when the document has no light)    │  authored camera's transform + FOV    │
                                                         ▼                                       ▼
 UI / console / graph / AI  ──►  StudioModel  ──►  DocumentCommand  ──►  EditorSession
         (GamaStudioEditor,                             │  apply to a copy of SceneDocument
@@ -39,4 +40,5 @@ swiftly run swift run gama-studio --snapshot out.png        # one ARView frame t
 - RealityKit's `ChildCollection` reorders siblings on removal, so never rely on child order surviving a `removeFromParent`. The bridge re-sequences touched containers at the end of each pass (ADR 0002).
 - `Package.swift` pins `donaldfilimon/gama` to a specific commit, `2ef325c120674cfe218de44f492f435ff50a28e7` (gama PR #108's head, stacked on #107, both unmerged, hosted CI blocked by the billing lock in `~/CLAUDE.md`). Bump it to a `main` revision once those merge, and re-run the gate against the bump before trusting it (ADR 0003).
 - Every editor mutation goes through `StudioModel`, never `EditorSession` or `RealityBridge` directly, and every `@MainActor` crossing at the UI boundary is an explicit `MainActor.assumeIsolated` (ADR 0003).
+- Lights and cameras are ordinary document components (`Light`, `CameraSettings` in `GamaAuthoring`), projected into RealityKit light components and pickable markers; a camera never becomes a RealityKit camera, and "Look through" is editor-only state, not a document write (ADR 0004).
 - Agent shells may set `noclobber`: truncate with `>|`, and verify file edits by grepping for a marker rather than trusting an exit code.
