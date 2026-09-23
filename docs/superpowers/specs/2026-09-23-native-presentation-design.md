@@ -152,7 +152,7 @@ public enum ControlDescriptor {
 
 The laid-out tree is converted into the minimal tree of views a native host
 needs, and successive frames are diffed. Both steps are stdlib-only, live in
-a new `Sources/GamaCore/NativePresentation.swift`, and are tested without
+a new `NativePresentation.swift` in `Sources/GamaCore`, and are tested without
 AppKit.
 
 - **Which nodes become views.** `text`, `divider`, `background`, `border`,
