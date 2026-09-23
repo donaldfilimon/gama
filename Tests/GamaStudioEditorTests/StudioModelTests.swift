@@ -26,9 +26,9 @@ struct StudioModelEditingTests {
 
         #expect(model.lastError == nil)
         #expect(model.session.revision == revisionBefore + 1)
-        // A single-command step goes through `execute`, so the undo label is
-        // the command's own label ("Create Box 1"), not the `label:` this
-        // funnel passes for the (unused, single-command) transaction path.
+        // `StudioModel.run` always calls `EditorSession.execute`, so the undo
+        // label is the command's own label ("Create Box 1"), not a label
+        // `StudioModel` supplies itself.
         #expect(model.session.undoLabel == "Create Box 1")
         let created = model.session.selection.primary
         #expect(created != nil)

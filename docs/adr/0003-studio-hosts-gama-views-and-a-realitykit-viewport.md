@@ -11,10 +11,12 @@ editor UI of Gama views with a native RealityKit viewport in the Apple
 shell," and flagged that embedding a native view is a gama design question,
 to be raised there first.
 
-That question was raised and answered upstream: gama's own ADR 0016, per this
-branch's `ViewportTests.swift` comments (the ADR itself ships on gama PR
-#107/#108, not on gama's `main`, and is not tracked in this repo), added
-`NativeRegion`, a Gama view that reserves a rectangle in the retained layout
+That question was raised and answered upstream: gama's own
+`docs/adr/0016-native-regions-narrow-own-the-rendering.md`, in gama at
+`2ef325c120674cfe218de44f492f435ff50a28e7` (the pinned revision below; the
+ADR ships on gama PR #107/#108, not on gama's `main`, and is not tracked in
+this repo), added `NativeRegion`, a Gama view that reserves a rectangle in
+the retained layout
 for a platform-native view an app attaches out of band, and
 `GamaHostView.attach(_:to:)`/`install` on the Apple shell
 (`GamaAppleUI`/`GamaAppleShell`) to do the attaching.
@@ -81,7 +83,7 @@ own views, but a `NativeRegion`'s content is opaque to Gama.
    future console all call one of `StudioModel`'s methods
    (`addPrimitive`, `deleteSelection`, `nudgeSelection`, `select`, `undo`,
    `redo`, …), never `EditorSession` or `RealityBridge` directly.
-   `StudioModel.run`/`settle` fold `session.execute`/`transaction` and
+   `StudioModel.run`/`settle` fold `session.execute` and
    `bridge.apply(session.drainChanges(), from:)` into one call, so `bridge`
    cannot observe a document state the session never committed to, and a
    refused command leaves both untouched (`StudioModelTests` pins this;
@@ -101,11 +103,22 @@ own views, but a `NativeRegion`'s content is opaque to Gama.
    handoff, and Gama still receives it.** A click makes `StudioViewportView`
    first responder, as AppKit does for any view that accepts it. Nothing is
    done to prevent or reroute that. It works anyway because `ARView.keyDown`
-   forwards any key it does not consume to `nextResponder`, which is
-   `GamaHostView`, so Tab/arrows/Enter continue driving Gama's own focus and
-   action dispatch after a viewport click. This is a measured property of
-   `ARView`, not a Studio-authored bridge, and `ViewportTests` pins it with a
-   real `NSWindow.sendEvent` round trip (`windowClickSelectsAndKeysStillReachGama`)
+   forwards the keys `ViewportTests` actually sends it — Enter, Tab, and
+   Right — to `nextResponder`, which is `GamaHostView`, so those keys
+   continue driving Gama's own focus and action dispatch after a viewport
+   click; no other key has been measured, and this ADR does not claim
+   `ARView` forwards "any key it does not consume" in general. A click does
+   *not* move Gama's own focus onto the region: Gama focus stays on whatever
+   control was last focused before the click, which is why pressing Enter
+   right after a viewport click activates that control (in
+   `windowClickSelectsAndKeysStillReachGama`, the first Enter after the click
+   adds a box, because focus was still sitting on the "Add Box" toolbar
+   button). Whether a click should instead move pointer focus onto the
+   region itself is an open question for gama's own
+   `docs/adr/0016-native-regions-narrow-own-the-rendering.md`, not something
+   this ADR decides. This is a measured property of `ARView`, not a
+   Studio-authored bridge, and `ViewportTests` pins it with a real
+   `NSWindow.sendEvent` round trip (`windowClickSelectsAndKeysStillReachGama`)
    plus the reverse direction — Gama focus reaching the region by keyboard
    still hands the `ARView` first responder on the next click
    (`gamaFocusOnTheRegionStillHandsTheViewportFirstResponder`) — so a

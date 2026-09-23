@@ -31,7 +31,17 @@ if arguments.contains("--snapshot"), snapshotPath == nil {
 }
 
 let app = NSApplication.shared
-app.setActivationPolicy(.regular)
+// --smoke runs headlessly under the gate and should never put an icon in
+// the Dock; the interactive and --snapshot paths keep the normal policy
+// (--snapshot needs an on-screen window to render into).
+app.setActivationPolicy(isSmoke ? .prohibited : .regular)
+
+// Without an app delegate, AppKit's default is to keep the process alive
+// after its last window closes, leaving a windowless `gama-studio` behind.
+// `appDelegate` is a top-level `let`, so it lives for the whole process;
+// `NSApplication.delegate` itself holds its delegate only weakly.
+let appDelegate = StudioAppDelegate()
+app.delegate = appDelegate
 
 // Minimal app menu so Cmd+Q works once the window is on screen.
 let mainMenu = NSMenu()
@@ -47,13 +57,7 @@ appMenuItem.submenu = appMenu
 app.mainMenu = mainMenu
 
 let windowRect = NSRect(x: 0, y: 0, width: 1280, height: 800)
-let window = NSWindow(
-    contentRect: windowRect,
-    styleMask: [.titled, .closable, .resizable, .miniaturizable],
-    backing: .buffered,
-    defer: false
-)
-window.title = "Gama Studio"
+let window = StudioAppDelegate.makeMainWindow(contentRect: windowRect)
 
 let hostView = GamaHostView(frame: windowRect)
 hostView.autoresizingMask = [.width, .height]

@@ -17,6 +17,7 @@ struct NodeSnapshot: Equatable {
     var name: String
     var matrix: [Float]
     var enabled: Bool
+    var hasCollision: Bool
     var meshExtents: [Float]?
     var metallic: Float?
     var roughness: Float?
@@ -37,6 +38,7 @@ private func snapshot(_ entity: Entity, in bridge: RealityBridge) -> NodeSnapsho
         name: entity.name,
         matrix: [m.columns.0, m.columns.1, m.columns.2, m.columns.3].flatMap { [$0.x, $0.y, $0.z, $0.w] },
         enabled: entity.isEnabled,
+        hasCollision: entity.components.has(CollisionComponent.self),
         children: entity.children.map { snapshot($0, in: bridge) }
     )
     if let model = entity.components[ModelComponent.self] {

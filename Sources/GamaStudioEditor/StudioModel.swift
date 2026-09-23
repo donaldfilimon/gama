@@ -79,13 +79,10 @@ public final class StudioModel {
         // distinct without needing real layout.
         let offset = Float(session.document.count) * 0.5
         let transform = Transform(position: SIMD3(offset, 0, 0))
-        run(
-            [CreateEntity(
-                name: name,
-                components: [.transform(transform), .mesh(primitive), .material(Material())]
-            )],
-            label: "Add \(name)"
-        )
+        run(CreateEntity(
+            name: name,
+            components: [.transform(transform), .mesh(primitive), .material(Material())]
+        ))
         guard lastError == nil else { return }
         select(id)
     }
@@ -95,7 +92,7 @@ public final class StudioModel {
     /// refusal, so `lastError` is left untouched.
     public func deleteSelection() {
         guard let id = session.selection.primary else { return }
-        run([DeleteEntity(id)], label: "Delete")
+        run(DeleteEntity(id))
     }
 
     /// Duplicates the selected entity and its subtree, placed directly after
@@ -103,7 +100,7 @@ public final class StudioModel {
     /// no-op.
     public func duplicateSelection() {
         guard let id = session.selection.primary else { return }
-        run([DuplicateEntity(id)], label: "Duplicate")
+        run(DuplicateEntity(id))
     }
 
     /// Moves the selected entity by `delta`, relative to its current
@@ -113,7 +110,7 @@ public final class StudioModel {
         guard let id = session.selection.primary else { return }
         var transform = currentTransform(of: id)
         transform.position += delta
-        run([SetComponent(id, .transform(transform))], label: "Nudge")
+        run(SetComponent(id, .transform(transform)))
     }
 
     /// Flips the visibility of the selected entity (default visible, if it
@@ -123,7 +120,7 @@ public final class StudioModel {
         guard let id = session.selection.primary else { return }
         var visibility = currentVisibility(of: id)
         visibility.visible.toggle()
-        run([SetComponent(id, .visibility(visibility))], label: "Toggle Visibility")
+        run(SetComponent(id, .visibility(visibility)))
     }
 
     // MARK: Sample scene
@@ -174,19 +171,17 @@ public final class StudioModel {
 
     // MARK: Funnel
 
-    /// Applies `commands` as one undoable step — `EditorSession.execute` for
-    /// a single command, `EditorSession.transaction` for several — then keeps
-    /// `bridge` in sync. A refusal records `lastError` and leaves the
-    /// session and bridge untouched. This is the only place any editing
+    /// Applies `command` as one undoable step through `EditorSession.execute`,
+    /// then keeps `bridge` in sync. A refusal records `lastError` and leaves
+    /// the session and bridge untouched. This is the only place any editing
     /// method reaches into `session`'s mutating command surface.
-    private func run(_ commands: [any DocumentCommand], label: String) {
-        settle { () throws(AuthoringError) in
-            if commands.count == 1 {
-                try session.execute(commands[0])
-            } else {
-                try session.transaction(label, commands)
-            }
-        }
+    ///
+    /// Every caller passes exactly one command, so there is no multi-command
+    /// `EditorSession.transaction` path here; a future action that needs to
+    /// apply several commands as one undo step can add one back, with a test
+    /// that exercises it.
+    private func run(_ command: any DocumentCommand) {
+        settle { () throws(AuthoringError) in try session.execute(command) }
     }
 
     /// Runs `operation`; on success clears `lastError` and projects the
