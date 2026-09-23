@@ -6,7 +6,7 @@
 //  presses to StudioModel, whose graph methods run each edit together with
 //  the graph's re-evaluation as one undoable step.
 
-#if canImport(AppKit)
+#if canImport(AppKit) || canImport(UIKit)
 
 public import GamaCore
 import GamaAuthoring
@@ -111,6 +111,7 @@ struct GraphPanelState: Sendable {
 struct GraphPanel: View {
     let model: StudioModel
     let state: GraphPanelState
+    var width = 30
 
     var body: some View {
         VStack {
@@ -170,7 +171,7 @@ struct GraphPanel: View {
         }
         .frame(maxWidth: .max, maxHeight: .max, alignment: .topLeading)
         .border(title: "Graph")
-        .frame(width: 30)
+        .frame(width: width)
     }
 
     private func selectedSection(_ selected: GraphPanelState.Selected) -> some View {

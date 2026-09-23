@@ -16,7 +16,7 @@
 //  builds the view tree from the copy, because a view tree (it holds
 //  non-`Sendable` action closures) cannot leave `assumeIsolated`.
 
-#if canImport(AppKit)
+#if canImport(AppKit) || canImport(UIKit)
 
 public import GamaCore
 public import GamaAuthoring
@@ -213,26 +213,42 @@ func onMain(
     { MainActor.assumeIsolated { edit(model) } }
 }
 
-/// The whole window: toolbar, body, status line.
+/// The whole window: toolbar, body, console, status line.
+///
+/// Two layouts, chosen by the surface's width in cells (ADR 0008). The
+/// regular one puts the Scene panel, viewport, and Inspector side by side.
+/// Below ``compactWidth`` columns, as on an iPhone in portrait, the side
+/// panels would leave the viewport no width at all, so the compact one
+/// stacks the viewport above half-width panels and splits the toolbar into
+/// two rows of short labels. Both use the same action identities.
 struct StudioRootView: View {
+    typealias Body = Never_
+    var body: Never_ { Never_() }
+
     let model: StudioModel
     let viewport: ViewportActions
     let state: StudioFrameState
 
-    var body: some View {
+    /// Scene (26) + Inspector (30) + a 30-column viewport.
+    static let compactWidth = 86
+    /// Rows the compact layout gives the Scene and Inspector panels.
+    static let compactPanelHeight = 14
+
+    func render(in context: BuildContext) -> RenderNode {
+        let width = context.environment.surfaceSize?.width ?? Int.max
+        if width < Self.compactWidth {
+            return compact(width: width).render(in: context)
+        }
+        return regular.render(in: context)
+    }
+
+    private var regular: some View {
         VStack {
             toolbar
             HStack {
                 HierarchyPanel(model: model, rows: state.rows)
-                NativeRegion(StudioApp.viewportRegion) {
-                    Text("3D viewport — RealityKit on macOS")
-                }
-                .frame(maxWidth: .max, maxHeight: .max)
-                if state.showsGraphEditor {
-                    GraphPanel(model: model, state: state.graph)
-                } else {
-                    InspectorPanel(model: model, viewport: viewport, inspected: state.inspected)
-                }
+                viewportRegion
+                rightPanel(width: 30)
             }
             .frame(maxWidth: .max, maxHeight: .max)
             ConsolePanel(model: model, entries: state.console)
@@ -240,31 +256,81 @@ struct StudioRootView: View {
         }
     }
 
+    private func compact(width: Int) -> some View {
+        let left = max(width / 2, 12)
+        return VStack {
+            compactToolbar
+            viewportRegion
+            HStack {
+                HierarchyPanel(model: model, rows: state.rows, width: left)
+                rightPanel(width: max(width - left, 12))
+            }
+            .frame(height: Self.compactPanelHeight)
+            ConsolePanel(model: model, entries: state.console)
+            Text(Self.statusLine(state))
+        }
+    }
+
+    private var viewportRegion: some View {
+        // The fallback stays blank: on visionOS the RealityView is
+        // transparent, and fallback text would show through it.
+        NativeRegion(StudioApp.viewportRegion) {
+            Text(" ")
+        }
+        .frame(maxWidth: .max, maxHeight: .max)
+    }
+
+    @ViewBuilder
+    private func rightPanel(width: Int) -> some View {
+        if state.showsGraphEditor {
+            GraphPanel(model: model, state: state.graph, width: width)
+        } else {
+            InspectorPanel(model: model, viewport: viewport, inspected: state.inspected, width: width)
+        }
+    }
+
     private var toolbar: some View {
         HStack(spacing: 1) {
-            Button("Add Box", action: onMain(model) { $0.addPrimitive(.box) })
-                .actionIdentity(ActionID("studio.addBox"))
-            Button("Add Sphere", action: onMain(model) { $0.addPrimitive(.sphere) })
-                .actionIdentity(ActionID("studio.addSphere"))
-            Button("Add Cone", action: onMain(model) { $0.addPrimitive(.cone) })
-                .actionIdentity(ActionID("studio.addCone"))
-            Button("Add Light", action: onMain(model) { $0.addLight(.point(attenuationRadius: 10)) })
-                .actionIdentity(ActionID("studio.addLight"))
-            Button("Add Camera", action: onMain(model) { $0.addCamera() })
-                .actionIdentity(ActionID("studio.addCamera"))
-            Button("Duplicate", action: onMain(model) { $0.duplicateSelection() })
-                .actionIdentity(ActionID("studio.duplicate"))
-            Button("Delete", action: onMain(model) { $0.deleteSelection() })
-                .actionIdentity(ActionID("studio.delete"))
-            Button("Undo", action: onMain(model) { $0.undo() })
-                .actionIdentity(ActionID("studio.undo"))
-            Button("Redo", action: onMain(model) { $0.redo() })
-                .actionIdentity(ActionID("studio.redo"))
-            Button("Frame", action: { [viewport] in MainActor.assumeIsolated { viewport.frameSelection() } })
-                .actionIdentity(ActionID("studio.frame"))
-            Button(state.showsGraphEditor ? "Inspector" : "Graph", action: onMain(model) { $0.toggleGraphEditor() })
-                .actionIdentity(ActionID("studio.graph.toggle"))
+            creationButtons(short: false)
+            editingButtons(short: false)
         }
+    }
+
+    private var compactToolbar: some View {
+        VStack {
+            HStack(spacing: 1) { creationButtons(short: true) }
+            HStack(spacing: 1) { editingButtons(short: true) }
+        }
+    }
+
+    @ViewBuilder
+    private func creationButtons(short: Bool) -> some View {
+        Button(short ? "Box" : "Add Box", action: onMain(model) { $0.addPrimitive(.box) })
+            .actionIdentity(ActionID("studio.addBox"))
+        Button(short ? "Sphere" : "Add Sphere", action: onMain(model) { $0.addPrimitive(.sphere) })
+            .actionIdentity(ActionID("studio.addSphere"))
+        Button(short ? "Cone" : "Add Cone", action: onMain(model) { $0.addPrimitive(.cone) })
+            .actionIdentity(ActionID("studio.addCone"))
+        Button(short ? "Light" : "Add Light", action: onMain(model) { $0.addLight(.point(attenuationRadius: 10)) })
+            .actionIdentity(ActionID("studio.addLight"))
+        Button(short ? "Camera" : "Add Camera", action: onMain(model) { $0.addCamera() })
+            .actionIdentity(ActionID("studio.addCamera"))
+    }
+
+    @ViewBuilder
+    private func editingButtons(short: Bool) -> some View {
+        Button(short ? "Dup" : "Duplicate", action: onMain(model) { $0.duplicateSelection() })
+            .actionIdentity(ActionID("studio.duplicate"))
+        Button(short ? "Del" : "Delete", action: onMain(model) { $0.deleteSelection() })
+            .actionIdentity(ActionID("studio.delete"))
+        Button("Undo", action: onMain(model) { $0.undo() })
+            .actionIdentity(ActionID("studio.undo"))
+        Button("Redo", action: onMain(model) { $0.redo() })
+            .actionIdentity(ActionID("studio.redo"))
+        Button("Frame", action: { [viewport] in MainActor.assumeIsolated { viewport.frameSelection() } })
+            .actionIdentity(ActionID("studio.frame"))
+        Button(state.showsGraphEditor ? (short ? "Insp" : "Inspector") : "Graph", action: onMain(model) { $0.toggleGraphEditor() })
+            .actionIdentity(ActionID("studio.graph.toggle"))
     }
 
     /// `rev N · <selection> · undo: <label> · <refusal>`, the refusal only
@@ -349,6 +415,7 @@ private let hierarchyScope = NodeID(raw: 0x5354_5544_494F_0000)
 struct HierarchyPanel: View {
     let model: StudioModel
     let rows: [StudioFrameState.Row]
+    var width = 26
 
     var body: some View {
         VStack {
@@ -363,7 +430,7 @@ struct HierarchyPanel: View {
         }
         .frame(maxWidth: .max, maxHeight: .max, alignment: .topLeading)
         .border(title: "Scene")
-        .frame(width: 26)
+        .frame(width: width)
     }
 }
 
@@ -373,6 +440,7 @@ struct InspectorPanel: View {
     let model: StudioModel
     let viewport: ViewportActions
     let inspected: StudioFrameState.Inspected?
+    var width = 30
 
     /// One nudge step, in scene units.
     static let step: Float = 0.25
@@ -411,7 +479,7 @@ struct InspectorPanel: View {
         }
         .frame(maxWidth: .max, maxHeight: .max, alignment: .topLeading)
         .border(title: "Inspector")
-        .frame(width: 30)
+        .frame(width: width)
     }
 
     private func nudge(_ title: String, _ id: String, _ delta: SIMD3<Float>) -> some View {

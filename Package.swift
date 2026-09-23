@@ -22,13 +22,18 @@ let package = Package(
     name: "GamaStudio",
     // macOS 15 / iOS 18 / tvOS 26 is RealityKit's floor for cone and cylinder
     // meshes (ADR 0002); every Primitive must map to a real mesh.
-    platforms: [.macOS(.v15), .iOS(.v18), .tvOS(.v26), .visionOS(.v1)],
+    // visionOS 2 is the floor for typed-throws function types at runtime
+    // (GamaGraph's node closures) and for DirectionalLight (ADR 0008).
+    platforms: [.macOS(.v15), .iOS(.v18), .tvOS(.v26), .visionOS(.v2)],
     products: [
         .library(name: "GamaAuthoring", targets: ["GamaAuthoring"]),
         .library(name: "GamaReality", targets: ["GamaReality"]),
         .library(name: "GamaUSD", targets: ["GamaUSD"]),
         .library(name: "GamaConsole", targets: ["GamaConsole"]),
         .library(name: "GamaGraph", targets: ["GamaGraph"]),
+        // The editor UI, hosted by gama-studio on macOS and by the
+        // Apps/GamaStudioApp Xcode project on iOS and visionOS (ADR 0008).
+        .library(name: "GamaStudioEditor", targets: ["GamaStudioEditor"]),
     ],
     dependencies: [
         // PR #108's head: the native-region API the viewport needs.

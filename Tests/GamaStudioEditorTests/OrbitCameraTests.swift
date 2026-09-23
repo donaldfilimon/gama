@@ -127,3 +127,23 @@ struct OrbitCameraTests {
         #expect(camera == before)
     }
 }
+
+@Suite("Orbit camera pick rays")
+struct OrbitCameraRayTests {
+    @Test func centerRayLooksAtTheTargetAndEdgesSpanTheFieldOfView() {
+        let orbit = OrbitCamera(lookingAt: .zero, from: SIMD3(0, 0, 5))
+        let size = SIMD2<Float>(400, 200)
+        let center = orbit.ray(through: SIMD2(200, 100), in: size, fieldOfViewDegrees: 60)
+        #expect(center.origin == SIMD3(0, 0, 5))
+        #expect(abs(center.direction.z + 1) < 1e-5 && abs(center.direction.x) < 1e-5 && abs(center.direction.y) < 1e-5)
+        // The top edge is half the vertical field of view above the axis.
+        let top = orbit.ray(through: SIMD2(200, 0), in: size, fieldOfViewDegrees: 60)
+        let angle = acos(-top.direction.z) * 180 / .pi
+        #expect(abs(angle - 30) < 1e-3)
+        #expect(top.direction.y > 0, "screen up is world up here")
+        // The right edge is wider by the aspect ratio, and to the right.
+        let right = orbit.ray(through: SIMD2(400, 100), in: size, fieldOfViewDegrees: 60)
+        #expect(right.direction.x > 0)
+        #expect(abs(right.direction.x / -right.direction.z - 2 * tan(Float.pi / 6)) < 1e-4)
+    }
+}

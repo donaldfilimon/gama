@@ -29,6 +29,7 @@ It is green only when the log ends with `check.sh: PASSED`. It runs, in order:
 4. `swift test`, with a test-count floor (`MIN_TESTS`) applied to the sum over all test targets. Every target's run must pass.
 5. `gama-studio --smoke`, which launches the real executable headless (one frame, no event loop): it asserts the host produced draw commands, the RealityKit `ARView` is an attached, visible, non-empty subview of the host, and the bridge's entity count matches the document's.
 6. `usd` (ADR 0005): `gama-studio --export` writes the sample scene, `usdchecker` must report `Success!`, every golden in `Tests/GamaUSDTests/Fixtures` must pass `usdchecker` too, `usdcat` reformats the export, and `--open` of that plus `--export` must reproduce the first export byte for byte. It fails closed when Apple's USD tools are missing.
+7. `ios and visionos` (ADR 0008): the library and the app build for both simulators with Xcode's toolchain, and the app launched with `--smoke` on `iPhone 17` and `Apple Vision Pro` (overridable with `GAMA_STUDIO_IOS_SIMULATOR` / `GAMA_STUDIO_VISIONOS_SIMULATOR`) must print its OK line.
 
 When you add tests, raise the floor. Never lower it to make the gate pass. The full gate takes over a minute, mostly the bridge convergence suite.
 
@@ -36,8 +37,8 @@ When you add tests, raise the floor. Never lower it to make the gate pass. The f
 
 - `.swift-version` pins `main-snapshot-2026-08-21`, the same pin as gama. Run `unset TOOLCHAINS`, then `swiftly run swift <build|test>`.
 - The manifest stays `swift-tools-version: 6.4` to match gama.
-- The platform floor is macOS 15 / iOS 18 / tvOS 26 / visionOS 1, set by RealityKit's cone and cylinder meshes (ADR 0002).
-- Only macOS is built and tested. Other platforms are unmeasured.
+- The platform floor is macOS 15 / iOS 18 / tvOS 26 / visionOS 2: RealityKit's cone and cylinder meshes (ADR 0002), and on visionOS the runtime for typed-throws closures and `DirectionalLight` (ADR 0008).
+- macOS is built and unit-tested with the swiftly snapshot. iOS and visionOS are built with Xcode's toolchain and launch-smoked in simulators by the gate (ADR 0008); tvOS is unmeasured.
 - The repo sits outside iCloud, so `swift test` runs in place.
 - Single suite: `swiftly run swift test --filter CommandRoundTripTests`. The filter matches the struct name, not the `@Suite` title. A filter that matches nothing exits 0, so check the count.
 
@@ -52,7 +53,13 @@ swiftly run swift run gama-studio --open scene.usda       # starts from a file i
 swiftly run swift run gama-studio --export out.usda       # writes the document (sample, or --open's) and exits; builds no UI
 ```
 
-`gama-studio` is macOS only (ADR 0003): it depends on `GamaStudioEditor`, which is gated on `canImport(AppKit)`/`canImport(RealityKit)`.
+`gama-studio` is the macOS host (ADR 0003). iOS and visionOS run `Apps/GamaStudioApp/GamaStudioApp.xcodeproj` (ADR 0008), a thin SwiftUI app over the `GamaStudioEditor` product, built with Xcode's toolchain:
+
+```bash
+env -u TOOLCHAINS xcodebuild -project Apps/GamaStudioApp/GamaStudioApp.xcodeproj -scheme GamaStudio \
+  -destination 'generic/platform=iOS Simulator' build        # or 'generic/platform=visionOS Simulator'
+xcrun simctl launch --console-pty <udid> com.donaldfilimon.GamaStudio --smoke   # prints the smoke verdict
+```
 
 ## Invariants (spec §64, as built here)
 
@@ -71,7 +78,7 @@ swiftly run swift run gama-studio --export out.usda       # writes the document 
 9. **The editor UI never mutates state directly** (ADR 0003). Every panel, button, and the viewport's click handler go through `StudioModel`, which is the only caller of `EditorSession`'s mutating surface and the only place `bridge.apply` is called; dropping that call desyncs the bridge from the document, and `StudioModelTests` must fail if it does.
 10. **A `@MainActor` crossing at the UI boundary is an explicit `MainActor.assumeIsolated`, never an assumption left silent** (ADR 0003): gama only runs a surface's content closure inside `FrameHost.pump` and an action inside `FrameHost.handle`/`perform`, both main-actor-only callers, so the assertion traps instead of racing if that stops holding.
 
-Decisions and their reasons are in `docs/adr/` (0001: the value document and commands; 0002: the RealityKit bridge; 0003: Studio's Gama-hosted UI and the RealityKit viewport; 0004: cameras and lights as authored components; 0005: USDA persistence; 0006: the command console; 0007: the typed graph framework).
+Decisions and their reasons are in `docs/adr/` (0001: the value document and commands; 0002: the RealityKit bridge; 0003: Studio's Gama-hosted UI and the RealityKit viewport; 0004: cameras and lights as authored components; 0005: USDA persistence; 0006: the command console; 0007: the typed graph framework; 0008: iOS and visionOS hosting).
 
 ## Layout
 
@@ -93,6 +100,7 @@ Decisions and their reasons are in `docs/adr/` (0001: the value document and com
   - `ViewportController` (gated on `canImport(AppKit) && canImport(RealityKit)`): the `StudioViewportView: ARView` subclass, an orbit `PerspectiveCamera`, the fallback `editorLight` (on only when the document has no visible light, ADR 0004), click-to-select picking via `pickedEntityID(for:in:)`, and `lookThrough(_:)`.
   - `StudioDocumentIO`: `.usda` file read and write, the only Foundation-to-disk path, plus `describe(_:)` for alerts. `StudioAppDelegate` owns the File menu, `currentURL`, the window title and edited dot, and the Save / Don't Save / Cancel prompts. `StudioModel.replaceDocument` and `hasUnsavedChanges` back them (ADR 0005).
   - `SelectionHighlight` (gated like `ViewportController`): the wireframe selection box, 12 thin unlit edges per selected entity around its padded world-space `visualBounds` (hidden entities included). `StudioModel.onSelectionChange` fires on any selection change, whatever caused it, after `onDocumentChange`.
+  - `TouchViewport` (UIKit + RealityKit + SwiftUI): the iOS/visionOS `RealityView` viewport, `StudioTouchHost` (`StudioHostViewController`, `GamaStudioView`, the launch smoke check), and `ViewportSupport` (picking and fallback-light rules shared with `ViewportController`), ADR 0008. `StudioRootView` switches to a compact layout below 86 columns.
   - `LookAt.swift`: `Rotation.lookAt(_:from:up:)`, the `simd`-based look-at helper `GamaAuthoring` cannot host itself (ADR 0004).
 - `Sources/gama-studio/main.swift`: the executable. Owns the `NSApplication`/`NSWindow`/`GamaHostView`, installs `StudioApp`, attaches the `ViewportController`'s `ARView` to the viewport region. `--smoke` runs one frame headless and asserts the host, viewport, and bridge are in the state the gate checks; `--snapshot <path>` renders one `ARView` frame to a PNG and exits non-zero if it's blank.
 - `Tests/GamaGraphTests/`: `GraphEvaluatorTests` (both specializations end to end, saturation, inert targets, refusals, every standard node).
@@ -110,6 +118,6 @@ Decisions and their reasons are in `docs/adr/` (0001: the value document and com
 1. **Graph follow-ups** (ADR 0007): texture, mesh, and execution nodes; rotation in the transform output; a spatial node canvas; typed non-float constants in the panel.
 2. **Reading USD Gama did not write, and `.usdz`** (ADR 0005, Proposed).
 3. **Console follow-ups** (ADR 0006): `rotate`, `find`, history recall, a focus shortcut.
-4. **iOS and visionOS hosting.** `StudioModel` compiles wherever RealityKit does; `StudioApp`, `ViewportController`, and `gama-studio` are AppKit-only today.
+4. **iOS and visionOS follow-ups** (ADR 0008): file open/save via a document picker, a software-keyboard route to the console, a visionOS volume, device signing.
 
 None of these may be described as existing until it has a target and passing tests.

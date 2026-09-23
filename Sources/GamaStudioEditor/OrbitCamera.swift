@@ -68,6 +68,27 @@ public struct OrbitCamera: Hashable, Sendable {
         SIMD3(-sin(pitch) * sin(yaw), cos(pitch), -sin(pitch) * cos(yaw))
     }
 
+    /// The pick ray through a view point, for viewports that cast their own
+    /// rays (the touch viewport on iOS, ADR 0008). `point` is in points from
+    /// the view's top-left, `size` is the view's size, and the field of view
+    /// is vertical, as RealityKit's `PerspectiveCamera` uses by default.
+    /// Returns the eye and a unit direction.
+    public func ray(
+        through point: SIMD2<Float>, in size: SIMD2<Float>, fieldOfViewDegrees: Float
+    ) -> (origin: SIMD3<Float>, direction: SIMD3<Float>) {
+        let eye = position
+        var forward = target - eye
+        forward /= (forward * forward).sum().squareRoot()
+        guard size.x > 0, size.y > 0 else { return (eye, forward) }
+        let halfHeight = tan(fieldOfViewDegrees * .pi / 360)
+        let halfWidth = halfHeight * size.x / size.y
+        let x = (point.x / size.x) * 2 - 1
+        let y = 1 - (point.y / size.y) * 2
+        var direction = forward + right * (x * halfWidth) + up * (y * halfHeight)
+        direction /= (direction * direction).sum().squareRoot()
+        return (eye, direction)
+    }
+
     /// Turns the eye around ``target`` by the given angles, in radians.
     public mutating func orbit(yawBy deltaYaw: Float, pitchBy deltaPitch: Float) {
         guard deltaYaw.isFinite, deltaPitch.isFinite else { return }

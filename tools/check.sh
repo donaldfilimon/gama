@@ -10,7 +10,7 @@ unset TOOLCHAINS
 # Minimum test count. A filter or a target that silently matches nothing
 # prints success with zero tests, so the gate asserts a floor. Raise it when
 # tests are added; never lower it to make the gate pass.
-MIN_TESTS=227
+MIN_TESTS=229
 # Standard-library-only targets (ADR 0001, ADR 0005, ADR 0006, ADR 0007).
 LIBRARIES=("Sources/GamaAuthoring" "Sources/GamaUSD" "Sources/GamaConsole" "Sources/GamaGraph")
 BANNED='Foundation|Darwin|Glibc|simd|RealityKit|SwiftUI|AppKit|UIKit|Combine|Dispatch'
@@ -104,5 +104,48 @@ usdcat "$usd_dir/sample.usda" -o "$usd_dir/reformatted.usda"
 swiftly run swift run gama-studio --open "$usd_dir/reformatted.usda" --export "$usd_dir/again.usda" </dev/null
 cmp "$usd_dir/sample.usda" "$usd_dir/again.usda" || { echo "error: usdcat round trip changed the document" >&2; exit 1; }
 echo "usd: usdchecker Success! (sample + ${#goldens[@]} goldens), usdcat round trip identical"
+
+echo "==> ios and visionos (ADR 0008)"
+# Builds the editor library and the app for both simulators with Xcode's
+# toolchain, then launches the app with --smoke on one simulator of each
+# platform and requires its OK line. Fails closed without Xcode, the
+# simulators, or a successful launch. Device names are overridable.
+for tool in xcodebuild xcrun; do
+  command -v "$tool" >/dev/null || { echo "error: $tool is required for the ios/visionos stage" >&2; exit 1; }
+done
+apple_dd="${GAMA_STUDIO_APPLE_DERIVED_DATA:-${TMPDIR:-/tmp}/gama-studio-apple-dd}"
+apple_log="$(mktemp -t gama-studio-apple)"
+trap 'rm -f "$log" "$apple_log"; rm -rf "$usd_dir"' EXIT
+for platform in "iOS Simulator" "visionOS Simulator"; do
+  for build in "-scheme GamaStudioEditor" "-project Apps/GamaStudioApp/GamaStudioApp.xcodeproj -scheme GamaStudio"; do
+    set +e
+    # shellcheck disable=SC2086
+    env -u TOOLCHAINS xcodebuild $build -destination "generic/platform=$platform" \
+      -derivedDataPath "$apple_dd" build </dev/null >"$apple_log" 2>&1
+    status=$?
+    set -e
+    if [[ $status -ne 0 ]] || ! grep -q '\*\* BUILD SUCCEEDED \*\*' "$apple_log"; then
+      grep -E 'error:' "$apple_log" | head -20 >&2
+      echo "error: xcodebuild $build for $platform failed ($status)" >&2; exit 1
+    fi
+    echo "built $build for $platform"
+  done
+done
+smoke_app() {  # $1 device name, $2 products subdirectory
+  local udid
+  udid="$(xcrun simctl list devices available | grep -F "    $1 (" | head -1 | sed -E 's/.*\(([0-9A-F-]{36})\).*/\1/')"
+  [[ -n "$udid" ]] || { echo "error: no available simulator named '$1'" >&2; exit 1; }
+  xcrun simctl boot "$udid" >/dev/null 2>&1 || true
+  xcrun simctl bootstatus "$udid" -b >/dev/null
+  xcrun simctl install "$udid" "$apple_dd/Build/Products/$2/GamaStudio.app"
+  local out
+  set +e
+  out="$(timeout 120 xcrun simctl launch --console-pty --terminate-running-process "$udid" com.donaldfilimon.GamaStudio --smoke 2>&1)"
+  set -e
+  grep -q 'gama-studio-app smoke: OK' <<<"$out" || { echo "$out" >&2; echo "error: launch smoke failed on $1" >&2; exit 1; }
+  echo "smoke OK on $1"
+}
+smoke_app "${GAMA_STUDIO_IOS_SIMULATOR:-iPhone 17}" Debug-iphonesimulator
+smoke_app "${GAMA_STUDIO_VISIONOS_SIMULATOR:-Apple Vision Pro}" Debug-xrsimulator
 
 echo "check.sh: PASSED"

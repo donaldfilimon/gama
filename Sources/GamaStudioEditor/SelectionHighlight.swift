@@ -6,9 +6,17 @@
 //  bridge's entity maps, and carries no collision, so picking passes through
 //  it.
 
-#if canImport(AppKit) && canImport(RealityKit)
+#if canImport(RealityKit) && (canImport(AppKit) || canImport(UIKit))
 
+#if canImport(AppKit)
 public import AppKit
+/// The platform color type the highlight's material takes.
+public typealias HighlightColor = NSColor
+#else
+public import UIKit
+/// The platform color type the highlight's material takes.
+public typealias HighlightColor = UIColor
+#endif
 public import GamaAuthoring
 public import GamaReality
 public import RealityKit
@@ -26,7 +34,12 @@ public final class SelectionHighlight {
 
     /// Edge color: a saturated orange that reads against the dark background
     /// and against the sample's grey, red, green, and blue materials.
-    public static let color = NSColor(srgbRed: 1, green: 0.62, blue: 0.1, alpha: 1)
+    #if canImport(AppKit)
+    public static let color = HighlightColor(srgbRed: 1, green: 0.62, blue: 0.1, alpha: 1)
+    #else
+    // UIColor's red/green/blue initializer is sRGB.
+    public static let color = HighlightColor(red: 1, green: 0.62, blue: 0.1, alpha: 1)
+    #endif
 
     /// Smallest half-size of a highlighted box, in meters, so an entity with
     /// no geometry (an empty group) still shows where it is.
@@ -43,14 +56,17 @@ public final class SelectionHighlight {
     /// Replaces the highlight with one box per entity in `selection` that
     /// `bridge` projects. Hidden entities are highlighted too, so a selection
     /// made in the hierarchy can still be found in the viewport.
-    public func update(selection: [EntityID], bridge: RealityBridge) {
+    /// `space` is the entity the highlight root sits under (`nil` for world
+    /// space); bounds are measured in it, so a scaled or turned stage, as on
+    /// visionOS, still gets boxes that line up with what they surround.
+    public func update(selection: [EntityID], bridge: RealityBridge, relativeTo space: Entity? = nil) {
         for child in Array(root.children) {
             child.removeFromParent()
         }
         boxes = [:]
         for id in selection {
             guard let entity = bridge.entity(for: id) else { continue }
-            let box = Self.highlightBounds(of: entity)
+            let box = Self.highlightBounds(of: entity, relativeTo: space)
             boxes[id] = box
             let thickness = Self.edgeThickness(for: box)
             for edge in Self.edges(of: box, thickness: thickness) {
@@ -66,10 +82,10 @@ public final class SelectionHighlight {
     /// inactive (hidden) parts, padded so the edges sit just outside the
     /// surface instead of z-fighting with it. An entity without geometry gets
     /// a small box at its world position.
-    public static func highlightBounds(of entity: Entity) -> BoundingBox {
-        var bounds = entity.visualBounds(recursive: true, relativeTo: nil, excludeInactive: false)
+    public static func highlightBounds(of entity: Entity, relativeTo space: Entity? = nil) -> BoundingBox {
+        var bounds = entity.visualBounds(recursive: true, relativeTo: space, excludeInactive: false)
         if bounds.isEmpty || !bounds.min.x.isFinite {
-            let position = entity.position(relativeTo: nil)
+            let position = entity.position(relativeTo: space)
             bounds = BoundingBox(min: position, max: position)
         }
         let center = (bounds.min + bounds.max) / 2

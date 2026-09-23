@@ -132,17 +132,7 @@ public final class ViewportController: NSObject {
     /// light component whose own and every ancestor's ``Visibility`` is
     /// visible. A missing `Visibility` component counts as visible.
     public static func documentHasEnabledLight(_ document: SceneDocument) -> Bool {
-        document.entities.values.contains { record in
-            guard record.components[.light] != nil else { return false }
-            var cursor: EntityID? = record.id
-            while let id = cursor, let current = document.entity(id) {
-                if case .visibility(let visibility)? = current.components[.visibility], !visibility.visible {
-                    return false
-                }
-                cursor = current.parent
-            }
-            return true
-        }
+        ViewportSupport.documentHasEnabledLight(document)
     }
 
     /// Turns ``editorLight`` on exactly when the document has no enabled light.
@@ -286,12 +276,7 @@ public final class ViewportController: NSObject {
     /// the anchor, `bridge.root`). Walking up means a hit on an unprojected
     /// sub-part still selects the entity that owns it.
     public static func pickedEntityID(for entity: Entity?, in bridge: RealityBridge) -> EntityID? {
-        var current = entity
-        while let candidate = current {
-            if let id = bridge.id(for: candidate) { return id }
-            current = candidate.parent
-        }
-        return nil
+        ViewportSupport.pickedEntityID(for: entity, in: bridge)
     }
 
     /// Selects the entity under `point` (in ``arView``'s coordinates), or

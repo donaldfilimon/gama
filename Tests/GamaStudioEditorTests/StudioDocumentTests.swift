@@ -80,7 +80,7 @@ struct StudioDocumentTests {
         #expect(model.session.document == before)
     }
 
-    @Test func openRedrawsTheHostAndCloseAsksOnlyWhenEdited() throws {
+    @Test func openRedrawsTheHostAndCloseAsksOnlyWhenEdited() async throws {
         let url = try scratchURL("redraw.usda")
         try StudioDocumentIO.write(StudioModel.sampleScene(), to: url)
         let model = StudioModel()
@@ -91,6 +91,8 @@ struct StudioDocumentTests {
         delegate.attach(model: model, window: window, redraw: { redraws += 1 })
         #expect(window.delegate === delegate)
         try delegate.open(url)
+        // The repaint is deferred to the next main-actor turn (HostRedrawTests).
+        for _ in 0..<10 { await Task.yield() }
         #expect(redraws == 1, "a File-menu open must repaint the Gama panels")
         #expect(delegate.windowShouldClose(window), "nothing unsaved: closes without asking")
         #expect(delegate.applicationShouldTerminate(NSApplication.shared) == .terminateNow)

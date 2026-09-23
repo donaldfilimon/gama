@@ -67,7 +67,14 @@ public final class StudioAppDelegate: NSObject, NSApplicationDelegate, NSWindowD
         model.onDocumentChange = { [weak self] in
             previousListener?()
             self?.updateWindow()
-            self?.redraw()
+            // Deferred to the next main-actor turn: a document change made by
+            // a gama button runs inside the host's own event dispatch, and
+            // invalidating the host from there re-enters its frame pump
+            // (Swift traps on the overlapping access). The action already
+            // repaints; this pass is for changes from outside gama (File >
+            // Open), which reach here outside any dispatch.
+            guard let redraw = self?.redraw else { return }
+            Task { @MainActor in redraw() }
         }
         updateWindow()
     }
