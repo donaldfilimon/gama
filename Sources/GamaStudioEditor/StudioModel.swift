@@ -185,15 +185,23 @@ public final class StudioModel {
     static let cycledAttenuationRadius: Float = 10
 
     /// Changes the selected light's kind: directional, then point, then
-    /// spot, then directional again. Color and intensity are kept; a point
-    /// light's attenuation radius carries into the spot. With no selection
-    /// this is a no-op; a selection without a light sets `lastError` to
-    /// `.componentAbsent` and changes nothing.
+    /// spot, then directional again, as one undoable step. Color is kept;
+    /// a point light's attenuation radius carries into the spot.
+    ///
+    /// Intensity is measured in different units by the two families
+    /// (directional in lux, point and spot in lumens), so a step that
+    /// crosses between them resets it to the new kind's default
+    /// (``Light/defaultDirectional`` or ``Light/defaultPoint``); carrying
+    /// the number across would make the light about 9× too dim or too
+    /// bright. Point to spot keeps the intensity, since both are lumens.
+    /// With no selection this is a no-op; a selection without a light sets
+    /// `lastError` to `.componentAbsent` and changes nothing.
     public func cycleLightKind() {
         editLight { light in
             switch light.kind {
             case .directional:
                 light.kind = .point(attenuationRadius: Self.cycledAttenuationRadius)
+                light.intensity = Light.defaultPoint.intensity
             case .point(let radius):
                 light.kind = .spot(
                     innerAngleDegrees: Self.cycledSpotAngles.inner,
@@ -202,6 +210,7 @@ public final class StudioModel {
                 )
             case .spot:
                 light.kind = .directional
+                light.intensity = Light.defaultDirectional.intensity
             }
         }
     }

@@ -138,28 +138,52 @@ struct StudioModelLightAndCameraTests {
         #expect(model.session.selection.primary.flatMap { model.session.document.entity($0)?.name } == "Camera 2")
     }
 
-    @Test func cycleLightKindWalksDirectionalPointSpotAndKeepsIntensityAndColor() throws {
+    @Test func cycleLightKindResetsIntensityAcrossLuxAndLumensAndKeepsItWithinLumens() throws {
         let model = StudioModel()
         model.addLight(.directional)
         let lamp = try #require(model.session.selection.primary)
+        model.scaleLightIntensity(by: 1.25)            // 3750 lux: not a default
         let before = try #require(light(of: lamp, in: model))
+        #expect(before.intensity == 3750)
 
+        // Directional (lux) -> point (lumens): the point default, not 3750.
+        var revision = model.session.revision
         model.cycleLightKind()
-        guard case .point? = light(of: lamp, in: model)?.kind else {
-            Issue.record("expected point, got \(String(describing: light(of: lamp, in: model)))")
-            return
-        }
+        #expect(model.session.revision == revision + 1, "one command per cycle")
+        let point = try #require(light(of: lamp, in: model))
+        #expect(point.kind == .point(attenuationRadius: 10))
+        #expect(point.intensity == Light.defaultPoint.intensity)
+        #expect(point.color == before.color)
         #expect(converged(model))
+
+        // Undo is one step back to the exact directional light.
+        model.undo()
+        #expect(light(of: lamp, in: model) == before)
+        model.redo()
+        #expect(light(of: lamp, in: model) == point)
+
+        // Point -> spot: both lumens, so a custom intensity is kept, and so
+        // is the attenuation radius.
+        model.scaleLightIntensity(by: 2)
+        let brighter = point.intensity * 2
+        #expect(light(of: lamp, in: model)?.intensity == brighter)
+        revision = model.session.revision
         model.cycleLightKind()
-        guard case .spot? = light(of: lamp, in: model)?.kind else {
-            Issue.record("expected spot, got \(String(describing: light(of: lamp, in: model)))")
-            return
-        }
+        #expect(model.session.revision == revision + 1)
+        let spot = try #require(light(of: lamp, in: model))
+        #expect(spot.kind == .spot(innerAngleDegrees: 30, outerAngleDegrees: 45, attenuationRadius: 10))
+        #expect(spot.intensity == brighter)
+        #expect(spot.color == before.color)
         #expect(converged(model))
+
+        // Spot (lumens) -> directional (lux): the directional default.
+        revision = model.session.revision
         model.cycleLightKind()
-        #expect(light(of: lamp, in: model)?.kind == .directional)
-        #expect(light(of: lamp, in: model)?.intensity == before.intensity)
-        #expect(light(of: lamp, in: model)?.color == before.color)
+        #expect(model.session.revision == revision + 1)
+        let directional = try #require(light(of: lamp, in: model))
+        #expect(directional.kind == .directional)
+        #expect(directional.intensity == Light.defaultDirectional.intensity)
+        #expect(directional.color == before.color)
         #expect(model.lastError == nil)
         #expect(converged(model))
     }
