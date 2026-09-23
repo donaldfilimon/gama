@@ -64,7 +64,15 @@ let package = Package(
         ),
         .testTarget(
             name: "GamaStudioEditorTests",
-            dependencies: ["GamaStudioEditor", "GamaAuthoring", "GamaReality"],
+            dependencies: [
+                "GamaStudioEditor",
+                "GamaAuthoring",
+                "GamaReality",
+                // StudioAppTests drives a FrameHost and paints its frames to
+                // text, which needs both gama modules imported directly.
+                .product(name: "GamaCore", package: "gama"),
+                .product(name: "GamaDraw", package: "gama"),
+            ],
             swiftSettings: strictCore
         ),
         // Native window stub: AppKit host loop around GamaStudioEditor.
