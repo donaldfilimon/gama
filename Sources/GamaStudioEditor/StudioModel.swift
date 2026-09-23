@@ -77,13 +77,15 @@ public final class StudioModel {
     ///
     /// Not undoable: undo and redo history, selection, and `lastError` are
     /// cleared, the bridge is rebuilt from scratch, and the new content
-    /// counts as saved. ``onDocumentChange`` runs last.
-    public func replaceDocument(_ document: SceneDocument) {
+    /// counts as saved unless `asSaved` is false, as when recovering unsaved
+    /// changes (ADR 0012): the saved content is then left as it was.
+    /// ``onDocumentChange`` runs last.
+    public func replaceDocument(_ document: SceneDocument, asSaved: Bool = true) {
         let before = session.selection
         defer { reportSelection(changedFrom: before) }
         showGraph(nil)
         session = EditorSession(document: document)
-        savedDocument = document
+        if asSaved { savedDocument = document }
         lastError = nil
         bridge.rebuild(from: session.document)
         onDocumentChange?()

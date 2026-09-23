@@ -28,9 +28,20 @@ public final class StudioHostViewController: UIViewController {
     /// A file handed over before the view was on screen, opened once it is
     /// (the prompt and pickers need a window to present from).
     private var pendingExternalURL: URL?
+    /// Names this window's recovery file (ADR 0012); `nil` uses the window
+    /// scene's session identifier, which the system keeps per window.
+    private let recoveryKey: String?
+    /// Whether recovery was set up, which happens once, on first appearance.
+    private var recoveryResolved = false
+    /// Whether launch restored an Untitled document's unsaved changes.
+    public private(set) var restoredUntitledChanges = false
 
-    public init(model: StudioModel = StudioModel(document: StudioModel.sampleScene())) {
+    public init(
+        model: StudioModel = StudioModel(document: StudioModel.sampleScene()),
+        recoveryKey: String? = nil
+    ) {
         self.model = model
+        self.recoveryKey = recoveryKey
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -78,10 +89,29 @@ public final class StudioHostViewController: UIViewController {
 
     public override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        if !recoveryResolved {
+            recoveryResolved = true
+            restoreUntitledChanges()
+        }
         updateTitle()
+        // After restoring, so a handed-over file meets the Untitled prompt.
         if let url = pendingExternalURL {
             pendingExternalURL = nil
             files.openExternally(url)
+        }
+    }
+
+    /// Chooses this window's recovery file and restores unsaved Untitled
+    /// changes from it (ADR 0012). Needs the window, for the scene session's
+    /// identifier, so it runs on first appearance, before any edit.
+    private func restoreUntitledChanges() {
+        let key = recoveryKey ?? view.window?.windowScene?.session.persistentIdentifier
+        guard let key, let recovery = UntitledRecovery(key: key, in: UntitledRecovery.defaultDirectory()) else { return }
+        files.untitledRecovery = recovery
+        do {
+            restoredUntitledChanges = try recovery.restore(into: files.documents)
+        } catch {
+            files.reportUnrecoverable(error)
         }
     }
 
@@ -118,6 +148,48 @@ public final class StudioHostViewController: UIViewController {
     @objc func openDocument() { files.open() }
     @objc func saveDocument() { files.save() }
     @objc func saveDocumentAs() { files.saveAs() }
+
+    /// The gate's recovery smoke, first launch (ADR 0012): with a fresh key,
+    /// one edit creates the recovery file at once, and a second must reach
+    /// it through UIKit's autosave. The app then exits as a kill would.
+    public func recoveryWriteSmokeFailures() async -> [String] {
+        guard await waitUntil({ self.files?.untitledRecovery != nil }), let files, let recovery = files.untitledRecovery else {
+            return ["no recovery file was chosen"]
+        }
+        if restoredUntitledChanges { return ["a fresh key restored changes"] }
+        model.addPrimitive(.box)
+        if !(await waitUntil({ (try? StudioDocumentIO.read(from: recovery.url)) == self.model.session.document })) {
+            return ["the first unsaved change did not create the recovery file"]
+        }
+        model.addPrimitive(.sphere)
+        let expected = model.session.document
+        if !(await waitUntil({ (try? StudioDocumentIO.read(from: recovery.url)) == expected }, seconds: 45)) {
+            return ["a later change did not autosave to the recovery file"]
+        }
+        return []
+    }
+
+    /// The gate's recovery smoke, second launch with the same key: the
+    /// changes came back as an Untitled document with unsaved changes equal
+    /// to the recovery file, and opening a file (where Don't Save leads)
+    /// removes the recovery file.
+    public func recoveryRestoreSmokeFailures(thenOpening url: URL) async -> [String] {
+        guard await waitUntil({ self.recoveryResolved }), let files, let recovery = files.untitledRecovery else {
+            return ["no recovery file was chosen"]
+        }
+        var failures: [String] = []
+        if !restoredUntitledChanges { failures.append("nothing was restored") }
+        if files.documents.currentURL != nil { failures.append("the restored document is not Untitled") }
+        if !files.documents.hasUnsavedChanges { failures.append("the restored document does not read as unsaved") }
+        if (try? StudioDocumentIO.read(from: recovery.url)) != model.session.document {
+            failures.append("the restored document differs from the recovery file")
+        }
+        files.openCoordinated(url)
+        if !(await waitUntil({ files.coordinated != nil && !recovery.exists })) {
+            failures.append(recovery.exists ? "opening a file left the recovery file behind" : "\(url.lastPathComponent) did not open")
+        }
+        return failures
+    }
 
     /// What the gate's launch smoke check verifies after `--open <path>`
     /// (ADR 0010, ADR 0011), in order:
@@ -256,9 +328,28 @@ public struct GamaStudioView: UIViewControllerRepresentable {
     let onFirstLayout: (@MainActor ([String]) -> Void)?
     /// The latest file the system handed to the app, if any (ADR 0010).
     let incoming: IncomingDocument?
+    /// Names the recovery file; `nil` uses the window's session (ADR 0012).
+    let recoveryKey: String?
+    /// Which recovery smoke to run instead of the file smoke, if any.
+    let recoverySmoke: RecoverySmoke?
 
-    public init(incoming: IncomingDocument? = nil, onFirstLayout: (@MainActor ([String]) -> Void)? = nil) {
+    /// The two launches of the gate's recovery check (ADR 0012).
+    public enum RecoverySmoke: Sendable {
+        /// Make unsaved Untitled changes and wait for them to autosave.
+        case write
+        /// Require them restored, then open this file.
+        case restore(thenOpening: URL)
+    }
+
+    public init(
+        recoveryKey: String? = nil,
+        incoming: IncomingDocument? = nil,
+        recoverySmoke: RecoverySmoke? = nil,
+        onFirstLayout: (@MainActor ([String]) -> Void)? = nil
+    ) {
+        self.recoveryKey = recoveryKey
         self.incoming = incoming
+        self.recoverySmoke = recoverySmoke
         self.onFirstLayout = onFirstLayout
     }
 
@@ -270,15 +361,23 @@ public struct GamaStudioView: UIViewControllerRepresentable {
     public func makeCoordinator() -> Coordinator { Coordinator() }
 
     public func makeUIViewController(context: Context) -> StudioHostViewController {
-        let controller = StudioHostViewController()
+        let controller = StudioHostViewController(recoveryKey: recoveryKey)
         if let onFirstLayout {
             let expected = incoming?.url
+            let recoverySmoke = recoverySmoke
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                 MainActor.assumeIsolated {
                     let failures = controller.smokeFailures()
-                    guard let expected else { return onFirstLayout(failures) }
                     Task { @MainActor in
-                        onFirstLayout(failures + (await controller.fileSmokeFailures(expected: expected)))
+                        switch recoverySmoke {
+                        case .write?:
+                            onFirstLayout(failures + (await controller.recoveryWriteSmokeFailures()))
+                        case .restore(let url)?:
+                            onFirstLayout(failures + (await controller.recoveryRestoreSmokeFailures(thenOpening: url)))
+                        case nil:
+                            guard let expected else { return onFirstLayout(failures) }
+                            onFirstLayout(failures + (await controller.fileSmokeFailures(expected: expected)))
+                        }
                     }
                 }
             }

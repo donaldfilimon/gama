@@ -61,6 +61,15 @@ public final class StudioDocumentSession {
         model.replaceDocument(document)
     }
 
+    /// Puts back an Untitled document's unsaved changes, read from its
+    /// recovery file (ADR 0012). The document stays Untitled and reads as
+    /// unsaved against the content it started from. Not undoable. Sends one
+    /// notification. Does nothing once the document has a file.
+    public func restoreUntitled(_ document: SceneDocument) {
+        guard currentURL == nil else { return }
+        model.replaceDocument(document, asSaved: false)
+    }
+
     /// Records that the current file now lives at `url`, as when the system
     /// moves a read-only file somewhere writable before saving (ADR 0011).
     public func fileMoved(to url: URL) {

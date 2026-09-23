@@ -105,7 +105,6 @@ What had to hold:
   - any of this driven by hand on visionOS, which shares the code and
     passes the gate's smoke.
 - **Not built:**
-  - autosave for Untitled documents (a recovery location and restoring it
-    at launch);
+  - autosave for Untitled documents (since built: ADR 0012);
   - iCloud version conflicts (`.inConflict`);
   - macOS autosave.

@@ -28,6 +28,16 @@ public final class TouchDocumentController: NSObject, UIDocumentPickerDelegate {
     /// keeps the document in `.savingError` reports once.
     private var reportedSavingError = false
 
+    /// Where this window keeps an Untitled document's unsaved changes
+    /// (ADR 0012); `nil` turns recovery off. Set before any edit.
+    public var untitledRecovery: UntitledRecovery?
+    /// The recovery file, held open for autosave while the document is
+    /// Untitled with unsaved changes. Its saves never mark the model saved:
+    /// the document is still Untitled.
+    private var recovery: StudioUIDocument?
+    /// Whether a failure to write the recovery file is already on screen.
+    private var reportedRecoveryError = false
+
     /// What the picker on screen is for.
     private enum Pending {
         case open
@@ -78,8 +88,71 @@ public final class TouchDocumentController: NSObject, UIDocumentPickerDelegate {
         if let coordinated {
             coordinated.publish(documents.model.session.document)
             coordinated.updateChangeCount(documents.hasUnsavedChanges ? .done : .cleared)
+        } else {
+            keepRecovery()
         }
         onStateChange?()
+    }
+
+    // MARK: Untitled recovery (ADR 0012)
+
+    /// Keeps the invariant: a recovery file exists only while the document
+    /// is Untitled with unsaved changes. The first such change creates the
+    /// file; later ones hand UIKit the content and let it autosave.
+    private func keepRecovery() {
+        guard let untitledRecovery else { return }
+        guard documents.currentURL == nil, documents.hasUnsavedChanges else { return discardRecovery() }
+        let content = documents.model.session.document
+        if let recovery {
+            recovery.publish(content)
+            recovery.updateChangeCount(.done)
+            return
+        }
+        let document = StudioUIDocument(
+            fileURL: untitledRecovery.url,
+            current: content,
+            events: .init(saved: { _, _ in }, changedExternally: { _ in })
+        )
+        recovery = document
+        try? FileManager.default.createDirectory(
+            at: untitledRecovery.url.deletingLastPathComponent(), withIntermediateDirectories: true
+        )
+        let operation: UIDocument.SaveOperation = untitledRecovery.exists ? .forOverwriting : .forCreating
+        document.save(to: untitledRecovery.url, for: operation) { [weak self] success in
+            Task { @MainActor in self?.recoveryCreated(success) }
+        }
+    }
+
+    private func recoveryCreated(_ success: Bool) {
+        guard !success, !reportedRecoveryError else { return }
+        reportedRecoveryError = true
+        report(
+            recovery?.lastError ?? "The recovery file could not be written.",
+            doing: "keep unsaved changes to \u{201C}\(documents.displayName)\u{201D} for the next launch"
+        )
+    }
+
+    /// Closes the recovery file without saving and removes it, unless a new
+    /// one was started meanwhile (an edit right after an undo).
+    private func discardRecovery() {
+        guard let untitledRecovery else { return }
+        guard let document = recovery else {
+            // Restored at launch but never reopened, or already closed.
+            return untitledRecovery.discard()
+        }
+        recovery = nil
+        document.updateChangeCount(.cleared)
+        document.close { [weak self] _ in
+            Task { @MainActor in
+                if self?.recovery == nil { untitledRecovery.discard() }
+            }
+        }
+    }
+
+    /// Reports a recovery file that could not be read at launch, which was
+    /// set aside rather than deleted (ADR 0012).
+    public func reportUnrecoverable(_ error: any Error) {
+        report(error, doing: "recover unsaved changes to \u{201C}\(documents.displayName)\u{201D}")
     }
 
     // MARK: Actions
@@ -200,6 +273,9 @@ public final class TouchDocumentController: NSObject, UIDocumentPickerDelegate {
     /// Makes `document` the coordinated current file and closes the previous
     /// one: closing autosaves it unless `savingPrevious` is false.
     private func becomeCurrent(_ document: StudioUIDocument, savingPrevious: Bool) {
+        // The document has a file now: Untitled changes are either in it
+        // (Save As) or were given up (Don't Save).
+        discardRecovery()
         let previous = coordinated
         coordinated = document
         reportedSavingError = false
