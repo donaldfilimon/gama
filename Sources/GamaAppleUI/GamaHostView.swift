@@ -150,12 +150,26 @@ public final class GamaHostView: GamaPlatformView {
     /// same test asserts. Package-only.
     package var styledFontCacheCount: Int { fontCache.count }
 
-    private var cellSize: CGSize = .zero
+    /// Measured monospaced cell size. `package` (not `public`) so tests can
+    /// read it without duplicating its measurement math.
+    package private(set) var cellSize: CGSize = .zero
     /// Measured monospaced cell size, for the accessibility adapter's
     /// grid-to-view rectangle conversion.
     var accessibilityCellSize: CGSize { cellSize }
     private let defaultForeground: PlatformColor = .white
     private let defaultBackground: PlatformColor = .black
+
+    // MARK: Native regions (ADR 0016)
+    /// Application-owned views attached to native regions, by identity.
+    var attachedNativeViews: [NativeRegionID: GamaPlatformView] = [:]
+    /// Regions of the most recent frame, kept so attach/detach can place a
+    /// view without waiting for the next frame.
+    private var lastNativeRegions: [NativeRegionFrame] = []
+    /// Cell frames of regions currently showing an attached view; drawing
+    /// skips commands wholly inside them.
+    private var shownNativeRegionCells: [Rect] = []
+    /// Regions whose attached view was given first responder last frame.
+    private var focusedNativeRegions: Set<NativeRegionID> = []
 
     // MARK: Init
 
@@ -242,6 +256,7 @@ public final class GamaHostView: GamaPlatformView {
                 self.currentDrawList = self.drawListSerializer.serialize(painted)
             }
             guard outcome.produced else { return }
+            self.placeNativeRegions(session.pump.nativeRegions)
             self.setNeedsDisplayCompat()
             if outcome.followUp { self.driver?() }
         }
@@ -276,6 +291,79 @@ public final class GamaHostView: GamaPlatformView {
     public func invalidate() {
         invalidateHost?()
         driver?()
+    }
+
+    // MARK: Native regions (ADR 0016)
+
+    /// Attaches an application-owned view to the native region `id`. The
+    /// application keeps ownership; the host adds it as a subview, places it
+    /// on the region's frame each frame, hides it while the region is absent,
+    /// and hands it first responder when Gama focus lands on the region.
+    /// Attaching a different view to the same identity detaches the first.
+    public func attach(_ view: GamaPlatformView, to id: NativeRegionID) {
+        if let previous = attachedNativeViews[id], previous !== view {
+            previous.removeFromSuperview()
+        }
+        attachedNativeViews[id] = view
+        #if canImport(AppKit)
+            let alreadyAttached = unsafe view.superview === self
+        #else
+            let alreadyAttached = view.superview === self
+        #endif
+        if !alreadyAttached { addSubview(view) }
+        view.isHidden = true
+        placeNativeRegions(lastNativeRegions)
+    }
+
+    /// Removes the view attached to `id`, if any, from this host.
+    public func detach(_ id: NativeRegionID) {
+        attachedNativeViews.removeValue(forKey: id)?.removeFromSuperview()
+        placeNativeRegions(lastNativeRegions)
+    }
+
+    /// Whether `cells` lies wholly inside a region currently showing an
+    /// attached view. Package-only so the no-overdraw rule is testable.
+    package func isCoveredByNativeRegion(_ cells: Rect) -> Bool {
+        shownNativeRegionCells.contains { region in
+            cells.minX >= region.minX && cells.minY >= region.minY
+                && cells.maxX <= region.maxX && cells.maxY <= region.maxY
+        }
+    }
+
+    private func placeNativeRegions(_ regions: [NativeRegionFrame]) {
+        lastNativeRegions = regions
+        var byID: [NativeRegionID: NativeRegionFrame] = [:]
+        for region in regions { byID[region.id] = region }
+        var shown: [Rect] = []
+        var focused: Set<NativeRegionID> = []
+        for (id, view) in attachedNativeViews {
+            guard let region = byID[id], region.frame.size.width > 0, region.frame.size.height > 0
+            else {
+                view.isHidden = true
+                continue
+            }
+            view.frame = pixelRect(region.frame)
+            view.isHidden = false
+            shown.append(region.frame)
+            if region.isFocused {
+                focused.insert(id)
+                if !focusedNativeRegions.contains(id) { giveFirstResponder(to: view) }
+            }
+        }
+        if !focusedNativeRegions.subtracting(focused).isEmpty { giveFirstResponder(to: self) }
+        focusedNativeRegions = focused
+        if shown != shownNativeRegionCells {
+            shownNativeRegionCells = shown
+            setNeedsDisplayCompat()
+        }
+    }
+
+    private func giveFirstResponder(to view: GamaPlatformView) {
+        #if canImport(AppKit)
+            _ = unsafe window?.makeFirstResponder(view)
+        #else
+            _ = view.becomeFirstResponder()
+        #endif
     }
 
     /// Owns one primary-scene FrameHost + back buffer. Non-Sendable
@@ -373,10 +461,12 @@ public final class GamaHostView: GamaPlatformView {
         for command in currentDrawList.commands {
             switch command {
             case .fillRect(let r, let color):
+                if isCoveredByNativeRegion(r) { continue }
                 ctx.setFillColor(platformColor(color, fallback: defaultBackground).cgColor)
                 ctx.fill(pixelRect(r))
 
             case .text(let s, let p, let style):
+                if isCoveredByNativeRegion(Rect(origin: p, size: Size(width: s.count, height: 1))) { continue }
                 var fg = style.foreground
                 var bg = style.background
                 if style.attributes.contains(.inverse) { swap(&fg, &bg) }
@@ -484,7 +574,7 @@ public final class GamaHostView: GamaPlatformView {
         /// top-to-bottom reading order.
         public override func accessibilityChildren() -> [Any]? {
             accessibilityHasBeenQueried = true
-            return accessibilityLineElements()
+            return accessibilityChildrenInReadingOrder()
         }
     #else
         /// Reports the host as a container rather than a single element; the
@@ -502,7 +592,7 @@ public final class GamaHostView: GamaPlatformView {
         public override var accessibilityElements: [Any]? {
             get {
                 accessibilityHasBeenQueried = true
-                return accessibilityLineElements()
+                return accessibilityChildrenInReadingOrder()
             }
             set { _ = newValue }
         }
