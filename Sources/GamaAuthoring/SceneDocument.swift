@@ -8,7 +8,9 @@ public struct EntityRecord: Hashable, Codable, Sendable {
     public internal(set) var children: [EntityID]
     public internal(set) var components: [ComponentKind: Component]
 
-    init(
+    /// Builds a record for ``SceneDocument/init(restoring:roots:nextEntityID:)``,
+    /// which validates the whole document; a record alone proves nothing.
+    public init(
         id: EntityID,
         name: String,
         parent: EntityID? = nil,
@@ -36,6 +38,25 @@ public struct SceneDocument: Hashable, Codable, Sendable {
     private var nextRawID: UInt64 = 1
 
     public init() {}
+
+    /// Rebuilds a whole document from stored records, as a file reader does,
+    /// keeping every identifier exactly. The result must pass ``validate()``:
+    /// links must be symmetric and acyclic, every record reachable, every
+    /// identifier below `nextEntityID`, and every component valid. Mutation
+    /// after that still happens only through commands.
+    public init(
+        restoring records: [EntityRecord],
+        roots: [EntityID],
+        nextEntityID: EntityID
+    ) throws(AuthoringError) {
+        for record in records {
+            guard entities[record.id] == nil else { throw .duplicateEntity(record.id) }
+            entities[record.id] = record
+        }
+        self.roots = roots
+        nextRawID = nextEntityID.rawValue
+        try validate()
+    }
 
     /// The identifier the next created entity will receive. Identifiers are
     /// handed out sequentially, so within one transaction the n-th creation

@@ -26,6 +26,7 @@ let package = Package(
     products: [
         .library(name: "GamaAuthoring", targets: ["GamaAuthoring"]),
         .library(name: "GamaReality", targets: ["GamaReality"]),
+        .library(name: "GamaUSD", targets: ["GamaUSD"]),
     ],
     dependencies: [
         // PR #108's head: the native-region API the viewport needs.
@@ -34,6 +35,19 @@ let package = Package(
     targets: [
         // Standard library only: tools/check.sh rejects platform imports here.
         .target(name: "GamaAuthoring", swiftSettings: strictLibrary),
+        // USDA save and load (ADR 0005). Standard library only, like
+        // GamaAuthoring: tools/check.sh bans platform imports here too.
+        .target(
+            name: "GamaUSD",
+            dependencies: ["GamaAuthoring"],
+            swiftSettings: strictLibrary
+        ),
+        .testTarget(
+            name: "GamaUSDTests",
+            dependencies: ["GamaUSD", "GamaAuthoring"],
+            exclude: ["Fixtures"],
+            swiftSettings: strictCore
+        ),
         // Apple-only runtime projection; compiles to nothing without RealityKit.
         .target(
             name: "GamaReality",
