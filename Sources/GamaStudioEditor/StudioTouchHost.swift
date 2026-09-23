@@ -101,9 +101,10 @@ public final class StudioHostViewController: UIViewController {
         }
     }
 
-    /// Chooses this window's recovery file and restores unsaved Untitled
-    /// changes from it (ADR 0012). Needs the window, for the scene session's
-    /// identifier, so it runs on first appearance, before any edit.
+    /// Chooses this window's recovery file, restores unsaved Untitled
+    /// changes from it (ADR 0012), and sweeps orphaned ones (ADR 0013).
+    /// Needs the window, for the scene session's identifier, so it runs on
+    /// first appearance, before any edit.
     private func restoreUntitledChanges() {
         let key = recoveryKey ?? view.window?.windowScene?.session.persistentIdentifier
         guard let key, let recovery = UntitledRecovery(key: key, in: UntitledRecovery.defaultDirectory()) else { return }
@@ -113,6 +114,11 @@ public final class StudioHostViewController: UIViewController {
         } catch {
             files.reportUnrecoverable(error)
         }
+        // Recovery files of windows the system no longer keeps, after the
+        // grace period (ADR 0013). Every window the app still has a session
+        // for keeps its file, and so does this one, whose key may be given.
+        let live = Set(UIApplication.shared.openSessions.map(\.persistentIdentifier)).union([key])
+        UntitledRecovery.sweepOrphans(in: UntitledRecovery.defaultDirectory(), keeping: live)
     }
 
     /// Opens a `.usda` file the system handed to the app (ADR 0010): from

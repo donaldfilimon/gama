@@ -93,7 +93,7 @@ Untitled, and nothing appears in Files until the user saves.
   - several windows on iPad or visionOS keeping separate files;
   - any of this driven by hand on visionOS, which passes the gate.
 - **Not built:**
-  - removing recovery files of windows closed for good (orphans): a window
-    the user closes with unsaved Untitled changes leaves its file behind;
+  - removing recovery files of windows closed for good (orphans) (since
+    built: ADR 0013, after a 7-day grace period);
   - a "recovered" message beyond the unsaved state;
   - macOS.

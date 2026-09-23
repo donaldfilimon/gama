@@ -112,6 +112,66 @@ struct UntitledRecoveryTests {
         #expect(!recovery.exists)
     }
 
+    // MARK: Orphans (ADR 0013)
+
+    /// Writes `name` in `directory`, last modified `age` seconds before `now`.
+    func plant(_ name: String, in directory: URL, age: TimeInterval, now: Date) throws -> URL {
+        let url = directory.appendingPathComponent(name)
+        try Data("#usda 1.0\n".utf8).write(to: url)
+        try FileManager.default.setAttributes([.modificationDate: now.addingTimeInterval(-age)], ofItemAtPath: url.path)
+        return url
+    }
+
+    @Test func sweepingDeletesOnlyOrphansPastTheGracePeriod() throws {
+        let directory = try scratch()
+        let now = Date()
+        let grace = UntitledRecovery.orphanGracePeriod
+        let oldOrphan = try plant("A1.usda", in: directory, age: grace + 60, now: now)
+        let youngOrphan = try plant("A2.usda", in: directory, age: grace - 60, now: now)
+        let oldLive = try plant("LIVE.usda", in: directory, age: grace * 4, now: now)
+        let oldAside = try plant("A3.unreadable-1790000000.usda", in: directory, age: grace + 60, now: now)
+        let youngAside = try plant("A4.unreadable-1790000000.usda", in: directory, age: 60, now: now)
+        let foreign = try [
+            plant("notes.txt", in: directory, age: grace * 4, now: now),
+            plant("a.b.c.usda", in: directory, age: grace * 4, now: now),
+            plant("A5.copy.usda", in: directory, age: grace * 4, now: now),
+            plant("bad key.usda", in: directory, age: grace * 4, now: now),
+        ]
+
+        let deleted = UntitledRecovery.sweepOrphans(in: directory, keeping: ["LIVE"], now: now)
+
+        #expect(Set(deleted.map(\.lastPathComponent)) == [oldOrphan.lastPathComponent, oldAside.lastPathComponent])
+        let exists = { (url: URL) in FileManager.default.fileExists(atPath: url.path) }
+        #expect(!exists(oldOrphan) && !exists(oldAside))
+        #expect(exists(youngOrphan), "inside the grace period")
+        #expect(exists(oldLive), "a live window's file is never an orphan, however old")
+        #expect(exists(youngAside))
+        for url in foreign { #expect(exists(url), "\(url.lastPathComponent) is not a recovery file") }
+    }
+
+    @Test func sweepingAMissingDirectoryDoesNothing() throws {
+        let missing = try scratch().appendingPathComponent("absent", isDirectory: true)
+        #expect(UntitledRecovery.sweepOrphans(in: missing, keeping: []).isEmpty)
+    }
+
+    /// Setting a file aside restarts its clock, so a sweep does not delete
+    /// it for being as old as the recovery it came from.
+    @Test func aFileSetAsideSurvivesTheNextSweep() throws {
+        let directory = try scratch()
+        let recovery = try #require(UntitledRecovery(key: "stale", in: directory))
+        try Data("#usda 1.0\ndef Bogus \"X\"\n{\n}\n".utf8).write(to: recovery.url)
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date().addingTimeInterval(-UntitledRecovery.orphanGracePeriod * 2)],
+            ofItemAtPath: recovery.url.path
+        )
+        let session = StudioDocumentSession(model: StudioModel(document: StudioModel.sampleScene()))
+        #expect(throws: (any Error).self) { try recovery.restore(into: session) }
+
+        #expect(UntitledRecovery.sweepOrphans(in: directory, keeping: []).isEmpty)
+        let names = try FileManager.default.contentsOfDirectory(atPath: directory.path)
+        #expect(names.contains { $0.hasPrefix("stale.unreadable-") })
+    }
+
     @Test func replacingWithoutMarkingSavedKeepsTheSavedBaseline() {
         let start = StudioModel.sampleScene()
         let model = StudioModel(document: start)
