@@ -71,6 +71,22 @@ and runtime probes under `swift test`):
    cached unit primitive; removing the mesh removes both. The plane uses a
    thin box (it has no volume of its own), and the cylinder and cone use the
    convex hull of the cached mesh rather than an approximation.
+10. **Lights are projected as RealityKit light components; cameras never
+    are; both get a marker for picking.** A `.light` sets exactly one of
+    `DirectionalLightComponent`, `PointLightComponent`, or
+    `SpotLightComponent`, and the other two are removed first, so a kind
+    change or a removal leaves no stale light. The color follows item 8
+    (linear, sRGB-encoded, sRGB initializer); on macOS the three light
+    initializers take `NSColor`, not `CGColor`. A `.camera` is never
+    projected as a RealityKit camera component, because the viewport owns
+    its own camera. A camera or light entity gets one unmapped child named
+    `GamaReality.marker` with an `UnlitMaterial` model and a collision shape:
+    a 0.2 × 0.15 × 0.3 dark-grey box for a camera (which wins when an entity
+    has both), or a radius-0.1 sphere in the light's color, lifted so its
+    brightest channel is at least 0.5. Markers are excluded from `count` and
+    `id(for:)`, so picking one walks up to its owner. Re-sequencing keeps
+    unmapped children after mapped ones, and adding or removing a marker
+    marks its owner as touched.
 
 ## Consequences
 
@@ -82,5 +98,6 @@ and runtime probes under `swift test`):
   actually differs.
 - Only macOS is built and tested here. iOS, tvOS, and visionOS builds of
   `GamaReality` are unmeasured.
-- Camera, lights, selection highlighting, and a viewport are not part of this
-  decision. The document has no camera or light components yet.
+- Selection highlighting and the viewport are not part of this decision.
+  Item 10 projects lights and markers only; whether the viewport looks
+  through an authored camera is decided outside the bridge.

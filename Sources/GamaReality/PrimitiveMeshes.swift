@@ -8,6 +8,7 @@ internal import RealityKit
 struct PrimitiveMeshes {
     private var cache: [Primitive: MeshResource] = [:]
     private var shapeCache: [Primitive: ShapeResource] = [:]
+    private var markerCache: [Bool: (mesh: MeshResource, shape: ShapeResource)] = [:]
 
     mutating func mesh(for primitive: Primitive) -> MeshResource {
         if let mesh = cache[primitive] { return mesh }
@@ -37,6 +38,17 @@ struct PrimitiveMeshes {
         }
         shapeCache[primitive] = shape
         return shape
+    }
+
+    /// The cached mesh and matching collision shape of a viewport marker: a
+    /// 0.2 × 0.15 × 0.3 box for a camera, a radius-0.1 sphere for a light.
+    mutating func marker(camera: Bool) -> (mesh: MeshResource, shape: ShapeResource) {
+        if let cached = markerCache[camera] { return cached }
+        let resources: (mesh: MeshResource, shape: ShapeResource) = camera
+            ? (.generateBox(size: [0.2, 0.15, 0.3]), .generateBox(size: [0.2, 0.15, 0.3]))
+            : (.generateSphere(radius: 0.1), .generateSphere(radius: 0.1))
+        markerCache[camera] = resources
+        return resources
     }
 }
 #endif

@@ -151,8 +151,9 @@ public final class RealityBridge {
             }
             let desired = authored.compactMap { entities[$0] }.filter { $0.parent === container }
             let current = Array(container.children)
-            guard !current.elementsEqual(desired, by: ===) else { continue }
+            // Unmapped children (markers) are kept, after the mapped ones.
             let foreign = current.filter { child in !desired.contains { $0 === child } }
+            guard !current.elementsEqual(desired + foreign, by: ===) else { continue }
             for child in current {
                 child.removeFromParent(preservingWorldTransform: false)
             }
@@ -161,8 +162,6 @@ public final class RealityBridge {
     }
 
     private func project(_ record: EntityRecord, onto entity: Entity) {
-        // `.light` and `.camera` components are authored but not yet
-        // projected here — projected in Task 2.
         if case .transform(let transform)? = record.components[.transform] {
             entity.transform = RealityKit.Transform(
                 scale: transform.scale,
@@ -200,6 +199,54 @@ public final class RealityBridge {
         } else {
             entity.isEnabled = true
         }
+
+        // A light becomes exactly one RealityKit light component. A camera
+        // is never projected as a RealityKit camera: the viewport keeps its
+        // own. Both get a marker so they can be seen and picked.
+        if case .light(let light)? = record.components[.light] {
+            Light.project(light, onto: entity)
+        } else {
+            Light.project(nil, onto: entity)
+        }
+        project(Marker(record), onto: entity)
+    }
+
+    /// Creates, updates, or removes `entity`'s marker child. The marker is
+    /// never mapped, so ``count`` and ``id(for:)`` ignore it, and picking it
+    /// walks up to its owner. It inherits the owner's `isEnabled` through
+    /// the hierarchy. Re-sequencing keeps unmapped children after mapped
+    /// ones, and adding or removing a marker marks the owner as touched,
+    /// because `ChildCollection` removal can reorder the remaining children.
+    private func project(_ marker: Marker?, onto entity: Entity) {
+        let existing = entity.children.first { child in
+            child.name == Marker.name && identities[ObjectIdentifier(child)] == nil
+        }
+        guard let marker else {
+            if let existing {
+                existing.removeFromParent()
+                touched.insert(ObjectIdentifier(entity))
+            }
+            return
+        }
+        let node: Entity
+        if let existing {
+            node = existing
+        } else {
+            node = Entity()
+            node.name = Marker.name
+            entity.addChild(node)
+            touched.insert(ObjectIdentifier(entity))
+        }
+        let resources = meshes.marker(camera: marker == .camera)
+        let color: SIMD3<Float> = switch marker {
+        case .camera: Marker.cameraColor
+        case .light(let color): color
+        }
+        node.components.set(ModelComponent(
+            mesh: resources.mesh,
+            materials: [UnlitMaterial(color: PlatformColor.encoding(linear: color))]
+        ))
+        node.components.set(CollisionComponent(shapes: [resources.shape]))
     }
 }
 #endif

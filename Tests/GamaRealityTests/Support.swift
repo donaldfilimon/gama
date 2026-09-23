@@ -4,7 +4,8 @@ import GamaReality
 import RealityKit
 
 /// A comparable description of a projected tree: structure, identity, and
-/// every projected property. Two bridges showing the same document must
+/// every projected property. Markers appear as unmapped child nodes named
+/// `GamaReality.marker`, carrying their mesh extents and unlit tint. Two bridges showing the same document must
 /// produce equal snapshots.
 struct NodeSnapshot: Equatable, CustomStringConvertible {
     var id: EntityID?
@@ -16,6 +17,12 @@ struct NodeSnapshot: Equatable, CustomStringConvertible {
     var metallic: Float?
     var roughness: Float?
     var tint: [Float]?
+    /// The tint of an `UnlitMaterial` model (markers use one).
+    var unlitTint: [Float]?
+    /// One entry per RealityKit light component present, so a stale second
+    /// light component cannot hide behind the first.
+    var lights: [LightSnapshot]
+    var hasCameraComponent: Bool
     var children: [NodeSnapshot]
 
     var description: String {
@@ -38,6 +45,8 @@ private func snapshot(_ entity: Entity, in bridge: RealityBridge) -> NodeSnapsho
         matrix: [m.columns.0, m.columns.1, m.columns.2, m.columns.3].flatMap { [$0.x, $0.y, $0.z, $0.w] },
         enabled: entity.isEnabled,
         hasCollision: entity.components.has(CollisionComponent.self),
+        lights: lightSnapshots(entity),
+        hasCameraComponent: entity.components.has(PerspectiveCameraComponent.self),
         children: entity.children.map { snapshot($0, in: bridge) }
     )
     if let model = entity.components[ModelComponent.self] {
@@ -47,11 +56,69 @@ private func snapshot(_ entity: Entity, in bridge: RealityBridge) -> NodeSnapsho
             node.metallic = material.metallic.scale
             node.roughness = material.roughness.scale
             if let tint = material.baseColor.tint.usingColorSpace(.sRGB) {
-                node.tint = [tint.redComponent, tint.greenComponent, tint.blueComponent, tint.alphaComponent].map { Float($0) }
+                node.tint = srgbComponents(tint)
             }
+        }
+        if let material = model.materials.first as? UnlitMaterial {
+            node.unlitTint = srgbComponents(material.color.tint)
         }
     }
     return node
+}
+
+/// A projected RealityKit light component, read back for comparison.
+struct LightSnapshot: Equatable {
+    enum Kind: Equatable { case directional, point, spot }
+    var kind: Kind
+    /// sRGB-encoded components as RealityKit holds them.
+    var color: [Float]?
+    var intensity: Float
+    var innerAngle: Float?
+    var outerAngle: Float?
+    var attenuationRadius: Float?
+}
+
+@MainActor
+func lightSnapshots(_ entity: Entity) -> [LightSnapshot] {
+    var lights: [LightSnapshot] = []
+    if let light = entity.components[DirectionalLightComponent.self] {
+        lights.append(LightSnapshot(kind: .directional, color: srgbComponents(light.color), intensity: light.intensity))
+    }
+    if let light = entity.components[PointLightComponent.self] {
+        lights.append(LightSnapshot(kind: .point, color: srgbComponents(light.color), intensity: light.intensity,
+                                    attenuationRadius: light.attenuationRadius))
+    }
+    if let light = entity.components[SpotLightComponent.self] {
+        lights.append(LightSnapshot(kind: .spot, color: srgbComponents(light.color), intensity: light.intensity,
+                                    innerAngle: light.innerAngleInDegrees, outerAngle: light.outerAngleInDegrees,
+                                    attenuationRadius: light.attenuationRadius))
+    }
+    return lights
+}
+
+func srgbComponents(_ color: NSColor) -> [Float]? {
+    guard let srgb = color.usingColorSpace(.sRGB) else { return nil }
+    return [srgb.redComponent, srgb.greenComponent, srgb.blueComponent, srgb.alphaComponent].map { Float($0) }
+}
+
+/// The marker child the bridge hangs under a camera or light entity.
+@MainActor
+func marker(of entity: Entity, in bridge: RealityBridge) -> Entity? {
+    let markers = entity.children.filter { $0.name == "GamaReality.marker" && bridge.id(for: $0) == nil }
+    return markers.first
+}
+
+/// The Studio viewport's picking rule (`ViewportController.pickedEntityID`),
+/// copied so this target does not depend on the editor: walk up from the hit
+/// entity to the first one the bridge maps.
+@MainActor
+func pickedEntityID(for entity: Entity?, in bridge: RealityBridge) -> EntityID? {
+    var current = entity
+    while let candidate = current {
+        if let id = bridge.id(for: candidate) { return id }
+        current = candidate.parent
+    }
+    return nil
 }
 
 /// The sample scene from the authoring tests:
@@ -104,7 +171,7 @@ struct SeededGenerator {
 func randomCommand(_ rng: inout SeededGenerator, _ document: SceneDocument) -> any DocumentCommand {
     let ids = document.entities.keys.sorted()
     let target = rng.pick(ids) ?? EntityID(rawValue: 1)
-    switch rng.below(9) {
+    switch rng.below(11) {
     case 0:
         let parent = rng.below(3) == 0 ? nil : rng.pick(ids)
         let count = document.children(of: parent).count
@@ -139,11 +206,37 @@ func randomCommand(_ rng: inout SeededGenerator, _ document: SceneDocument) -> a
         return RemoveComponent(target, ComponentKind.allCases[rng.below(ComponentKind.allCases.count)])
     case 7:
         return SetComponent(target, .visibility(Visibility(visible: rng.below(3) != 0)))
+    case 8:
+        return SetComponent(target, .light(randomLight(&rng)))
+    case 9:
+        return SetComponent(target, .camera(CameraSettings(
+            fieldOfViewDegrees: 20 + rng.unit() * 100,
+            near: 0.01 + rng.unit(),
+            far: 10 + rng.unit() * 1000
+        )))
     default:
         let parent = rng.below(3) == 0 ? nil : rng.pick(ids)
         let count = document.children(of: parent).count
         return ReparentEntity(target, to: parent, at: rng.below(2) == 0 ? nil : rng.below(count + 1))
     }
+}
+
+/// A valid light of any of the three kinds, with a random color (including
+/// black, which exercises the marker's visibility floor).
+func randomLight(_ rng: inout SeededGenerator) -> Light {
+    let kind: LightKind
+    switch rng.below(3) {
+    case 0:
+        kind = .directional
+    case 1:
+        kind = .point(attenuationRadius: 0.5 + rng.unit() * 10)
+    default:
+        let inner = 1 + rng.unit() * 88
+        kind = .spot(innerAngleDegrees: inner, outerAngleDegrees: inner + rng.unit() * 89,
+                     attenuationRadius: 0.5 + rng.unit() * 10)
+    }
+    let color = rng.below(4) == 0 ? SIMD3<Float>(repeating: 0) : SIMD3(rng.unit(), rng.unit(), rng.unit())
+    return Light(kind: kind, color: color, intensity: rng.unit() * 30000)
 }
 
 extension Rotation {
