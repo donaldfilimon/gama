@@ -62,6 +62,11 @@ let package = Package(
             ],
             swiftSettings: strictLibrary
         ),
+        .testTarget(
+            name: "GamaStudioEditorTests",
+            dependencies: ["GamaStudioEditor", "GamaAuthoring", "GamaReality"],
+            swiftSettings: strictCore
+        ),
         // Native window stub: AppKit host loop around GamaStudioEditor.
         .executableTarget(
             name: "gama-studio",
