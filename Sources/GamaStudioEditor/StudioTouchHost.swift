@@ -78,6 +78,8 @@ public final class StudioHostViewController: UIViewController {
             // pump (see StudioAppDelegate.attach).
             Task { @MainActor in host.invalidate() }
         }
+        // Notes from UIKit events (ADR 0017) arrive outside gama actions.
+        model.onConsoleChange = { Task { @MainActor in host.invalidate() } }
         let actions = ViewportActions(
             frameSelection: { viewport.frameSelection() },
             lookThrough: { viewport.lookThrough($0) }
@@ -335,6 +337,22 @@ public final class StudioHostViewController: UIViewController {
             if !document.hasUnsavedChanges { failures.append("Keep Mine did not mark the document to overwrite the file") }
         } else {
             failures.append("a change under unsaved edits did not ask")
+        }
+        // ADR 0017: each of those events left its note, in order.
+        let name = url.lastPathComponent
+        let expected = [
+            "opened \(name)",
+            "autosaved \(name)",
+            "reloaded \(name): changed by another app",
+            "kept your version of \(name); it replaces the file at the next save",
+        ]
+        var notes = model.consoleLog.filter(\.isNote).map(\.output)[...]
+        for note in expected {
+            guard let index = notes.firstIndex(of: note) else {
+                failures.append("no console note \"\(note)\" (in order)")
+                break
+            }
+            notes = notes[(index + 1)...]
         }
         return failures
     }

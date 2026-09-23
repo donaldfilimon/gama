@@ -390,7 +390,7 @@ struct ConsolePanel: View {
         VStack {
             ForEach(entries) { entry in
                 if entry.isNote {
-                    Text("· \(entry.output)")
+                    Text("· \(entry.output)", style: entry.isError ? TextStyle(attributes: [.dim]) : .plain)
                 } else {
                     Text("> \(entry.input)  →  \(entry.output)", style: entry.isError ? TextStyle(attributes: [.dim]) : .plain)
                 }

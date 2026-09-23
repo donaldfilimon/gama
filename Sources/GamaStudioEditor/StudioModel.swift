@@ -51,6 +51,10 @@ public final class StudioModel {
     /// same afterwards. Same single-slot, chain-the-previous rule as
     /// ``onDocumentChange``.
     public var onSelectionChange: (@MainActor () -> Void)?
+    /// Called after ``consoleLog`` gains an entry. A note can arrive outside
+    /// any gama action (a file event from UIKit or AppKit), so hosts repaint
+    /// here, deferred, as for ``onDocumentChange`` (ADR 0017).
+    public var onConsoleChange: (@MainActor () -> Void)?
 
     /// Creates a model over `document`, projecting it into `bridge`
     /// immediately so the two never start out of sync.
@@ -340,8 +344,23 @@ public final class StudioModel {
     /// keeps it in the console log as a note (ADR 0015, ADR 0016).
     public func post(notice text: String) {
         notice = text
-        appendConsole(.note(text))
+        log(note: text)
     }
+
+    /// Keeps `text` in the console log as a note (ADR 0016, ADR 0017), dim
+    /// when `isError`. With `coalescing`, a note identical to the last entry
+    /// is not repeated, so a stream of the same event (autosaves) stays one
+    /// line.
+    public func log(note text: String, isError: Bool = false, coalescing: Bool = false) {
+        var entry = ConsoleEntry.note(text)
+        entry.isError = isError
+        if coalescing, consoleLog.last == entry { return }
+        appendConsole(entry)
+    }
+
+    /// Nonzero while ``runConsole(_:)`` runs a line, whose exchange already
+    /// reports any refusal, so ``attempt(_:)`` does not log it again.
+    private var consoleDepth = 0
 
     /// Appends to ``consoleLog``, keeping at most ``consoleLogLimit``.
     private func appendConsole(_ entry: ConsoleEntry) {
@@ -349,6 +368,7 @@ public final class StudioModel {
         if consoleLog.count > Self.consoleLogLimit {
             consoleLog.removeFirst(consoleLog.count - Self.consoleLogLimit)
         }
+        onConsoleChange?()
     }
 
     /// The most recent console exchanges, oldest first, at most
@@ -381,6 +401,8 @@ public final class StudioModel {
         )
         var output: String
         var isError = false
+        consoleDepth += 1
+        defer { consoleDepth -= 1 }
         do {
             let action = try parser.parse(trimmed)
             // A refusal left over from an earlier action is not this line's.
@@ -732,13 +754,16 @@ public final class StudioModel {
     }
 
     /// Runs `operation`; on success clears `lastError`; on failure records
-    /// the thrown error and leaves the session untouched.
+    /// the thrown error, leaves the session untouched, and logs the refusal
+    /// as a console note, unless a console line is running, which logs its
+    /// own (ADR 0017).
     private func attempt(_ operation: () throws(AuthoringError) -> Void) {
         do {
             try operation()
             lastError = nil
         } catch {
             lastError = error
+            if consoleDepth == 0 { log(note: "refused: \(error)", isError: true) }
         }
     }
 

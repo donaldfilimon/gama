@@ -41,5 +41,5 @@ command-exchange shape.
 - **Verified on the iPhone 17 simulator:** after a relaunch, the console
   showed "· restored unsaved changes from the last session" above the input
   line, wrapped at iPhone width like the status line.
-- **Not built:** other editor events as notes; notes in macOS, which has no
-  recovery.
+- **Not built:** other editor events as notes (since built: ADR 0017);
+  notes in macOS, which has no recovery.

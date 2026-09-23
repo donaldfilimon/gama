@@ -73,10 +73,26 @@ public final class StudioAppDelegate: NSObject, NSApplicationDelegate, NSWindowD
             // (Swift traps on the overlapping access). The action already
             // repaints; this pass is for changes from outside gama (File >
             // Open), which reach here outside any dispatch.
-            guard let redraw = self?.redraw else { return }
-            Task { @MainActor in redraw() }
+            self?.scheduleRedraw()
         }
+        // A File-menu note (ADR 0017) is added outside any gama action too.
+        model.onConsoleChange = { [weak self] in self?.scheduleRedraw() }
         updateWindow()
+    }
+
+    /// Whether a deferred repaint is already queued for this turn.
+    private var redrawScheduled = false
+
+    /// Repaints on the next main-actor turn, once however many changes (an
+    /// open and its console note) asked for it this turn.
+    private func scheduleRedraw() {
+        guard !redrawScheduled else { return }
+        redrawScheduled = true
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            self.redrawScheduled = false
+            self.redraw()
+        }
     }
 
     /// A File menu whose items target this delegate.
@@ -99,15 +115,29 @@ public final class StudioAppDelegate: NSObject, NSApplicationDelegate, NSWindowD
 
     /// Reads `url` and replaces the model's document with it. The previous
     /// document is gone and the load is not undoable.
+    /// Logs the outcome as a console note (ADR 0017).
     public func open(_ url: URL) throws {
         guard let documents else { throw StudioDocumentError.notAttached }
-        try documents.open(url)
+        do {
+            try documents.open(url)
+            documents.model.log(note: "opened \(url.lastPathComponent)")
+        } catch {
+            documents.model.log(note: "couldn\u{2019}t open \(url.lastPathComponent): \(StudioDocumentIO.describe(error))", isError: true)
+            throw error
+        }
     }
 
     /// Writes the model's document to `url`, which becomes the current file.
+    /// Logs the outcome as a console note (ADR 0017).
     public func save(to url: URL) throws {
         guard let documents else { throw StudioDocumentError.notAttached }
-        try documents.save(to: url)
+        do {
+            try documents.save(to: url)
+            documents.model.log(note: "saved \(url.lastPathComponent)")
+        } catch {
+            documents.model.log(note: "couldn\u{2019}t save \(url.lastPathComponent): \(StudioDocumentIO.describe(error))", isError: true)
+            throw error
+        }
     }
 
     /// Title, proxy icon, and edited dot from the current document.

@@ -37,6 +37,15 @@ public final class TouchDocumentController: NSObject, UIDocumentPickerDelegate {
     private var recovery: StudioUIDocument?
     /// Whether a failure to write the recovery file is already on screen.
     private var reportedRecoveryError = false
+    /// Whether the next save of the current file was asked for (Save, or
+    /// saving before switching files) rather than an autosave, for its
+    /// console note (ADR 0017).
+    private var explicitSavePending = false
+
+    /// Keeps an editor event in the console log (ADR 0017).
+    private func log(_ text: String, isError: Bool = false, coalescing: Bool = false) {
+        documents.model.log(note: text, isError: isError, coalescing: coalescing)
+    }
 
     /// What the picker on screen is for.
     private enum Pending {
@@ -181,7 +190,12 @@ public final class TouchDocumentController: NSObject, UIDocumentPickerDelegate {
     /// autosave would write it soon anyway; this does not wait.
     public func save() {
         guard let coordinated else { return saveAs() }
-        coordinated.save(to: coordinated.fileURL, for: .forOverwriting)
+        explicitSavePending = true
+        coordinated.save(to: coordinated.fileURL, for: .forOverwriting) { [weak self] success in
+            // A failure is reported through the savingError state; the next
+            // save that lands is not this one.
+            if !success { Task { @MainActor in self?.explicitSavePending = false } }
+        }
     }
 
     /// Exports a copy through the picker; the chosen location becomes the
@@ -256,6 +270,7 @@ public final class TouchDocumentController: NSObject, UIDocumentPickerDelegate {
             guard success, let loaded = document.loadedDocument else { return report(failure, doing: action) }
             becomeCurrent(document, savingPrevious: true)
             documents.adoptOpened(loaded, from: document.fileURL)
+            log("opened \(document.fileURL.lastPathComponent)")
         case .attach(let resume):
             guard success else {
                 // The copy is the current file now, so the previous file
@@ -266,6 +281,7 @@ public final class TouchDocumentController: NSObject, UIDocumentPickerDelegate {
             // Save As leaves the previous file as it was last saved.
             becomeCurrent(document, savingPrevious: false)
             sessionStateChanged()
+            log("saved \(document.fileURL.lastPathComponent)")
             resume?()
         }
     }
@@ -321,11 +337,19 @@ public final class TouchDocumentController: NSObject, UIDocumentPickerDelegate {
     private func coordinatedFileSaved(_ id: ObjectIdentifier, _ written: SceneDocument) {
         guard let document = current(id) else { return }
         documents.adoptSavedCopy(at: document.fileURL, of: written)
+        let name = document.fileURL.lastPathComponent
+        if explicitSavePending {
+            explicitSavePending = false
+            log("saved \(name)")
+        } else {
+            log("autosaved \(name)", coalescing: true)
+        }
     }
 
     private func coordinatedFileMoved(_ id: ObjectIdentifier) {
         guard let document = current(id) else { return }
         documents.fileMoved(to: document.fileURL)
+        log("\(document.fileURL.lastPathComponent) moved to a writable location")
     }
 
     private func coordinatedStateChanged(_ id: ObjectIdentifier) {
@@ -377,7 +401,9 @@ public final class TouchDocumentController: NSObject, UIDocumentPickerDelegate {
         guard let coordinated else { return }
         switch choice {
         case .revert: revertToFile(coordinated)
-        case .keepMine: coordinated.updateChangeCount(.done)
+        case .keepMine:
+            coordinated.updateChangeCount(.done)
+            log("kept your version of \(documents.displayName); it replaces the file at the next save")
         }
     }
 
@@ -398,6 +424,7 @@ public final class TouchDocumentController: NSObject, UIDocumentPickerDelegate {
             documents.adoptSavedCopy(at: document.fileURL, of: loaded)
         } else {
             documents.adoptOpened(loaded, from: document.fileURL)
+            log("reloaded \(document.fileURL.lastPathComponent): changed by another app")
         }
     }
 
@@ -456,10 +483,11 @@ public final class TouchDocumentController: NSObject, UIDocumentPickerDelegate {
     ) {
         if let coordinated {
             guard coordinated.hasUnsavedChanges else { return proceed() }
-            coordinated.save(to: coordinated.fileURL, for: .forOverwriting) { success in
+            explicitSavePending = true
+            coordinated.save(to: coordinated.fileURL, for: .forOverwriting) { [weak self] success in
                 Task { @MainActor in
                     // A failure is reported through the savingError state.
-                    if success { proceed() }
+                    if success { proceed() } else { self?.explicitSavePending = false }
                 }
             }
             return
@@ -485,6 +513,7 @@ public final class TouchDocumentController: NSObject, UIDocumentPickerDelegate {
     }
 
     private func report(_ message: String, doing action: String) {
+        log("couldn\u{2019}t \(action): \(message)", isError: true)
         let alert = UIAlertController(
             title: "Couldn\u{2019}t \(action).",
             message: message,
