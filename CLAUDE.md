@@ -526,7 +526,12 @@ a remote UI protocol, an Inspector, a dedicated CLI beyond `gama-demo`'s
 flags, native Windows (Direct3D) or Linux (Wayland/X11/Vulkan) backends, any
 GPU compositor, plugin Tiers 2/3 (out-of-process isolation; Tier 1 is
 capability-based design, not a sandbox — see `docs/Plugins.md`), IME
-composition and bidi reordering. Building toward any of these starts from
+composition and bidi reordering. **Native regions exist** (ADR 0016; design
+`docs/superpowers/specs/2026-09-23-native-region-design.md`): `NativeRegion`
+is an `interactive` node registered like an action, and
+`GamaHostView.attach(_:to:)` fills it on Apple. Tab out of a native view,
+overlays, sub-cell placement, and Embed/WASM publication are still open.
+Building toward any of these starts from
 `docs/Plugins.md` or a new file under `docs/superpowers/specs/drafts/`, not
 from assuming the manifesto's module boundary already exists.
 

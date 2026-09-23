@@ -150,12 +150,29 @@ public final class GamaHostView: GamaPlatformView {
     /// same test asserts. Package-only.
     package var styledFontCacheCount: Int { fontCache.count }
 
-    private var cellSize: CGSize = .zero
+    /// Measured monospaced cell size. `package` (not `public`) so tests can
+    /// read it without duplicating its measurement math.
+    package private(set) var cellSize: CGSize = .zero
     /// Measured monospaced cell size, for the accessibility adapter's
     /// grid-to-view rectangle conversion.
     var accessibilityCellSize: CGSize { cellSize }
     private let defaultForeground: PlatformColor = .white
     private let defaultBackground: PlatformColor = .black
+
+    // MARK: Native regions (ADR 0016)
+    /// Application-owned views attached to native regions, by identity.
+    var attachedNativeViews: [NativeRegionID: GamaPlatformView] = [:]
+    /// Regions of the most recent frame, kept so attach/detach can place a
+    /// view without waiting for the next frame.
+    private var lastNativeRegions: [NativeRegionFrame] = []
+    /// The most recently published native regions. Package-only so tests can
+    /// derive an expected view frame without duplicating the placement math.
+    package var nativeRegions: [NativeRegionFrame] { lastNativeRegions }
+    /// Cell frames of regions currently showing an attached view; drawing
+    /// skips commands wholly inside them.
+    private var shownNativeRegionCells: [Rect] = []
+    /// Regions whose attached view was given first responder last frame.
+    private var focusedNativeRegions: Set<NativeRegionID> = []
 
     // MARK: Init
 
@@ -242,6 +259,7 @@ public final class GamaHostView: GamaPlatformView {
                 self.currentDrawList = self.drawListSerializer.serialize(painted)
             }
             guard outcome.produced else { return }
+            self.placeNativeRegions(session.pump.nativeRegions)
             self.setNeedsDisplayCompat()
             if outcome.followUp { self.driver?() }
         }
@@ -276,6 +294,157 @@ public final class GamaHostView: GamaPlatformView {
     public func invalidate() {
         invalidateHost?()
         driver?()
+    }
+
+    // MARK: Native regions (ADR 0016)
+
+    /// Attaches an application-owned view to the native region `id`. The
+    /// application keeps ownership; the host adds it as a subview, places it
+    /// on the region's frame each frame, hides it while the region is absent,
+    /// and hands it first responder when Gama focus lands on the region.
+    /// Attaching a different view to the same identity detaches the first.
+    public func attach(_ view: GamaPlatformView, to id: NativeRegionID) {
+        if let previous = attachedNativeViews[id], previous !== view {
+            previous.removeFromSuperview()
+        }
+        attachedNativeViews[id] = view
+        #if canImport(AppKit)
+            let alreadyAttached = unsafe view.superview === self
+        #else
+            let alreadyAttached = view.superview === self
+        #endif
+        if !alreadyAttached { addSubview(view) }
+        view.isHidden = true
+        placeNativeRegions(lastNativeRegions)
+    }
+
+    /// Removes the view attached to `id`, if any, from this host. If `id`
+    /// currently holds Gama focus AND the window's first responder is still
+    /// inside the detached view, first responder returns to the host;
+    /// otherwise the detach leaves first responder untouched.
+    public func detach(_ id: NativeRegionID) {
+        guard let view = attachedNativeViews.removeValue(forKey: id) else { return }
+        // Reclaim only if first responder is actually inside the detached
+        // view right now — not merely because Gama last recorded it as
+        // focused, which could be stale relative to a first responder the
+        // user (or another control) has since moved elsewhere. Test against
+        // the local `view` captured above, not a dictionary lookup — `view`
+        // has already been removed from `attachedNativeViews`, so a lookup
+        // by `id` would always come back nil here.
+        let wasFocused = focusedNativeRegions.remove(id) != nil
+        let shouldReclaim = wasFocused && firstResponderIsInside(view)
+        view.removeFromSuperview()
+        if shouldReclaim { giveFirstResponder(to: self) }
+        placeNativeRegions(lastNativeRegions)
+    }
+
+    /// Whether `cells` lies wholly inside a region currently showing an
+    /// attached view. Package-only so the no-overdraw rule is testable.
+    package func isCoveredByNativeRegion(_ cells: Rect) -> Bool {
+        shownNativeRegionCells.contains { region in
+            cells.minX >= region.minX && cells.minY >= region.minY
+                && cells.maxX <= region.maxX && cells.maxY <= region.maxY
+        }
+    }
+
+    private func placeNativeRegions(_ regions: [NativeRegionFrame]) {
+        lastNativeRegions = regions
+        var byID: [NativeRegionID: NativeRegionFrame] = [:]
+        for region in regions { byID[region.id] = region }
+        var shown: [Rect] = []
+        var focused: Set<NativeRegionID> = []
+        // At most one region gains focus in a given frame (Gama focus is
+        // single), but this stays a "last one wins" assignment rather than
+        // an assumption, so a future multi-focus model degrades instead of
+        // silently misbehaving.
+        var newlyFocusedView: GamaPlatformView?
+        for (id, view) in attachedNativeViews {
+            guard let region = byID[id], region.frame.size.width > 0, region.frame.size.height > 0
+            else {
+                view.isHidden = true
+                continue
+            }
+            view.frame = pixelRect(region.frame)
+            view.isHidden = false
+            shown.append(region.frame)
+            if region.isFocused {
+                focused.insert(id)
+                if !focusedNativeRegions.contains(id) { newlyFocusedView = view }
+            }
+        }
+        let lost = focusedNativeRegions.subtracting(focused)
+        // Record the new focus set before attempting any handoff:
+        // hardens against a re-entrant call (e.g. a responder-chain
+        // callback triggered by `giveFirstResponder`) reading a stale
+        // `focusedNativeRegions` while this call is still in progress.
+        // Note this still records `id` as focused even when `window` is nil
+        // and the handoff below is a no-op; the window-attach lifecycle
+        // (`viewDidMoveToWindow`/`didMoveToWindow`) clears this set and
+        // re-places regions once a window exists, so that deferred handoff
+        // is retried rather than silently skipped.
+        focusedNativeRegions = focused
+        // Focus handed straight from one region to another must reach the
+        // new view without an intervening bounce to the host:
+        // a region gaining focus this frame always wins the handoff, and the
+        // host only reclaims when nothing took focus this frame.
+        if let newlyFocusedView {
+            giveFirstResponder(to: newlyFocusedView)
+        } else {
+            // Reclaiming unconditionally would steal first responder from an
+            // unrelated control the user (or another part of the app) just
+            // focused: only reclaim when the window's current
+            // first responder is still inside a view that just lost focus.
+            if !lost.isEmpty, firstResponderIsInside(lost) {
+                giveFirstResponder(to: self)
+            }
+        }
+        if shown != shownNativeRegionCells {
+            shownNativeRegionCells = shown
+            setNeedsDisplayCompat()
+        }
+    }
+
+    /// Whether the window's current first responder is one of `ids`'
+    /// attached views, or a descendant of one — the precondition for the
+    /// host reclaiming first responder after a region loses focus.
+    private func firstResponderIsInside(_ ids: Set<NativeRegionID>) -> Bool {
+        for id in ids {
+            if let view = attachedNativeViews[id], firstResponderIsInside(view) {
+                return true
+            }
+        }
+        return false
+    }
+
+    /// Whether the window's current first responder is `view` itself, or a
+    /// descendant of it. Takes the view directly (rather than a region id)
+    /// so callers can test a view that has already been removed from
+    /// `attachedNativeViews`.
+    private func firstResponderIsInside(_ view: GamaPlatformView) -> Bool {
+        #if canImport(AppKit)
+            guard let responder = unsafe window?.firstResponder as? NSView else { return false }
+            return responder.isDescendant(of: view)
+        #else
+            return isFirstResponderOrDescendant(view)
+        #endif
+    }
+
+    #if canImport(UIKit)
+        private func isFirstResponderOrDescendant(_ view: GamaPlatformView) -> Bool {
+            if view.isFirstResponder { return true }
+            for sub in view.subviews {
+                if isFirstResponderOrDescendant(sub) { return true }
+            }
+            return false
+        }
+    #endif
+
+    private func giveFirstResponder(to view: GamaPlatformView) {
+        #if canImport(AppKit)
+            _ = unsafe window?.makeFirstResponder(view)
+        #else
+            _ = view.becomeFirstResponder()
+        #endif
     }
 
     /// Owns one primary-scene FrameHost + back buffer. Non-Sendable
@@ -328,10 +497,19 @@ public final class GamaHostView: GamaPlatformView {
         /// Uses a top-left origin so view coordinates match the cell grid.
         public override var isFlipped: Bool { true }  // y-down, like the grid
         /// Claims first-responder status as soon as the view lands in a
-        /// window, so keys flow without an extra click.
+        /// window, so keys flow without an extra click. Also clears and
+        /// re-places native-region focus: a region already focused
+        /// before this host had a window recorded that focus in
+        /// `focusedNativeRegions` even though the handoff to its attached
+        /// view was a no-op (no `window` to call `makeFirstResponder` on).
+        /// Clearing the set here makes the region look "newly focused"
+        /// again to the placement that follows, so the deferred handoff to
+        /// its attached view is retried now that a window exists.
         public override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             _ = unsafe window?.makeFirstResponder(self)
+            focusedNativeRegions.removeAll()
+            placeNativeRegions(lastNativeRegions)
         }
     #else
         /// Forwards each UIKit layout pass to the host as a `.resize`
@@ -345,10 +523,16 @@ public final class GamaHostView: GamaPlatformView {
         /// the view.
         public override var canBecomeFirstResponder: Bool { true }
         /// Becomes first responder as soon as the view lands in a window,
-        /// so hardware keys flow immediately.
+        /// so hardware keys flow immediately. Also clears and re-places
+        /// native-region focus — see the AppKit `viewDidMoveToWindow`
+        /// doc comment for the deferred-handoff rationale.
         public override func didMoveToWindow() {
             super.didMoveToWindow()
-            if window != nil { becomeFirstResponder() }
+            if window != nil {
+                becomeFirstResponder()
+                focusedNativeRegions.removeAll()
+                placeNativeRegions(lastNativeRegions)
+            }
         }
     #endif
 
@@ -373,10 +557,14 @@ public final class GamaHostView: GamaPlatformView {
         for command in currentDrawList.commands {
             switch command {
             case .fillRect(let r, let color):
+                if isCoveredByNativeRegion(r) { continue }
                 ctx.setFillColor(platformColor(color, fallback: defaultBackground).cgColor)
                 ctx.fill(pixelRect(r))
 
             case .text(let s, let p, let style):
+                if isCoveredByNativeRegion(
+                    Rect(origin: p, size: Size(width: TextLayout.displayWidth(of: s), height: 1))
+                ) { continue }
                 var fg = style.foreground
                 var bg = style.background
                 if style.attributes.contains(.inverse) { swap(&fg, &bg) }
@@ -480,11 +668,12 @@ public final class GamaHostView: GamaPlatformView {
             return "Gama surface"
         }
 
-        /// One static-text child per non-blank row of the current frame, in
-        /// top-to-bottom reading order.
+        /// One static-text child per non-blank row of the current frame,
+        /// plus any shown attached native region views, all in top-to-bottom
+        /// reading order.
         public override func accessibilityChildren() -> [Any]? {
             accessibilityHasBeenQueried = true
-            return accessibilityLineElements()
+            return accessibilityChildrenInReadingOrder()
         }
     #else
         /// Reports the host as a container rather than a single element; the
@@ -498,11 +687,12 @@ public final class GamaHostView: GamaPlatformView {
         }
 
         /// One static-text element per non-blank row of the current frame,
-        /// in top-to-bottom reading order.
+        /// plus any shown attached native region views, all in top-to-bottom
+        /// reading order.
         public override var accessibilityElements: [Any]? {
             get {
                 accessibilityHasBeenQueried = true
-                return accessibilityLineElements()
+                return accessibilityChildrenInReadingOrder()
             }
             set { _ = newValue }
         }
