@@ -106,14 +106,40 @@ struct GraphPanelTests {
     }
 
     @Test func graphEditsThatWouldFailAreRefusedAndReported() throws {
-        let model = StudioModel()
-        model.createGraph(name: "Math", domain: .logic)
-        model.addGraphNode("math.divide")
-        let divide = try #require(model.selectedGraphNode)
+        let model = StudioModel(document: StudioModel.sampleScene())
+        model.runConsole("graph new Math material")
+        model.runConsole("graph add Math math.divide")
+        model.runConsole("graph add Math output.material")
+        model.runConsole("graph connect Math n1.result n2.metallic")
+        model.runConsole("graph set Math n2.target box")
+        model.showGraph(model.currentGraph?.id)
         let revision = model.session.revision
-        model.setGraphValue(.float(0), for: PortReference(divide, "b"))
+        model.setGraphValue(.float(0), for: PortReference(GraphNodeID(rawValue: 1), "b"))
         #expect(model.lastError == .invalidGraph("g1 evaluation failed: n1: division by zero"))
         #expect(model.session.revision == revision, "the refused edit changed nothing")
+    }
+
+    /// Node ids restart at n1 in every graph, so editor state must not follow
+    /// a switch of the shown graph that the user did not make.
+    @Test func linkAndSelectionDoNotLeakAcrossGraphs() throws {
+        let model = StudioModel(document: StudioModel.sampleScene())
+        model.runConsole("graph new A material")
+        model.runConsole("graph add A output.material")
+        model.runConsole("graph new B material")
+        model.runConsole("graph add B constant.color")
+        #expect(model.currentGraph?.name == "B")
+        model.selectGraphNode(GraphNodeID(rawValue: 1))
+        model.beginLink(from: PortReference(GraphNodeID(rawValue: 1), "value"))
+        #expect(model.pendingLink != nil)
+
+        model.runConsole("graph delete B")
+        #expect(model.currentGraph?.name == "A")
+        #expect(model.pendingLink == nil, "B's link does not carry over to A's n1")
+        #expect(model.selectedGraphNode == nil)
+        let before = model.session.document
+        model.completeLink(to: PortReference(GraphNodeID(rawValue: 1), "base_color"))
+        model.removeSelectedGraphNode()
+        #expect(model.session.document == before, "nothing in A was touched")
     }
 
     @Test func editorStateSurvivesUndoOfTheActiveGraph() throws {

@@ -54,7 +54,7 @@ private struct USDAReader {
         var nextGraph: GraphID?
         if let value = data[USDSchema.nextGraphIDKey] {
             let raw = try integer(value, line: 1)
-            guard raw < UInt64.max else {
+            guard raw > 0, raw < UInt64.max else {
                 throw .unsupported(line: 1, "\(USDSchema.nextGraphIDKey) leaves no identifiers to allocate")
             }
             nextGraph = GraphID(rawValue: raw)
@@ -97,10 +97,18 @@ private struct USDAReader {
         }
         let nextProperty = try required(prim, USDSchema.nextNodeIDAttribute)
         let nextNode = try integer(nextProperty.value ?? .word("None"), line: nextProperty.line)
+        guard nextNode > 0, nextNode < UInt64.max else {
+            throw .unsupported(line: nextProperty.line, "\(USDSchema.nextNodeIDAttribute) must be in 1..<\(UInt64.max)")
+        }
 
         var nodes: [GraphNode] = []
         var connections: [GraphConnection] = []
         for child in prim.children {
+            // A node is a typeless prim with no children; anything else would
+            // be dropped on the next save, so it is refused.
+            guard child.typeName == nil, child.children.isEmpty else {
+                throw .unsupported(line: child.line, "graph node '\(child.name)' must be a typeless prim without children")
+            }
             let id = try nodeID(child.name, line: child.line)
             let definition = try string(try required(child, USDSchema.definitionAttribute))
             let inputs = try ports(try required(child, USDSchema.inputsAttribute))
@@ -109,6 +117,15 @@ private struct USDAReader {
             if let p = child.property(USDSchema.positionAttribute) {
                 let v = try floats(p, count: 2)
                 position = SIMD2(v[0], v[1])
+            }
+            let declared = Set(inputs.map(\.name))
+            for property in child.properties {
+                for prefix in [USDSchema.valuePrefix, USDSchema.linkPrefix] where property.name.hasPrefix(prefix) {
+                    let input = String(property.name.dropFirst(prefix.count))
+                    guard declared.contains(input) else {
+                        throw .unsupported(line: property.line, "'\(property.name)' names an undeclared input")
+                    }
+                }
             }
             var values: [String: GraphValue] = [:]
             for port in inputs {

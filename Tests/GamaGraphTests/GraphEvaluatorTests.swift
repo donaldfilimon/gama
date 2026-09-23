@@ -115,21 +115,45 @@ struct GraphEvaluatorTests {
         try bench.live(SetGraphValue(.float(0.3), for: "metallic", of: output, in: g), g)
     }
 
-    @Test func evaluationErrorsRefuseTheWholeEdit() throws {
+    @Test func evaluationErrorsFeedingAnOutputRefuseTheWholeEdit() throws {
         var bench = try GraphBench()
         let g = try bench.graph("Bad", .material)
         let divide = try bench.node("math.divide", in: g)
+        let output = try bench.node("output.material", in: g)
+        try bench.set(.entity(bench.box), "target", of: output, in: g)
+        try bench.connect(divide, "result", output, "metallic", in: g)
         let before = bench.session.document
         #expect(throws: AuthoringError.invalidGraph("g1 evaluation failed: n1: division by zero")) {
             try bench.live(SetGraphValue(.float(0), for: "b", of: divide, in: g), g)
         }
         #expect(bench.session.document == before)
+    }
 
-        // An input with neither a connection nor a value.
-        try bench.set(.float(2), "b", of: divide, in: g)
-        #expect(throws: AuthoringError.invalidGraph("g1 evaluation failed: n1.a has no connection or value")) {
-            try bench.live(SetGraphValue(nil, for: "a", of: divide, in: g), g)
+    /// Only outputs and what feeds them are evaluated for scene edits, so a
+    /// broken scratch node does not block the rest of the graph.
+    @Test func brokenNodesThatFeedNoOutputDoNotBlockEdits() throws {
+        var bench = try GraphBench()
+        let g = try bench.graph("Scratch", .material)
+        let divide = try bench.node("math.divide", in: g)
+        try bench.set(.float(0), "b", of: divide, in: g)
+        try bench.session.execute(AddGraphNode(to: g, definition: "plugin.unknown", inputs: [], outputs: []))
+        let output = try bench.node("output.material", in: g)
+        try bench.live(SetGraphValue(.entity(bench.box), for: "target", of: output, in: g), g)
+        #expect(bench.session.document.component(.material, of: bench.box) != nil)
+        // A full evaluation (for display) still reports them.
+        #expect(throws: GraphError.self) { try GraphEvaluator().evaluate(try #require(bench.session.document.graph(g))) }
+    }
+
+    @Test func clearedInputsFallBackToTheirDefault() throws {
+        var bench = try GraphBench()
+        let g = try bench.graph("Defaults", .material)
+        let output = try bench.node("output.material", in: g)
+        try bench.set(.entity(bench.box), "target", of: output, in: g)
+        try bench.live(SetGraphValue(nil, for: "roughness", of: output, in: g), g)
+        guard case .material(let material)? = bench.session.document.component(.material, of: bench.box) else {
+            Issue.record("material missing"); return
         }
+        #expect(material.roughness == 0.5, "the definition's default")
     }
 
     @Test func unknownAndChangedDefinitionsAreReported() throws {

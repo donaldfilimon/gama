@@ -135,10 +135,29 @@ public final class StudioModel {
 
     /// The graph the graph editor shows. Editor state; see ``currentGraph``.
     public private(set) var activeGraph: GraphID?
-    /// The node the graph editor has selected. Editor state.
-    public private(set) var selectedGraphNode: GraphNodeID?
-    /// An output picked as the start of a connection, waiting for an input.
-    public private(set) var pendingLink: PortReference?
+    /// The node the graph editor has selected, while it is still in the
+    /// graph the editor shows. Editor state. Stored with its graph because
+    /// node ids restart at `n1` in every graph: after an undo or a console
+    /// `graph delete` switches the shown graph, a bare `n1` would silently
+    /// name a different graph's node.
+    public var selectedGraphNode: GraphNodeID? {
+        guard let (graph, node) = nodeSelection, graph == currentGraph?.id,
+              currentGraph?.node(node) != nil
+        else { return nil }
+        return node
+    }
+    private var nodeSelection: (GraphID, GraphNodeID)?
+
+    /// An output picked as the start of a connection, waiting for an input,
+    /// while it is still in the graph the editor shows (see
+    /// ``selectedGraphNode``).
+    public var pendingLink: PortReference? {
+        guard let (graph, output) = linkStart, graph == currentGraph?.id,
+              currentGraph?.node(output.node)?.output(output.port) != nil
+        else { return nil }
+        return output
+    }
+    private var linkStart: (GraphID, PortReference)?
     /// Whether the right-hand panel shows the graph editor instead of the
     /// inspector. Editor state.
     public private(set) var showsGraphEditor = false
@@ -187,8 +206,8 @@ public final class StudioModel {
     /// Shows `id` in the graph editor.
     public func showGraph(_ id: GraphID?) {
         activeGraph = id
-        selectedGraphNode = nil
-        pendingLink = nil
+        nodeSelection = nil
+        linkStart = nil
         nodePickerIndex = 0
     }
 
@@ -201,7 +220,7 @@ public final class StudioModel {
     }
 
     public func selectGraphNode(_ id: GraphNodeID?) {
-        selectedGraphNode = id
+        nodeSelection = zip(currentGraph?.id, id)
     }
 
     /// Applies graph edits and the graph's re-evaluation as one undoable
@@ -219,30 +238,30 @@ public final class StudioModel {
         let id = graph.nextNodeID
         let position = SIMD2<Float>(Float(graph.nodes.count) * 4, 0)
         editGraph(graph.id, label: "Add \(node.title)", [node.addCommand(to: graph.id, at: position)])
-        if lastError == nil { selectedGraphNode = id }
+        if lastError == nil { nodeSelection = (graph.id, id) }
     }
 
     /// Removes the selected graph node and its connections.
     public func removeSelectedGraphNode() {
         guard let graph = currentGraph, let node = selectedGraphNode else { return }
         editGraph(graph.id, label: "Remove Node", [RemoveGraphNode(node, from: graph.id)])
-        if lastError == nil { selectedGraphNode = nil }
+        if lastError == nil { nodeSelection = nil }
     }
 
     /// Starts a connection at an output; ``completeLink(to:)`` finishes it.
     public func beginLink(from output: PortReference) {
-        pendingLink = output
+        linkStart = zip(currentGraph?.id, output)
     }
 
     /// Connects the pending output to `input` in the current graph.
     public func completeLink(to input: PortReference) {
         guard let graph = currentGraph, let from = pendingLink else { return }
-        pendingLink = nil
+        linkStart = nil
         editGraph(graph.id, label: "Connect", [ConnectPorts(from, to: input, in: graph.id)])
     }
 
     public func cancelLink() {
-        pendingLink = nil
+        linkStart = nil
     }
 
     /// Disconnects `input` in the current graph.
@@ -257,10 +276,12 @@ public final class StudioModel {
         editGraph(graph.id, label: "Set \(input.port)", [SetGraphValue(value, for: input.port, of: input.node, in: graph.id)])
     }
 
-    /// Adds `delta` to a float constant (the editor's − and + buttons).
+    /// Adds `delta` to a float constant (the editor's − and + buttons),
+    /// rounded to hundredths so repeated steps do not drift (0.5 + 0.1 + 0.1
+    /// stays 0.7, not 0.70000005).
     public func nudgeGraphValue(_ input: PortReference, by delta: Float) {
         guard let node = currentGraph?.node(input.node), case .float(let value)? = node.values[input.port] else { return }
-        setGraphValue(.float(value + delta), for: input)
+        setGraphValue(.float(((value + delta) * 100).rounded() / 100), for: input)
     }
 
     /// Points an entity input at the primary selection.
@@ -733,5 +754,10 @@ extension String {
         let end = lastIndex { !$0.isWhitespace }.map(index(after:)) ?? start
         return String(self[start..<max(start, end)])
     }
+}
+/// Both values, or `nil` when either is missing.
+private func zip<A, B>(_ a: A?, _ b: B?) -> (A, B)? {
+    guard let a, let b else { return nil }
+    return (a, b)
 }
 #endif

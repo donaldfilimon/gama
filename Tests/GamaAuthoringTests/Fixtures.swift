@@ -14,6 +14,8 @@ struct SampleScene {
     let graph: GraphID
     let constant: GraphNodeID
     let multiply: GraphNodeID
+    /// A second constant (n3), unconnected, for replacing n2.a's feed.
+    let spare: GraphNodeID
 
     init() throws {
         func create(
@@ -50,6 +52,11 @@ struct SampleScene {
             outputs: [GraphPort("result", .float)], values: ["b": .float(2)], position: SIMD2(4, 0)
         ))
         try session.execute(ConnectPorts(PortReference(constant, "value"), to: PortReference(multiply, "a"), in: graph))
+        spare = GraphNodeID(rawValue: 3)
+        try session.execute(AddGraphNode(
+            to: graph, definition: "constant.float", inputs: [GraphPort("value", .float)],
+            outputs: [GraphPort("value", .float)], values: ["value": .float(9)]
+        ))
         _ = session.drainChanges()
         self.session = session
     }

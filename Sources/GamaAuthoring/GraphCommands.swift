@@ -18,6 +18,7 @@ public struct CreateGraph: DocumentCommand {
 
     public func apply(to document: inout SceneDocument, changes: inout [SceneChange]) throws(AuthoringError) -> any DocumentCommand {
         guard !name.isEmpty else { throw .invalidGraph("a graph needs a name") }
+        guard document.nextGraphID.rawValue < UInt64.max else { throw .invalidGraph("no graph identifiers left") }
         let id = document.allocateGraphID()
         try document.insertGraph(GraphDocument(id: id, name: name, domain: domain), at: nil)
         changes.append(.graphChanged(id))
@@ -113,6 +114,9 @@ public struct AddGraphNode: DocumentCommand {
     public func apply(to document: inout SceneDocument, changes: inout [SceneChange]) throws(AuthoringError) -> any DocumentCommand {
         var added = GraphNodeID(rawValue: 0)
         try document.updateGraph(graph) { graph throws(AuthoringError) in
+            guard graph.nextNodeRaw < UInt64.max else {
+                throw .invalidGraph("\(graph.id) has no node identifiers left")
+            }
             let id = graph.nextNodeID
             let node = GraphNode(
                 id: id, definition: definition, inputs: inputs, outputs: outputs,

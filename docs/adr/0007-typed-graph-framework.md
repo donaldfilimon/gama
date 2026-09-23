@@ -55,7 +55,11 @@ put to him:
    - two outputs (below).
 
    `GraphEvaluator` runs nodes in topological order, ties broken by
-   authored order, so results are deterministic. It is a `Sendable` value,
+   authored order, so results are deterministic. An unconnected input
+   without its own value uses its definition's default. For scene edits it
+   evaluates only output nodes and what feeds them, so a broken scratch
+   node (a division by zero, an unknown type) does not block edits to the
+   rest of its graph. It is a `Sendable` value,
    not the spec's `actor`: it has no state to protect, and a caller can
    still run it off the main actor.
 4. **Graphs reach the scene only as ordinary commands.** An output node's
@@ -70,7 +74,8 @@ put to him:
    so redo replays rather than re-evaluates. Editors run a graph edit and
    `EvaluateGraph` in one transaction, so the edit and its effect on the
    scene undo together. An evaluation failure, such as a division by zero,
-   refuses the edit, and nothing changes. An output with no target, or a
+   refuses the edit if it happens in a node that feeds an output, and
+   nothing changes. An output with no target, or a
    deleted one, does nothing.
 5. **Persistence (extends ADR 0005).** Graphs save under a root
    `Scope "GamaGraphs"`:
@@ -80,10 +85,17 @@ put to him:
    - typed `gama:value:<input>` constants;
    - `gama:link:<input> = "n2.<output>"` connections.
 
-   Files that contain graphs are format version 2. Graph-free output is
-   unchanged byte for byte and stays version 1. `usdchecker` accepts the
-   new golden, and its `usdcat` reformatting reads back to the same
-   document.
+   A document that has ever held a graph writes format version 2, keeping
+   `gama:nextGraphID` so graph identifiers are never reused. A document
+   that never did is unchanged byte for byte and stays version 1. The name
+   `GamaGraphs` is reserved at every depth, like `Looks`. The reader
+   refuses the following rather than drop them:
+   - node prims that are typed or have children;
+   - values or links for undeclared inputs;
+   - allocators out of range.
+
+   `usdchecker` accepts the new golden, and its `usdcat` reformatting reads
+   back to the same document.
 6. **Two editing surfaces, one path.**
    - **Console (ADR 0006):** the `graph` verbs `new`, `list`, `show`,
      `nodes`, `add`, `remove`, `connect`, `disconnect`, `set`, `rename`,
@@ -100,7 +112,10 @@ put to him:
    Both surfaces call `StudioModel`'s graph methods (`editGraph` and
    friends), which bundle each edit with `EvaluateGraph`. The active graph,
    selected node, pending link, and picker position are editor state,
-   never in the document.
+   never in the document. The selected node and pending link are stored
+   with their graph and ignored once another graph is shown. Node ids
+   restart at `n1` in every graph, so an undo or a console `graph delete`
+   that switches graphs must not retarget them.
 
 ## Consequences
 

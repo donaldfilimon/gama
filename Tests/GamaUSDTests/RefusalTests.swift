@@ -251,12 +251,50 @@ struct RefusalTests {
                         custom string gama:link:c = "n1.value"
             """))
         }
+        #expect(throws: USDError.unsupported(line: 27, "'gama:value:ghost' names an undeclared input")) {
+            try sceneDocument(fromUSDA: graphFile("""
+                        custom string[] gama:inputs = ["f:float"]
+                        custom string[] gama:outputs = []
+                        custom float gama:value:ghost = 1
+            """))
+        }
+        #expect(throws: USDError.self) {
+            try sceneDocument(fromUSDA: graphFile("""
+                        custom string[] gama:inputs = []
+                        custom string[] gama:outputs = []
+                        def "nested"
+                        {
+                        }
+            """))
+        }
         #expect(throws: USDError.syntax(line: 27, "link 'value' is not n<id>.<output>")) {
             try sceneDocument(fromUSDA: graphFile("""
                         custom string[] gama:inputs = ["f:float"]
                         custom string[] gama:outputs = []
                         custom string gama:link:f = "value"
             """))
+        }
+    }
+
+    @Test func graphAllocatorsOutOfRangeAreRefused() {
+        let header = "#usda 1.0\n(\n    customLayerData = {\n        int \"gama:formatVersion\" = 2\n    }\n)\n"
+        for next in ["0", "18446744073709551615"] {
+            let text = header + """
+            def Scope "GamaGraphs"
+            {
+                custom bool gama:graphLibrary = 1
+                def NodeGraph "G"
+                {
+                    custom uint64 gama:graphID = 1
+                    custom string gama:name = "G"
+                    custom token gama:domain = "logic"
+                    custom uint64 gama:nextNodeID = \(next)
+                }
+            }
+            """
+            #expect(throws: USDError.unsupported(line: 15, "gama:nextNodeID must be in 1..<18446744073709551615")) {
+                try sceneDocument(fromUSDA: text)
+            }
         }
     }
 

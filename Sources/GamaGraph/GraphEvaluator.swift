@@ -21,14 +21,9 @@ public struct GraphEvaluator: Sendable {
         self.registry = registry
     }
 
-    /// Computes every node's outputs.
-    public func evaluate(_ graph: GraphDocument) throws(GraphError) -> GraphResult {
-        let order: [GraphNodeID]
-        do {
-            order = try graph.topologicalOrder()
-        } catch {
-            throw .invalid("\(error)")
-        }
+    /// Computes every node's outputs, or only those in `nodes` when given.
+    public func evaluate(_ graph: GraphDocument, only nodes: Set<GraphNodeID>? = nil) throws(GraphError) -> GraphResult {
+        let order = try orderOrThrow(graph).filter { nodes?.contains($0) ?? true }
         var result = GraphResult(outputs: [:], inputs: [:])
         for id in order {
             guard let node = graph.node(id) else { continue }
@@ -51,8 +46,10 @@ public struct GraphEvaluator: Sendable {
     }
 
     /// The scene edits the graph's output nodes produce, in evaluation order.
+    /// Only the outputs and the nodes feeding them are evaluated, so a
+    /// broken scratch node elsewhere in the graph does not block its outputs.
     public func commands(for graph: GraphDocument, in document: SceneDocument) throws(GraphError) -> [any DocumentCommand] {
-        let result = try evaluate(graph)
+        let result = try evaluate(graph, only: upstreamOfOutputs(graph))
         var commands: [any DocumentCommand] = []
         for id in try orderOrThrow(graph) {
             guard let node = graph.node(id), let definition = registry.definition(node.definition),
@@ -65,6 +62,17 @@ public struct GraphEvaluator: Sendable {
             commands += try emit(NodeInputs(values: values, node: id), document)
         }
         return commands
+    }
+
+    /// Output nodes and every node that feeds one.
+    func upstreamOfOutputs(_ graph: GraphDocument) -> Set<GraphNodeID> {
+        var needed: Set<GraphNodeID> = []
+        var stack = graph.order.filter { registry.definition(graph.node($0)?.definition ?? "")?.isOutput == true }
+        while let id = stack.popLast() {
+            guard needed.insert(id).inserted else { continue }
+            stack += graph.connections.filter { $0.to.node == id }.map(\.from.node)
+        }
+        return needed
     }
 
     private func orderOrThrow(_ graph: GraphDocument) throws(GraphError) -> [GraphNodeID] {
@@ -93,6 +101,10 @@ public struct GraphEvaluator: Sendable {
                 guard let upstream = result.outputs[connection.from] else { throw .missingInput(reference) }
                 values[port.name] = upstream
             } else if let value = node.values[port.name] {
+                values[port.name] = value
+            } else if let value = definition.defaults[port.name] {
+                // An unconnected input without its own value uses the
+                // definition's default, so disconnecting never strands a node.
                 values[port.name] = value
             } else {
                 throw .missingInput(reference)

@@ -37,8 +37,11 @@ struct CommandRoundTripTests {
         ("move graph node", { MoveGraphNode($0.multiply, in: $0.graph, to: SIMD2(9, 9)) }),
         ("set graph value", { SetGraphValue(.float(3), for: "b", of: $0.multiply, in: $0.graph) }),
         ("clear graph value", { SetGraphValue(nil, for: "b", of: $0.multiply, in: $0.graph) }),
-        ("connect replaces", {
+        ("connect new", {
             ConnectPorts(PortReference($0.constant, "value"), to: PortReference($0.multiply, "b"), in: $0.graph)
+        }),
+        ("connect replaces", {
+            ConnectPorts(PortReference($0.spare, "value"), to: PortReference($0.multiply, "a"), in: $0.graph)
         }),
         ("disconnect", { DisconnectPorts(PortReference($0.multiply, "a"), in: $0.graph) }),
         ("composite", { CompositeCommand("Both", [RenameGraph($0.graph, to: "X"), DeleteEntity($0.hair)]) }),

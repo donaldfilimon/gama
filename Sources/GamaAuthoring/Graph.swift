@@ -215,6 +215,9 @@ public struct GraphNode: Hashable, Codable, Sendable {
                 guard GraphPort.isIdentifier(port.name) else {
                     throw .invalidGraph("\(id) port '\(port.name)' is not an identifier")
                 }
+                if case .custom(let name) = port.type, name.isEmpty {
+                    throw .invalidGraph("\(id) port '\(port.name)' has an unnamed custom type")
+                }
                 guard seen.insert(port.name).inserted else {
                     throw .invalidGraph("\(id) has two \(side) named '\(port.name)'")
                 }
