@@ -73,6 +73,17 @@ public final class ViewportController: NSObject {
         model.onDocumentChange = { [weak self] in
             previousListener?()
             self?.updateEditorLight()
+            self?.updateSelectionHighlight()
+        }
+
+        // Beside bridge.root, not under it: the highlight is editor state
+        // and must not change the projection, its bounds, or picking.
+        anchor.addChild(selectionHighlight.root)
+        updateSelectionHighlight()
+        let previousSelectionListener = model.onSelectionChange
+        model.onSelectionChange = { [weak self] in
+            previousSelectionListener?()
+            self?.updateSelectionHighlight()
         }
 
         arView.scene.addAnchor(anchor)
@@ -95,6 +106,18 @@ public final class ViewportController: NSObject {
             view.onScroll = { [weak self] event in self?.scroll(with: event) }
             view.onMagnify = { [weak self] magnification in self?.magnify(by: magnification) }
         }
+    }
+
+    // MARK: Selection highlight
+
+    /// The wireframe box around each selected entity.
+    public let selectionHighlight = SelectionHighlight()
+
+    /// Redraws the highlight from the current selection and projection. Runs
+    /// on every selection change and every document change, since an edit
+    /// can move, resize, or remove a selected entity.
+    private func updateSelectionHighlight() {
+        selectionHighlight.update(selection: model.session.selection.ordered, bridge: model.bridge)
     }
 
     // MARK: Editor light

@@ -37,6 +37,14 @@ public final class StudioModel {
     /// keep and call the previous one, as ``ViewportController`` does.
     public var onDocumentChange: (@MainActor () -> Void)?
 
+    /// Called after the selection changes, whatever changed it: a click, a
+    /// panel, an edit that selects what it created, an undo or delete that
+    /// prunes it, or opening a document. Runs after ``onDocumentChange``
+    /// when one action changes both. Not called when the selection is the
+    /// same afterwards. Same single-slot, chain-the-previous rule as
+    /// ``onDocumentChange``.
+    public var onSelectionChange: (@MainActor () -> Void)?
+
     /// Creates a model over `document`, projecting it into `bridge`
     /// immediately so the two never start out of sync.
     public init(document: SceneDocument = SceneDocument()) {
@@ -69,6 +77,8 @@ public final class StudioModel {
     /// cleared, the bridge is rebuilt from scratch, and the new content
     /// counts as saved. ``onDocumentChange`` runs last.
     public func replaceDocument(_ document: SceneDocument) {
+        let before = session.selection
+        defer { reportSelection(changedFrom: before) }
         session = EditorSession(document: document)
         savedDocument = document
         lastError = nil
@@ -97,6 +107,7 @@ public final class StudioModel {
     /// selection unchanged. Selection is editor state, not authored state, so
     /// this never touches `bridge`.
     public func select(_ id: EntityID?) {
+        let before = session.selection
         attempt { () throws(AuthoringError) in
             if let id {
                 try session.select([id])
@@ -104,6 +115,7 @@ public final class StudioModel {
                 session.clearSelection()
             }
         }
+        reportSelection(changedFrom: before)
     }
 
     // MARK: Editing
@@ -375,6 +387,8 @@ public final class StudioModel {
     /// On success ``onDocumentChange`` runs last, after `lastError` is
     /// cleared, so a listener sees the settled state.
     private func settle(_ operation: () throws(AuthoringError) -> Void) {
+        let before = session.selection
+        defer { reportSelection(changedFrom: before) }
         var applied = false
         attempt { () throws(AuthoringError) in
             try operation()
@@ -382,6 +396,10 @@ public final class StudioModel {
             applied = true
         }
         if applied { onDocumentChange?() }
+    }
+
+    private func reportSelection(changedFrom before: Selection) {
+        if session.selection != before { onSelectionChange?() }
     }
 
     /// Runs `operation`; on success clears `lastError`; on failure records
