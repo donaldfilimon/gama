@@ -26,6 +26,22 @@ struct CommandRoundTripTests {
         ("reparent to root", { ReparentEntity($0.body, to: nil) }),
         ("reparent across branches", { ReparentEntity($0.hair, to: $0.ground) }),
         ("reorder among siblings", { ReparentEntity($0.hair, to: $0.character, at: 0) }),
+        ("create graph", { _ in CreateGraph(name: "Wobble", domain: .logic) }),
+        ("delete graph", { DeleteGraph($0.graph) }),
+        ("rename graph", { RenameGraph($0.graph, to: "Gloss") }),
+        ("add graph node", {
+            AddGraphNode(to: $0.graph, definition: "constant.float", inputs: [], outputs: [GraphPort("value", .float)])
+        }),
+        ("remove connected node", { RemoveGraphNode($0.constant, from: $0.graph) }),
+        ("remove fed node", { RemoveGraphNode($0.multiply, from: $0.graph) }),
+        ("move graph node", { MoveGraphNode($0.multiply, in: $0.graph, to: SIMD2(9, 9)) }),
+        ("set graph value", { SetGraphValue(.float(3), for: "b", of: $0.multiply, in: $0.graph) }),
+        ("clear graph value", { SetGraphValue(nil, for: "b", of: $0.multiply, in: $0.graph) }),
+        ("connect replaces", {
+            ConnectPorts(PortReference($0.constant, "value"), to: PortReference($0.multiply, "b"), in: $0.graph)
+        }),
+        ("disconnect", { DisconnectPorts(PortReference($0.multiply, "a"), in: $0.graph) }),
+        ("composite", { CompositeCommand("Both", [RenameGraph($0.graph, to: "X"), DeleteEntity($0.hair)]) }),
     ]
 
     @Test(arguments: 0..<cases.count)

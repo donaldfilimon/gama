@@ -78,6 +78,10 @@ public final class RealityBridge {
                 if let record = document.entity(id), let entity = entities[id] {
                     project(record, onto: entity)
                 }
+            case .graphChanged:
+                // Graphs are authored data, not scene content; their effect
+                // reaches the scene as ordinary component changes (ADR 0007).
+                break
             }
         }
         resequenceTouchedContainers(in: document)

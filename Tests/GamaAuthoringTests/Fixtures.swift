@@ -10,6 +10,10 @@ struct SampleScene {
     let body: EntityID
     let hair: EntityID
     let camera: EntityID
+    /// A material graph: `constant (n1) --value--> multiply (n2).a`.
+    let graph: GraphID
+    let constant: GraphNodeID
+    let multiply: GraphNodeID
 
     init() throws {
         func create(
@@ -32,6 +36,20 @@ struct SampleScene {
             &session, "Camera", under: nil,
             [.transform(.identity), .light(.defaultDirectional), .camera(.default)]
         )
+        graph = session.document.nextGraphID
+        try session.execute(CreateGraph(name: "Shine", domain: .material))
+        constant = GraphNodeID(rawValue: 1)
+        try session.execute(AddGraphNode(
+            to: graph, definition: "constant.float", inputs: [GraphPort("value", .float)],
+            outputs: [GraphPort("value", .float)], values: ["value": .float(0.5)]
+        ))
+        multiply = GraphNodeID(rawValue: 2)
+        try session.execute(AddGraphNode(
+            to: graph, definition: "math.multiply",
+            inputs: [GraphPort("a", .float), GraphPort("b", .float)],
+            outputs: [GraphPort("result", .float)], values: ["b": .float(2)], position: SIMD2(4, 0)
+        ))
+        try session.execute(ConnectPorts(PortReference(constant, "value"), to: PortReference(multiply, "a"), in: graph))
         _ = session.drainChanges()
         self.session = session
     }

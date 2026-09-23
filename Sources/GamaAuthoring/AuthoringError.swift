@@ -12,6 +12,10 @@ public enum AuthoringError: Error, Hashable, Sendable {
     case invalidLight(String)
     case invalidCamera(String)
     case componentAbsent(EntityID, ComponentKind)
+    case missingGraph(GraphID)
+    case missingGraphNode(GraphID, GraphNodeID)
+    /// A graph edit or graph value breaks a rule in ``GraphDocument/validate()``.
+    case invalidGraph(String)
     case emptyTransaction
     case nothingToUndo
     case nothingToRedo

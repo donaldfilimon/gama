@@ -14,4 +14,7 @@ public enum SceneChange: Hashable, Sendable {
     case reparented(EntityID)
     case componentSet(EntityID, ComponentKind)
     case componentRemoved(EntityID, ComponentKind)
+    /// A graph was created, deleted, or edited (ADR 0007). Graphs are not
+    /// projected, so a renderer may ignore this.
+    case graphChanged(GraphID)
 }

@@ -36,6 +36,11 @@ public struct SceneDocument: Hashable, Codable, Sendable {
     /// Ordered top-level entities.
     public private(set) var roots: [EntityID] = []
     private var nextRawID: UInt64 = 1
+    /// Graphs by identity (ADR 0007).
+    public private(set) var graphs: [GraphID: GraphDocument] = [:]
+    /// Authored graph order.
+    public private(set) var graphOrder: [GraphID] = []
+    private var nextGraphRaw: UInt64 = 1
 
     public init() {}
 
@@ -47,7 +52,9 @@ public struct SceneDocument: Hashable, Codable, Sendable {
     public init(
         restoring records: [EntityRecord],
         roots: [EntityID],
-        nextEntityID: EntityID
+        nextEntityID: EntityID,
+        graphs: [GraphDocument] = [],
+        nextGraphID: GraphID? = nil
     ) throws(AuthoringError) {
         for record in records {
             guard entities[record.id] == nil else { throw .duplicateEntity(record.id) }
@@ -55,6 +62,12 @@ public struct SceneDocument: Hashable, Codable, Sendable {
         }
         self.roots = roots
         nextRawID = nextEntityID.rawValue
+        for graph in graphs {
+            guard self.graphs[graph.id] == nil else { throw .invalidGraph("duplicate graph \(graph.id)") }
+            self.graphs[graph.id] = graph
+            graphOrder.append(graph.id)
+        }
+        nextGraphRaw = nextGraphID?.rawValue ?? ((graphs.map(\.id.rawValue).max() ?? 0) + 1)
         try validate()
     }
 
@@ -62,6 +75,11 @@ public struct SceneDocument: Hashable, Codable, Sendable {
     /// handed out sequentially, so within one transaction the n-th creation
     /// receives `nextEntityID.rawValue + n`.
     public var nextEntityID: EntityID { EntityID(rawValue: nextRawID) }
+
+    /// The identifier the next created graph receives.
+    public var nextGraphID: GraphID { GraphID(rawValue: nextGraphRaw) }
+
+    public func graph(_ id: GraphID) -> GraphDocument? { graphs[id] }
 
     public var count: Int { entities.count }
 
@@ -104,6 +122,8 @@ public struct SceneDocument: Hashable, Codable, Sendable {
     /// advancing across undo so identifiers are never reused.
     public func hasSameContent(as other: SceneDocument) -> Bool {
         entities == other.entities && roots == other.roots
+            && graphs.mapValues(\.contentKey) == other.graphs.mapValues(\.contentKey)
+            && graphOrder == other.graphOrder
     }
 
     /// Checks every structural invariant. ``EditorSession`` runs this after each
@@ -139,9 +159,59 @@ public struct SceneDocument: Hashable, Codable, Sendable {
         guard seen.count == entities.count else {
             throw .invariantViolated("\(entities.count - seen.count) stored entities are unreachable")
         }
+        guard Set(graphOrder) == Set(graphs.keys), graphOrder.count == graphs.count else {
+            throw .invariantViolated("graph order does not match the stored graphs")
+        }
+        for (key, graph) in graphs {
+            guard key == graph.id else { throw .invariantViolated("\(graph.id) is stored under \(key)") }
+            guard key.rawValue > 0, key.rawValue < nextGraphRaw else {
+                throw .invariantViolated("\(key) was not allocated by this document")
+            }
+            do {
+                try graph.validate()
+            } catch {
+                throw .invariantViolated("\(key) is invalid: \(error)")
+            }
+        }
     }
 
     // MARK: Mutation primitives (commands only)
+
+    mutating func allocateGraphID() -> GraphID {
+        defer { nextGraphRaw += 1 }
+        return GraphID(rawValue: nextGraphRaw)
+    }
+
+    func graphRecord(_ id: GraphID) throws(AuthoringError) -> GraphDocument {
+        guard let graph = graphs[id] else { throw .missingGraph(id) }
+        return graph
+    }
+
+    /// Inserts a graph at `index` in the graph order, appending when `nil`.
+    mutating func insertGraph(_ graph: GraphDocument, at index: Int?) throws(AuthoringError) {
+        guard graphs[graph.id] == nil else { throw .invalidGraph("duplicate graph \(graph.id)") }
+        let position = index ?? graphOrder.count
+        guard (0...graphOrder.count).contains(position) else {
+            throw .invalidIndex(position, count: graphOrder.count)
+        }
+        graphs[graph.id] = graph
+        graphOrder.insert(graph.id, at: position)
+    }
+
+    /// Removes a graph and returns it with where it was.
+    mutating func removeGraph(_ id: GraphID) throws(AuthoringError) -> (GraphDocument, Int) {
+        let graph = try graphRecord(id)
+        let index = graphOrder.firstIndex(of: id) ?? graphOrder.count
+        graphs[id] = nil
+        graphOrder.removeAll { $0 == id }
+        return (graph, index)
+    }
+
+    mutating func updateGraph(_ id: GraphID, _ body: (inout GraphDocument) throws(AuthoringError) -> Void) throws(AuthoringError) {
+        var graph = try graphRecord(id)
+        try body(&graph)
+        graphs[id] = graph
+    }
 
     mutating func allocateID() -> EntityID {
         defer { nextRawID += 1 }

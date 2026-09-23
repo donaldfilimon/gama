@@ -43,7 +43,7 @@ struct SelectionTests {
         let revision = scene.session.revision
         try scene.session.select([scene.body])
         #expect(scene.session.revision == revision)
-        #expect(scene.session.undoLabel == "Create Camera")
+        #expect(scene.session.undoLabel == "Connect", "still the fixture's last edit")
     }
 }
 

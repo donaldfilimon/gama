@@ -8,7 +8,8 @@ struct RestoreTests {
         let original = scene.session.document
         let records = original.entities.values.sorted { $0.id < $1.id }
         let restored = try SceneDocument(
-            restoring: records, roots: original.roots, nextEntityID: original.nextEntityID
+            restoring: records, roots: original.roots, nextEntityID: original.nextEntityID,
+            graphs: original.graphOrder.compactMap { original.graph($0) }, nextGraphID: original.nextGraphID
         )
         #expect(restored == original)
     }
