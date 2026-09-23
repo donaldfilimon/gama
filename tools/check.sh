@@ -10,7 +10,7 @@ unset TOOLCHAINS
 # Minimum test count. A filter or a target that silently matches nothing
 # prints success with zero tests, so the gate asserts a floor. Raise it when
 # tests are added; never lower it to make the gate pass.
-MIN_TESTS=70
+MIN_TESTS=74
 LIBRARY="Sources/GamaAuthoring"
 BANNED='Foundation|Darwin|Glibc|simd|RealityKit|SwiftUI|AppKit|UIKit|Combine|Dispatch'
 
@@ -65,5 +65,15 @@ while IFS= read -r line; do
 done <<<"$summaries"
 (( count >= MIN_TESTS )) || { echo "error: ran $count tests, expected at least $MIN_TESTS" >&2; exit 1; }
 echo "tests: $count (floor $MIN_TESTS)"
+
+echo "==> smoke"
+# Launches the real executable headless: one frame, the RealityKit viewport
+# attached to its native region, and the sample scene projected. The exit
+# code is checked directly, never through a pipe.
+set +e
+swiftly run swift run gama-studio --smoke </dev/null
+status=$?
+set -e
+[[ $status -eq 0 ]] || { echo "error: gama-studio --smoke exited $status" >&2; exit 1; }
 
 echo "check.sh: PASSED"

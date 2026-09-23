@@ -72,6 +72,8 @@ let package = Package(
                 // text, which needs both gama modules imported directly.
                 .product(name: "GamaCore", package: "gama"),
                 .product(name: "GamaDraw", package: "gama"),
+                // ViewportTests attaches the ARView to a real GamaHostView.
+                .product(name: "GamaAppleUI", package: "gama"),
             ],
             swiftSettings: strictCore
         ),
@@ -80,6 +82,10 @@ let package = Package(
             name: "gama-studio",
             dependencies: [
                 "GamaStudioEditor",
+                // --smoke compares the bridge against the document, and
+                // MemberImportVisibility needs each defining module imported.
+                "GamaAuthoring",
+                "GamaReality",
                 .product(name: "GamaAppleUI", package: "gama"),
                 .product(name: "GamaCore", package: "gama"),
                 // MemberImportVisibility requires importing DrawList's
