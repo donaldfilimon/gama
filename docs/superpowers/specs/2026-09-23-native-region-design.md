@@ -5,11 +5,12 @@ Implements the policy in
 settles open question 1 of the
 [native view embedding draft](drafts/2026-09-23-native-view-embedding-draft.md).
 
-**Status: designed, not built.** No type, hook, or host API below exists yet.
-The owner approved the design section by section on 2026-09-23. The
-implementation plan (`docs/superpowers/plans/2026-09-23-native-regions.md`)
-follows this spec and nothing is claimed in
-`docs/Capabilities.md` until an implementation has evidence.
+**Status: implemented on branch `feat/native-regions`; locally gated on
+macOS only; no hosted run (billing lock).** The owner approved the design
+section by section on 2026-09-23. The implementation plan
+(`docs/superpowers/plans/2026-09-23-native-regions.md`) follows this spec
+and nothing is claimed in `docs/Capabilities.md` until an implementation has
+a hosted-evidence anchor.
 
 ## The decision: follow the action pattern
 
@@ -135,6 +136,10 @@ requires it, and no allowlist entries are added.
     `frame = pixelRect(region.frame)` and is shown.
   - Every other attached view is hidden, not removed, so its state survives a
     region that is absent for a frame.
+  - A region whose frame has zero area counts as absent: its attached view is
+    hidden and never takes first responder, so a zero-area view shows nothing
+    and focus never lands on an invisible view. The Apple host already
+    implements this.
 - **No overdraw.** `draw(_:)` skips DrawList commands whose cell rectangle lies
   wholly inside a shown region's frame. A region with no attached view keeps
   its painted fallback, so the Apple host degrades exactly like the cell
@@ -145,6 +150,10 @@ requires it, and no allowlist entries are added.
     (`window.makeFirstResponder(_:)` on AppKit, `becomeFirstResponder()` on
     UIKit).
   - When `isFocused` turns false, the host takes first responder back.
+  - Exactly one view receives first responder per frame, and the host
+    reclaims first responder only when it is currently inside a region's view
+    that lost focus — never from an unrelated control; `detach` of a focused
+    region's view returns first responder to the host.
   - Leaving a native view that consumes Tab itself is out of scope here; it is
     open question 2.
 - **Duplicates.** When two regions share an id in one frame, the last
