@@ -105,7 +105,7 @@ swiftly run swift run gama-studio --open "$usd_dir/reformatted.usda" --export "$
 cmp "$usd_dir/sample.usda" "$usd_dir/again.usda" || { echo "error: usdcat round trip changed the document" >&2; exit 1; }
 echo "usd: usdchecker Success! (sample + ${#goldens[@]} goldens), usdcat round trip identical"
 
-echo "==> ios and visionos (ADR 0008)"
+echo "==> ios and visionos (ADR 0008, ADR 0010)"
 # Builds the editor library and the app for both simulators with Xcode's
 # toolchain, then launches the app with --smoke on one simulator of each
 # platform and requires its OK line. Fails closed without Xcode, the
@@ -143,7 +143,22 @@ smoke_app() {  # $1 device name, $2 products subdirectory
   out="$(timeout 120 xcrun simctl launch --console-pty --terminate-running-process "$udid" com.donaldfilimon.GamaStudio --smoke 2>&1)"
   set -e
   grep -q 'gama-studio-app smoke: OK' <<<"$out" || { echo "$out" >&2; echo "error: launch smoke failed on $1" >&2; exit 1; }
-  echo "smoke OK on $1"
+  # ADR 0010: the app declares that it opens .usda in place, and a file
+  # handed over at launch goes through the same open path as one from Files.
+  local plist="$apple_dd/Build/Products/$2/GamaStudio.app/Info.plist"
+  plutil -extract CFBundleDocumentTypes json -o - "$plist" | grep -q 'com.pixar.universal-scene-description-utf8' \
+    || { echo "error: $2 app does not declare the .usda document type" >&2; exit 1; }
+  [[ "$(plutil -extract LSSupportsOpeningDocumentsInPlace raw -o - "$plist")" == "true" ]] \
+    || { echo "error: $2 app does not open documents in place" >&2; exit 1; }
+  local data
+  data="$(xcrun simctl get_app_container "$udid" com.donaldfilimon.GamaStudio data)"
+  mkdir -p "$data/tmp"
+  command cp -f Tests/GamaUSDTests/Fixtures/everything.usda "$data/tmp/gate-open.usda"
+  set +e
+  out="$(timeout 120 xcrun simctl launch --console-pty --terminate-running-process "$udid" com.donaldfilimon.GamaStudio --smoke --open "$data/tmp/gate-open.usda" 2>&1)"
+  set -e
+  grep -q 'gama-studio-app smoke: OK' <<<"$out" || { echo "$out" >&2; echo "error: open smoke failed on $1" >&2; exit 1; }
+  echo "smoke OK on $1 (launch, and opening a .usda)"
 }
 smoke_app "${GAMA_STUDIO_IOS_SIMULATOR:-iPhone 17}" Debug-iphonesimulator
 smoke_app "${GAMA_STUDIO_VISIONOS_SIMULATOR:-Apple Vision Pro}" Debug-xrsimulator

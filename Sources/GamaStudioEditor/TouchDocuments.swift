@@ -25,6 +25,10 @@ public final class TouchDocumentController: NSObject, UIDocumentPickerDelegate {
         case export(file: URL, document: SceneDocument)
     }
     private var pending: Pending?
+    /// Runs after a Save As that the unsaved-changes prompt started lands,
+    /// for an open that must not be dropped (a file handed over by the
+    /// system). Cleared when that picker is cancelled.
+    private var afterExport: (@MainActor () -> Void)?
 
     /// Called after a picker or prompt finishes, for tests and the host.
     public var onFinish: (@MainActor () -> Void)?
@@ -59,6 +63,22 @@ public final class TouchDocumentController: NSObject, UIDocumentPickerDelegate {
         }
     }
 
+    /// Opens a file the system handed over (Files, the share sheet, another
+    /// app) in place, after the unsaved-changes prompt (ADR 0010). Unlike
+    /// ``open()``, a Save As started by that prompt resumes the open once it
+    /// lands, because the file cannot be picked again.
+    public func openExternally(_ url: URL) {
+        confirmDiscardingChanges(resumingAfterSaveAs: true) { [weak self] in
+            guard let self else { return }
+            do {
+                try self.documents.open(url)
+            } catch {
+                self.report(error, doing: "open \u{201C}\(url.lastPathComponent)\u{201D}")
+            }
+            self.onFinish?()
+        }
+    }
+
     /// Writes to the current file, or asks where when there is none yet.
     public func save() {
         do {
@@ -78,6 +98,7 @@ public final class TouchDocumentController: NSObject, UIDocumentPickerDelegate {
             let picker = UIDocumentPickerViewController(forExporting: [file], asCopy: true)
             present(picker, for: .export(file: file, document: document))
         } catch {
+            afterExport = nil
             report(error, doing: "save \u{201C}\(documents.displayName)\u{201D}")
         }
     }
@@ -105,6 +126,9 @@ public final class TouchDocumentController: NSObject, UIDocumentPickerDelegate {
             }
         case .export(_, let document)?:
             documents.adoptSavedCopy(at: url, of: document)
+            let resume = afterExport
+            afterExport = nil
+            resume?()
         case nil:
             break
         }
@@ -113,6 +137,7 @@ public final class TouchDocumentController: NSObject, UIDocumentPickerDelegate {
     public func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
         let purpose = pending
         pending = nil
+        afterExport = nil
         finish(purpose)
     }
 
@@ -127,9 +152,13 @@ public final class TouchDocumentController: NSObject, UIDocumentPickerDelegate {
     // MARK: Prompts
 
     /// Runs `proceed` when nothing is unsaved, or after the user saves or
-    /// chooses to discard. With no current file, Save starts Save As instead
-    /// and the pending action waits for the user to try again.
-    func confirmDiscardingChanges(then proceed: @escaping @MainActor () -> Void) {
+    /// chooses to discard. With no current file, Save starts Save As instead;
+    /// the pending action then waits for the user to try again, or, with
+    /// `resumingAfterSaveAs`, runs once that Save As lands.
+    func confirmDiscardingChanges(
+        resumingAfterSaveAs: Bool = false,
+        then proceed: @escaping @MainActor () -> Void
+    ) {
         guard documents.hasUnsavedChanges else { return proceed() }
         let alert = UIAlertController(
             title: "Save changes to \u{201C}\(documents.displayName)\u{201D}?",
@@ -142,6 +171,7 @@ public final class TouchDocumentController: NSObject, UIDocumentPickerDelegate {
                 if try self.documents.saveToCurrentFile() {
                     proceed()
                 } else {
+                    if resumingAfterSaveAs { self.afterExport = proceed }
                     self.saveAs()
                 }
             } catch {

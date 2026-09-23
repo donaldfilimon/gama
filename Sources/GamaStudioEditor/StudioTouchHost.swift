@@ -25,6 +25,9 @@ public final class StudioHostViewController: UIViewController {
     public private(set) var viewport: TouchViewportController!
     /// File open and save through the document picker (ADR 0009).
     public private(set) var files: TouchDocumentController!
+    /// A file handed over before the view was on screen, opened once it is
+    /// (the prompt and pickers need a window to present from).
+    private var pendingExternalURL: URL?
 
     public init(model: StudioModel = StudioModel(document: StudioModel.sampleScene())) {
         self.model = model
@@ -76,6 +79,21 @@ public final class StudioHostViewController: UIViewController {
     public override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         updateTitle()
+        if let url = pendingExternalURL {
+            pendingExternalURL = nil
+            files.openExternally(url)
+        }
+    }
+
+    /// Opens a `.usda` file the system handed to the app (ADR 0010): from
+    /// Files, the share sheet, or another app. Waits for the view to be on
+    /// screen when it arrives at launch.
+    public func openExternalDocument(_ url: URL) {
+        guard let files, viewIfLoaded?.window != nil else {
+            pendingExternalURL = url
+            return
+        }
+        files.openExternally(url)
     }
 
     /// The window scene's title: the file name, with a bullet while edited.
@@ -100,6 +118,27 @@ public final class StudioHostViewController: UIViewController {
     @objc func openDocument() { files.open() }
     @objc func saveDocument() { files.save() }
     @objc func saveDocumentAs() { files.saveAs() }
+
+    /// What the gate's launch smoke check verifies after `--open <path>`: the
+    /// file became the current file, and the document is its unedited
+    /// content. Empty means healthy.
+    public func openedFileFailures(expected url: URL) -> [String] {
+        guard let documents = files?.documents else { return ["document controller not created"] }
+        guard let current = documents.currentURL else { return ["\(url.lastPathComponent) was not opened"] }
+        var failures: [String] = []
+        if current.standardizedFileURL.path != url.standardizedFileURL.path {
+            failures.append("opened \(current.path), expected \(url.path)")
+        }
+        if documents.hasUnsavedChanges { failures.append("the opened document has unsaved changes") }
+        do {
+            if try StudioDocumentIO.read(from: url) != model.session.document {
+                failures.append("the document differs from \(url.lastPathComponent)")
+            }
+        } catch {
+            failures.append("rereading \(url.lastPathComponent) failed: \(StudioDocumentIO.describe(error))")
+        }
+        return failures
+    }
 
     /// What the gate's launch smoke check verifies after the first layout:
     /// the host drew, the viewport is attached, visible, and non-empty, and
@@ -138,22 +177,54 @@ public struct GamaStudioView: UIViewControllerRepresentable {
     /// Called once after the first layout with ``StudioHostViewController/smokeFailures()``
     /// when the app runs its launch smoke check.
     let onFirstLayout: (@MainActor ([String]) -> Void)?
+    /// The latest file the system handed to the app, if any (ADR 0010).
+    let incoming: IncomingDocument?
 
-    public init(onFirstLayout: (@MainActor ([String]) -> Void)? = nil) {
+    public init(incoming: IncomingDocument? = nil, onFirstLayout: (@MainActor ([String]) -> Void)? = nil) {
+        self.incoming = incoming
         self.onFirstLayout = onFirstLayout
     }
+
+    public final class Coordinator {
+        /// The last request passed on, so each one opens exactly once.
+        var handled: IncomingDocument.ID?
+    }
+
+    public func makeCoordinator() -> Coordinator { Coordinator() }
 
     public func makeUIViewController(context: Context) -> StudioHostViewController {
         let controller = StudioHostViewController()
         if let onFirstLayout {
+            let expected = incoming?.url
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                MainActor.assumeIsolated { onFirstLayout(controller.smokeFailures()) }
+                MainActor.assumeIsolated {
+                    var failures = controller.smokeFailures()
+                    if let expected {
+                        failures += controller.openedFileFailures(expected: expected)
+                    }
+                    onFirstLayout(failures)
+                }
             }
         }
         return controller
     }
 
-    public func updateUIViewController(_ controller: StudioHostViewController, context: Context) {}
+    public func updateUIViewController(_ controller: StudioHostViewController, context: Context) {
+        guard let incoming, context.coordinator.handled != incoming.id else { return }
+        context.coordinator.handled = incoming.id
+        controller.openExternalDocument(incoming.url)
+    }
+}
+
+/// One request to open a file handed over by the system. Each request has
+/// its own identity, so handing over the same file twice opens it twice.
+public struct IncomingDocument: Identifiable, Equatable, Sendable {
+    public let id = UUID()
+    public let url: URL
+
+    public init(url: URL) {
+        self.url = url
+    }
 }
 
 #endif

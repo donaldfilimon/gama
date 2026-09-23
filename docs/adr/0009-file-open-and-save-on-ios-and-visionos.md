@@ -79,7 +79,6 @@ or written while security-scoped access to it is held.
 - visionOS shares the code and passes the build and the launch smoke, but
   its picker flow was not driven by hand.
 - Not built:
-  - opening a `.usda` from Files or another app (declared document types
-    and "Open in place" at launch);
+  - opening a `.usda` from Files or another app (since built: ADR 0010);
   - `UIDocument`-based coordination and autosave;
   - noticing when another app changes the open file.
