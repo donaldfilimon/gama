@@ -85,5 +85,5 @@ notes only.
   change (ADR 0009/0011) and is flagged as its own task.
 - **Not built:**
   - viewport events (selection, Frame, Look through) as notes, which were
-    left out as noise;
+    left out as noise (since built: ADR 0018);
   - macOS autosave notes (macOS has no autosave).

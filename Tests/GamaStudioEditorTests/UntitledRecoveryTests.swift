@@ -13,6 +13,11 @@ import GamaDraw
 import GamaStudioEditor
 import Testing
 
+#if canImport(AppKit)
+import AppKit
+import GamaAppleUI
+#endif
+
 @MainActor
 @Suite("Untitled recovery")
 struct UntitledRecoveryTests {
@@ -277,6 +282,61 @@ struct UntitledRecoveryTests {
         model.replaceDocument(StudioModel.sampleScene())
         #expect(model.notice == nil, "so is opening")
     }
+
+    #if canImport(AppKit)
+    /// Orbiting is not a document change (ADR 0015): the recovered notice
+    /// stays in the status line through every camera gesture, including a
+    /// real window drag, and the console keeps the recovery note with one
+    /// coalesced camera note after it (ADR 0018). An edit still clears it.
+    @Test func orbitGesturesLeaveTheRecoveredNotice() throws {
+        let directory = try scratch()
+        let before = StudioModel(document: StudioModel.sampleScene())
+        before.addPrimitive(.box)
+        let recovery = try #require(UntitledRecovery(key: "orbit", in: directory))
+        try StudioDocumentIO.write(before.session.document, to: recovery.url)
+
+        let model = StudioModel(document: StudioModel.sampleScene())
+        let frame = NSRect(x: 0, y: 0, width: 1280, height: 800)
+        let window = NSWindow(contentRect: frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        let host = GamaHostView(frame: frame)
+        window.contentView = host
+        try host.install(app: StudioApp(model: model))
+        let viewport = ViewportController(model: model, onSelectionChange: {})
+        host.attach(viewport.arView, to: StudioApp.viewportRegion)
+        host.invalidate()
+        window.orderFront(nil)
+        #expect(try recovery.restore(into: StudioDocumentSession(model: model)))
+
+        viewport.orbit(byDragX: 30, dragY: 10)
+        viewport.pan(byDragX: 5, dragY: -5)
+        viewport.zoom(scale: 0.8)
+        viewport.magnify(by: 0.2)
+        let start = viewport.arView.convert(NSPoint(x: viewport.arView.bounds.midX, y: viewport.arView.bounds.midY), to: nil)
+        func send(_ type: NSEvent.EventType, _ point: NSPoint) throws {
+            let event = try #require(NSEvent.mouseEvent(
+                with: type, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1
+            ))
+            window.sendEvent(event)
+        }
+        let yawBefore = viewport.orbit.yaw
+        try send(.leftMouseDown, start)
+        for step in 1...8 { try send(.leftMouseDragged, NSPoint(x: start.x + CGFloat(step) * 10, y: start.y)) }
+        try send(.leftMouseUp, NSPoint(x: start.x + 80, y: start.y))
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.2))
+        #expect(viewport.orbit.yaw != yawBefore, "the drag orbited")
+
+        #expect(model.notice == UntitledRecovery.restoredNotice)
+        let statusRow = try statusText(model).split(separator: "\n").first { $0.contains("rev ") && $0.contains("undo:") }
+        #expect(statusRow.map { $0.contains(UntitledRecovery.restoredNotice) } == true)
+        #expect(model.consoleLog == [.note(UntitledRecovery.restoredNotice), .note("moved the camera")])
+
+        model.addPrimitive(.cone)
+        #expect(model.notice == nil)
+    }
+    #endif
 
     @Test func aDocumentWithAFileGetsNoNotice() throws {
         let directory = try scratch()

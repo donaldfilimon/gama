@@ -83,7 +83,7 @@ public final class TouchViewportController {
         stage.addChild(editorLight)
 
         #if os(visionOS)
-        frameSelection()
+        fit()  // setup, not a user's Frame: no console note
         #else
         stage.addChild(camera)
         applyCamera()
@@ -144,6 +144,7 @@ public final class TouchViewportController {
     /// the projection, then reports the change.
     public func pick(_ entity: Entity?) {
         model.select(ViewportSupport.pickedEntityID(for: entity, in: model.bridge))
+        ViewportSupport.notePick(in: model)
         onSelectionChange()
     }
 
@@ -153,6 +154,7 @@ public final class TouchViewportController {
     public func orbit(byDragX dx: CGFloat, dragY dy: CGFloat) {
         orbit.orbit(yawBy: -Float(dx) * Self.orbitPerPoint, pitchBy: Float(dy) * Self.orbitPerPoint)
         applyCamera()
+        ViewportSupport.noteCameraMove(in: model)
     }
 
     /// Zooms by a pinch ratio relative to the previous update: spreading
@@ -165,12 +167,19 @@ public final class TouchViewportController {
         orbit.zoom(scale: 1 / Float(ratio))
         #endif
         applyCamera()
+        ViewportSupport.noteCameraMove(in: model)
     }
 
     /// Frames the primary selection, or the whole scene when nothing is
     /// selected. iOS moves the camera; visionOS recenters and rescales the
     /// stage so the subject spans ``fittedSize``.
     public func frameSelection() {
+        fit()
+        ViewportSupport.noteFrame(in: model)
+    }
+
+    /// Frames without a console note, for setup.
+    private func fit() {
         let subject = model.session.selection.primary.flatMap { model.bridge.entity(for: $0) } ?? model.bridge.root
         let bounds = subject.visualBounds(recursive: true, relativeTo: stage, excludeInactive: false)
         let center: SIMD3<Float>
@@ -208,6 +217,7 @@ public final class TouchViewportController {
         orbit = OrbitCamera(lookingAt: eye + direction / length * orbit.distance, from: eye)
         camera.camera.fieldOfViewInDegrees = settings.fieldOfViewDegrees
         applyCamera()
+        ViewportSupport.noteLookThrough(id, in: model)
         #endif
     }
 

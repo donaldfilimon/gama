@@ -42,6 +42,38 @@ public enum ViewportSupport {
             return true
         }
     }
+
+    // MARK: Console notes (ADR 0018)
+
+    /// Notes what a click or tap in the viewport selected, after the
+    /// selection changed; nothing when the model refused it (the refusal is
+    /// its own note).
+    @MainActor
+    public static func notePick(in model: StudioModel) {
+        guard model.lastError == nil else { return }
+        let name = model.session.selection.primary.flatMap { model.session.document.entity($0)?.name }
+        model.log(note: name.map { "picked \($0)" } ?? "cleared selection", coalescing: true)
+    }
+
+    /// Notes what Frame fitted: the primary selection, or the whole scene.
+    @MainActor
+    public static func noteFrame(in model: StudioModel) {
+        let name = model.session.selection.primary.flatMap { model.session.document.entity($0)?.name }
+        model.log(note: name.map { "framed \($0)" } ?? "framed the scene", coalescing: true)
+    }
+
+    /// Notes that the viewport now looks through the camera `id`.
+    @MainActor
+    public static func noteLookThrough(_ id: EntityID, in model: StudioModel) {
+        model.log(note: "looking through \(model.session.document.entity(id)?.name ?? "a camera")", coalescing: true)
+    }
+
+    /// Notes a camera move (orbit, pan, zoom, pinch). Coalesced, so a whole
+    /// gesture, or a run of them, is one line, and repeats do not repaint.
+    @MainActor
+    public static func noteCameraMove(in model: StudioModel) {
+        model.log(note: "moved the camera", coalescing: true)
+    }
 }
 
 #endif

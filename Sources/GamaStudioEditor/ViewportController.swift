@@ -161,6 +161,7 @@ public final class ViewportController: NSObject {
     public func orbit(byDragX dx: CGFloat, dragY dy: CGFloat) {
         orbit.orbit(yawBy: -Float(dx) * Self.orbitPerPoint, pitchBy: -Float(dy) * Self.orbitPerPoint)
         applyCamera()
+        ViewportSupport.noteCameraMove(in: model)
     }
 
     /// Pans by a drag of `dx`, `dy` points so the scene follows the pointer.
@@ -168,12 +169,14 @@ public final class ViewportController: NSObject {
         let metersPerPoint = orbit.distance * Self.panPerPointPerMeter
         orbit.pan(right: -Float(dx) * metersPerPoint, up: -Float(dy) * metersPerPoint)
         applyCamera()
+        ViewportSupport.noteCameraMove(in: model)
     }
 
     /// Zooms by `scale` (below 1 moves closer).
     public func zoom(scale: Float) {
         orbit.zoom(scale: scale)
         applyCamera()
+        ViewportSupport.noteCameraMove(in: model)
     }
 
     /// Routes a scroll event by device: a trackpad (precise, continuous
@@ -227,6 +230,7 @@ public final class ViewportController: NSObject {
         }
         orbit.frame(center: center, radius: radius, fieldOfViewDegrees: camera.camera.fieldOfViewInDegrees)
         applyCamera()
+        ViewportSupport.noteFrame(in: model)
     }
 
     /// Puts the viewport's eye where the authored camera `id` is and looks
@@ -252,6 +256,7 @@ public final class ViewportController: NSObject {
         orbit = OrbitCamera(lookingAt: eye + direction / length * orbit.distance, from: eye)
         camera.camera.fieldOfViewInDegrees = settings.fieldOfViewDegrees
         applyCamera()
+        ViewportSupport.noteLookThrough(id, in: model)
     }
 
     @objc private func handleLeftDrag(_ recognizer: NSPanGestureRecognizer) {
@@ -296,6 +301,7 @@ public final class ViewportController: NSObject {
             .min { $0.distance < $1.distance }?
             .entity
         model.select(Self.pickedEntityID(for: hit, in: model.bridge))
+        ViewportSupport.notePick(in: model)
         onSelectionChange()
     }
 

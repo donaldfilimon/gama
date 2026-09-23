@@ -235,6 +235,42 @@ public final class StudioHostViewController: UIViewController {
         return failures
     }
 
+    /// The gate's viewport-notes smoke (ADR 0018), in the plain launch: the
+    /// real touch viewport picks the Box, orbits, pinches, frames, and looks
+    /// through the Camera, and each event leaves its console note, in order.
+    /// Setup must log nothing (ADR 0018); only frameSelection() notes.
+    /// visionOS has no viewport camera, so its Look through frames the
+    /// camera instead and notes that.
+    public func viewportSmokeFailures() -> [String] {
+        guard let viewport else { return ["viewport not created"] }
+        let document = model.session.document
+        func id(_ name: String) -> EntityID? { document.entities.values.first { $0.name == name }?.id }
+        guard let box = id("Box"), let camera = id("Camera"), let boxEntity = model.bridge.entity(for: box) else {
+            return ["the sample scene has no Box or Camera"]
+        }
+
+        // Setup must log nothing
+        let setupNotes = model.consoleLog.filter(\.isNote)
+        if !setupNotes.isEmpty {
+            return ["setup logged notes \(setupNotes.map(\.output))"]
+        }
+
+        let before = model.consoleLog.count
+        viewport.pick(boxEntity)
+        viewport.orbit(byDragX: 20, dragY: 5)
+        viewport.pinch(by: 1.1)
+        viewport.frameSelection()
+        viewport.lookThrough(camera)
+        #if os(visionOS)
+        let lookedThrough = "framed Camera"
+        #else
+        let lookedThrough = "looking through Camera"
+        #endif
+        let expected = ["picked Box", "moved the camera", "framed Box", lookedThrough]
+        let logged = model.consoleLog.dropFirst(before).filter(\.isNote).map(\.output)
+        return logged == expected ? [] : ["viewport notes \(logged), expected \(expected)"]
+    }
+
     /// The gate's adoption smoke (ADR 0014): with no recovery file of its
     /// own, the window took over the orphan the gate planted, which holds
     /// `expected`, as unsaved Untitled changes, and now autosaves to its own
@@ -506,7 +542,7 @@ public struct GamaStudioView: UIViewControllerRepresentable {
                         case .discard?:
                             onFirstLayout(failures + (await controller.recoveryDiscardSmokeFailures()))
                         case nil:
-                            guard let expected else { return onFirstLayout(failures) }
+                            guard let expected else { return onFirstLayout(failures + controller.viewportSmokeFailures()) }
                             onFirstLayout(failures + (await controller.fileSmokeFailures(expected: expected)))
                         }
                     }
