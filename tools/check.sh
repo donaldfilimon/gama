@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The gate. Prints "check.sh: PASSED" only after every step succeeds.
-# Run as: ./tools/check.sh > check.log 2>&1; echo "EXIT:$?"
+# Run as: ./tools/check.sh >| check.log 2>&1; echo "EXIT:$?"
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

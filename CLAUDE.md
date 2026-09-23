@@ -18,7 +18,7 @@ Commands:
 
 ```bash
 unset TOOLCHAINS
-./tools/check.sh > check.log 2>&1; echo "EXIT:$?"          # the gate
+./tools/check.sh >| check.log 2>&1; echo "EXIT:$?"         # the gate
 swiftly run swift test --filter TransactionTests           # one suite
 swiftly run swift test --filter BridgeConvergenceTests     # bridge property test (~30–40 s)
 ```

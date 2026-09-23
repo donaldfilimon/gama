@@ -14,7 +14,7 @@ Gama Studio is a document-centric 3D authoring app. It is not the gama UI framew
 ## Gate
 
 ```bash
-./tools/check.sh > check.log 2>&1; echo "EXIT:$?"
+./tools/check.sh >| check.log 2>&1; echo "EXIT:$?"
 ```
 
 It is green only when the log ends with `check.sh: PASSED`. It runs, in order:
