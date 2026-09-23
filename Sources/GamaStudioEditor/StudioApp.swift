@@ -257,12 +257,12 @@ struct StudioRootView: View {
         if width < Self.compactWidth {
             return compact(width: width).render(in: context)
         }
-        return regular.render(in: context)
+        return regular(width: width).render(in: context)
     }
 
-    private var regular: some View {
+    private func regular(width: Int) -> some View {
         VStack {
-            toolbar
+            toolbarForRegularLayout(width: width)
             HStack {
                 HierarchyPanel(model: model, rows: state.rows)
                 viewportRegion
@@ -312,6 +312,62 @@ struct StudioRootView: View {
             if let documents { fileButtons(documents) }
             creationButtons(short: false)
             editingButtons(short: false)
+        }
+    }
+
+    /// Full-label toolbar button text, in the order the regular toolbar
+    /// builds them, mirroring ``fileButtons(_:)``, ``creationButtons(short:)``,
+    /// and ``editingButtons(short:)`` with `short: false`. Used only to
+    /// measure whether the single-row toolbar fits (ADR 0020); the buttons
+    /// themselves are still built by those methods, so a labeling change
+    /// there cannot silently drift from what gets measured here except for
+    /// this list, which must be kept in sync.
+    private static let creationLabelsRegular = ["Add Box", "Add Sphere", "Add Cone", "Add Light", "Add Camera"]
+    private static let editingLabelsRegular = ["Duplicate", "Delete", "Undo", "Redo", "Frame"]
+    private static let fileLabelsRegular = ["Open", "Save", "Save As"]
+
+    /// A `Button(title, action:)`'s painted width: `" \(title) "` (one
+    /// space padding each side), plus the `HStack(spacing: 1)` gap before
+    /// it (omitted for the first item).
+    private func toolbarRowWidth(_ labels: [String]) -> Int {
+        guard !labels.isEmpty else { return 0 }
+        let buttons = labels.reduce(0) { $0 + $1.count + 2 }
+        return buttons + (labels.count - 1)
+    }
+
+    /// Whether every regular-toolbar button fits on the single `toolbar`
+    /// row at `width` columns. False below the iPad-portrait width (ADR
+    /// 0020's measured 92 columns is comfortably under the 134 the full
+    /// row needs with file buttons, 110 without).
+    private func regularToolbarFits(width: Int) -> Bool {
+        var labels: [String] = []
+        if documents != nil { labels += Self.fileLabelsRegular }
+        labels += Self.creationLabelsRegular
+        labels += Self.editingLabelsRegular
+        labels.append(state.showsGraphEditor ? "Inspector" : "Graph")
+        return toolbarRowWidth(labels) <= width
+    }
+
+    /// Regular-layout toolbar, wrapped into one row per button group (file,
+    /// creation, editing) when the single-row ``toolbar`` would run past
+    /// the surface width — the same shape ``compactToolbar`` uses, but
+    /// keeping the full (non-abbreviated) labels, since every group's row
+    /// width (59 columns for creation, 50 for editing, 23 for file) stays
+    /// under ``compactWidth`` regardless, so wrapping is always enough once
+    /// the width has already cleared the compact threshold. Reuses
+    /// ``fileButtons(_:)``, ``creationButtons(short:)``, and
+    /// ``editingButtons(short:)`` verbatim, so the button actions and
+    /// identities are the exact same closures the single-row toolbar uses.
+    @ViewBuilder
+    private func toolbarForRegularLayout(width: Int) -> some View {
+        if regularToolbarFits(width: width) {
+            toolbar
+        } else {
+            VStack {
+                if let documents { HStack(spacing: 1) { fileButtons(documents) } }
+                HStack(spacing: 1) { creationButtons(short: false) }
+                HStack(spacing: 1) { editingButtons(short: false) }
+            }
         }
     }
 

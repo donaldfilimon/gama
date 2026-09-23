@@ -80,8 +80,8 @@ checked by hand on iPad and visionOS.
   Hub's background clicks moved the pointer without selecting, and its
   window sat off-screen, out of reach of foreground clicks, so the visionOS
   notes rest on the automated smoke alone.
-- **Found, not fixed:** the regular layout's toolbar is wider than an iPad
-  in portrait, so Frame and the buttons after it are off-screen. This
-  predates this change.
+- **Found, not fixed (since fixed: ADR 0020):** the regular layout's
+  toolbar is wider than an iPad in portrait, so Frame and the buttons
+  after it are off-screen. This predates this change.
 - **Not built:** notes for light and camera inspector changes, which are
   document edits and already visible in the undo label.
