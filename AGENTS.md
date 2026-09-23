@@ -9,6 +9,7 @@ Gama Studio is a document-centric 3D authoring app. It is not the gama UI framew
 - What exists today is Phases 0 through 2:
   - `GamaAuthoring`: a tested authoring core with no renderer and no UI.
   - `GamaReality`: an Apple-only RealityKit projection of it.
+  - `GamaConsole`: a standard-library-only command-console parser; each line becomes the same `DocumentCommand`s the panels produce, or the same `StudioModel` call the toolbar makes (ADR 0006). The editor shows it as a "Console" panel above the status line.
   - `GamaUSD`: a standard-library-only USDA writer and reader with an exact round trip (ADR 0005). The File menu (⌘O/⌘S/⇧⌘S) and `--open`/`--export` use it.
   - `GamaStudioEditor` + the `gama-studio` executable: a macOS-only editor window built from Gama views (toolbar, scene hierarchy, inspector, status line) around a RealityKit viewport attached through a native region. Orbit camera controls (mouse: drag orbits, right/Option-drag pans, wheel zooms; trackpad: two-finger scroll orbits, Shift+scroll pans, pinch zooms), a toolbar "Frame" button (selection, or everything when nothing is selected), click-to-select picking, and an orange wireframe box around each selected entity (editor state beside `bridge.root`, never in the document or the bridge, unpickable; follows every selection source through `StudioModel.onSelectionChange`). See ADR 0003. Cameras and lights are authored document components (ADR 0004): the viewport lights from the document's own lights, falling back to a fixed editor light only when none is visible, and a camera or light entity shows as a pickable marker; "Look through" snaps the orbit camera to a selected camera's viewpoint and field of view, as editor state, never a document write.
 - The repo is local-only with no remote. Commit on `main`.
@@ -22,7 +23,7 @@ Gama Studio is a document-centric 3D authoring app. It is not the gama UI framew
 
 It is green only when the log ends with `check.sh: PASSED`. It runs, in order:
 1. A toolchain assertion (6.5-dev).
-2. The standard-library-only import ban on `Sources/GamaAuthoring` and `Sources/GamaUSD`, which fails closed.
+2. The standard-library-only import ban on `Sources/GamaAuthoring`, `Sources/GamaUSD`, and `Sources/GamaConsole`, which fails closed.
 3. `swift build` with warnings as errors.
 4. `swift test`, with a test-count floor (`MIN_TESTS`) applied to the sum over all test targets. Every target's run must pass.
 5. `gama-studio --smoke`, which launches the real executable headless (one frame, no event loop): it asserts the host produced draw commands, the RealityKit `ARView` is an attached, visible, non-empty subview of the host, and the bridge's entity count matches the document's.
@@ -69,7 +70,7 @@ swiftly run swift run gama-studio --export out.usda       # writes the document 
 9. **The editor UI never mutates state directly** (ADR 0003). Every panel, button, and the viewport's click handler go through `StudioModel`, which is the only caller of `EditorSession`'s mutating surface and the only place `bridge.apply` is called; dropping that call desyncs the bridge from the document, and `StudioModelTests` must fail if it does.
 10. **A `@MainActor` crossing at the UI boundary is an explicit `MainActor.assumeIsolated`, never an assumption left silent** (ADR 0003): gama only runs a surface's content closure inside `FrameHost.pump` and an action inside `FrameHost.handle`/`perform`, both main-actor-only callers, so the assertion traps instead of racing if that stops holding.
 
-Decisions and their reasons are in `docs/adr/` (0001: the value document and commands; 0002: the RealityKit bridge; 0003: Studio's Gama-hosted UI and the RealityKit viewport; 0004: cameras and lights as authored components; 0005: USDA persistence).
+Decisions and their reasons are in `docs/adr/` (0001: the value document and commands; 0002: the RealityKit bridge; 0003: Studio's Gama-hosted UI and the RealityKit viewport; 0004: cameras and lights as authored components; 0005: USDA persistence; 0006: the command console).
 
 ## Layout
 
@@ -80,29 +81,31 @@ Decisions and their reasons are in `docs/adr/` (0001: the value document and com
   - `Components` and `Math` (transform, mesh primitive, material, visibility)
   - `Lighting` (`Light`, `LightKind`, `CameraSettings`, ADR 0004)
   - `Selection`, `SceneChange`, `AuthoringError`
+- `Sources/GamaConsole/`: `ConsoleParser` (tokenizer, target resolution, one function per verb, `usage` table that `help` prints), `ConsoleAction`, `ConsoleWord`, `ConsoleError`. Standard library only (ADR 0006).
 - `Sources/GamaUSD/`: `usdaString(from:)` (`USDAWriter`), `sceneDocument(fromUSDA:)` (`USDAReader`, over `USDALexer`/`USDAParser`), `USDSchema` (the names both sides share), and `USDError`. Standard library only (ADR 0005).
 - `Sources/GamaReality/`: `RealityBridge` (entity maps, `apply`, `rebuild`, picking via `id(for:)`), `PrimitiveMeshes` (unit-size mesh cache, plus the camera/light marker mesh and shape cache), `MaterialProjection` (`PhysicallyBasedMaterial`), and `LightProjection` (light-component projection, marker color/kind, ADR 0004). Every file sits inside `#if canImport(RealityKit)`.
 - `Sources/GamaStudioEditor/`: macOS-only editor UI (ADR 0003).
-  - `StudioModel` (`@MainActor`): the funnel — owns `EditorSession` and `RealityBridge`, and is the only caller of either's mutating surface. Also holds the light/camera actions (`addLight`, `addCamera`, `cycleLightKind`, `scaleLightIntensity`, `adjustFieldOfView`) and `onDocumentChange`, ADR 0004.
+  - `StudioModel` (`@MainActor`): the funnel — owns `EditorSession` and `RealityBridge`, and is the only caller of either's mutating surface. Also holds the light/camera actions (`addLight`, `addCamera`, `cycleLightKind`, `scaleLightIntensity`, `adjustFieldOfView`) and `onDocumentChange`, ADR 0004. `runConsole`/`submitConsole` run console lines through the same funnel and keep `consoleInput` and a bounded `consoleLog` (ADR 0006).
   - `StudioApp` (`App`, gated on `canImport(AppKit)`): the Gama view tree — toolbar, `HierarchyPanel`, `NativeRegion(StudioApp.viewportRegion)`, `InspectorPanel`, status line — plus `StudioFrameState`, the `Sendable` per-frame snapshot built inside `MainActor.assumeIsolated`, and `ViewportActions` (`frameSelection`, `lookThrough`).
   - `ViewportController` (gated on `canImport(AppKit) && canImport(RealityKit)`): the `StudioViewportView: ARView` subclass, an orbit `PerspectiveCamera`, the fallback `editorLight` (on only when the document has no visible light, ADR 0004), click-to-select picking via `pickedEntityID(for:in:)`, and `lookThrough(_:)`.
   - `StudioDocumentIO`: `.usda` file read and write, the only Foundation-to-disk path, plus `describe(_:)` for alerts. `StudioAppDelegate` owns the File menu, `currentURL`, the window title and edited dot, and the Save / Don't Save / Cancel prompts. `StudioModel.replaceDocument` and `hasUnsavedChanges` back them (ADR 0005).
   - `SelectionHighlight` (gated like `ViewportController`): the wireframe selection box, 12 thin unlit edges per selected entity around its padded world-space `visualBounds` (hidden entities included). `StudioModel.onSelectionChange` fires on any selection change, whatever caused it, after `onDocumentChange`.
   - `LookAt.swift`: `Rotation.lookAt(_:from:up:)`, the `simd`-based look-at helper `GamaAuthoring` cannot host itself (ADR 0004).
 - `Sources/gama-studio/main.swift`: the executable. Owns the `NSApplication`/`NSWindow`/`GamaHostView`, installs `StudioApp`, attaches the `ViewportController`'s `ARView` to the viewport region. `--smoke` runs one frame headless and asserts the host, viewport, and bridge are in the state the gate checks; `--snapshot <path>` renders one `ARView` frame to a PNG and exits non-zero if it's blank.
+- `Tests/GamaConsoleTests/`: `ConsoleParserTests` (console versus direct command equality, targets, errors, session-side refusal).
 - `Tests/GamaUSDTests/`: round trips, refusals with line numbers, and `FixtureTests` against `Fixtures/everything.usda` (golden; `GAMA_UPDATE_GOLDEN=1` regenerates it) and `Fixtures/everything.usdcat.usda` (`usdcat` of the golden, verbatim). Regenerate the second with `usdcat` after any format change.
 - `Tests/GamaAuthoringTests/`: Swift Testing only. `SampleScene` in `Fixtures.swift` is the shared fixture.
 - `Tests/GamaRealityTests/`: `@MainActor` suites.
   - `Support.swift` holds the tree snapshot, its own `SampleScene` (separate from `Tests/GamaAuthoringTests/Fixtures.swift`'s — test targets can't share files, and the two have diverged: the authoring fixture's `Camera` carries transform, light, and camera components, this one's does not), and a seeded command generator.
   - `RealityBridgeTests.swift`: convergence, incrementality, and mapping tests.
   - `LightProjectionTests.swift`: light-component and marker projection, ADR 0004.
-- `Tests/GamaStudioEditorTests/`: `@MainActor` suites — `StudioModelTests` (the funnel and bridge sync), `StudioAppTests` (frame state and view tree), `StudioAppDelegateTests`, `ViewportTests` (picking, host placement, and real `NSWindow.sendEvent` click/keyboard round trips), `OrbitCameraTests` (the camera math), `ViewportCameraTests` (input mapping, scroll routing by device, and a real window drag that orbits without selecting), `LightsAndCamerasTests` (the sample scene's Key Light/Camera, the model's light/camera actions, the fallback light, and "Look through", ADR 0004), `SelectionHighlightTests` (edge geometry, following every selection source and edit, editor-state isolation), `DocumentReplacementTests` and `StudioDocumentTests` (ADR 0005), `Support.swift` (shared fixtures; test targets can't share files across targets).
+- `Tests/GamaStudioEditorTests/`: `@MainActor` suites — `StudioModelTests` (the funnel and bridge sync), `StudioAppTests` (frame state and view tree), `StudioAppDelegateTests`, `ViewportTests` (picking, host placement, and real `NSWindow.sendEvent` click/keyboard round trips), `OrbitCameraTests` (the camera math), `ViewportCameraTests` (input mapping, scroll routing by device, and a real window drag that orbits without selecting), `LightsAndCamerasTests` (the sample scene's Key Light/Camera, the model's light/camera actions, the fallback light, and "Look through", ADR 0004), `SelectionHighlightTests` (edge geometry, following every selection source and edit, editor-state isolation), `DocumentReplacementTests` and `StudioDocumentTests` (ADR 0005), `ConsoleTests` (the console through the model funnel and the panel's Enter-to-submit field, ADR 0006), `Support.swift` (shared fixtures; test targets can't share files across targets).
 
 ## Not built (next phases, in order)
 
-1. **A command console** that parses into the same commands.
-2. **A typed graph framework.**
-3. **Reading USD Gama did not write, and `.usdz`** (ADR 0005, Proposed).
+1. **A typed graph framework.**
+2. **Reading USD Gama did not write, and `.usdz`** (ADR 0005, Proposed).
+3. **Console follow-ups** (ADR 0006): `rotate`, `find`, history recall, a focus shortcut.
 4. **iOS and visionOS hosting.** `StudioModel` compiles wherever RealityKit does; `StudioApp`, `ViewportController`, and `gama-studio` are AppKit-only today.
 
 None of these may be described as existing until it has a target and passing tests.

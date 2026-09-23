@@ -27,6 +27,7 @@ let package = Package(
         .library(name: "GamaAuthoring", targets: ["GamaAuthoring"]),
         .library(name: "GamaReality", targets: ["GamaReality"]),
         .library(name: "GamaUSD", targets: ["GamaUSD"]),
+        .library(name: "GamaConsole", targets: ["GamaConsole"]),
     ],
     dependencies: [
         // PR #108's head: the native-region API the viewport needs.
@@ -46,6 +47,19 @@ let package = Package(
             name: "GamaUSDTests",
             dependencies: ["GamaUSD", "GamaAuthoring"],
             exclude: ["Fixtures"],
+            swiftSettings: strictCore
+        ),
+        // The command console's parser (ADR 0006): text in, the same
+        // DocumentCommands every other surface produces out. Standard
+        // library only; tools/check.sh bans platform imports here too.
+        .target(
+            name: "GamaConsole",
+            dependencies: ["GamaAuthoring"],
+            swiftSettings: strictLibrary
+        ),
+        .testTarget(
+            name: "GamaConsoleTests",
+            dependencies: ["GamaConsole", "GamaAuthoring"],
             swiftSettings: strictCore
         ),
         // Apple-only runtime projection; compiles to nothing without RealityKit.
@@ -72,6 +86,7 @@ let package = Package(
                 "GamaAuthoring",
                 "GamaReality",
                 "GamaUSD",
+                "GamaConsole",
                 .product(name: "GamaCore", package: "gama"),
                 .product(name: "GamaAppleUI", package: "gama"),
             ],

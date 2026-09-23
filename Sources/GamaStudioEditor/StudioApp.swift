@@ -143,6 +143,8 @@ struct StudioFrameState: Sendable {
     var selectionName: String?
     var undoLabel: String?
     var lastError: AuthoringError?
+    /// The console exchanges the panel shows, oldest first.
+    var console: [StudioModel.ConsoleEntry]
 
     @MainActor
     init(_ model: StudioModel) {
@@ -191,6 +193,7 @@ struct StudioFrameState: Sendable {
         self.revision = session.revision
         self.undoLabel = session.undoLabel
         self.lastError = model.lastError
+        self.console = Array(model.consoleLog.suffix(ConsolePanel.visibleEntries))
     }
 }
 
@@ -222,6 +225,7 @@ struct StudioRootView: View {
                 InspectorPanel(model: model, viewport: viewport, inspected: state.inspected)
             }
             .frame(maxWidth: .max, maxHeight: .max)
+            ConsolePanel(model: model, entries: state.console)
             Text(Self.statusLine(state))
         }
     }
@@ -258,6 +262,70 @@ struct StudioRootView: View {
         line += " · undo: \(state.undoLabel ?? "—")"
         if let error = state.lastError { line += " · \(error)" }
         return line
+    }
+}
+
+/// The command console (ADR 0006): the latest exchanges above an input
+/// line. Enter submits the line through ``StudioModel/submitConsole()``,
+/// which runs it through the same funnel as every other edit.
+struct ConsolePanel: View {
+    /// How many past exchanges the panel shows.
+    static let visibleEntries = 3
+
+    let model: StudioModel
+    let entries: [StudioModel.ConsoleEntry]
+
+    var body: some View {
+        VStack {
+            ForEach(entries) { entry in
+                Text("> \(entry.input)  →  \(entry.output)", style: entry.isError ? TextStyle(attributes: [.dim]) : .plain)
+            }
+            HStack(spacing: 1) {
+                Text(">")
+                ConsoleField(
+                    placeholder: "type a command, e.g. move selected 0 1 0 — 'help' lists them",
+                    text: Binding(
+                        get: { [model] in MainActor.assumeIsolated { model.consoleInput } },
+                        set: { [model] value in MainActor.assumeIsolated { model.consoleInput = value } }
+                    ),
+                    onSubmit: onMain(model) { $0.submitConsole() }
+                )
+                .frame(maxWidth: .max)
+            }
+        }
+        .frame(maxWidth: .max, alignment: .topLeading)
+        .border(title: "Console")
+    }
+}
+
+/// A `TextField` whose Enter submits instead of doing nothing.
+///
+/// `TextField` declines Enter, and the host then activates the node. A
+/// plain action would also fire on a click into the field, since a pointer
+/// press invokes the hit node's action, so the submit is attached to Enter
+/// alone by wrapping the key handler the field registers.
+struct ConsoleField: View {
+    typealias Body = Never_
+    var body: Never_ { Never_() }
+
+    let placeholder: String
+    let text: Binding<String>
+    let onSubmit: () -> Void
+
+    func render(in context: BuildContext) -> RenderNode {
+        var inner = context
+        let register = context.registerKeyHandler
+        let submit = onSubmit
+        inner.registerKeyHandler = { id, handler in
+            register(id) { key in
+                if key == .enter {
+                    submit()
+                    return true
+                }
+                return handler(key)
+            }
+        }
+        return TextField(placeholder, text: text).render(in: inner)
     }
 }
 

@@ -7,6 +7,7 @@
 
 #if canImport(RealityKit)
 public import GamaAuthoring
+import GamaConsole
 public import GamaReality
 
 /// Owns the editing session and its RealityKit projection for Gama Studio.
@@ -107,15 +108,125 @@ public final class StudioModel {
     /// selection unchanged. Selection is editor state, not authored state, so
     /// this never touches `bridge`.
     public func select(_ id: EntityID?) {
+        select(id.map { [$0] } ?? [])
+    }
+
+    /// Replaces the selection with `ids`, the last one primary, or clears it
+    /// when `ids` is empty. An id absent from the document sets `lastError`
+    /// and leaves the selection unchanged.
+    public func select(_ ids: [EntityID]) {
         let before = session.selection
         attempt { () throws(AuthoringError) in
-            if let id {
-                try session.select([id])
-            } else {
+            if ids.isEmpty {
                 session.clearSelection()
+            } else {
+                try session.select(ids)
             }
         }
         reportSelection(changedFrom: before)
+    }
+
+    // MARK: Console
+
+    /// One console exchange: what was typed and what came back.
+    public struct ConsoleEntry: Hashable, Sendable {
+        public var input: String
+        public var output: String
+        public var isError: Bool
+
+        public init(input: String, output: String, isError: Bool) {
+            self.input = input
+            self.output = output
+            self.isError = isError
+        }
+    }
+
+    /// The most recent console exchanges, oldest first, at most
+    /// ``consoleLogLimit``. Editor state, not authored state.
+    public private(set) var consoleLog: [ConsoleEntry] = []
+    public static let consoleLogLimit = 50
+
+    /// The console's input line, bound to its text field.
+    public var consoleInput = ""
+
+    /// Runs ``consoleInput`` as a console line and clears it.
+    public func submitConsole() {
+        let line = consoleInput
+        consoleInput = ""
+        runConsole(line)
+    }
+
+    /// Parses `line` against the current document and selection and runs
+    /// the result through the same funnel as every other edit (ADR 0006):
+    /// document edits become ``EditorSession`` commands, one per step, and
+    /// `add`, `select`, `undo`, and `redo` call the methods the toolbar and
+    /// panels call. The exchange is appended to ``consoleLog`` and returned.
+    /// A blank line does nothing and returns `nil`.
+    @discardableResult
+    public func runConsole(_ line: String) -> ConsoleEntry? {
+        let trimmed = line.trimmingWhitespace()
+        guard !trimmed.isEmpty else { return nil }
+        let parser = ConsoleParser(document: session.document, selection: session.selection)
+        var output: String
+        var isError = false
+        do {
+            let action = try parser.parse(trimmed)
+            // A refusal left over from an earlier action is not this line's.
+            if case .help = action {} else { lastError = nil }
+            switch action {
+            case .edit(let label, let commands):
+                if commands.count == 1 {
+                    run(commands[0])
+                } else {
+                    settle { () throws(AuthoringError) in try session.transaction(label, commands) }
+                }
+                output = session.undoLabel ?? label
+            case .addPrimitive(let primitive):
+                addPrimitive(primitive)
+                output = createdMessage()
+            case .addLight(let kind):
+                addLight(kind)
+                output = createdMessage()
+            case .addCamera:
+                addCamera()
+                output = createdMessage()
+            case .select(let ids):
+                select(ids)
+                output = ids.isEmpty ? "Selection cleared" : "Selected \(ids.count == 1 ? name(of: ids[0]) : "\(ids.count) entities")"
+            case .undo:
+                let label = session.undoLabel
+                undo()
+                output = "Undid \(label ?? "")"
+            case .redo:
+                let label = session.redoLabel
+                redo()
+                output = "Redid \(label ?? "")"
+            case .help(let text):
+                output = text
+            }
+            if case .help = action {} else if let lastError {
+                output = "refused: \(lastError)"
+                isError = true
+            }
+        } catch {
+            output = error.message
+            isError = true
+        }
+        let entry = ConsoleEntry(input: trimmed, output: output, isError: isError)
+        consoleLog.append(entry)
+        if consoleLog.count > Self.consoleLogLimit {
+            consoleLog.removeFirst(consoleLog.count - Self.consoleLogLimit)
+        }
+        return entry
+    }
+
+    private func createdMessage() -> String {
+        guard let id = session.selection.primary else { return "Created" }
+        return "Created \(name(of: id))"
+    }
+
+    private func name(of id: EntityID) -> String {
+        session.document.entity(id)?.name ?? "\(id)"
     }
 
     // MARK: Editing
@@ -448,6 +559,14 @@ public final class StudioModel {
         case .cone: "Cone"
         case .plane: "Plane"
         }
+    }
+}
+extension String {
+    /// The string without leading and trailing whitespace, without Foundation.
+    func trimmingWhitespace() -> String {
+        let start = firstIndex { !$0.isWhitespace } ?? endIndex
+        let end = lastIndex { !$0.isWhitespace }.map(index(after:)) ?? start
+        return String(self[start..<max(start, end)])
     }
 }
 #endif
