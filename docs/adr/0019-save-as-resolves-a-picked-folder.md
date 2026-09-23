@@ -27,11 +27,12 @@ picked URL's `isDirectoryKey`:
 | Name taken, **Keep Both** | unsaved changes | the folder |
 | Name taken, **Keep Both** | no changes | the folder |
 | Name free (no dialog) | no changes | the file |
+| Name taken, **Replace** | no changes | the file (user-reported, same day) |
 
 So Keep Both is the trigger, and unsaved changes do not matter. In both
 Keep Both runs the folder then held a single `Untitled.usda` with the new
 bytes. The picker had overwritten the existing file instead of keeping both.
-That is the system's behavior, and Gama Studio cannot prevent it.
+That was the system's behavior on the iOS 27.2 simulator. It is unmeasured on a device, and Gama Studio cannot prevent it.
 
 ## Decision
 
@@ -67,8 +68,6 @@ That is the system's behavior, and Gama Studio cannot prevent it.
 
 - Keep Both now saves to the fresh copy, measured in the simulator for both
   Keep Both runs above: the console note appears, then `saved Untitled.usda`.
-  The attach to a file inside the picked folder worked under the folder's
-  security scope.
 - `ExportedFileTests` (12 tests) pins the rules on macOS: a file, a missing
   URL, a folder URL without a trailing slash, the named copy, a lone renamed
   copy, no copy, stale bytes, the timestamp slack, other bytes, two renamed
@@ -80,3 +79,8 @@ That is the system's behavior, and Gama Studio cannot prevent it.
   `currentURL` pointing at it, with the recovery file already discarded,
   because `adoptSavedCopy` runs before the attach. This ADR does not change
   that order. Fixing it means adopting only after the attach succeeds.
+- **Unmeasured on a device.** The resolved file sits inside the picked
+  folder, whose security scope `withAccess` ends before the attach runs.
+  The attach, and later autosaves, reach that file with no scope of its own.
+  That worked in the simulator. A device may refuse it, and the refusal
+  would take the attach-failure path above.
