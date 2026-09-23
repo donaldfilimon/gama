@@ -86,11 +86,13 @@ public struct LayoutMetrics {
 - `LayoutEngine.measure`/`layout` gain a `metrics:` parameter defaulting to
   `.cell`. Every authored length (stack spacing, padding insets,
   `frame(width:height:)`, `spacer(minLength:)`, the ends of `flexFrame`
-  other than `.max`) is converted through `units(cells:axis:)` at the point
-  of use. Flex distribution (ADR 0013) is unchanged: it already works on
+  other than `.max`, and a border's fixed thickness of one cell per edge)
+  is converted through `units(cells, axis)` at the point of use. The
+  one-unit floor a stack applies to an empty cross axis stays one layout
+  unit. Flex distribution (ADR 0013) is unchanged: it already works on
   arbitrary integers.
 - `.text` leaves measure through `textSize`. An `.interactive` node asks
-  `controlSize(for:proposal:)` first and falls back to measuring its child.
+  `controlSize(id, proposal)` first and falls back to measuring its child.
 - `FrameHost` stores its metrics, set at `init` (default `.cell`), and uses
   them in `buildFrame`. **`surfaceSize` stays in cells** (ADR 0017 rule 3):
   a native host reports its bounds divided by its cell size, so
@@ -124,7 +126,10 @@ public enum ControlDescriptor {
 - `BuildContext` gains `registerControl: (NodeID, ControlDescriptor) -> Void`,
   a trailing `init` parameter defaulting to a no-op, and `FrameHost` keeps a
   per-build table cleared in `beginBuildPass()`, exactly like
-  `registerNativeRegion`.
+  `registerNativeRegion`. A duplicate registration for one `NodeID` keeps
+  the **last** one, the same policy as native regions. `Toggle` renders
+  through `Button` and then registers `.toggle`, so last-wins leaves the
+  toggle descriptor, not Button's, for that node.
 - `Button`, `Toggle`, `TextField`, and `ProgressView` register a descriptor
   in `render(in:)` and **still return the same `RenderNode` as today**, so
   the cell path, MLIR, and DrawList output do not change. The one exception
@@ -220,7 +225,7 @@ A new `GamaNativeHostView` in `GamaAppleUI`, in its own files so
 
 - A duplicate control or region `NodeID` in one frame follows the existing
   `validateIdentities` and `duplicateNativeRegionIDs` behavior: it is
-  reported, and the first registration wins.
+  reported, and the last registration wins.
 - A text measurement AppKit cannot produce (empty or invalid attributed
   string) falls back to `LayoutMetrics.cell` scaled by the cell size, so layout
   never stalls.
@@ -277,7 +282,7 @@ comment (doc-coverage gate).
   measures a large tree before and after, and records the numbers in
   `docs/Performance.md` as local, not a gate.
 - **Parity of the metrics refactor.** Every authored length must go through
-  `units(cells:axis:)` exactly once. The parity test over the whole catalog
+  `units(cells, axis)` exactly once. The parity test over the whole catalog
   is the guard, and it lands before any native code.
 - **Buttons with rich labels.** A container button is less native than
   `NSButton`. That is acceptable for sub-project 1. If the operator app
