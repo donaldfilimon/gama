@@ -315,9 +315,15 @@ public final class GamaHostView: GamaPlatformView {
         placeNativeRegions(lastNativeRegions)
     }
 
-    /// Removes the view attached to `id`, if any, from this host.
+    /// Removes the view attached to `id`, if any, from this host. If `id`
+    /// currently holds Gama focus, first responder returns to the host
+    /// unconditionally — the detached view is gone before the next frame's
+    /// reclaim check could find it there.
     public func detach(_ id: NativeRegionID) {
-        attachedNativeViews.removeValue(forKey: id)?.removeFromSuperview()
+        guard let view = attachedNativeViews.removeValue(forKey: id) else { return }
+        let wasFocused = focusedNativeRegions.remove(id) != nil
+        view.removeFromSuperview()
+        if wasFocused { giveFirstResponder(to: self) }
         placeNativeRegions(lastNativeRegions)
     }
 
@@ -336,6 +342,11 @@ public final class GamaHostView: GamaPlatformView {
         for region in regions { byID[region.id] = region }
         var shown: [Rect] = []
         var focused: Set<NativeRegionID> = []
+        // At most one region gains focus in a given frame (Gama focus is
+        // single), but this stays a "last one wins" assignment rather than
+        // an assumption, so a future multi-focus model degrades instead of
+        // silently misbehaving.
+        var newlyFocusedView: GamaPlatformView?
         for (id, view) in attachedNativeViews {
             guard let region = byID[id], region.frame.size.width > 0, region.frame.size.height > 0
             else {
@@ -347,16 +358,63 @@ public final class GamaHostView: GamaPlatformView {
             shown.append(region.frame)
             if region.isFocused {
                 focused.insert(id)
-                if !focusedNativeRegions.contains(id) { giveFirstResponder(to: view) }
+                if !focusedNativeRegions.contains(id) { newlyFocusedView = view }
             }
         }
-        if !focusedNativeRegions.subtracting(focused).isEmpty { giveFirstResponder(to: self) }
+        // Focus handed straight from one region to another must reach the
+        // new view without an intervening bounce to the host (Important #1):
+        // a region gaining focus this frame always wins the handoff, and the
+        // host only reclaims when nothing took focus this frame.
+        if let newlyFocusedView {
+            giveFirstResponder(to: newlyFocusedView)
+        } else {
+            let lost = focusedNativeRegions.subtracting(focused)
+            // Reclaiming unconditionally would steal first responder from an
+            // unrelated control the user (or another part of the app) just
+            // focused (Important #2): only reclaim when the window's current
+            // first responder is still inside a view that just lost focus.
+            if !lost.isEmpty, firstResponderIsInside(lost) {
+                giveFirstResponder(to: self)
+            }
+        }
         focusedNativeRegions = focused
         if shown != shownNativeRegionCells {
             shownNativeRegionCells = shown
             setNeedsDisplayCompat()
         }
     }
+
+    /// Whether the window's current first responder is one of `ids`'
+    /// attached views, or a descendant of one — the precondition for the
+    /// host reclaiming first responder after a region loses focus.
+    private func firstResponderIsInside(_ ids: Set<NativeRegionID>) -> Bool {
+        #if canImport(AppKit)
+            guard let responder = unsafe window?.firstResponder as? NSView else { return false }
+            for id in ids {
+                if let view = attachedNativeViews[id], unsafe responder.isDescendant(of: view) {
+                    return true
+                }
+            }
+            return false
+        #else
+            for id in ids {
+                if let view = attachedNativeViews[id], isFirstResponderOrDescendant(view) {
+                    return true
+                }
+            }
+            return false
+        #endif
+    }
+
+    #if canImport(UIKit)
+        private func isFirstResponderOrDescendant(_ view: GamaPlatformView) -> Bool {
+            if view.isFirstResponder { return true }
+            for sub in view.subviews {
+                if isFirstResponderOrDescendant(sub) { return true }
+            }
+            return false
+        }
+    #endif
 
     private func giveFirstResponder(to view: GamaPlatformView) {
         #if canImport(AppKit)

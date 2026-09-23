@@ -20,7 +20,20 @@
             }
         }
 
-        private func installed(_ app: ViewportApp) throws -> GamaHostView {
+        private struct TwoRegionApp: App {
+            var scenes: some Scene {
+                Window("Studio", id: "main", role: .primary) {
+                    VStack {
+                        NativeRegion(NativeRegionID("a")) { Text("A") }
+                            .frame(width: 10, height: 5)
+                        NativeRegion(NativeRegionID("b")) { Text("B") }
+                            .frame(width: 10, height: 5)
+                    }
+                }
+            }
+        }
+
+        private func installed<A: App>(_ app: A) throws -> GamaHostView {
             let view = GamaHostView(frame: NSRect(x: 0, y: 0, width: 420, height: 240))
             try view.install(app: app)
             view.layoutSubtreeIfNeeded()
@@ -74,6 +87,41 @@
             #expect(window.firstResponder === native)
             host.send(.key(.tab))  // region → button: host reclaims
             #expect(window.firstResponder === host)
+        }
+
+        @Test("focus moving from one native region straight to another hands off without the host reclaiming first responder")
+        func focusHandoffBetweenRegions() throws {
+            let host = try installed(TwoRegionApp())
+            let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: true)
+            window.contentView = host
+            let viewA = FocusableView()
+            let viewB = FocusableView()
+            host.attach(viewA, to: NativeRegionID("a"))
+            host.attach(viewB, to: NativeRegionID("b"))
+            // Region "a" is the first focusable node, so Gama's initial
+            // focus already lands there without a Tab.
+            #expect(window.firstResponder === viewA)
+            host.send(.key(.tab))  // region a → region b, directly
+            #expect(window.firstResponder === viewB)
+        }
+
+        @Test("a frame update after focus moved elsewhere does not steal first responder back")
+        func focusReclaimDoesNotStealFromUnrelatedControl() throws {
+            let host = try installed(ViewportApp())
+            let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: true)
+            window.contentView = host
+            let native = FocusableView()
+            host.attach(native, to: NativeRegionID("viewport"))
+            host.send(.key(.tab))  // button → region
+            #expect(window.firstResponder === native)
+
+            let other = FocusableView()
+            host.addSubview(other)
+            _ = window.makeFirstResponder(other)
+            #expect(window.firstResponder === other)
+
+            host.send(.key(.tab))  // region → button: Gama focus leaves the region
+            #expect(window.firstResponder === other)
         }
 
         @Test("an attached view is an accessibility child between the rows")
