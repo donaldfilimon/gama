@@ -10,7 +10,7 @@ macOS only; no hosted run (billing lock).** The owner approved the design
 section by section on 2026-09-23. The implementation plan
 (`docs/superpowers/plans/2026-09-23-native-regions.md`) follows this spec
 and nothing is claimed in `docs/Capabilities.md` until an implementation has
-a hosted-evidence anchor.
+evidence at the layer that evidence supports (local or hosted).
 
 ## The decision: follow the action pattern
 
