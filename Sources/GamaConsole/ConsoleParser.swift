@@ -1,4 +1,5 @@
 public import GamaAuthoring
+public import GamaGraph
 
 /// One word of a console line. A quoted word is always text, never a
 /// number or keyword, so `"2"` names an entity called 2.
@@ -31,10 +32,13 @@ public struct ConsoleWord: Hashable, Sendable {
 public struct ConsoleParser: Sendable {
     public let document: SceneDocument
     public let selection: Selection
+    /// The node types `graph add` offers.
+    public let registry: NodeRegistry
 
-    public init(document: SceneDocument, selection: Selection) {
+    public init(document: SceneDocument, selection: Selection, registry: NodeRegistry = .standard) {
         self.document = document
         self.selection = selection
+        self.registry = registry
     }
 
     /// The verbs and their usage, in the order `help` lists them.
@@ -54,6 +58,7 @@ public struct ConsoleParser: Sendable {
         ("duplicate", "duplicate [target]"),
         ("delete", "delete [target]"),
         ("hide", "hide|show|lock|unlock [target]"),
+        ("graph", "graph new|list|show|nodes|add|remove|connect|disconnect|set|rename|delete|apply …   (type 'graph')"),
         ("undo", "undo | redo"),
         ("help", "help [verb]"),
     ]
@@ -81,6 +86,7 @@ public struct ConsoleParser: Sendable {
         case "duplicate": return try perTarget("Duplicate", words) { DuplicateEntity($0) }
         case "delete", "remove": return try delete(words)
         case "hide", "show", "lock", "unlock": return try visibility(verb, words)
+        case "graph": return try graph(words)
         default:
             throw ConsoleError("unknown command '\(verb)'; type 'help' for the list")
         }

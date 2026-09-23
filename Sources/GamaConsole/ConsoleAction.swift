@@ -23,6 +23,11 @@ public enum ConsoleAction: Sendable {
     case select([EntityID])
     case undo
     case redo
+    /// Graph edits to run as one undoable step together with the graph's
+    /// re-evaluation, so their effect on the scene undoes with them (ADR 0007).
+    case graphEdit(GraphID, label: String, commands: [any DocumentCommand])
+    /// Creates a graph and makes it the editor's active graph.
+    case createGraph(name: String, domain: GraphDomain)
     /// Text to show; changes nothing.
     case help(String)
 }

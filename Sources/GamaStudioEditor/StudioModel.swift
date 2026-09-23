@@ -8,6 +8,7 @@
 #if canImport(RealityKit)
 public import GamaAuthoring
 import GamaConsole
+public import GamaGraph
 public import GamaReality
 
 /// Owns the editing session and its RealityKit projection for Gama Studio.
@@ -80,6 +81,7 @@ public final class StudioModel {
     public func replaceDocument(_ document: SceneDocument) {
         let before = session.selection
         defer { reportSelection(changedFrom: before) }
+        showGraph(nil)
         session = EditorSession(document: document)
         savedDocument = document
         lastError = nil
@@ -126,6 +128,132 @@ public final class StudioModel {
         reportSelection(changedFrom: before)
     }
 
+    // MARK: Graphs (ADR 0007)
+
+    /// Evaluates graphs; its registry is the node set the editor offers.
+    public let graphEvaluator = GraphEvaluator()
+
+    /// The graph the graph editor shows. Editor state; see ``currentGraph``.
+    public private(set) var activeGraph: GraphID?
+    /// The node the graph editor has selected. Editor state.
+    public private(set) var selectedGraphNode: GraphNodeID?
+    /// An output picked as the start of a connection, waiting for an input.
+    public private(set) var pendingLink: PortReference?
+
+    /// The graph the editor shows: ``activeGraph`` while it exists, otherwise
+    /// the first graph, or `nil` when the document has none.
+    public var currentGraph: GraphDocument? {
+        let document = session.document
+        if let activeGraph, let graph = document.graph(activeGraph) { return graph }
+        return document.graphOrder.first.flatMap(document.graph)
+    }
+
+    /// Creates a graph and shows it.
+    public func createGraph(name: String, domain: GraphDomain) {
+        let id = session.document.nextGraphID
+        run(CreateGraph(name: name, domain: domain))
+        guard lastError == nil else { return }
+        showGraph(id)
+    }
+
+    /// Shows `id` in the graph editor.
+    public func showGraph(_ id: GraphID?) {
+        activeGraph = id
+        selectedGraphNode = nil
+        pendingLink = nil
+    }
+
+    /// Shows the next (or previous) graph in document order, wrapping.
+    public func cycleGraph(by delta: Int) {
+        let order = session.document.graphOrder
+        guard !order.isEmpty else { return }
+        let index = currentGraph.flatMap { order.firstIndex(of: $0.id) } ?? 0
+        showGraph(order[((index + delta) % order.count + order.count) % order.count])
+    }
+
+    public func selectGraphNode(_ id: GraphNodeID?) {
+        selectedGraphNode = id
+    }
+
+    /// Applies graph edits and the graph's re-evaluation as one undoable
+    /// step, so a graph edit and its effect on the scene undo together. An
+    /// evaluation failure refuses the edit and records `lastError`.
+    public func editGraph(_ graph: GraphID, label: String, _ commands: [any DocumentCommand]) {
+        settle { () throws(AuthoringError) in
+            try session.transaction(label, commands + [EvaluateGraph(graph, evaluator: graphEvaluator)])
+        }
+    }
+
+    /// Adds a node of `definition` to the current graph and selects it.
+    public func addGraphNode(_ definition: String) {
+        guard let graph = currentGraph, let node = graphEvaluator.registry.definition(definition) else { return }
+        let id = graph.nextNodeID
+        let position = SIMD2<Float>(Float(graph.nodes.count) * 4, 0)
+        editGraph(graph.id, label: "Add \(node.title)", [node.addCommand(to: graph.id, at: position)])
+        if lastError == nil { selectedGraphNode = id }
+    }
+
+    /// Removes the selected graph node and its connections.
+    public func removeSelectedGraphNode() {
+        guard let graph = currentGraph, let node = selectedGraphNode else { return }
+        editGraph(graph.id, label: "Remove Node", [RemoveGraphNode(node, from: graph.id)])
+        if lastError == nil { selectedGraphNode = nil }
+    }
+
+    /// Starts a connection at an output; ``completeLink(to:)`` finishes it.
+    public func beginLink(from output: PortReference) {
+        pendingLink = output
+    }
+
+    /// Connects the pending output to `input` in the current graph.
+    public func completeLink(to input: PortReference) {
+        guard let graph = currentGraph, let from = pendingLink else { return }
+        pendingLink = nil
+        editGraph(graph.id, label: "Connect", [ConnectPorts(from, to: input, in: graph.id)])
+    }
+
+    public func cancelLink() {
+        pendingLink = nil
+    }
+
+    /// Disconnects `input` in the current graph.
+    public func disconnect(_ input: PortReference) {
+        guard let graph = currentGraph else { return }
+        editGraph(graph.id, label: "Disconnect", [DisconnectPorts(input, in: graph.id)])
+    }
+
+    /// Sets a constant on an input of the current graph.
+    public func setGraphValue(_ value: GraphValue?, for input: PortReference) {
+        guard let graph = currentGraph else { return }
+        editGraph(graph.id, label: "Set \(input.port)", [SetGraphValue(value, for: input.port, of: input.node, in: graph.id)])
+    }
+
+    /// Adds `delta` to a float constant (the editor's − and + buttons).
+    public func nudgeGraphValue(_ input: PortReference, by delta: Float) {
+        guard let node = currentGraph?.node(input.node), case .float(let value)? = node.values[input.port] else { return }
+        setGraphValue(.float(value + delta), for: input)
+    }
+
+    /// Points an entity input at the primary selection.
+    public func targetSelection(_ input: PortReference) {
+        guard let id = session.selection.primary else { return }
+        setGraphValue(.entity(id), for: input)
+    }
+
+    /// Re-applies the current graph to the scene, for example after the
+    /// scene was edited by hand.
+    public func applyCurrentGraph() {
+        guard let graph = currentGraph else { return }
+        run(EvaluateGraph(graph.id, evaluator: graphEvaluator))
+    }
+
+    /// Deletes the current graph.
+    public func deleteCurrentGraph() {
+        guard let graph = currentGraph else { return }
+        run(DeleteGraph(graph.id))
+        if lastError == nil { showGraph(nil) }
+    }
+
     // MARK: Console
 
     /// One console exchange: what was typed and what came back.
@@ -166,7 +294,9 @@ public final class StudioModel {
     public func runConsole(_ line: String) -> ConsoleEntry? {
         let trimmed = line.trimmingWhitespace()
         guard !trimmed.isEmpty else { return nil }
-        let parser = ConsoleParser(document: session.document, selection: session.selection)
+        let parser = ConsoleParser(
+            document: session.document, selection: session.selection, registry: graphEvaluator.registry
+        )
         var output: String
         var isError = false
         do {
@@ -201,6 +331,12 @@ public final class StudioModel {
                 let label = session.redoLabel
                 redo()
                 output = "Redid \(label ?? "")"
+            case .graphEdit(let graph, let label, let commands):
+                editGraph(graph, label: label, commands)
+                output = session.undoLabel ?? label
+            case .createGraph(let name, let domain):
+                createGraph(name: name, domain: domain)
+                output = currentGraph.map { "Created graph \($0.id) \($0.name)" } ?? "Created graph"
             case .help(let text):
                 output = text
             }
