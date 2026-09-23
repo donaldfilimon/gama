@@ -1,6 +1,9 @@
 # Native view embedding — draft
 
 Status: Draft. Open questions, not a commitment. Nothing here is built.
+Open question 6 is resolved: [ADR 0016](../../../adr/0016-native-regions-narrow-own-the-rendering.md)
+accepts the amendment. The other questions remain open for the implementation
+design.
 
 ## Why this is written down
 
@@ -80,8 +83,8 @@ only what it has to:
   boundary shape as the `gama_embed_v1_*` C ABI: one explicit escape hatch at
   the edge, not a general widget-wrapping layer.
 
-That is still an amendment. If this is accepted, it needs its own ADR (0016)
-that narrows 0001's consequence. Written that way, it's a documented
+That is still an amendment, and ADR 0016 now records it as one: it narrows
+0001's consequence. Written that way, it's a documented
 exception. Slipped in as a helper, it would be a silent one.
 
 ## The proposal
@@ -206,9 +209,10 @@ A single vertical slice, after acceptance and ADR 0016:
    (`gama_embed_v1_region_*` or a new symbol family), and should the WASM host
    publish them as positioned DOM slots so a browser embedder can mount a
    canvas? Either would be a public-ABI change.
-6. **Is amending ADR 0001 acceptable at all?** This is the owner's decision.
-   The alternative is to keep Gama pure and build the Studio shell natively
-   around a Gama host, with no region inside Gama.
+6. **Is amending ADR 0001 acceptable at all?** Resolved: accepted in ADR 0016,
+   which also sets the rules any implementation must keep (mandatory fallback,
+   app-owned views, no platform imports in portable targets, no wire-format
+   change).
 7. **Platform scope.** Should AppKit and UIKit ship together, or macOS first
    with iOS and visionOS following, given the platform gate compiles
    `GamaAppleUI` for all of them?
