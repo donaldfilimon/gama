@@ -2,9 +2,10 @@
 
 Gama Studio is a Swift-native, document-centric 3D authoring app. The vision is in `docs/spec/2026-09-23-unified-usd-realitykit-spec.md`.
 
-**Status: Phase 2.** macOS only. The project has three parts:
+**Status: Phase 2.** macOS only. The project has four parts:
 - `GamaAuthoring` is a standard-library-only authoring core with a value document, undoable commands, atomic transactions, selection, and an incremental change feed.
 - `GamaReality` projects it into RealityKit incrementally.
+- `GamaUSD` saves and loads documents as USDA with an exact round trip, using standard USD schemas so other USD tools can open the files (ADR 0005).
 - `GamaStudioEditor` + the `gama-studio` executable host both of those in an editor window built from Gama views (`donaldfilimon/gama`, pinned by revision to an unmerged PR — see `AGENTS.md`), around a RealityKit viewport with orbit/pan/zoom camera controls, a "Frame" toolbar button, and click-to-select picking. See ADR 0003.
 
 ```bash
@@ -12,7 +13,7 @@ unset TOOLCHAINS
 swiftly run swift run gama-studio
 ```
 
-Cameras and lights are authored document components too — a camera never drives the viewport, and lights fall back to a fixed editor light only when the document has none of its own (ADR 0004). There is no USD support or command console yet. See `AGENTS.md` for the gate and what comes next, and `docs/adr/` for decisions.
+Cameras and lights are authored document components too — a camera never drives the viewport, and lights fall back to a fixed editor light only when the document has none of its own (ADR 0004). File ▸ Open/Save/Save As (⌘O, ⌘S, ⇧⌘S) read and write `.usda`; `gama-studio --open <file>` starts from one and `--export <file>` writes one without opening a window. There is no command console yet. See `AGENTS.md` for the gate and what comes next, and `docs/adr/` for decisions.
 
 ```swift
 import GamaAuthoring

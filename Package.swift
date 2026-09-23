@@ -71,6 +71,7 @@ let package = Package(
             dependencies: [
                 "GamaAuthoring",
                 "GamaReality",
+                "GamaUSD",
                 .product(name: "GamaCore", package: "gama"),
                 .product(name: "GamaAppleUI", package: "gama"),
             ],
@@ -82,6 +83,7 @@ let package = Package(
                 "GamaStudioEditor",
                 "GamaAuthoring",
                 "GamaReality",
+                "GamaUSD",
                 // StudioAppTests drives a FrameHost and paints its frames to
                 // text, which needs both gama modules imported directly.
                 .product(name: "GamaCore", package: "gama"),

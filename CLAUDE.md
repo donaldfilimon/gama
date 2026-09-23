@@ -25,12 +25,13 @@ Commands:
 
 ```bash
 unset TOOLCHAINS
-./tools/check.sh >| check.log 2>&1; echo "EXIT:$?"         # the gate: build, tests, gama-studio --smoke
+./tools/check.sh >| check.log 2>&1; echo "EXIT:$?"         # the gate: build, tests, --smoke, usd round trip
 swiftly run swift test --filter TransactionTests           # one suite
 swiftly run swift test --filter BridgeConvergenceTests     # bridge property test (~30–40 s)
 swiftly run swift run gama-studio                           # open the editor window
 swiftly run swift run gama-studio --smoke                   # what the gate runs, headless
 swiftly run swift run gama-studio --snapshot out.png        # one ARView frame to PNG
+swiftly run swift run gama-studio --export out.usda         # headless USDA export (ADR 0005)
 ```
 
 - Adding a command means three things:
@@ -41,4 +42,5 @@ swiftly run swift run gama-studio --snapshot out.png        # one ARView frame t
 - `Package.swift` pins `donaldfilimon/gama` to a specific commit, `2ef325c120674cfe218de44f492f435ff50a28e7` (gama PR #108's head, stacked on #107, both unmerged, hosted CI blocked by the billing lock in `~/CLAUDE.md`). Bump it to a `main` revision once those merge, and re-run the gate against the bump before trusting it (ADR 0003).
 - Every editor mutation goes through `StudioModel`, never `EditorSession` or `RealityBridge` directly, and every `@MainActor` crossing at the UI boundary is an explicit `MainActor.assumeIsolated` (ADR 0003).
 - Lights and cameras are ordinary document components (`Light`, `CameraSettings` in `GamaAuthoring`), projected into RealityKit light components and pickable markers; a camera never becomes a RealityKit camera, and "Look through" is editor-only state, not a document write (ADR 0004).
+- USD persistence is Gama's own stdlib-only USDA codec (`GamaUSD`), not `Entity.write` or ModelIO; `gama:` attributes are authoritative on read, and a format change means regenerating both fixtures in `Tests/GamaUSDTests/Fixtures` (ADR 0005).
 - Agent shells may set `noclobber`: truncate with `>|`, and verify file edits by grepping for a marker rather than trusting an exit code.

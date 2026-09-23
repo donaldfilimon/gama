@@ -4,7 +4,9 @@
 //  gama's GamaHostView, with a RealityKit ARView attached to the app's
 //  viewport region. `--smoke` skips the event loop and asserts a real frame
 //  was produced and the viewport placed; `--snapshot <png>` renders the
-//  ARView once to a PNG for visual evidence.
+//  ARView once to a PNG for visual evidence. `--open <usda>` starts from a
+//  file instead of the sample scene, and `--export <usda>` writes the document
+//  (opened or sample) and exits without building any UI (ADR 0005).
 //
 //  Top-level code in main.swift is implicitly @MainActor-isolated, which is
 //  what lets this call straight into AppKit and GamaAppleUI's @MainActor
@@ -22,12 +24,39 @@ import RealityKit
 
 let arguments = CommandLine.arguments
 let isSmoke = arguments.contains("--smoke")
-let snapshotPath: String? = arguments.firstIndex(of: "--snapshot").flatMap { index in
-    arguments.index(after: index) < arguments.endIndex ? arguments[arguments.index(after: index)] : nil
+/// The argument after `flag`; exits 2 when the flag is present without one.
+func path(after flag: String) -> String? {
+    guard let index = arguments.firstIndex(of: flag) else { return nil }
+    let next = arguments.index(after: index)
+    guard next < arguments.endIndex, !arguments[next].hasPrefix("--") else {
+        FileHandle.standardError.write(Data("gama-studio: \(flag) needs a path\n".utf8))
+        exit(2)
+    }
+    return arguments[next]
 }
-if arguments.contains("--snapshot"), snapshotPath == nil {
-    FileHandle.standardError.write(Data("gama-studio: --snapshot needs a path\n".utf8))
-    exit(2)
+let snapshotPath = path(after: "--snapshot")
+let openURL = path(after: "--open").map { URL(fileURLWithPath: $0) }
+let exportURL = path(after: "--export").map { URL(fileURLWithPath: $0) }
+
+var document = StudioModel.sampleScene()
+if let openURL {
+    do {
+        document = try StudioDocumentIO.read(from: openURL)
+    } catch {
+        FileHandle.standardError.write(Data("gama-studio: cannot open \(openURL.path): \(StudioDocumentIO.describe(error))\n".utf8))
+        exit(1)
+    }
+}
+// Headless: no NSApplication, window, or viewport is ever built.
+if let exportURL {
+    do {
+        try StudioDocumentIO.write(document, to: exportURL)
+        print("gama-studio: wrote \(exportURL.path) (\(document.count) entities)")
+        exit(0)
+    } catch {
+        FileHandle.standardError.write(Data("gama-studio: cannot write \(exportURL.path): \(StudioDocumentIO.describe(error))\n".utf8))
+        exit(1)
+    }
 }
 
 let app = NSApplication.shared
@@ -54,6 +83,7 @@ appMenu.addItem(
     keyEquivalent: "q"
 )
 appMenuItem.submenu = appMenu
+mainMenu.addItem(appDelegate.makeFileMenuItem())
 app.mainMenu = mainMenu
 
 let windowRect = NSRect(x: 0, y: 0, width: 1280, height: 800)
@@ -65,7 +95,7 @@ window.contentView = hostView
 
 // The model, host, and viewport are top-level globals, so they live for the
 // whole process; the viewport's click handler relies on that.
-let model = StudioModel(document: StudioModel.sampleScene())
+let model = StudioModel(document: document)
 // Built before the app is installed so the viewport buttons ("Frame",
 // "Look through") can reach it; it depends on the host only through this
 // redraw closure.
@@ -81,6 +111,9 @@ do {
     exit(1)
 }
 hostView.attach(viewport.arView, to: StudioApp.viewportRegion)
+// After the viewport, so the window title follows edits once the fallback
+// light already has.
+appDelegate.attach(model: model, window: window, url: openURL)
 
 /// Whether `rep` has more than one distinct colour across a coarse grid of
 /// samples: a blank or single-colour render fails this.

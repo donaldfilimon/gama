@@ -41,8 +41,39 @@ public final class StudioModel {
     /// immediately so the two never start out of sync.
     public init(document: SceneDocument = SceneDocument()) {
         session = EditorSession(document: document)
+        savedDocument = document
         bridge = RealityBridge()
         bridge.rebuild(from: session.document)
+    }
+
+    // MARK: Documents
+
+    /// The content last opened or saved; ``hasUnsavedChanges`` compares
+    /// against it, so undoing back to the saved state reads as clean.
+    private var savedDocument: SceneDocument
+
+    /// Whether the authored content differs from what was last opened or
+    /// saved. Selection and undo history are not content.
+    public var hasUnsavedChanges: Bool {
+        !session.document.hasSameContent(as: savedDocument)
+    }
+
+    /// Records the current content as saved.
+    public func markSaved() {
+        savedDocument = session.document
+    }
+
+    /// Replaces the whole document, as opening a file does (ADR 0005).
+    ///
+    /// Not undoable: undo and redo history, selection, and `lastError` are
+    /// cleared, the bridge is rebuilt from scratch, and the new content
+    /// counts as saved. ``onDocumentChange`` runs last.
+    public func replaceDocument(_ document: SceneDocument) {
+        session = EditorSession(document: document)
+        savedDocument = document
+        lastError = nil
+        bridge.rebuild(from: session.document)
+        onDocumentChange?()
     }
 
     // MARK: History

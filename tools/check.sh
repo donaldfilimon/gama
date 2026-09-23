@@ -10,8 +10,9 @@ unset TOOLCHAINS
 # Minimum test count. A filter or a target that silently matches nothing
 # prints success with zero tests, so the gate asserts a floor. Raise it when
 # tests are added; never lower it to make the gate pass.
-MIN_TESTS=133
-LIBRARY="Sources/GamaAuthoring"
+MIN_TESTS=165
+# Standard-library-only targets (ADR 0001, ADR 0005).
+LIBRARIES=("Sources/GamaAuthoring" "Sources/GamaUSD")
 BANNED='Foundation|Darwin|Glibc|simd|RealityKit|SwiftUI|AppKit|UIKit|Combine|Dispatch'
 
 echo "==> toolchain"
@@ -19,6 +20,7 @@ version="$(swiftly run swift --version 2>&1)"
 grep -q 'Swift version 6.5-dev' <<<"$version" || {
   echo "error: expected the pinned 6.5-dev snapshot, got: $version" >&2; exit 1; }
 
+for LIBRARY in "${LIBRARIES[@]}"; do
 echo "==> portable-import ban ($LIBRARY)"
 # Fail closed: BSD grep over a missing path exits 1 with no output, which
 # would read as "no violation".
@@ -38,6 +40,7 @@ case $rc in
   1) ;;
   *) echo "error: import scan failed (grep exit $rc)" >&2; exit 1 ;;
 esac
+done
 
 echo "==> build (warnings as errors)"
 swiftly run swift build -Xswiftc -warnings-as-errors
@@ -75,5 +78,23 @@ swiftly run swift run gama-studio --smoke </dev/null
 status=$?
 set -e
 [[ $status -eq 0 ]] || { echo "error: gama-studio --smoke exited $status" >&2; exit 1; }
+
+echo "==> usd"
+# Writes the sample scene headlessly, validates it with Apple's USD tools,
+# lets usdcat reformat it, then reads that back and re-exports: the writer is
+# deterministic, so byte equality of the two exports means the reformatted
+# file described the same document. Fails closed without the tools.
+for tool in usdchecker usdcat; do
+  command -v "$tool" >/dev/null || { echo "error: $tool is required for the usd stage (Apple USD Tools)" >&2; exit 1; }
+done
+usd_dir="$(mktemp -d -t gama-studio-usd)"
+trap 'rm -f "$log"; rm -rf "$usd_dir"' EXIT
+swiftly run swift run gama-studio --export "$usd_dir/sample.usda" </dev/null
+checker="$(usdchecker "$usd_dir/sample.usda" 2>&1)" || { echo "$checker" >&2; echo "error: usdchecker rejected the export" >&2; exit 1; }
+grep -q 'Success!' <<<"$checker" || { echo "$checker" >&2; echo "error: usdchecker did not report Success!" >&2; exit 1; }
+usdcat "$usd_dir/sample.usda" -o "$usd_dir/reformatted.usda"
+swiftly run swift run gama-studio --open "$usd_dir/reformatted.usda" --export "$usd_dir/again.usda" </dev/null
+cmp "$usd_dir/sample.usda" "$usd_dir/again.usda" || { echo "error: usdcat round trip changed the document" >&2; exit 1; }
+echo "usd: usdchecker Success!, usdcat round trip identical"
 
 echo "check.sh: PASSED"
