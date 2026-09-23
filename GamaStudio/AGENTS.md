@@ -1,10 +1,10 @@
 # AGENTS.md
 
-This is the canonical guide for agents working in this repository. `CLAUDE.md` defers to it.
+This is the canonical guide for agents working on this package. `CLAUDE.md` defers to it.
 
 ## What this is
 
-Gama Studio is a document-centric 3D authoring app. It is not the gama UI framework (`donaldfilimon/gama`, checked out at `~/Desktop/Gama`) and not `~/dev/active/gama-qt`.
+Gama Studio is a document-centric 3D authoring app. It is not the gama UI framework itself — the package at the root of `donaldfilimon/gama` (checked out at `~/Desktop/Gama`), which Studio consumes as a pinned dependency rather than being part of — and not `~/dev/active/gama-qt`.
 - The product vision is `docs/spec/2026-09-23-unified-usd-realitykit-spec.md`. It is **Vision**, not a capability claim: most of it is not built.
 - What exists today is Phases 0 through 2:
   - `GamaAuthoring`: a tested authoring core with no renderer and no UI.
@@ -14,7 +14,7 @@ Gama Studio is a document-centric 3D authoring app. It is not the gama UI framew
   - `GamaUSD`: a standard-library-only USDA writer and reader with an exact round trip (ADR 0005). The File menu (⌘O/⌘S/⇧⌘S) and `--open`/`--export` use it.
   - `GamaStudioEditor` + the `gama-studio` executable: a macOS-only editor window built from Gama views (toolbar, scene hierarchy, inspector, status line) around a RealityKit viewport attached through a native region. Orbit camera controls (mouse: drag orbits, right/Option-drag pans, wheel zooms; trackpad: two-finger scroll orbits, Shift+scroll pans, pinch zooms), a toolbar "Frame" button (selection, or everything when nothing is selected), click-to-select picking, and an orange wireframe box around each selected entity (editor state beside `bridge.root`, never in the document or the bridge, unpickable; follows every selection source through `StudioModel.onSelectionChange`). See ADR 0003. Cameras and lights are authored document components (ADR 0004): the viewport lights from the document's own lights, falling back to a fixed editor light only when none is visible, and a camera or light entity shows as a pickable marker; "Look through" snaps the orbit camera to a selected camera's viewpoint and field of view, as editor state, never a document write.
 - This package lives at `GamaStudio/` inside `donaldfilimon/gama` (imported from the former standalone `gama-studio` repo via `git subtree add`). `donaldfilimon/gama`'s `main` is protected, so changes land through pull requests, not direct commits to `main`. Studio is still its own SwiftPM package with its own gate (below), run from `GamaStudio/`; it is not built by the framework's `scripts/check.sh` or its CI.
-- **`Package.swift` pins `donaldfilimon/gama` by revision, not by branch:** `2ef325c120674cfe218de44f492f435ff50a28e7`, the head of gama PR #108 (stacked on #107), because `NativeRegion` and `GamaHostView.attach(_:to:)` do not exist on gama's `main` yet. Neither PR is merged, and gama's hosted CI is still blocked by the account-wide billing lock (`~/CLAUDE.md`), so a red or missing gama check there is not evidence against this repo. **Bump the pinned revision to a `main` commit once gama #107/#108 merge, and re-run this repo's gate against it before treating the bump as routine.**
+- **`Package.swift` pins `donaldfilimon/gama` by revision, not by branch:** `2ef325c120674cfe218de44f492f435ff50a28e7`, the head of gama PR #108 (stacked on #107), because `NativeRegion` and `GamaHostView.attach(_:to:)` do not exist on gama's `main` yet. Neither PR is merged, and gama's hosted CI is still blocked by the account-wide billing lock (`~/CLAUDE.md`), so a red or missing gama check there is not evidence against this package. **Bump the pinned revision to a `main` commit once gama #107/#108 merge, and re-run this package's gate against it before treating the bump as routine.**
 
 ## Gate
 
@@ -39,7 +39,7 @@ When you add tests, raise the floor. Never lower it to make the gate pass. The f
 - The manifest stays `swift-tools-version: 6.4` to match gama.
 - The platform floor is macOS 15 / iOS 18 / tvOS 26 / visionOS 2: RealityKit's cone and cylinder meshes (ADR 0002), and on visionOS the runtime for typed-throws closures and `DirectionalLight` (ADR 0008).
 - macOS is built and unit-tested with the swiftly snapshot. iOS and visionOS are built with Xcode's toolchain and launch-smoked in simulators by the gate (ADR 0008); tvOS is unmeasured.
-- The repo sits outside iCloud, so `swift test` runs in place.
+- The canonical checkout of `donaldfilimon/gama` (`~/Desktop/Gama`) is iCloud/FileProvider-managed, where in-place `swift test` fails at codesign (see that repo's `CLAUDE.md`); run the gate from a worktree outside iCloud instead (as this package's own import and gate runs do). `tools/check.sh` has no scratch-path override today, so it cannot run in place on the canonical checkout.
 - Single suite: `swiftly run swift test --filter CommandRoundTripTests`. The filter matches the struct name, not the `@Suite` title. A filter that matches nothing exits 0, so check the count.
 
 ## Run

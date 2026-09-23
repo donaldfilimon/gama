@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this package.
 
 Read `AGENTS.md` first. It is the canonical guide: the gate, the toolchain, the invariants, and what isn't built yet. This file only adds the architecture in one picture.
 
