@@ -24,9 +24,25 @@
 # the previous 2% band. Capability detection and the C restore buffer are not
 # in this compile.
 #
+# Re-measured 2026-09-23 at the same compiler revision, native-presentation
+# Task 1 (LayoutMetrics and metrics-driven layout). New:
+# Sources/GamaCore/LayoutMetrics.swift (a public struct of four escaping
+# closure properties plus `.cell`); Layout.swift now threads a LayoutMetrics
+# value through measure/layout/measureStack/flexMinimum/layoutStack instead
+# of hardcoding cell arithmetic, and the public measure(_:proposal:) /
+# layout(_:in:) entry points now forward into metrics-taking overloads. The
+# linked artifact is 781964 bytes, 102852 above the 679112 pin above, well
+# outside the 2% band — expected for a change whose entire point is a new
+# public closure-bearing type plus rewriting every arithmetic site in the
+# layout solver to call through it; Embedded Swift's whole-module compile
+# keeps the escaping-closure call sites and the forwarding overloads
+# distinct rather than folding them away. No `RenderNode` case, MLIR op, or
+# DrawList wire changed, and `.cell` layout stays byte-identical (see
+# LayoutTests/P1LayoutTests/DrawListTests/LayoutMetricsParityTests).
+#
 # Grammar is deliberately tiny: blank lines, `#` comments, and key = "value".
 # Anything else fails the read, for the same reason scripts/lib/manifest.sh is
 # strict — this is a pin, not a configuration language.
 revision = "95c5142e84b82c1"
-bytes = "679112"
+bytes = "781964"
 tolerance_percent = "2"
