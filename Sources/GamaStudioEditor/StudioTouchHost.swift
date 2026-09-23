@@ -220,6 +220,7 @@ public final class StudioHostViewController: UIViewController {
         var failures: [String] = []
         if !restoredUntitledChanges { failures.append("nothing was restored") }
         if model.notice != UntitledRecovery.restoredNotice { failures.append("no restored notice (ADR 0015)") }
+        if !model.consoleLog.contains(.note(UntitledRecovery.restoredNotice)) { failures.append("no console note (ADR 0016)") }
         if files.documents.currentURL != nil { failures.append("the restored document is not Untitled") }
         if !files.documents.hasUnsavedChanges { failures.append("the restored document does not read as unsaved") }
         if (try? StudioDocumentIO.read(from: recovery.url)) != model.session.document {
@@ -243,6 +244,7 @@ public final class StudioHostViewController: UIViewController {
         var failures: [String] = []
         if !adoptedOrphan { failures.append("no orphan was adopted") }
         if model.notice != UntitledRecovery.adoptedNotice { failures.append("no recovered notice (ADR 0015)") }
+        if !model.consoleLog.contains(.note(UntitledRecovery.adoptedNotice)) { failures.append("no console note (ADR 0016)") }
         if !restoredUntitledChanges { failures.append("nothing was restored") }
         if files.documents.currentURL != nil { failures.append("the adopted document is not Untitled") }
         if !files.documents.hasUnsavedChanges { failures.append("the adopted document does not read as unsaved") }

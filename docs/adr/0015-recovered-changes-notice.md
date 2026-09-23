@@ -43,5 +43,5 @@ window restoring its own changes, over a modal alert.
   window's own file and showed "restored unsaved changes from the last
   session"; adding a box cleared it. At iPhone width the notice wraps the
   status line onto a second line until it clears.
-- **Not built:** the console log does not record the notice; macOS has no
-  recovery, so no notice there.
+- **Not built:** the console log does not record the notice (since built:
+  ADR 0016); macOS has no recovery, so no notice there.

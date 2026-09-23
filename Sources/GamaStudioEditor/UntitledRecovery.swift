@@ -124,9 +124,9 @@ public struct UntitledRecovery: Sendable, Hashable {
     }
 
     /// Restores the recovered changes into `session`, which must still be
-    /// Untitled, and leaves a status-line notice saying where they came
-    /// from: this window's last session, or, when `adopted`, a closed
-    /// window (ADR 0015). Returns `false`, changing nothing, when there is
+    /// Untitled, and posts a notice saying where they came from, to the
+    /// status line and the console log: this window's last session, or,
+    /// when `adopted`, a closed window (ADR 0015, ADR 0016). Returns `false`, changing nothing, when there is
     /// no file.
     ///
     /// A file that cannot be read is moved aside, to
@@ -144,7 +144,7 @@ public struct UntitledRecovery: Sendable, Hashable {
             throw error
         }
         session.restoreUntitled(document)
-        session.model.notice = adopted ? Self.adoptedNotice : Self.restoredNotice
+        session.model.post(notice: adopted ? Self.adoptedNotice : Self.restoredNotice)
         return true
     }
 

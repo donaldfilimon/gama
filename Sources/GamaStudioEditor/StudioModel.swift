@@ -314,16 +314,40 @@ public final class StudioModel {
 
     // MARK: Console
 
-    /// One console exchange: what was typed and what came back.
+    /// One console exchange: what was typed and what came back. A note
+    /// (ADR 0016) is a message from the editor with nothing typed; the
+    /// panel shows it without the prompt.
     public struct ConsoleEntry: Hashable, Sendable {
         public var input: String
         public var output: String
         public var isError: Bool
+        public var isNote: Bool
 
-        public init(input: String, output: String, isError: Bool) {
+        public init(input: String, output: String, isError: Bool, isNote: Bool = false) {
             self.input = input
             self.output = output
             self.isError = isError
+            self.isNote = isNote
+        }
+
+        /// A message from the editor, not an exchange.
+        public static func note(_ text: String) -> ConsoleEntry {
+            ConsoleEntry(input: "", output: text, isError: false, isNote: true)
+        }
+    }
+
+    /// Shows `text` in the status line until the next document change and
+    /// keeps it in the console log as a note (ADR 0015, ADR 0016).
+    public func post(notice text: String) {
+        notice = text
+        appendConsole(.note(text))
+    }
+
+    /// Appends to ``consoleLog``, keeping at most ``consoleLogLimit``.
+    private func appendConsole(_ entry: ConsoleEntry) {
+        consoleLog.append(entry)
+        if consoleLog.count > Self.consoleLogLimit {
+            consoleLog.removeFirst(consoleLog.count - Self.consoleLogLimit)
         }
     }
 
@@ -407,10 +431,7 @@ public final class StudioModel {
             isError = true
         }
         let entry = ConsoleEntry(input: trimmed, output: output, isError: isError)
-        consoleLog.append(entry)
-        if consoleLog.count > Self.consoleLogLimit {
-            consoleLog.removeFirst(consoleLog.count - Self.consoleLogLimit)
-        }
+        appendConsole(entry)
         return entry
     }
 

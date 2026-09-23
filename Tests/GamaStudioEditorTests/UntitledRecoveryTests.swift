@@ -266,7 +266,9 @@ struct UntitledRecoveryTests {
         #expect(model.notice == UntitledRecovery.restoredNotice)
         model.addPrimitive(.sphere)
         #expect(model.notice == nil)
-        #expect(try !statusText(model).contains(UntitledRecovery.restoredNotice))
+        // The status line clears; the console keeps the note (ADR 0016).
+        let statusRow = try statusText(model).split(separator: "\n").first { $0.contains("rev ") && $0.contains("undo:") }
+        #expect(statusRow.map { !$0.contains(UntitledRecovery.restoredNotice) } == true)
 
         model.notice = "anything"
         model.undo()
@@ -285,6 +287,37 @@ struct UntitledRecoveryTests {
         try session.save(to: directory.appendingPathComponent("real.usda"))
         #expect(try recovery.restore(into: session) == false)
         #expect(model.notice == nil)
+    }
+
+    // MARK: The console note (ADR 0016)
+
+    @Test func theNoticeIsKeptInTheConsoleAsANote() throws {
+        let directory = try scratch()
+        let before = StudioModel(document: StudioModel.sampleScene())
+        before.addPrimitive(.box)
+        let recovery = try #require(UntitledRecovery(key: "logged", in: directory))
+        try StudioDocumentIO.write(before.session.document, to: recovery.url)
+        let model = StudioModel(document: StudioModel.sampleScene())
+        #expect(try recovery.restore(into: StudioDocumentSession(model: model), adopted: true))
+
+        #expect(model.consoleLog == [.note(UntitledRecovery.adoptedNotice)])
+        let painted = try statusText(model)
+        #expect(painted.contains("· \(UntitledRecovery.adoptedNotice)"), "shown as a note")
+        #expect(!painted.contains("> \(UntitledRecovery.adoptedNotice)") && !painted.contains("→  \(UntitledRecovery.adoptedNotice)"),
+                "never as something typed")
+
+        model.addPrimitive(.sphere)
+        #expect(model.notice == nil)
+        #expect(model.consoleLog.first == .note(UntitledRecovery.adoptedNotice), "the note outlives the status line")
+    }
+
+    @Test func notesShareTheConsoleLimit() {
+        let model = StudioModel(document: StudioModel.sampleScene())
+        for index in 0..<(StudioModel.consoleLogLimit + 10) { model.post(notice: "note \(index)") }
+        model.runConsole("help")
+        #expect(model.consoleLog.count == StudioModel.consoleLogLimit)
+        #expect(model.consoleLog.last?.input == "help")
+        #expect(model.consoleLog.first == .note("note 11"))
     }
 
     @Test func replacingWithoutMarkingSavedKeepsTheSavedBaseline() {
