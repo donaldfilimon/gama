@@ -70,6 +70,7 @@ evidence ledger.
 | Guide | Purpose |
 | --- | --- |
 | [Capabilities.md](Capabilities.md) | Status vocabulary and current proof per capability |
+| [GamaMasterPrompt.md](GamaMasterPrompt.md) | Master system prompt: Reality, Standards, and Vision layers |
 | [Toolchain.md](Toolchain.md) | Compiler/SDK pin authority and platform exceptions |
 | [Testing.md](Testing.md) | Swift Testing suites, filters, sanitizers, and scratch rules |
 | [Swift65SDK27.md](Swift65SDK27.md) | Implemented-language probes and bounded modernization decisions |
