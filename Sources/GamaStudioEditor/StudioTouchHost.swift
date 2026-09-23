@@ -65,7 +65,7 @@ public final class StudioHostViewController: UIViewController {
         let documents = StudioDocumentSession(model: model)
         let files = TouchDocumentController(documents: documents, presenter: self)
         self.files = files
-        documents.onStateChange = { [weak self] in self?.updateTitle() }
+        files.onStateChange = { [weak self] in self?.updateTitle() }
         do {
             try hostView.install(app: StudioApp(model: model, viewport: actions, documents: files.actions))
         } catch {
@@ -118,6 +118,83 @@ public final class StudioHostViewController: UIViewController {
     @objc func openDocument() { files.open() }
     @objc func saveDocument() { files.save() }
     @objc func saveDocumentAs() { files.saveAs() }
+
+    /// What the gate's launch smoke check verifies after `--open <path>`
+    /// (ADR 0010, ADR 0011), in order:
+    /// 1. the file opened as a coordinated `UIDocument` in the `.normal`
+    ///    state, and the model holds its content (``openedFileFailures(expected:)``);
+    /// 2. an edit autosaves to the file and the document reads as saved;
+    /// 3. another writer's coordinated write reloads the file when nothing
+    ///    is unsaved;
+    /// 4. the same write with unsaved changes asks instead, and Keep Mine
+    ///    leaves the document to overwrite the file.
+    /// The file is the gate's scratch copy. Empty means healthy.
+    public func fileSmokeFailures(expected url: URL) async -> [String] {
+        guard await waitUntil({ self.files?.coordinated?.documentState == .normal }) else {
+            return ["\(url.lastPathComponent) did not open as a coordinated document"]
+                + openedFileFailures(expected: url)
+        }
+        var failures = openedFileFailures(expected: url)
+        guard let files, let document = files.coordinated else { return failures + ["no coordinated document"] }
+        let original = model.session.document
+
+        model.addPrimitive(.box)
+        let edited = model.session.document
+        if !document.hasUnsavedChanges { failures.append("an edit did not mark the document for autosave") }
+        let autosaved = await withCheckedContinuation { continuation in
+            document.autosave { continuation.resume(returning: $0) }
+        }
+        if !autosaved { failures.append("autosave failed") }
+        if !(await waitUntil({ !files.documents.hasUnsavedChanges })) {
+            failures.append("the document still reads as unsaved after autosave")
+        }
+        if (try? StudioDocumentIO.read(from: url)) != edited { failures.append("autosave did not write the edit") }
+
+        if let error = await Self.writeAsAnotherApp(original, to: url) { return failures + ["external write failed: \(error)"] }
+        if !(await waitUntil({ self.model.session.document.hasSameContent(as: original) })) {
+            failures.append("another writer's change was not reloaded")
+        }
+
+        model.addPrimitive(.sphere)
+        if let error = await Self.writeAsAnotherApp(edited, to: url) { return failures + ["external write failed: \(error)"] }
+        if await waitUntil({ files.isAskingAboutExternalChange }) {
+            presentedViewController?.dismiss(animated: false)
+            files.resolveExternalChange(.keepMine)
+            if !document.hasUnsavedChanges { failures.append("Keep Mine did not mark the document to overwrite the file") }
+        } else {
+            failures.append("a change under unsaved edits did not ask")
+        }
+        return failures
+    }
+
+    /// Polls `condition` on the main actor for up to `seconds`.
+    private func waitUntil(_ condition: @MainActor () -> Bool, seconds: Double = 10) async -> Bool {
+        let deadline = ContinuousClock.now + .seconds(seconds)
+        while ContinuousClock.now < deadline {
+            if condition() { return true }
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        return condition()
+    }
+
+    /// Writes `document` to `url` the way another app would: a coordinated
+    /// write with no presenter of its own, so the open document is told. Off
+    /// the main actor, because the document relinquishes the file through
+    /// the main queue and a coordinated write on main would wait for itself.
+    private static func writeAsAnotherApp(_ document: SceneDocument, to url: URL) async -> String? {
+        await Task.detached { coordinatedWrite(document, to: url) }.value
+    }
+
+    nonisolated private static func coordinatedWrite(_ document: SceneDocument, to url: URL) -> String? {
+        var coordinationError: NSError?
+        var writeError: (any Error)?
+        // unsafe: the NSError out-parameter is an AutoreleasingUnsafeMutablePointer.
+        unsafe NSFileCoordinator(filePresenter: nil).coordinate(writingItemAt: url, options: .forReplacing, error: &coordinationError) { target in
+            do { try StudioDocumentIO.write(document, to: target) } catch { writeError = error }
+        }
+        if let coordinationError { return coordinationError.localizedDescription }
+        return writeError.map(StudioDocumentIO.describe)
+    }
 
     /// What the gate's launch smoke check verifies after `--open <path>`: the
     /// file became the current file, and the document is its unedited
@@ -198,11 +275,11 @@ public struct GamaStudioView: UIViewControllerRepresentable {
             let expected = incoming?.url
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                 MainActor.assumeIsolated {
-                    var failures = controller.smokeFailures()
-                    if let expected {
-                        failures += controller.openedFileFailures(expected: expected)
+                    let failures = controller.smokeFailures()
+                    guard let expected else { return onFirstLayout(failures) }
+                    Task { @MainActor in
+                        onFirstLayout(failures + (await controller.fileSmokeFailures(expected: expected)))
                     }
-                    onFirstLayout(failures)
                 }
             }
         }

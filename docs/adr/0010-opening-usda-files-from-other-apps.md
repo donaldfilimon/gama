@@ -57,7 +57,11 @@ Measured before designing, on 2026-09-23:
 
 - Verified by hand on 2026-09-23 in the iPhone 17 simulator, handing
   `Untitled.usda` from the Files app's On My iPhone storage to the app with
-  `xcrun simctl openurl`:
+  `xcrun simctl openurl`. **Correction (ADR 0011, same day):** UIKit's log
+  shows that this route delivers a copy in the app's `Documents/Inbox`
+  (`Untitled-3.usda`), not the original, so these checks cover the handover
+  and the prompts, not open-in-place. Opening from the Files app in place is
+  unverified.
   - **Cold launch:** the app started with the saved file (`Box 2`, which the
     sample scene lacks) at revision 0.
   - **Unsaved edit, then Don't Save:** the file was handed over with an
@@ -73,6 +77,6 @@ Measured before designing, on 2026-09-23:
 - Not verified: a file shared from another app's share sheet. iOS may give
   the app a copy in its own Inbox instead of the original; Save then writes
   to that copy.
-- Not built: `UIDocument` coordination, noticing when another app changes
-  the open file, and `.usd`/`.usdc`/`.usdz` (the codec reads only the USDA
+- Not built: `UIDocument` coordination and noticing when another app
+  changes the open file (since built: ADR 0011), and `.usd`/`.usdc`/`.usdz` (the codec reads only the USDA
   text Gama writes, ADR 0005).

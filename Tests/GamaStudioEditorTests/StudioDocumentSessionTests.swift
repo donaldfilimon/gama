@@ -92,6 +92,47 @@ struct StudioDocumentSessionTests {
         #expect(model.session.document == before)
     }
 
+    /// The path a coordinated read takes on iOS and visionOS (ADR 0011):
+    /// the caller read the file, and the session only adopts it.
+    @Test func adoptingAnOpenedDocumentNamesTheFileInOneNotification() throws {
+        let model = StudioModel(document: StudioModel.sampleScene())
+        let session = StudioDocumentSession(model: model)
+        var seen: [String] = []
+        session.onStateChange = { seen.append(session.displayName) }
+        model.addPrimitive(.box)
+        seen.removeAll()
+        var opened = EditorSession()
+        try opened.execute(CreateEntity(name: "Only", components: [.transform(.identity)]))
+        let url = try scratch().appendingPathComponent("opened.usda")
+
+        session.adoptOpened(opened.document, from: url)
+        #expect(seen == ["opened.usda"], "one notification, already naming the new file")
+        #expect(session.currentURL == url)
+        #expect(model.session.document == opened.document)
+        #expect(!session.hasUnsavedChanges)
+        #expect(!model.session.canUndo)
+    }
+
+    /// A file the system moved somewhere writable before saving stays the
+    /// current file under its new URL, and the document is untouched.
+    @Test func aMovedFileKeepsTheDocumentAndItsSavedState() throws {
+        let model = StudioModel(document: StudioModel.sampleScene())
+        let session = StudioDocumentSession(model: model)
+        try session.save(to: try scratch().appendingPathComponent("before.usda"))
+        model.addPrimitive(.cone)
+        let before = model.session.document
+        var changes = 0
+        session.onStateChange = { changes += 1 }
+        let moved = try scratch().appendingPathComponent("after.usda")
+
+        session.fileMoved(to: moved)
+        #expect(changes == 1)
+        #expect(session.currentURL == moved)
+        #expect(session.displayName == "after.usda")
+        #expect(model.session.document == before)
+        #expect(session.hasUnsavedChanges, "moving is not saving")
+    }
+
     @Test func fileButtonsAppearOnlyWhenAHostSuppliesThem() throws {
         let frame = Size(width: 160, height: 40)
         func paint(_ laidOut: LaidOutNode) -> String {

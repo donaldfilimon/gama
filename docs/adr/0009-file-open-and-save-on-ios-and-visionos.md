@@ -80,5 +80,5 @@ or written while security-scoped access to it is held.
   its picker flow was not driven by hand.
 - Not built:
   - opening a `.usda` from Files or another app (since built: ADR 0010);
-  - `UIDocument`-based coordination and autosave;
-  - noticing when another app changes the open file.
+  - `UIDocument`-based coordination and autosave (since built: ADR 0011);
+  - noticing when another app changes the open file (since built: ADR 0011).

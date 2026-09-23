@@ -48,10 +48,24 @@ public final class StudioDocumentSession {
         let document = try Self.withAccess(to: url) { () throws -> SceneDocument in
             try StudioDocumentIO.read(from: url)
         }
+        adoptOpened(document, from: url)
+    }
+
+    /// Replaces the model's document with `document`, which the caller read
+    /// from `url` (a coordinated read on iOS and visionOS, ADR 0011); `url`
+    /// becomes the current file. Not undoable. Sends one notification.
+    public func adoptOpened(_ document: SceneDocument, from url: URL) {
         // The file changes first, so the one notification replaceDocument
         // sends (through onDocumentChange) already names the new file.
         currentURL = url
         model.replaceDocument(document)
+    }
+
+    /// Records that the current file now lives at `url`, as when the system
+    /// moves a read-only file somewhere writable before saving (ADR 0011).
+    public func fileMoved(to url: URL) {
+        currentURL = url
+        onStateChange?()
     }
 
     /// Writes the document to `url`, which becomes the current file.
