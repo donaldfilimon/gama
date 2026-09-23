@@ -66,6 +66,11 @@ and runtime probes under `swift test`):
    initializer takes a raw pointer, which strict memory safety flags as
    `unsafe`. A mid-grey test pins the behavior, since pure primaries look the
    same in both spaces.
+9. **Collision shapes are projected with the mesh, for picking.** Setting a
+   `ModelComponent` also sets a matching `CollisionComponent`, one shape per
+   cached unit primitive; removing the mesh removes both. The plane uses a
+   thin box (it has no volume of its own), and the cylinder and cone use the
+   convex hull of the cached mesh rather than an approximation.
 
 ## Consequences
 

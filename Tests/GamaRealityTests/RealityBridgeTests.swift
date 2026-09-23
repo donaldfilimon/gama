@@ -116,6 +116,30 @@ struct BridgeMappingTests {
         #expect(abs(max(extents.x, extents.y, extents.z) - 1) < 0.01)
     }
 
+    @Test(arguments: Primitive.allCases)
+    func everyPrimitiveProjectsMatchingCollision(_ primitive: Primitive) throws {
+        var session = EditorSession()
+        let id = session.document.nextEntityID
+        try session.execute(CreateEntity(name: "P", components: [.mesh(primitive)]))
+        let bridge = RealityBridge()
+        bridge.rebuild(from: session.document)
+        _ = session.drainChanges()
+
+        let entity = try #require(bridge.entity(for: id))
+        #expect(entity.components.has(ModelComponent.self))
+        #expect(entity.components.has(CollisionComponent.self))
+
+        try session.execute(RemoveComponent(id, .mesh))
+        bridge.apply(session.drainChanges(), from: session.document)
+        #expect(entity.components.has(ModelComponent.self) == false)
+        #expect(entity.components.has(CollisionComponent.self) == false)
+
+        try session.execute(SetComponent(id, .mesh(primitive)))
+        bridge.apply(session.drainChanges(), from: session.document)
+        #expect(entity.components.has(ModelComponent.self))
+        #expect(entity.components.has(CollisionComponent.self))
+    }
+
     @Test func pickingRoundTrips() throws {
         let scene = try SampleScene()
         let bridge = RealityBridge()

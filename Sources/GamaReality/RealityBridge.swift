@@ -187,8 +187,10 @@ public final class RealityBridge {
                 mesh: meshes.mesh(for: primitive),
                 materials: [material.physicallyBased]
             ))
+            entity.components.set(CollisionComponent(shapes: [meshes.shape(for: primitive)]))
         } else {
             entity.components.remove(ModelComponent.self)
+            entity.components.remove(CollisionComponent.self)
         }
 
         if case .visibility(let visibility)? = record.components[.visibility] {
