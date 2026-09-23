@@ -152,6 +152,41 @@
             #expect(window.firstResponder === other)
         }
 
+        @Test("detaching a view that holds first responder returns it to the host")
+        func detachReclaimsFirstResponderFromDetachedView() throws {
+            let host = try installed(ViewportApp())
+            let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: true)
+            window.contentView = host
+            let native = FocusableView()
+            host.attach(native, to: NativeRegionID("viewport"))
+            host.send(.key(.tab))  // button → region
+            #expect(window.firstResponder === native)
+
+            host.detach(NativeRegionID("viewport"))
+            #expect(window.firstResponder === host)
+        }
+
+        @Test("detaching a view does not steal first responder from an unrelated control")
+        func detachDoesNotStealFromUnrelatedControl() throws {
+            let host = try installed(ViewportApp())
+            let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: true)
+            window.contentView = host
+            let native = FocusableView()
+            host.attach(native, to: NativeRegionID("viewport"))
+            host.send(.key(.tab))  // button → region
+            #expect(window.firstResponder === native)
+
+            // First responder moves to a control that is not part of any
+            // native region, while Gama's own focus stays on the region.
+            let other = FocusableView()
+            host.addSubview(other)
+            _ = window.makeFirstResponder(other)
+            #expect(window.firstResponder === other)
+
+            host.detach(NativeRegionID("viewport"))
+            #expect(window.firstResponder === other)
+        }
+
         @Test("an attached view is an accessibility child between the rows")
         func accessibilityChild() throws {
             let host = try installed(ViewportApp())
