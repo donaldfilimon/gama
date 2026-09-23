@@ -2,11 +2,17 @@
 
 Gama Studio is a Swift-native, document-centric 3D authoring app. The vision is in `docs/spec/2026-09-23-unified-usd-realitykit-spec.md`.
 
-**Status: Phase 1.** The project has two parts:
+**Status: Phase 2.** macOS only. The project has three parts:
 - `GamaAuthoring` is a standard-library-only authoring core with a value document, undoable commands, atomic transactions, selection, and an incremental change feed.
 - `GamaReality` projects it into RealityKit incrementally.
+- `GamaStudioEditor` + the `gama-studio` executable host both of those in an editor window built from Gama views (`donaldfilimon/gama`, pinned by revision to an unmerged PR — see `AGENTS.md`), around a RealityKit viewport with a fixed camera and click-to-select picking. See ADR 0003.
 
-There is no viewport, UI, or USD support yet. See `AGENTS.md` for the gate and what comes next, and `docs/adr/` for decisions.
+```bash
+unset TOOLCHAINS
+swiftly run swift run gama-studio
+```
+
+There is no camera/light authoring, USD support, or command console yet. See `AGENTS.md` for the gate and what comes next, and `docs/adr/` for decisions.
 
 ```swift
 import GamaAuthoring

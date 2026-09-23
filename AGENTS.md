@@ -6,10 +6,12 @@ This is the canonical guide for agents working in this repository. `CLAUDE.md` d
 
 Gama Studio is a document-centric 3D authoring app. It is not the gama UI framework (`donaldfilimon/gama`, checked out at `~/Desktop/Gama`) and not `~/dev/active/gama-qt`.
 - The product vision is `docs/spec/2026-09-23-unified-usd-realitykit-spec.md`. It is **Vision**, not a capability claim: most of it is not built.
-- What exists today is Phases 0 and 1:
+- What exists today is Phases 0 through 2:
   - `GamaAuthoring`: a tested authoring core with no renderer and no UI.
-  - `GamaReality`: an Apple-only RealityKit projection of it. There is no viewport or UI yet.
+  - `GamaReality`: an Apple-only RealityKit projection of it.
+  - `GamaStudioEditor` + the `gama-studio` executable: a macOS-only editor window built from Gama views (toolbar, scene hierarchy, inspector, status line) around a RealityKit viewport attached through a native region. Fixed camera and light; click-to-select picking; no camera/light authoring in the document yet. See ADR 0003.
 - The repo is local-only with no remote. Commit on `main`.
+- **`Package.swift` pins `donaldfilimon/gama` by revision, not by branch:** `2ef325c120674cfe218de44f492f435ff50a28e7`, the head of gama PR #108 (stacked on #107), because `NativeRegion` and `GamaHostView.attach(_:to:)` do not exist on gama's `main` yet. Neither PR is merged, and gama's hosted CI is still blocked by the account-wide billing lock (`~/CLAUDE.md`), so a red or missing gama check there is not evidence against this repo. **Bump the pinned revision to a `main` commit once gama #107/#108 merge, and re-run this repo's gate against it before treating the bump as routine.**
 
 ## Gate
 
@@ -22,6 +24,7 @@ It is green only when the log ends with `check.sh: PASSED`. It runs, in order:
 2. The standard-library-only import ban on `Sources/GamaAuthoring`, which fails closed.
 3. `swift build` with warnings as errors.
 4. `swift test`, with a test-count floor (`MIN_TESTS`) applied to the sum over all test targets. Every target's run must pass.
+5. `gama-studio --smoke`, which launches the real executable headless (one frame, no event loop): it asserts the host produced draw commands, the RealityKit `ARView` is an attached, visible, non-empty subview of the host, and the bridge's entity count matches the document's.
 
 When you add tests, raise the floor. Never lower it to make the gate pass. The full gate takes over a minute, mostly the bridge convergence suite.
 
@@ -33,6 +36,17 @@ When you add tests, raise the floor. Never lower it to make the gate pass. The f
 - Only macOS is built and tested. Other platforms are unmeasured.
 - The repo sits outside iCloud, so `swift test` runs in place.
 - Single suite: `swiftly run swift test --filter CommandRoundTripTests`. The filter matches the struct name, not the `@Suite` title. A filter that matches nothing exits 0, so check the count.
+
+## Run
+
+```bash
+unset TOOLCHAINS
+swiftly run swift run gama-studio                        # opens the editor window
+swiftly run swift run gama-studio --smoke                # headless check; exits 0/1 (what the gate runs)
+swiftly run swift run gama-studio --snapshot out.png      # renders one ARView frame to a PNG, exits 0 only if it isn't blank
+```
+
+`gama-studio` is macOS only (ADR 0003): it depends on `GamaStudioEditor`, which is gated on `canImport(AppKit)`/`canImport(RealityKit)`.
 
 ## Invariants (spec §64, as built here)
 
@@ -48,8 +62,10 @@ When you add tests, raise the floor. Never lower it to make the gate pass. The f
    - It skips changes naming entities a later change removed.
    - It re-sequences only the containers it touched, because RealityKit does not keep sibling order on removal.
    - Any change to the bridge must keep `BridgeConvergenceTests` green: incremental projection must equal a fresh rebuild after every drain.
+9. **The editor UI never mutates state directly** (ADR 0003). Every panel, button, and the viewport's click handler go through `StudioModel`, which is the only caller of `EditorSession`'s mutating surface and the only place `bridge.apply` is called; dropping that call desyncs the bridge from the document, and `StudioModelTests` must fail if it does.
+10. **A `@MainActor` crossing at the UI boundary is an explicit `MainActor.assumeIsolated`, never an assumption left silent** (ADR 0003): gama only runs a surface's content closure inside `FrameHost.pump` and an action inside `FrameHost.handle`/`perform`, both main-actor-only callers, so the assertion traps instead of racing if that stops holding.
 
-Decisions and their reasons are in `docs/adr/` (0001: the value document and commands; 0002: the RealityKit bridge).
+Decisions and their reasons are in `docs/adr/` (0001: the value document and commands; 0002: the RealityKit bridge; 0003: Studio's Gama-hosted UI and the RealityKit viewport).
 
 ## Layout
 
@@ -60,17 +76,24 @@ Decisions and their reasons are in `docs/adr/` (0001: the value document and com
   - `Components` and `Math` (transform, mesh primitive, material, visibility)
   - `Selection`, `SceneChange`, `AuthoringError`
 - `Sources/GamaReality/`: `RealityBridge` (entity maps, `apply`, `rebuild`, picking via `id(for:)`), `PrimitiveMeshes` (unit-size mesh cache), and `MaterialProjection` (`PhysicallyBasedMaterial`). Every file sits inside `#if canImport(RealityKit)`.
+- `Sources/GamaStudioEditor/`: macOS-only editor UI (ADR 0003).
+  - `StudioModel` (`@MainActor`): the funnel — owns `EditorSession` and `RealityBridge`, and is the only caller of either's mutating surface.
+  - `StudioApp` (`App`, gated on `canImport(AppKit)`): the Gama view tree — toolbar, `HierarchyPanel`, `NativeRegion(StudioApp.viewportRegion)`, `InspectorPanel`, status line — plus `StudioFrameState`, the `Sendable` per-frame snapshot built inside `MainActor.assumeIsolated`.
+  - `ViewportController` (gated on `canImport(AppKit) && canImport(RealityKit)`): the `StudioViewportView: ARView` subclass, a fixed `PerspectiveCamera`/`DirectionalLight`, and click-to-select picking via `pickedEntityID(for:in:)`.
+- `Sources/gama-studio/main.swift`: the executable. Owns the `NSApplication`/`NSWindow`/`GamaHostView`, installs `StudioApp`, attaches the `ViewportController`'s `ARView` to the viewport region. `--smoke` runs one frame headless and asserts the host, viewport, and bridge are in the state the gate checks; `--snapshot <path>` renders one `ARView` frame to a PNG and exits non-zero if it's blank.
 - `Tests/GamaAuthoringTests/`: Swift Testing only. `SampleScene` in `Fixtures.swift` is the shared fixture.
 - `Tests/GamaRealityTests/`: `@MainActor` suites.
   - `Support.swift` holds the tree snapshot, a copy of `SampleScene`, and a seeded command generator. Test targets can't share files.
   - Convergence, incrementality, and mapping tests.
+- `Tests/GamaStudioEditorTests/`: `@MainActor` suites — `StudioModelTests` (the funnel and bridge sync), `StudioAppTests` (frame state and view tree), `ViewportTests` (picking, host placement, and real `NSWindow.sendEvent` click/keyboard round trips), `Support.swift` (shared fixtures; test targets can't share files across targets).
 
 ## Not built (next phases, in order)
 
-1. **An editor UI of Gama views with a native RealityKit viewport in the Apple shell.** Embedding a native view is a gama design question, raised there first.
+1. **Camera controls and orbit.** The viewport camera is fixed (ADR 0003); there is no pan, zoom, or orbit, and no way to move it from the UI.
 2. **Camera and light components in the document**, then their projection in the bridge. Selection highlighting comes after that.
 3. **A USD stage abstraction plus save/load**, implemented against the real SDK APIs, never invented signatures.
 4. **A command console** that parses into the same commands.
 5. **A typed graph framework.**
+6. **iOS and visionOS hosting.** `StudioModel` compiles wherever RealityKit does; `StudioApp`, `ViewportController`, and `gama-studio` are AppKit-only today.
 
 None of these may be described as existing until it has a target and passing tests.
