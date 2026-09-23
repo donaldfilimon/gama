@@ -23,7 +23,7 @@ either failed. Redirect it to a log rather than piping it.
 
 ```bash
 cd ~/dev/active/gama-qt
-Scripts/check.sh > /tmp/gama-qt-check.log 2>&1; echo EXIT:$?
+Scripts/check.sh >| /tmp/gama-qt-check.log 2>&1; echo EXIT:$?
 ```
 
 The same steps by hand:
