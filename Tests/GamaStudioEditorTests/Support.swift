@@ -54,3 +54,9 @@ private func snapshot(_ entity: Entity, in bridge: RealityBridge) -> NodeSnapsho
     }
     return node
 }
+
+import GamaUSD
+
+/// The USD codec, through the editor test target (ADR 0005, ADR 0007).
+func usdaStringForTest(_ document: SceneDocument) -> String { usdaString(from: document) }
+func sceneDocumentForTest(_ text: String) throws -> SceneDocument { try sceneDocument(fromUSDA: text) }

@@ -38,6 +38,7 @@ public struct StudioApp: App {
         ActionID("studio.addLight"), ActionID("studio.addCamera"),
         ActionID("studio.duplicate"), ActionID("studio.delete"),
         ActionID("studio.undo"), ActionID("studio.redo"), ActionID("studio.frame"),
+        ActionID("studio.graph.toggle"),
     ]
 
     /// The editing model every panel reads and every button edits.
@@ -145,6 +146,9 @@ struct StudioFrameState: Sendable {
     var lastError: AuthoringError?
     /// The console exchanges the panel shows, oldest first.
     var console: [StudioModel.ConsoleEntry]
+    /// Whether the right-hand panel is the graph editor.
+    var showsGraphEditor: Bool
+    var graph: GraphPanelState
 
     @MainActor
     init(_ model: StudioModel) {
@@ -194,6 +198,8 @@ struct StudioFrameState: Sendable {
         self.undoLabel = session.undoLabel
         self.lastError = model.lastError
         self.console = Array(model.consoleLog.suffix(ConsolePanel.visibleEntries))
+        self.showsGraphEditor = model.showsGraphEditor
+        self.graph = GraphPanelState(model)
     }
 }
 
@@ -201,7 +207,7 @@ struct StudioFrameState: Sendable {
 
 /// Forwards `edit` to `model` on the main actor. Button actions run inside
 /// `FrameHost.handle`/`perform`, which only main-actor hosts call.
-private func onMain(
+func onMain(
     _ model: StudioModel, _ edit: @escaping @MainActor (StudioModel) -> Void
 ) -> () -> Void {
     { MainActor.assumeIsolated { edit(model) } }
@@ -222,7 +228,11 @@ struct StudioRootView: View {
                     Text("3D viewport — RealityKit on macOS")
                 }
                 .frame(maxWidth: .max, maxHeight: .max)
-                InspectorPanel(model: model, viewport: viewport, inspected: state.inspected)
+                if state.showsGraphEditor {
+                    GraphPanel(model: model, state: state.graph)
+                } else {
+                    InspectorPanel(model: model, viewport: viewport, inspected: state.inspected)
+                }
             }
             .frame(maxWidth: .max, maxHeight: .max)
             ConsolePanel(model: model, entries: state.console)
@@ -252,6 +262,8 @@ struct StudioRootView: View {
                 .actionIdentity(ActionID("studio.redo"))
             Button("Frame", action: { [viewport] in MainActor.assumeIsolated { viewport.frameSelection() } })
                 .actionIdentity(ActionID("studio.frame"))
+            Button(state.showsGraphEditor ? "Inspector" : "Graph", action: onMain(model) { $0.toggleGraphEditor() })
+                .actionIdentity(ActionID("studio.graph.toggle"))
         }
     }
 

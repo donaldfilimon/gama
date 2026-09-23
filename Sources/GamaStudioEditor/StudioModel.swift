@@ -139,6 +139,34 @@ public final class StudioModel {
     public private(set) var selectedGraphNode: GraphNodeID?
     /// An output picked as the start of a connection, waiting for an input.
     public private(set) var pendingLink: PortReference?
+    /// Whether the right-hand panel shows the graph editor instead of the
+    /// inspector. Editor state.
+    public private(set) var showsGraphEditor = false
+    /// Which offered node type the graph editor's "Add" picker shows.
+    public private(set) var nodePickerIndex = 0
+
+    public func toggleGraphEditor() {
+        showsGraphEditor.toggle()
+    }
+
+    /// The node types the current graph's domain offers.
+    public var offeredNodes: [NodeDefinition] {
+        guard let graph = currentGraph else { return [] }
+        return graphEvaluator.registry.offered(in: graph.domain)
+    }
+
+    /// The node type the picker shows, if any.
+    public var pickedNode: NodeDefinition? {
+        let offered = offeredNodes
+        guard !offered.isEmpty else { return nil }
+        return offered[nodePickerIndex % offered.count]
+    }
+
+    public func cycleNodePicker(by delta: Int) {
+        let count = offeredNodes.count
+        guard count > 0 else { return }
+        nodePickerIndex = ((nodePickerIndex + delta) % count + count) % count
+    }
 
     /// The graph the editor shows: ``activeGraph`` while it exists, otherwise
     /// the first graph, or `nil` when the document has none.
@@ -161,6 +189,7 @@ public final class StudioModel {
         activeGraph = id
         selectedGraphNode = nil
         pendingLink = nil
+        nodePickerIndex = 0
     }
 
     /// Shows the next (or previous) graph in document order, wrapping.
