@@ -20,7 +20,7 @@ Commands:
 unset TOOLCHAINS
 ./tools/check.sh > check.log 2>&1; echo "EXIT:$?"          # the gate
 swiftly run swift test --filter TransactionTests           # one suite
-swiftly run swift test --filter BridgeConvergenceTests     # bridge property test (~25 s)
+swiftly run swift test --filter BridgeConvergenceTests     # bridge property test (~30–40 s)
 ```
 
 - Adding a command means three things:

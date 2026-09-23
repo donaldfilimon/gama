@@ -23,7 +23,7 @@ It is green only when the log ends with `check.sh: PASSED`. It runs, in order:
 3. `swift build` with warnings as errors.
 4. `swift test`, with a test-count floor (`MIN_TESTS`) applied to the sum over all test targets. Every target's run must pass.
 
-When you add tests, raise the floor. Never lower it to make the gate pass.
+When you add tests, raise the floor. Never lower it to make the gate pass. The full gate takes over a minute, mostly the bridge convergence suite.
 
 ## Toolchain
 

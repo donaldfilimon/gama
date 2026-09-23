@@ -1,3 +1,4 @@
+import AppKit
 import GamaAuthoring
 import GamaReality
 import RealityKit
@@ -141,6 +142,15 @@ struct BridgeMappingTests {
         let material = try #require(body.components[ModelComponent.self]?.materials.first as? PhysicallyBasedMaterial)
         #expect(material.metallic.scale == 0.9)
         #expect(material.roughness.scale == 0.1)
+
+        // Authored colors are linear. Pure red reads the same in linear and
+        // gamma-encoded spaces, so a mid-grey is what pins the colour space.
+        try scene.session.execute(SetComponent(scene.body, .material(Material(baseColor: SIMD4(0.5, 0.5, 0.5, 1)))))
+        bridge.apply(scene.session.drainChanges(), from: scene.session.document)
+        let grey = try #require(body.components[ModelComponent.self]?.materials.first as? PhysicallyBasedMaterial)
+        let linearSpace = try #require(CGColorSpace(name: CGColorSpace.extendedLinearSRGB).flatMap(NSColorSpace.init(cgColorSpace:)))
+        let linear = try #require(grey.baseColor.tint.usingColorSpace(linearSpace))
+        #expect(abs(linear.redComponent - 0.5) < 0.01, "tint was \(linear.redComponent) in linear sRGB")
 
         try scene.session.execute(RemoveComponent(scene.body, .mesh))
         bridge.apply(scene.session.drainChanges(), from: scene.session.document)

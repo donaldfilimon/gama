@@ -57,6 +57,15 @@ and runtime probes under `swift test`):
 7. **Defaults for absent components.** No transform means identity. A mesh
    without a material uses the default `Material()`. No mesh means no
    `ModelComponent`. No visibility means enabled.
+8. **Base colors are linear sRGB end to end.** The authored `baseColor` is
+   linear, matching USD material colors. Each channel is encoded with the
+   exact sRGB transfer function, and the tint is then built with the sRGB
+   initializer. Passing linear values straight through would declare them
+   gamma-encoded, and an authored 0.5 would render at 0.214 (measured by
+   mutation). A linear-space `CGColor` would avoid the encoding, but its
+   initializer takes a raw pointer, which strict memory safety flags as
+   `unsafe`. A mid-grey test pins the behavior, since pure primaries look the
+   same in both spaces.
 
 ## Consequences
 
