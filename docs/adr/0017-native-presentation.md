@@ -36,7 +36,7 @@ instead of painting cells.** The following rules bind any implementation:
    controls at frames Gama computed. It never lets the platform decide
    layout, so panel, split, and drag behavior cannot fork per platform.
 2. **The platform measures, Gama decides.** Text and control intrinsic sizes
-   come from the host through a portable `LayoutMetrics` protocol. The core
+   come from the host through a portable `LayoutMetrics` value (a struct of closures). The core
    stays stdlib-only, integer, and Embedded-compilable; a native host's
    layout unit is one point.
 3. **Authored lengths keep their meaning.** Spacing, padding, fixed frames,

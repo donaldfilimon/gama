@@ -29,7 +29,7 @@ That is six sub-projects, each with its own spec, plan, and review:
 | - | ----------- | ---- | ---------- |
 | 1 | **Native presentation on macOS (this spec)**: metrics-driven layout, control descriptors, AppKit presenter | Gama | PR #107 |
 | 2 | Dock model: panels, splits, tabs, drag handles, drop targets, persisted layouts, pure Gama | Gama | 1 |
-| 3 | More native hosts: UIKit (iOS), Android Views over the JNI backend, WinUI 3 (blocked on a Windows 6.5-dev toolchain unless a 6.4.x exception is accepted), and shell menus routed to `ActionID` | Gama | 1 |
+| 3 | More native hosts: UIKit (iOS), Android Views over the JNI backend, Windows native controls (Win32 or WinUI; the Swift projection is unresolved, and the Windows 6.5-dev toolchain is missing unless a 6.4.x exception is accepted), and shell menus routed to `ActionID` | Gama | 1 |
 | 4 | abi ↔ Gama bridge: how a Swift app reaches the Rust runtime, locally and from a phone | abi | 1 |
 | 5 | ABI operator app: dashboard, WDBX, agents, GPU, studio as dockable panels | new app repo or abi | 2, 4 |
 | 6 | Consumer Abbey shell on the same foundation | app repo | 5 |
@@ -57,40 +57,49 @@ Dynamic Type, right-to-left, and custom control styling.
 
 `LayoutEngine` keeps its integer geometry (`Point`, `Size`, `Rect`,
 `ProposedSize` stay `Int`). What changes is **who measures and what one unit
-means**. A new portable protocol in `GamaCore`:
+means**. A new portable struct of closures in `GamaCore`. It is not a
+protocol, because `GamaCore` compiles for Embedded Swift, which has no
+existentials, and making `LayoutEngine`, `FrameHost`, and `HostPump` generic
+would ripple into every backend. A struct of closures is the house pattern
+already (`BuildContext.registerAction`, `registerNativeRegion`):
 
 ```swift
 /// Supplies the measurements `LayoutEngine` cannot compute itself.
-public protocol LayoutMetrics {
-    /// Size of `text` drawn with `style`, wrapped to `maxWidth` when given.
-    func textSize(_ text: String, style: TextStyle, maxWidth: Int?) -> Size
+public struct LayoutMetrics {
+    /// Size of text drawn with a style, wrapped to a maximum width when given.
+    public var textSize: (String, TextStyle, Int?) -> Size
     /// Converts an authored length in cells to layout units on one axis.
-    func units(cells: Int, axis: Axis) -> Int
+    public var units: (Int, Axis) -> Int
     /// Main-axis thickness of a divider, in layout units.
-    var dividerThickness: Int { get }
+    public var dividerThickness: Int
     /// Intrinsic size of a registered control, or nil to measure its child.
-    func controlSize(for id: NodeID, proposal: ProposedSize) -> Size?
+    public var controlSize: (NodeID, ProposedSize) -> Size?
+    /// Cell metrics: today's measurements, unchanged.
+    public static var cell: LayoutMetrics { get }
 }
 ```
 
-- **`CellMetrics`** is the default. It returns `TextLayout.size`, the
+- **`LayoutMetrics.cell`** is the default. It returns `TextLayout.size`, the
   identity for `units`, 1 for dividers, and nil for controls, so every
   current caller produces **byte-identical** layouts. The existing layout,
   P1 layout, FrameHost, DrawList, WASM, and TUI tests are the parity oracle.
 - `LayoutEngine.measure`/`layout` gain a `metrics:` parameter defaulting to
-  `CellMetrics()`. Every authored length (stack spacing, padding insets,
+  `.cell`. Every authored length (stack spacing, padding insets,
   `frame(width:height:)`, `spacer(minLength:)`, the ends of `flexFrame`
   other than `.max`) is converted through `units(cells:axis:)` at the point
   of use. Flex distribution (ADR 0013) is unchanged: it already works on
   arbitrary integers.
 - `.text` leaves measure through `textSize`. An `.interactive` node asks
   `controlSize(for:proposal:)` first and falls back to measuring its child.
-- `FrameHost` takes its metrics at `init` (default `CellMetrics()`) and uses
+- `FrameHost` stores its metrics, set at `init` (default `.cell`), and uses
   them in `buildFrame`. **`surfaceSize` stays in cells** (ADR 0017 rule 3):
   a native host reports its bounds divided by its cell size, so
   `VirtualizedList` and other author code keep their meaning.
 - The core stays stdlib-only, integer, and Embedded-compilable. Hosts round
-  platform measurements up to whole points before returning them.
+  platform measurements up to whole points before returning them. The
+  Embedded artifact grows by the new code; the plan records the new size
+  and must stay inside the baseline tolerance or update the baseline
+  deliberately with the reason.
 
 **Rejected:** a second `PointLayoutEngine` (two flex implementations to keep
 in step) and making geometry generic or floating point (touches every public
@@ -213,18 +222,28 @@ A new `GamaNativeHostView` in `GamaAppleUI`, in its own files so
   `validateIdentities` and `duplicateNativeRegionIDs` behavior: it is
   reported, and the first registration wins.
 - A text measurement AppKit cannot produce (empty or invalid attributed
-  string) falls back to `CellMetrics` scaled by the cell size, so layout
+  string) falls back to `LayoutMetrics.cell` scaled by the cell size, so layout
   never stalls.
 - A presentation op that references an unknown id is a programming error: a
   debug assertion and a skipped op in release, never a crash in shipping
   code.
+- **Focus re-entrancy.** Focus is two-way: Gama moves first responder, and
+  first-responder changes call `FrameHost.focus(_:)`, which rebuilds. To stop
+  a loop, `focus(_:)` is a no-op when the node is already focused, and the
+  host ignores first-responder notifications it caused itself while applying
+  a frame.
+- **Text editing forks here, deliberately.** On a native host,
+  `NSTextField` owns editing, caret, selection, and IME. `TextField`'s
+  registered key handler and its ADR 0014 cursor slot stay registered but
+  are dormant: only Tab and Shift-Tab reach `FrameHost`. The cell path keeps
+  using them unchanged.
 
 ## Testing
 
 Swift Testing only (ADR 0003). Every new public declaration has a `///`
 comment (doc-coverage gate).
 
-- **Parity (portable).** With `CellMetrics`, every existing layout, FrameHost,
+- **Parity (portable).** With `LayoutMetrics.cell`, every existing layout, FrameHost,
   DrawList, TUI, and WASM test passes unchanged. A new test lays out every
   view in the catalog both through the old call and the metrics call and
   asserts identical `LaidOutNode` trees.
@@ -263,6 +282,13 @@ comment (doc-coverage gate).
 - **Buttons with rich labels.** A container button is less native than
   `NSButton`. That is acceptable for sub-project 1. If the operator app
   needs icon buttons, the descriptor gains an image case later.
+- **Index-path identity (v1 limitation).** Non-interactive views are keyed
+  by their index path, so a conditional insert shifts later siblings and the
+  diff emits remove and insert where a move was meant. Labels re-created
+  that way flicker for a frame but hold no state. Interactive nodes keep
+  stable `NodeID`s, so text fields never lose their field editor. Stable
+  identity for plain nodes is a later refinement if the operator app shows
+  the flicker.
 - **Stacking on PR #107.** This branch is based on native regions. If #107
   changes before it merges, this branch rebases onto it; it does not merge
   `main` back into it.
