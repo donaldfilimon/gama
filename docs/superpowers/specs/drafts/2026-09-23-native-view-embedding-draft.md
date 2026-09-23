@@ -2,8 +2,9 @@
 
 Status: Draft. Open questions, not a commitment. Nothing here is built.
 Open question 6 is resolved: [ADR 0016](../../../adr/0016-native-regions-narrow-own-the-rendering.md)
-accepts the amendment. The other questions remain open for the implementation
-design.
+accepts the amendment. Open question 1 is resolved by
+[the native region design](../2026-09-23-native-region-design.md). The others
+remain open.
 
 ## Why this is written down
 
@@ -191,10 +192,11 @@ A single vertical slice, after acceptance and ADR 0016:
 
 ## Open questions
 
-1. **A new node or a side table?** Is a new `RenderNode` case the right shape,
-   or should a region be an ordinary `frame` plus a host-side table keyed by
-   `NodeID`? The table avoids touching every exhaustive switch, but hides the
-   region from the IR, MLIR, and any future inspector.
+1. **A new node or a side table?** Resolved in
+   [the native region design](../2026-09-23-native-region-design.md): neither.
+   A region is the existing `interactive` node around its fallback, and it
+   registers with the host the way actions do. The `RenderNode`, layout,
+   painter, MLIR, and wire format are all unchanged.
 2. **Leaving focus.** How does Tab leave a native view that consumes Tab
    itself (a text view, a 3D viewport with key bindings)? Options are a
    reserved escape chord, host-level key interception, or accepting that the
