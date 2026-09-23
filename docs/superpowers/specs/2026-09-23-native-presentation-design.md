@@ -253,7 +253,7 @@ comment (doc-coverage gate).
   view in the catalog both through the old call and the metrics call and
   asserts identical `LaidOutNode` trees.
 - **Metrics (portable).** A fake metrics object with proportional widths and
-  non-unit `units(cells:axis:)` proves that text size, spacing, padding,
+  non-unit `units(cells, axis)` proves that text size, spacing, padding,
   fixed frames, dividers, and control sizes flow through stacks and flex
   distribution as specified.
 - **Descriptors (portable).** Each control registers the right descriptor,
