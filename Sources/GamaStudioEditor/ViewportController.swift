@@ -44,7 +44,7 @@ public final class ViewportController: NSObject {
     public init(model: StudioModel, onSelectionChange: @escaping @MainActor () -> Void) {
         self.model = model
         self.onSelectionChange = onSelectionChange
-        arView = ARView(frame: NSRect(x: 0, y: 0, width: 640, height: 480))
+        arView = StudioViewportView(frame: NSRect(x: 0, y: 0, width: 640, height: 480))
         super.init()
 
         arView.environment.background = .color(NSColor(white: 0.12, alpha: 1))
@@ -96,6 +96,21 @@ public final class ViewportController: NSObject {
     @objc private func handleClick(_ recognizer: NSClickGestureRecognizer) {
         pick(at: recognizer.location(in: arView))
     }
+}
+
+/// The ARView subclass the controller shows.
+///
+/// Keyboard focus note (measured, see ViewportTests): a click makes this view
+/// first responder, as AppKit does for any view that accepts it, but keys
+/// still reach Gama because `ARView.keyDown` forwards what it does not use
+/// to its next responder, the `GamaHostView`. With the fixed camera nothing
+/// here consumes keys, so Tab, arrows, and Enter keep driving the panels.
+final class StudioViewportView: ARView {
+    /// A click in a background window's viewport picks immediately instead
+    /// of only activating the window, as a canvas does in most editors. It
+    /// also lets a click delivered to an inactive process (a test runner)
+    /// reach the gesture recognizer at all.
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
 
 #endif
