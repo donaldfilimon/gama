@@ -11,7 +11,7 @@ UI / console / graph / AI  ──►  DocumentCommand  ──►  EditorSession
                                                         │  commit, or discard on any error
                                                         ├─► undo/redo stacks (exact inverses)
                                                         ├─► selection (pruned, not history)
-                                                        └─► pendingChanges ──► drainChanges() ──► runtime projection (not built)
+                                                        └─► pendingChanges ──► drainChanges() ──► RealityBridge.apply (GamaReality)
 ```
 
 Commands:
@@ -20,10 +20,12 @@ Commands:
 unset TOOLCHAINS
 ./tools/check.sh > check.log 2>&1; echo "EXIT:$?"          # the gate
 swiftly run swift test --filter TransactionTests           # one suite
+swiftly run swift test --filter BridgeConvergenceTests     # bridge property test (~25 s)
 ```
 
 - Adding a command means three things:
   1. Implement `apply(to:changes:)` so it returns the exact inverse.
   2. Add a case to `CommandRoundTripTests.cases`.
   3. Raise `MIN_TESTS` in `tools/check.sh`.
+- RealityKit's `ChildCollection` reorders siblings on removal, so never rely on child order surviving a `removeFromParent`. The bridge re-sequences touched containers at the end of each pass (ADR 0002).
 - Agent shells may set `noclobber`: truncate with `>|`, and verify file edits by grepping for a marker rather than trusting an exit code.

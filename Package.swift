@@ -20,16 +20,30 @@ let strictLibrary: [SwiftSetting] = strictCore + [
 
 let package = Package(
     name: "GamaStudio",
-    platforms: [.macOS(.v14), .iOS(.v17), .tvOS(.v17), .visionOS(.v1)],
+    // macOS 15 / iOS 18 / tvOS 26 is RealityKit's floor for cone and cylinder
+    // meshes (ADR 0002); every Primitive must map to a real mesh.
+    platforms: [.macOS(.v15), .iOS(.v18), .tvOS(.v26), .visionOS(.v1)],
     products: [
         .library(name: "GamaAuthoring", targets: ["GamaAuthoring"]),
+        .library(name: "GamaReality", targets: ["GamaReality"]),
     ],
     targets: [
         // Standard library only: tools/check.sh rejects platform imports here.
         .target(name: "GamaAuthoring", swiftSettings: strictLibrary),
+        // Apple-only runtime projection; compiles to nothing without RealityKit.
+        .target(
+            name: "GamaReality",
+            dependencies: ["GamaAuthoring"],
+            swiftSettings: strictLibrary
+        ),
         .testTarget(
             name: "GamaAuthoringTests",
             dependencies: ["GamaAuthoring"],
+            swiftSettings: strictCore
+        ),
+        .testTarget(
+            name: "GamaRealityTests",
+            dependencies: ["GamaAuthoring", "GamaReality"],
             swiftSettings: strictCore
         ),
     ]
