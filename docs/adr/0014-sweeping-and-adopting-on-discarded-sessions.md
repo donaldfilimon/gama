@@ -91,5 +91,6 @@ windows really close for good: iPad and visionOS.
   - adoption between two real windows.
 - **Not built:**
   - choosing which orphan to adopt (always the newest);
-  - telling the user the changes came from another window;
+  - telling the user the changes came from another window (since built:
+    ADR 0015);
   - macOS.

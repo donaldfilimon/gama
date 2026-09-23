@@ -31,6 +31,11 @@ public final class StudioModel {
     /// selection change. Cleared the next time any of those succeeds.
     public private(set) var lastError: AuthoringError?
 
+    /// A one-time message for the status line, such as unsaved changes
+    /// brought back at launch (ADR 0015). Editor state, not authored state:
+    /// the next document change (an edit, undo, redo, or open) clears it.
+    public var notice: String?
+
     /// Called after every applied document change (an edit, an undo, or a
     /// redo), once `bridge` is already current. Not called for selection
     /// changes, which are editor state, nor for refusals.
@@ -87,6 +92,7 @@ public final class StudioModel {
         session = EditorSession(document: document)
         if asSaved { savedDocument = document }
         lastError = nil
+        notice = nil
         bridge.rebuild(from: session.document)
         onDocumentChange?()
     }
@@ -694,7 +700,10 @@ public final class StudioModel {
             bridge.apply(session.drainChanges(), from: session.document)
             applied = true
         }
-        if applied { onDocumentChange?() }
+        if applied {
+            notice = nil
+            onDocumentChange?()
+        }
     }
 
     private func reportSelection(changedFrom before: Selection) {

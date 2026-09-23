@@ -10,7 +10,7 @@ unset TOOLCHAINS
 # Minimum test count. A filter or a target that silently matches nothing
 # prints success with zero tests, so the gate asserts a floor. Raise it when
 # tests are added; never lower it to make the gate pass.
-MIN_TESTS=249
+MIN_TESTS=252
 # Standard-library-only targets (ADR 0001, ADR 0005, ADR 0006, ADR 0007).
 LIBRARIES=("Sources/GamaAuthoring" "Sources/GamaUSD" "Sources/GamaConsole" "Sources/GamaGraph")
 BANNED='Foundation|Darwin|Glibc|simd|RealityKit|SwiftUI|AppKit|UIKit|Combine|Dispatch'

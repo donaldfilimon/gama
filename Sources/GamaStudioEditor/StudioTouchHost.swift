@@ -133,12 +133,14 @@ public final class StudioHostViewController: UIViewController {
     /// Adopts the newest adoptable orphan when this window has no recovery
     /// file, then restores whichever file it has.
     private func adoptAndRestore(_ recovery: UntitledRecovery) {
+        var adopted = false
         if adoptsOrphans, !recovery.exists,
            let orphan = UntitledRecovery.newestAdoptable(in: UntitledRecovery.defaultDirectory(), keeping: RecoveryWindows.liveKeys()) {
-            adoptedOrphan = recovery.adopt(orphan)
+            adopted = recovery.adopt(orphan)
+            adoptedOrphan = adopted
         }
         do {
-            restoredUntitledChanges = try recovery.restore(into: files.documents)
+            restoredUntitledChanges = try recovery.restore(into: files.documents, adopted: adopted)
         } catch {
             files.reportUnrecoverable(error)
         }
@@ -217,6 +219,7 @@ public final class StudioHostViewController: UIViewController {
         }
         var failures: [String] = []
         if !restoredUntitledChanges { failures.append("nothing was restored") }
+        if model.notice != UntitledRecovery.restoredNotice { failures.append("no restored notice (ADR 0015)") }
         if files.documents.currentURL != nil { failures.append("the restored document is not Untitled") }
         if !files.documents.hasUnsavedChanges { failures.append("the restored document does not read as unsaved") }
         if (try? StudioDocumentIO.read(from: recovery.url)) != model.session.document {
@@ -239,6 +242,7 @@ public final class StudioHostViewController: UIViewController {
         }
         var failures: [String] = []
         if !adoptedOrphan { failures.append("no orphan was adopted") }
+        if model.notice != UntitledRecovery.adoptedNotice { failures.append("no recovered notice (ADR 0015)") }
         if !restoredUntitledChanges { failures.append("nothing was restored") }
         if files.documents.currentURL != nil { failures.append("the adopted document is not Untitled") }
         if !files.documents.hasUnsavedChanges { failures.append("the adopted document does not read as unsaved") }

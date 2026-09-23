@@ -158,6 +158,8 @@ struct StudioFrameState: Sendable {
     var selectionName: String?
     var undoLabel: String?
     var lastError: AuthoringError?
+    /// ``StudioModel/notice``, shown at the end of the status line.
+    var notice: String?
     /// The console exchanges the panel shows, oldest first.
     var console: [StudioModel.ConsoleEntry]
     /// Whether the right-hand panel is the graph editor.
@@ -211,6 +213,7 @@ struct StudioFrameState: Sendable {
         self.revision = session.revision
         self.undoLabel = session.undoLabel
         self.lastError = model.lastError
+        self.notice = model.notice
         self.console = Array(model.consoleLog.suffix(ConsolePanel.visibleEntries))
         self.showsGraphEditor = model.showsGraphEditor
         self.graph = GraphPanelState(model)
@@ -362,12 +365,13 @@ struct StudioRootView: View {
             .actionIdentity(ActionID("studio.graph.toggle"))
     }
 
-    /// `rev N · <selection> · undo: <label> · <refusal>`, the refusal only
-    /// when one is recorded.
+    /// `rev N · <selection> · undo: <label> · <refusal> · <notice>`, the
+    /// refusal and notice only when there is one.
     static func statusLine(_ state: StudioFrameState) -> String {
         var line = "rev \(state.revision) · \(state.selectionName ?? "no selection")"
         line += " · undo: \(state.undoLabel ?? "—")"
         if let error = state.lastError { line += " · \(error)" }
+        if let notice = state.notice { line += " · \(notice)" }
         return line
     }
 }

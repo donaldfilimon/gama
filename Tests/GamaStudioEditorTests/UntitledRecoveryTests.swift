@@ -8,6 +8,8 @@
 
 import Foundation
 import GamaAuthoring
+import GamaCore
+import GamaDraw
 import GamaStudioEditor
 import Testing
 
@@ -220,6 +222,69 @@ struct UntitledRecoveryTests {
         #expect(try mine.restore(into: session))
         #expect(session.model.session.document == edited.document)
         #expect(session.hasUnsavedChanges)
+    }
+
+    // MARK: The recovered notice (ADR 0015)
+
+    func statusText(_ model: StudioModel) throws -> String {
+        let frame = Size(width: 200, height: 40)
+        var host = try FrameHost(app: StudioApp(model: model))
+        var buffer = CellBuffer(size: frame)
+        buffer.clearBack()
+        CellPainter.paint(host.pump(size: frame), into: &buffer)
+        return (0..<frame.height).map { buffer.rowText($0) }.joined(separator: "\n")
+    }
+
+    @Test func restoringLeavesANoticeSayingWhereTheChangesCameFrom() throws {
+        let directory = try scratch()
+        let before = StudioModel(document: StudioModel.sampleScene())
+        before.addPrimitive(.box)
+        for (key, adopted, notice) in [
+            ("own", false, UntitledRecovery.restoredNotice),
+            ("adopted", true, UntitledRecovery.adoptedNotice),
+        ] {
+            let recovery = try #require(UntitledRecovery(key: key, in: directory))
+            try StudioDocumentIO.write(before.session.document, to: recovery.url)
+            let model = StudioModel(document: StudioModel.sampleScene())
+            #expect(try recovery.restore(into: StudioDocumentSession(model: model), adopted: adopted))
+            #expect(model.notice == notice)
+            #expect(try statusText(model).contains(notice))
+        }
+    }
+
+    @Test func theNoticeClearsOnTheNextDocumentChange() throws {
+        let directory = try scratch()
+        let before = StudioModel(document: StudioModel.sampleScene())
+        before.addPrimitive(.box)
+        let recovery = try #require(UntitledRecovery(key: "clears", in: directory))
+        try StudioDocumentIO.write(before.session.document, to: recovery.url)
+        let model = StudioModel(document: StudioModel.sampleScene())
+        let session = StudioDocumentSession(model: model)
+        #expect(try recovery.restore(into: session))
+
+        model.select([])  // not a document change
+        #expect(model.notice == UntitledRecovery.restoredNotice)
+        model.addPrimitive(.sphere)
+        #expect(model.notice == nil)
+        #expect(try !statusText(model).contains(UntitledRecovery.restoredNotice))
+
+        model.notice = "anything"
+        model.undo()
+        #expect(model.notice == nil, "undo is a document change")
+        model.notice = "anything"
+        model.replaceDocument(StudioModel.sampleScene())
+        #expect(model.notice == nil, "so is opening")
+    }
+
+    @Test func aDocumentWithAFileGetsNoNotice() throws {
+        let directory = try scratch()
+        let recovery = try #require(UntitledRecovery(key: "hasfile", in: directory))
+        try StudioDocumentIO.write(StudioModel.sampleScene(), to: recovery.url)
+        let model = StudioModel(document: StudioModel.sampleScene())
+        let session = StudioDocumentSession(model: model)
+        try session.save(to: directory.appendingPathComponent("real.usda"))
+        #expect(try recovery.restore(into: session) == false)
+        #expect(model.notice == nil)
     }
 
     @Test func replacingWithoutMarkingSavedKeepsTheSavedBaseline() {

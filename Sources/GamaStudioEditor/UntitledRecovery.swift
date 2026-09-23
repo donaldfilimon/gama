@@ -124,15 +124,18 @@ public struct UntitledRecovery: Sendable, Hashable {
     }
 
     /// Restores the recovered changes into `session`, which must still be
-    /// Untitled. Returns `false`, changing nothing, when there is no file.
+    /// Untitled, and leaves a status-line notice saying where they came
+    /// from: this window's last session, or, when `adopted`, a closed
+    /// window (ADR 0015). Returns `false`, changing nothing, when there is
+    /// no file.
     ///
     /// A file that cannot be read is moved aside, to
     /// `<key>.unreadable-<time>.usda` beside it, so it is neither lost nor
     /// overwritten by the next autosave, and the error is rethrown with the
     /// document untouched.
     @MainActor
-    public func restore(into session: StudioDocumentSession) throws -> Bool {
-        guard exists else { return false }
+    public func restore(into session: StudioDocumentSession, adopted: Bool = false) throws -> Bool {
+        guard exists, session.currentURL == nil else { return false }
         let document: SceneDocument
         do {
             document = try StudioDocumentIO.read(from: url)
@@ -141,8 +144,15 @@ public struct UntitledRecovery: Sendable, Hashable {
             throw error
         }
         session.restoreUntitled(document)
+        session.model.notice = adopted ? Self.adoptedNotice : Self.restoredNotice
         return true
     }
+
+    /// The status-line notice after restoring this window's own changes
+    /// from the last session (ADR 0015).
+    public static let restoredNotice = "restored unsaved changes from the last session"
+    /// The status-line notice after adopting a closed window's changes.
+    public static let adoptedNotice = "recovered unsaved changes from a closed window"
 
     /// Removes the file. Harmless when it is already gone.
     public func discard() {
