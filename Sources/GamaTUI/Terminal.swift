@@ -20,6 +20,7 @@
 #endif
 
 public import GamaCore
+import GamaDraw
 
 /// The typed failure for every throwing GamaTUI operation — raw-mode entry
 /// and exit, writes, and event polling all `throws(TerminalError)`, so a
@@ -93,6 +94,9 @@ public struct Terminal: ~Copyable {
     /// Reused read buffer: one heap allocation for the session instead of
     /// one per nextEvent call.
     private var readBuffer = [UInt8](repeating: 0, count: 64)
+    /// Capabilities captured when raw mode was entered. Exit writes the
+    /// matching disable sequence, including when detection would now differ.
+    private var activeCapabilities = TerminalCapabilities.unknown
 
     /// Creates a terminal bound to standard input and standard output.
     public init() {
@@ -108,12 +112,21 @@ public struct Terminal: ~Copyable {
     // MARK: Raw mode
 
     /// Switches the tty into raw mode (no echo, no line buffering, no
-    /// signal keys), then enters the alternate screen, hides the cursor,
-    /// clears, and enables SGR mouse reporting. The pre-raw termios state
+    /// signal keys), hides the cursor, and enables only the features
+    /// ``GamaDraw/TerminalCapabilities/current()`` reports as supported: alternate
+    /// screen, SGR mouse, bracketed paste, and focus reporting. Unknown
+    /// features are not enabled, and the primary screen is cleared only
+    /// when the alternate screen is supported. The pre-raw termios state
     /// is saved for restoration. Throws when stdin is not a tty or the
     /// mode cannot be applied; a failed screen setup restores the terminal
     /// before rethrowing.
     public mutating func enterRawMode() throws(TerminalError) {
+        try enterRawMode(capabilities: .current())
+    }
+
+    /// Enters raw mode using `capabilities` for both the enable write and
+    /// the bytes the signal rescue will write from `atexit`.
+    mutating func enterRawMode(capabilities: TerminalCapabilities) throws(TerminalError) {
         guard unsafe tcgetattr(inputFD, &originalTermios) == 0 else {
             throw TerminalError("tcgetattr failed — stdin is not a tty")
         }
@@ -131,20 +144,25 @@ public struct Terminal: ~Copyable {
             throw TerminalError("tcsetattr failed")
         }
         isRaw = true
+        activeCapabilities = capabilities
         // Arm the process-global rescue only now that raw mode is really in
         // effect, so a terminal that was never modified is never "restored".
+        // The C buffer receives this session's disable sequence, not a
+        // fixed alternate-screen exit.
         do {
             try TerminalRescue.arm(
-                inputFD: inputFD, outputFD: outputFD, original: originalTermios)
+                inputFD: inputFD,
+                outputFD: outputFD,
+                original: originalTermios,
+                restoreSequence: TerminalModeSequences.disable(capabilities)
+            )
         } catch {
             _ = unsafe tcsetattr(inputFD, TCSANOW, &originalTermios)
             isRaw = false
             throw error
         }
-        // Alternate screen, hide cursor, clear.
         do {
-            try write("\u{1B}[?1049h\u{1B}[?25l\u{1B}[2J\u{1B}[H")
-            try write("\u{1B}[?1000h\u{1B}[?1006h")
+            try write(TerminalModeSequences.enable(activeCapabilities))
         } catch {
             exitRawMode()
             throw error
@@ -165,7 +183,7 @@ public struct Terminal: ~Copyable {
     public mutating func exitRawModeChecked() throws(TerminalError) {
         guard isRaw else { return }
         var firstError: TerminalError?
-        do { try write("\u{1B}[?1006l\u{1B}[?1000l\u{1B}[0m\u{1B}[?25h\u{1B}[?1049l") }
+        do { try write(TerminalModeSequences.disable(activeCapabilities)) }
         catch { firstError = error }
         // Restoration must not wait for an output queue (notably a PTY whose
         // reader has stopped after a crash); TCSANOW makes cleanup bounded.
@@ -501,6 +519,9 @@ enum WindowsInputTranslator {
     private var savedOutMode: DWORD = 0
     private var savedCP: UINT = 0
     private var isRaw = false
+    /// Capabilities captured when raw mode was entered. Exit writes the
+    /// matching disable sequence.
+    private var activeCapabilities = TerminalCapabilities.unknown
 
     // Console mode flags (WinCon.h)
     private static let ENABLE_PROCESSED_INPUT: DWORD = 0x0001
@@ -520,11 +541,12 @@ enum WindowsInputTranslator {
     // MARK: Raw mode
 
     /// Acquires the standard console handles, enables virtual terminal
-    /// processing on output, switches input to raw key/mouse/resize events
-    /// (no line buffering or echo), selects the UTF-8 output code page, and
-    /// enters the alternate screen with the cursor hidden. The prior modes
-    /// and code page are saved for restoration. Throws when no console is
-    /// attached or a mode cannot be set, undoing any partial setup first.
+    /// processing on output, switches input to raw key and resize events
+    /// (no line buffering or echo), and selects the UTF-8 output code page.
+    /// Mouse input and the alternate screen are enabled only when
+    /// ``GamaDraw/TerminalCapabilities/current()`` reports them supported. The prior
+    /// modes and code page are saved for restoration. Throws when no console
+    /// is attached or a mode cannot be set, undoing any partial setup first.
     public mutating func enterRawMode() throws(TerminalError) {
         unsafe hIn = GetStdHandle(STD_INPUT_HANDLE)
         unsafe hOut = GetStdHandle(STD_OUTPUT_HANDLE)
@@ -545,11 +567,16 @@ enum WindowsInputTranslator {
             throw TerminalError("SetConsoleMode(out) failed — Windows 10 1511+ required for VT")
         }
 
-        // Input: raw keys + mouse + resize events; no line buffering/echo.
+        // Input: raw keys + resize events; no line buffering/echo.
+        // Mouse is enabled only when the capability report says so.
+        let capabilities = TerminalCapabilities.current()
         var inMode = savedInMode
         inMode &= ~(Self.ENABLE_LINE_INPUT | Self.ENABLE_ECHO_INPUT
             | Self.ENABLE_PROCESSED_INPUT | Self.ENABLE_QUICK_EDIT_MODE)
-        inMode |= Self.ENABLE_MOUSE_INPUT | Self.ENABLE_WINDOW_INPUT | Self.ENABLE_EXTENDED_FLAGS
+        inMode |= Self.ENABLE_WINDOW_INPUT | Self.ENABLE_EXTENDED_FLAGS
+        if capabilities.mouse == .supported {
+            inMode |= Self.ENABLE_MOUSE_INPUT
+        }
         guard unsafe SetConsoleMode(hIn, inMode) else {
             throw TerminalError("SetConsoleMode(in) failed")
         }
@@ -563,7 +590,8 @@ enum WindowsInputTranslator {
         }
 
         isRaw = true
-        do { try write("\u{1B}[?1049h\u{1B}[?25l\u{1B}[2J\u{1B}[H") }
+        activeCapabilities = capabilities
+        do { try write(TerminalModeSequences.enable(activeCapabilities)) }
         catch {
             exitRawMode()
             throw error
@@ -582,7 +610,7 @@ enum WindowsInputTranslator {
     public mutating func exitRawModeChecked() throws(TerminalError) {
         guard isRaw else { return }
         var failed = false
-        do { try write("\u{1B}[0m\u{1B}[?25h\u{1B}[?1049l") } catch { failed = true }
+        do { try write(TerminalModeSequences.disable(activeCapabilities)) } catch { failed = true }
         if unsafe !SetConsoleMode(hIn, savedInMode) { failed = true }
         if unsafe !SetConsoleMode(hOut, savedOutMode) { failed = true }
         if savedCP != 0, !SetConsoleOutputCP(savedCP) { failed = true }

@@ -37,8 +37,20 @@ public struct CellBuffer: Hashable, Sendable {
     private var front: [Cell]
     private var back: [Cell]
     private var forceFull = true
-    /// Whether ANSI output uses 24-bit color (`false` falls back to 256).
-    public var trueColor: Bool = true
+    /// Palette ``presentDiff()`` may encode. ``TerminalColorDepth/unknown``
+    /// and ``TerminalColorDepth/monochrome`` emit no color codes. The
+    /// default is ``TerminalColorDepth/unknown`` so a buffer that was not
+    /// given a capability report does not assume 24-bit color.
+    public var colorDepth: TerminalColorDepth = .unknown
+    /// Whether ANSI output uses 24-bit color.
+    ///
+    /// Setting `true` selects ``TerminalColorDepth/trueColor``. Setting
+    /// `false` selects ``TerminalColorDepth/ansi256``. Assign
+    /// ``colorDepth`` directly for 16-color, monochrome, or unknown.
+    public var trueColor: Bool {
+        get { colorDepth == .trueColor }
+        set { colorDepth = newValue ? .trueColor : .ansi256 }
+    }
 
     /// Creates a buffer of `size` (normalized to the defensive ceiling).
     public init(size: Size) {
@@ -218,19 +230,56 @@ public struct CellBuffer: Hashable, Sendable {
         if a.contains(.inverse) { codes.append("7") }
         if a.contains(.strikethrough) { codes.append("9") }
 
-        if !style.foreground.isDefault {
-            let c = style.foreground
-            codes.append(
-                trueColor ? "38;2;\(c.r);\(c.g);\(c.b)" : "38;5;\(c.xterm256)"
-            )
+        if !style.foreground.isDefault, let code = sgrColor(style.foreground, foreground: true) {
+            codes.append(code)
         }
-        if !style.background.isDefault {
-            let c = style.background
-            codes.append(
-                trueColor ? "48;2;\(c.r);\(c.g);\(c.b)" : "48;5;\(c.xterm256)"
-            )
+        if !style.background.isDefault, let code = sgrColor(style.background, foreground: false) {
+            codes.append(code)
         }
         return "\u{1B}[\(codes.joined(separator: ";"))m"
+    }
+
+    /// Color parameter for one channel, or `nil` when the depth is
+    /// unknown or monochrome. Unknown is not promoted to 256 or 24-bit.
+    private func sgrColor(_ color: Color, foreground: Bool) -> String? {
+        switch colorDepth {
+        case .unknown, .monochrome:
+            return nil
+        case .trueColor:
+            return foreground
+                ? "38;2;\(color.r);\(color.g);\(color.b)"
+                : "48;2;\(color.r);\(color.g);\(color.b)"
+        case .ansi256:
+            return foreground ? "38;5;\(color.xterm256)" : "48;5;\(color.xterm256)"
+        case .ansi16:
+            let index = Self.nearestAnsi16(color)
+            if foreground {
+                return index < 8 ? "\(30 + index)" : "\(90 + index - 8)"
+            }
+            return index < 8 ? "\(40 + index)" : "\(100 + index - 8)"
+        }
+    }
+
+    private static func nearestAnsi16(_ color: Color) -> Int {
+        let palette: [(Int, Int, Int)] = [
+            (0, 0, 0), (205, 0, 0), (0, 205, 0), (205, 205, 0),
+            (0, 0, 238), (205, 0, 205), (0, 205, 205), (229, 229, 229),
+            (127, 127, 127), (255, 0, 0), (0, 255, 0), (255, 255, 0),
+            (92, 92, 255), (255, 0, 255), (0, 255, 255), (255, 255, 255),
+        ]
+        var best = 0
+        var bestDistance = Int.max
+        for (index, entry) in palette.enumerated() {
+            let dr = Int(color.r) - entry.0
+            let dg = Int(color.g) - entry.1
+            let db = Int(color.b) - entry.2
+            let distance = dr * dr + dg * dg + db * db
+            if distance < bestDistance {
+                bestDistance = distance
+                best = index
+            }
+        }
+        return best
     }
 
     // MARK: Run iteration (GUI/DOM/embed backends)

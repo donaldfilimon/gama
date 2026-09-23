@@ -32,13 +32,31 @@ scalars also return `-1` in this state, while the installed demo separately
 requires `-2` for those inputs. This fixture does not exercise reinstall or
 recovery after failure.
 
-`gama-web-demo` declares its inline counter with a direct `ReactiveSlot`,
-keeping the host macro plugin out of the wasm32 dependency graph. Its
-`render(in:)` binds slot zero at the component's identity before rendering
-the body under `context.child(0)`, matching the `@Component`/`@Reactive`
-expansion and retaining the host's per-surface store (ADR 0011).
-`WebDemoStateTests` exercises the same demo on the host, checking inline
-rebuilds and independent inline or hoisted `WindowGroup` surfaces.
+`gama-web-demo` is a showcase panel — a count/step/notify readout, a command
+row, a text field and a toggle, a progress bar, and a feature list — declared
+with four direct `ReactiveSlot`s, keeping the host macro plugin out of the
+wasm32 dependency graph. Its `render(in:)` binds slots zero through three, in
+declaration order, at the component's identity before rendering the body under
+`context.child(0)`, matching the `@Component`/`@Reactive` expansion and
+retaining the host's per-surface store (ADR 0011). The slot indices are half of
+each storage key, so reordering those four lines is a state-identity change,
+not a cosmetic one. `WebDemoStateTests` exercises the same demo on the host,
+checking inline rebuilds, independent inline or hoisted `WindowGroup`
+surfaces, and the two layout constraints below.
+
+The demo's layout carries two constraints that the smokes depend on and that
+are easy to break without noticing:
+
+- **`count <n>` must be a single `Text`.** The Node smoke matches
+  `/\bcount ([0-9]+)\b/` against the raw HTML, where every styled run is its
+  own `<span>`. A label and a value rendered as two `Text`s put a tag between
+  them and the match disappears. The browser smoke does not catch this, because
+  it reads `textContent`, which concatenates spans — so only the Node smoke, and
+  now a host test that serializes through `HTMLSerializer`, fail.
+- **The layout must still paint the count at 40x8.** That is the grid the Node
+  smoke resizes to, and it reads painted output, not the laid-out tree. Two
+  border rows leave six content rows; the panel keeps the count on the third
+  and uses horizontal padding only so the vertical cells go to content.
 `scripts/check-wasm.sh` proves the direct-slot runtime path twice: the Node smoke
 sends Enter through `gama_web_v1_key` and requires an exact `0` to `1`
 transition, while the browser smoke dispatches real DOM events and requires
@@ -87,7 +105,44 @@ JS imports the module provides to Swift (module `"gama"`): `setHTML`,
 
 `WebHost/index.html` + `WebHost/gama.js` form a dependency-free static
 site: serve the directory next to the built `.wasm` (relative `fetch`) and
-open it. It is a UI demonstration host, not a general WASI runtime — it
+open it. The page is a small shell around the `#gama` surface: a status line
+that reports the live grid size once the first frame lands, a boot overlay
+while the module compiles, and an error overlay that names the failing stage
+(fetch, instantiate, initialize, install, or first frame, and after boot a
+lost host or an event-handling fault) instead of leaving a blank surface. The
+failure is also written to `data-gama-failure` on the surface itself, so a
+driver can read it without depending on the page around it. It follows `prefers-color-scheme` and `prefers-reduced-motion`.
+
+**Exactly two host files ship.** `scripts/bundle-web.sh` copies `index.html`
+and `gama.js` and nothing else, so every style stays inline in the page. A
+third file would be missing from the deployed site while the local smoke,
+which serves `WebHost/` directly, kept passing. The pointer mapping and the
+usable grid both read the surface's padding back with `getComputedStyle`
+rather than assuming it, so a CSS change cannot silently shift clicks by a
+cell.
+
+**The host uses only the `v2` export tier.** The demo installs with `try?`,
+so a failed install is silent inside the module: `v1` calls then return
+nothing and do nothing, and the page would sit on its boot overlay
+indefinitely. `v2` answers `-1` from the very first call, which the host turns
+into a failure named `install`, carrying whatever the module printed. A `-1`
+after a successful boot is reported as a lost host. A `-2` from a key means
+Gama did not accept it (F14 and above, or a lone surrogate), so the host leaves
+that key to the browser rather than swallowing it and warns once in the
+console; it is not a page-level error. Input that arrives before boot has
+finished is dropped rather than forwarded, because a module with no exports
+yet would otherwise throw, and that throw would be misread as a lost host. The
+`v1` tier stays exported, unchanged, for other hosts.
+
+`scripts/check-wasm.sh` requires each of the four `v2` calls in `gama.js`
+individually and fails if any `v1` call remains. `scripts/browser-runtime-smoke.mjs`
+adds two browser-level checks beyond the `0->0->1` state sequence: it fires a
+key and a pointer press at the moment `WebAssembly.instantiate` is called and
+requires them to be dropped without disabling later input, and with
+`--failed-install` it serves the failed-install fixture through the real page
+and requires the surface to report stage `install`, the failed status, and the
+missing-host diagnosis. A `v1` host fails that second check by construction,
+since it has no status to read. It is a UI demonstration host, not a general WASI runtime — it
 implements only the reactor's process-metadata/clock/random/output imports
 and returns explicit WASI errors otherwise (no filesystem). Build via
 `scripts/check-wasm.sh` (requires the pinned WASM SDK from

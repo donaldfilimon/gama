@@ -91,7 +91,7 @@ supervisor's `SIGTERM` would leave the terminal in raw mode with no echo
 and no cursor. The rescue is process-global by necessity — signal
 disposition is process-wide — but the private `GamaTUISignal` C target owns
 every byte reachable from a handler: saved `termios`, file descriptors,
-displaced `sigaction` records, fixed restore bytes, and lock-free
+displaced `sigaction` records, the restore bytes copied at arm time, and lock-free
 `sig_atomic_t` latches. Swift performs lifecycle calls only outside handler
 context. The terminating handler uses a write-free termios-only restoration,
 restores every displaced host disposition, and re-raises through the action
@@ -108,7 +108,13 @@ session close restores every host-installed managed disposition.
 
 Frames paint through the shared `CellPainter` into `CellBuffer`. An
 interactive run presents through `AnsiPresenter`, which wraps
-`CellBuffer.presentDiff()`; both true-color and 256-color modes are
-supported via `CellBuffer.trueColor`. A stream run presents through
+`CellBuffer.presentDiff()`. The diff compares the back plane with the
+front plane and emits cursor motion, SGR, and glyphs only for cells that
+changed. `TerminalCapabilities.detect(environment:)` decides the color
+depth and which raw-mode sequences are written. Unknown color emits no
+color codes. Unknown mouse, alternate screen, bracketed paste, focus
+reporting, and hyperlinks are not enabled. `NO_COLOR` forces monochrome.
+`CellBuffer.trueColor` still selects 24-bit or 256-color for a caller
+that already knows the depth. A stream run presents through
 `StreamPresenter`: one line per row whose content changed, then a swap.
 Not every terminal-family run writes differential ANSI.
