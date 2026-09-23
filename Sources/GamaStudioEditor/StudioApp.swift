@@ -130,6 +130,8 @@ struct StudioFrameState: Sendable {
             var inspected = Inspected(
                 name: record.name, position: .zero, mesh: nil, material: nil, isVisible: true
             )
+            // `.light` and `.camera` components have no inspector rows yet —
+            // inspector in Task 4.
             if case .transform(let transform)? = record.components[.transform] {
                 inspected.position = transform.position
             }

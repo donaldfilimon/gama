@@ -83,6 +83,50 @@ struct ComponentValidationTests {
         }
     }
 
+    @Test(arguments: [
+        Light(kind: .directional, intensity: -1),
+        Light(kind: .directional, intensity: .nan),
+        Light(kind: .directional, intensity: .infinity),
+        Light(kind: .directional, color: SIMD3(1.5, 0, 0), intensity: 1),
+        Light(kind: .directional, color: SIMD3(.nan, 0, 0), intensity: 1),
+        Light(kind: .point(attenuationRadius: 0), intensity: 1),
+        Light(kind: .point(attenuationRadius: -1), intensity: 1),
+        Light(kind: .point(attenuationRadius: .nan), intensity: 1),
+        Light(kind: .spot(innerAngleDegrees: 0, outerAngleDegrees: 10, attenuationRadius: 5), intensity: 1),
+        Light(kind: .spot(innerAngleDegrees: 20, outerAngleDegrees: 10, attenuationRadius: 5), intensity: 1),
+        Light(kind: .spot(innerAngleDegrees: 10, outerAngleDegrees: 180, attenuationRadius: 5), intensity: 1),
+        Light(kind: .spot(innerAngleDegrees: 10, outerAngleDegrees: 20, attenuationRadius: 0), intensity: 1),
+        Light(kind: .spot(innerAngleDegrees: .nan, outerAngleDegrees: 20, attenuationRadius: 5), intensity: 1),
+    ])
+    func invalidLightsAreRejected(_ light: Light) throws {
+        var scene = try SampleScene()
+        let before = scene.session.document
+        #expect(throws: AuthoringError.self) {
+            try scene.session.execute(SetComponent(scene.body, .light(light)))
+        }
+        #expect(scene.session.document == before)
+    }
+
+    @Test(arguments: [
+        CameraSettings(fieldOfViewDegrees: 0, near: 0.01, far: 1000),
+        CameraSettings(fieldOfViewDegrees: 180, near: 0.01, far: 1000),
+        CameraSettings(fieldOfViewDegrees: .nan, near: 0.01, far: 1000),
+        CameraSettings(fieldOfViewDegrees: 60, near: 0, far: 1000),
+        CameraSettings(fieldOfViewDegrees: 60, near: -1, far: 1000),
+        CameraSettings(fieldOfViewDegrees: 60, near: .nan, far: 1000),
+        CameraSettings(fieldOfViewDegrees: 60, near: 10, far: 10),
+        CameraSettings(fieldOfViewDegrees: 60, near: 10, far: 5),
+        CameraSettings(fieldOfViewDegrees: 60, near: 0.01, far: .nan),
+    ])
+    func invalidCamerasAreRejected(_ camera: CameraSettings) throws {
+        var scene = try SampleScene()
+        let before = scene.session.document
+        #expect(throws: AuthoringError.self) {
+            try scene.session.execute(SetComponent(scene.hair, .camera(camera)))
+        }
+        #expect(scene.session.document == before)
+    }
+
     @Test func invalidComponentOnCreationIsRejected() {
         var session = EditorSession()
         #expect(throws: AuthoringError.self) {

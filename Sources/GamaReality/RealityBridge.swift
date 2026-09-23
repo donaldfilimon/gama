@@ -161,6 +161,8 @@ public final class RealityBridge {
     }
 
     private func project(_ record: EntityRecord, onto entity: Entity) {
+        // `.light` and `.camera` components are authored but not yet
+        // projected here — projected in Task 2.
         if case .transform(let transform)? = record.components[.transform] {
             entity.transform = RealityKit.Transform(
                 scale: transform.scale,

@@ -28,7 +28,10 @@ struct SampleScene {
         character = try create(&session, "Character", under: world)
         body = try create(&session, "Body", under: character, [.transform(.identity), .mesh(.box), .material(Material())])
         hair = try create(&session, "Hair", under: character, [.transform(.identity), .mesh(.sphere)])
-        camera = try create(&session, "Camera", under: nil)
+        camera = try create(
+            &session, "Camera", under: nil,
+            [.transform(.identity), .light(.defaultDirectional), .camera(.default)]
+        )
         _ = session.drainChanges()
         self.session = session
     }

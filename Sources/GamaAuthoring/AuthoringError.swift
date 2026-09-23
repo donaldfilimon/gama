@@ -9,6 +9,8 @@ public enum AuthoringError: Error, Hashable, Sendable {
     case invalidIndex(Int, count: Int)
     case invalidTransform(String)
     case invalidMaterial(String)
+    case invalidLight(String)
+    case invalidCamera(String)
     case componentAbsent(EntityID, ComponentKind)
     case emptyTransaction
     case nothingToUndo

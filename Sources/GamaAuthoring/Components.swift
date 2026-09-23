@@ -60,6 +60,8 @@ public enum ComponentKind: String, Hashable, Codable, Sendable, CaseIterable, Co
     case mesh
     case material
     case visibility
+    case light
+    case camera
 
     /// Declaration order, so iteration over kinds is deterministic.
     public static func < (lhs: ComponentKind, rhs: ComponentKind) -> Bool {
@@ -73,6 +75,8 @@ public enum ComponentKind: String, Hashable, Codable, Sendable, CaseIterable, Co
         case .mesh: "Mesh"
         case .material: "Material"
         case .visibility: "Visibility"
+        case .light: "Light"
+        case .camera: "Camera"
         }
     }
 
@@ -82,6 +86,8 @@ public enum ComponentKind: String, Hashable, Codable, Sendable, CaseIterable, Co
         case .mesh: 1
         case .material: 2
         case .visibility: 3
+        case .light: 4
+        case .camera: 5
         }
     }
 }
@@ -92,6 +98,8 @@ public enum Component: Hashable, Codable, Sendable {
     case mesh(Primitive)
     case material(Material)
     case visibility(Visibility)
+    case light(Light)
+    case camera(CameraSettings)
 
     public var kind: ComponentKind {
         switch self {
@@ -99,6 +107,8 @@ public enum Component: Hashable, Codable, Sendable {
         case .mesh: .mesh
         case .material: .material
         case .visibility: .visibility
+        case .light: .light
+        case .camera: .camera
         }
     }
 
@@ -107,6 +117,8 @@ public enum Component: Hashable, Codable, Sendable {
         switch self {
         case .transform(let transform): try transform.validate()
         case .material(let material): try material.validate()
+        case .light(let light): try light.validate()
+        case .camera(let camera): try camera.validate()
         case .mesh, .visibility: break
         }
     }
