@@ -7,7 +7,7 @@ not yet on `main`).
 **Status: proposed; nothing implemented.** The owner chose the direction on
 2026-09-23 during brainstorming (the four decisions below). This spec is the
 written design for review; the implementation plan
-(`docs/superpowers/plans/2026-09-23-dock-system.md`) follows only after it is
+(a new file under `docs/superpowers/plans/`) follows only after it is
 approved. Nothing is claimed in `docs/Capabilities.md` until an
 implementation has evidence at the layer that evidence supports.
 
@@ -86,7 +86,7 @@ What A must do itself, because of how `Layout.swift` works today:
 
 ## 1. Pointer input model (GamaCore)
 
-A new `Sources/GamaCore/PointerGesture.swift`, and ADR 0017 "Pointer gestures
+A new `PointerGesture.swift` in `Sources/GamaCore`, and ADR 0017 "Pointer gestures
 are host-owned".
 
 **Event.** One additive case, `InputEvent.pointerEvent(PointerEvent)`:
