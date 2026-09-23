@@ -1,7 +1,8 @@
 //  ViewportController.swift — GamaStudioEditor
 //
 //  The RealityKit half of the editor: an `ARView` showing `StudioModel`'s
-//  bridge, lit and framed by a fixed camera, that turns a click into a
+//  bridge, lit by a fixed light and viewed through an orbit camera (drag,
+//  scroll, and pinch, chosen by device), that turns a click into a
 //  selection. The host (`GamaHostView`) owns placement; this file owns only
 //  what is drawn inside the viewport and what a click in it means.
 //
@@ -17,8 +18,8 @@ public import GamaReality
 public import RealityKit
 
 /// Owns the RealityKit viewport for a ``StudioModel``: the `ARView`, the
-/// scene anchor holding the model's projected entities, a camera and a light,
-/// and click-to-select picking.
+/// scene anchor holding the model's projected entities, an orbit camera and a
+/// light, and click-to-select picking.
 ///
 /// The controller does not place ``arView`` anywhere; attach it to
 /// ``StudioApp/viewportRegion`` on a `GamaHostView`, which sizes and shows it
@@ -53,10 +54,9 @@ public final class ViewportController: NSObject {
         anchor.addChild(model.bridge.root)
 
         // Frames the sample scene (ground plus three primitives along X) from
-        // above and in front.
-        let camera = PerspectiveCamera()
-        camera.look(at: SIMD3<Float>(0, 0, 0), from: SIMD3<Float>(0, 3, 7), relativeTo: nil)
+        // above and in front; the orbit controls move it from there.
         anchor.addChild(camera)
+        applyCamera()
 
         // Angled down and across the scene so every primitive shows shading.
         let light = DirectionalLight()
@@ -68,6 +68,101 @@ public final class ViewportController: NSObject {
 
         let click = NSClickGestureRecognizer(target: self, action: #selector(handleClick(_:)))
         arView.addGestureRecognizer(click)
+
+        // Left-drag orbits (Option+left-drag pans); right-drag pans. A drag
+        // makes the click recognizer fail, so dragging never changes the
+        // selection, and a click without movement still picks.
+        let leftDrag = NSPanGestureRecognizer(target: self, action: #selector(handleLeftDrag(_:)))
+        leftDrag.buttonMask = 0x1
+        arView.addGestureRecognizer(leftDrag)
+        let rightDrag = NSPanGestureRecognizer(target: self, action: #selector(handleRightDrag(_:)))
+        rightDrag.buttonMask = 0x2
+        arView.addGestureRecognizer(rightDrag)
+
+        // Scroll and pinch arrive as view events, not gestures.
+        if let view = arView as? StudioViewportView {
+            view.onScroll = { [weak self] event in self?.scroll(with: event) }
+            view.onMagnify = { [weak self] magnification in self?.magnify(by: magnification) }
+        }
+    }
+
+    // MARK: Camera
+
+    /// The current orbit camera. Editor state only: not a document command,
+    /// so it is neither undoable nor saved (ADR 0003).
+    public private(set) var orbit = OrbitCamera(lookingAt: .zero, from: SIMD3<Float>(0, 3, 7))
+
+    /// The RealityKit camera ``orbit`` drives.
+    public let camera = PerspectiveCamera()
+
+    /// Radians of orbit per point of drag or precise scroll.
+    public static let orbitPerPoint: Float = 0.008
+    /// Fraction of the eye distance panned per point of drag or precise scroll.
+    public static let panPerPointPerMeter: Float = 0.0015
+    /// Zoom factor per line of a notched mouse wheel.
+    public static let zoomPerWheelLine: Float = 1.1
+
+    /// Orbits by a drag of `dx`, `dy` points (AppKit coordinates, y up):
+    /// dragging right turns the scene right, dragging up tilts the eye down.
+    public func orbit(byDragX dx: CGFloat, dragY dy: CGFloat) {
+        orbit.orbit(yawBy: -Float(dx) * Self.orbitPerPoint, pitchBy: -Float(dy) * Self.orbitPerPoint)
+        applyCamera()
+    }
+
+    /// Pans by a drag of `dx`, `dy` points so the scene follows the pointer.
+    public func pan(byDragX dx: CGFloat, dragY dy: CGFloat) {
+        let metersPerPoint = orbit.distance * Self.panPerPointPerMeter
+        orbit.pan(right: -Float(dx) * metersPerPoint, up: -Float(dy) * metersPerPoint)
+        applyCamera()
+    }
+
+    /// Zooms by `scale` (below 1 moves closer).
+    public func zoom(scale: Float) {
+        orbit.zoom(scale: scale)
+        applyCamera()
+    }
+
+    /// Routes a scroll event by device: a trackpad (precise, continuous
+    /// deltas) orbits, or pans with Shift; a notched mouse wheel zooms.
+    public func scroll(with event: NSEvent) {
+        let dx = event.scrollingDeltaX, dy = event.scrollingDeltaY
+        if event.hasPreciseScrollingDeltas {
+            if event.modifierFlags.contains(.shift) {
+                pan(byDragX: dx, dragY: -dy)
+            } else {
+                orbit(byDragX: dx, dragY: -dy)
+            }
+        } else if dy != 0 {
+            // Wheel up (positive delta) moves closer.
+            zoom(scale: pow(Self.zoomPerWheelLine, -Float(dy)))
+        }
+    }
+
+    /// Zooms by a trackpad pinch: spreading (positive magnification) moves closer.
+    public func magnify(by magnification: CGFloat) {
+        let factor = 1 + Float(magnification)
+        guard factor > 0.05 else { return }
+        zoom(scale: 1 / factor)
+    }
+
+    private func applyCamera() {
+        camera.look(at: orbit.target, from: orbit.position, relativeTo: nil)
+    }
+
+    @objc private func handleLeftDrag(_ recognizer: NSPanGestureRecognizer) {
+        let t = recognizer.translation(in: arView)
+        recognizer.setTranslation(.zero, in: arView)
+        if NSEvent.modifierFlags.contains(.option) {
+            pan(byDragX: t.x, dragY: t.y)
+        } else {
+            orbit(byDragX: t.x, dragY: t.y)
+        }
+    }
+
+    @objc private func handleRightDrag(_ recognizer: NSPanGestureRecognizer) {
+        let t = recognizer.translation(in: arView)
+        recognizer.setTranslation(.zero, in: arView)
+        pan(byDragX: t.x, dragY: t.y)
     }
 
     /// The authored identity a hit on `entity` selects: the nearest of
@@ -103,14 +198,30 @@ public final class ViewportController: NSObject {
 /// Keyboard focus note (measured, see ViewportTests): a click makes this view
 /// first responder, as AppKit does for any view that accepts it, but keys
 /// still reach Gama because `ARView.keyDown` forwards what it does not use
-/// to its next responder, the `GamaHostView`. With the fixed camera nothing
-/// here consumes keys, so Tab, arrows, and Enter keep driving the panels.
+/// to its next responder, the `GamaHostView`. The orbit controls use only the
+/// mouse, trackpad scroll, and pinch — never keys — so Tab, arrows, and Enter
+/// keep driving the panels.
 final class StudioViewportView: ARView {
+    /// Receives scroll events for the camera (set by the controller).
+    var onScroll: (@MainActor (NSEvent) -> Void)?
+    /// Receives pinch magnification for the camera (set by the controller).
+    var onMagnify: (@MainActor (CGFloat) -> Void)?
+
     /// A click in a background window's viewport picks immediately instead
     /// of only activating the window, as a canvas does in most editors. It
     /// also lets a click delivered to an inactive process (a test runner)
     /// reach the gesture recognizer at all.
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func scrollWheel(with event: NSEvent) {
+        guard let onScroll else { return super.scrollWheel(with: event) }
+        onScroll(event)
+    }
+
+    override func magnify(with event: NSEvent) {
+        guard let onMagnify else { return super.magnify(with: event) }
+        onMagnify(event.magnification)
+    }
 }
 
 #endif

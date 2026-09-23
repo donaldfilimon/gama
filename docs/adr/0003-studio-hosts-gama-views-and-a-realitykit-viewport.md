@@ -132,11 +132,18 @@ own views, but a `NativeRegion`'s content is opaque to Gama.
   `canImport(RealityKit)` so it still compiles on any RealityKit platform.
   iOS, tvOS, and visionOS hosting of `StudioApp` is unbuilt and unmeasured,
   same caveat ADR 0002 already carries for `GamaReality` itself.
-- **The camera is fixed.** There is no orbit, pan, zoom, or any camera
-  component in the document; `ViewportController` places one
-  `PerspectiveCamera` once, framed for the sample scene. A document-driven
-  or user-driven camera is Phase-2/3 work (AGENTS.md "Not built"), and nothing
-  here should be read as having built it.
+- **The camera is user-driven editor state, not authored state.**
+  `ViewportController` drives one `PerspectiveCamera` from an `OrbitCamera`
+  value (target, yaw, pitch clamped to ±85°, distance clamped to 0.5–100 m).
+  Input is chosen by device (added 2026-09-23): a mouse orbits with
+  left-drag, pans with right-drag or Option+left-drag, and zooms with the
+  notched wheel; a trackpad (scroll events with precise deltas) orbits with
+  two-finger scroll, pans with Shift+scroll, and zooms with pinch. A drag
+  makes the click recognizer fail, so dragging never changes the selection.
+  No key is used, so decision 6's keyboard behavior is unchanged. The camera
+  is not a document command: it is not undoable, not saved, and not shared
+  with any other view. Camera components in the document remain unbuilt
+  (AGENTS.md "Not built").
 - **Click picking is exactly as good as ADR 0002's collision projection.**
   A primitive with no `ModelComponent`, or a future primitive kind added to
   `GamaReality` without a matching `CollisionComponent`, becomes unpickable

@@ -9,7 +9,7 @@ Gama Studio is a document-centric 3D authoring app. It is not the gama UI framew
 - What exists today is Phases 0 through 2:
   - `GamaAuthoring`: a tested authoring core with no renderer and no UI.
   - `GamaReality`: an Apple-only RealityKit projection of it.
-  - `GamaStudioEditor` + the `gama-studio` executable: a macOS-only editor window built from Gama views (toolbar, scene hierarchy, inspector, status line) around a RealityKit viewport attached through a native region. Fixed camera and light; click-to-select picking; no camera/light authoring in the document yet. See ADR 0003.
+  - `GamaStudioEditor` + the `gama-studio` executable: a macOS-only editor window built from Gama views (toolbar, scene hierarchy, inspector, status line) around a RealityKit viewport attached through a native region. Orbit camera controls (mouse: drag orbits, right/Option-drag pans, wheel zooms; trackpad: two-finger scroll orbits, Shift+scroll pans, pinch zooms), a fixed light, and click-to-select picking; no camera/light authoring in the document yet. See ADR 0003.
 - The repo is local-only with no remote. Commit on `main`.
 - **`Package.swift` pins `donaldfilimon/gama` by revision, not by branch:** `2ef325c120674cfe218de44f492f435ff50a28e7`, the head of gama PR #108 (stacked on #107), because `NativeRegion` and `GamaHostView.attach(_:to:)` do not exist on gama's `main` yet. Neither PR is merged, and gama's hosted CI is still blocked by the account-wide billing lock (`~/CLAUDE.md`), so a red or missing gama check there is not evidence against this repo. **Bump the pinned revision to a `main` commit once gama #107/#108 merge, and re-run this repo's gate against it before treating the bump as routine.**
 
@@ -85,15 +85,14 @@ Decisions and their reasons are in `docs/adr/` (0001: the value document and com
 - `Tests/GamaRealityTests/`: `@MainActor` suites.
   - `Support.swift` holds the tree snapshot, a copy of `SampleScene`, and a seeded command generator. Test targets can't share files.
   - Convergence, incrementality, and mapping tests.
-- `Tests/GamaStudioEditorTests/`: `@MainActor` suites — `StudioModelTests` (the funnel and bridge sync), `StudioAppTests` (frame state and view tree), `ViewportTests` (picking, host placement, and real `NSWindow.sendEvent` click/keyboard round trips), `Support.swift` (shared fixtures; test targets can't share files across targets).
+- `Tests/GamaStudioEditorTests/`: `@MainActor` suites — `StudioModelTests` (the funnel and bridge sync), `StudioAppTests` (frame state and view tree), `ViewportTests` (picking, host placement, and real `NSWindow.sendEvent` click/keyboard round trips), `OrbitCameraTests` (the camera math), `ViewportCameraTests` (input mapping, scroll routing by device, and a real window drag that orbits without selecting), `Support.swift` (shared fixtures; test targets can't share files across targets).
 
 ## Not built (next phases, in order)
 
-1. **Camera controls and orbit.** The viewport camera is fixed (ADR 0003); there is no pan, zoom, or orbit, and no way to move it from the UI.
-2. **Camera and light components in the document**, then their projection in the bridge. Selection highlighting comes after that.
-3. **A USD stage abstraction plus save/load**, implemented against the real SDK APIs, never invented signatures.
-4. **A command console** that parses into the same commands.
-5. **A typed graph framework.**
-6. **iOS and visionOS hosting.** `StudioModel` compiles wherever RealityKit does; `StudioApp`, `ViewportController`, and `gama-studio` are AppKit-only today.
+1. **Camera and light components in the document**, then their projection in the bridge. Selection highlighting comes after that.
+2. **A USD stage abstraction plus save/load**, implemented against the real SDK APIs, never invented signatures.
+3. **A command console** that parses into the same commands.
+4. **A typed graph framework.**
+5. **iOS and visionOS hosting.** `StudioModel` compiles wherever RealityKit does; `StudioApp`, `ViewportController`, and `gama-studio` are AppKit-only today.
 
 None of these may be described as existing until it has a target and passing tests.
