@@ -50,8 +50,9 @@ public final class TouchDocumentController: NSObject, UIDocumentPickerDelegate {
     /// What the picker on screen is for.
     private enum Pending {
         case open
-        /// A copy written for export, and the content it holds.
-        case export(file: URL, document: SceneDocument)
+        /// A copy written for export, the content it holds, and when the
+        /// export began (ADR 0019).
+        case export(file: URL, document: SceneDocument, began: Date)
     }
     private var pending: Pending?
     /// Runs after a Save As that the unsaved-changes prompt started lands,
@@ -203,10 +204,12 @@ public final class TouchDocumentController: NSObject, UIDocumentPickerDelegate {
     public func saveAs() {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("GamaStudioExport-\(UUID().uuidString)")
+        // Before the copy is written, so the copy the picker makes is newer.
+        let began = Date()
         do {
             let (file, document) = try documents.writeCopyForExport(in: directory)
             let picker = UIDocumentPickerViewController(forExporting: [file], asCopy: true)
-            present(picker, for: .export(file: file, document: document))
+            present(picker, for: .export(file: file, document: document, began: began))
         } catch {
             afterExport = nil
             report(error, doing: "save \u{201C}\(documents.displayName)\u{201D}")
@@ -445,11 +448,25 @@ public final class TouchDocumentController: NSObject, UIDocumentPickerDelegate {
         switch purpose {
         case .open?:
             openCoordinated(url)
-        case .export(_, let document)?:
-            documents.adoptSavedCopy(at: url, of: document)
+        case .export(let file, let document, let began)?:
             let resume = afterExport
             afterExport = nil
-            attach(url, then: resume)
+            // The picker has handed back the folder instead of the copy
+            // (ADR 0019). Resolve it before anything adopts it: adopting
+            // makes it the current file and discards the Untitled recovery.
+            let resolved = StudioDocumentSession.withAccess(to: url) {
+                ExportedFile.resolve(picked: url, export: file, notBefore: began)
+            }
+            switch resolved {
+            case .success(let saved):
+                if saved != url {
+                    log("the picker returned the folder \(url.lastPathComponent); saved as \(saved.lastPathComponent)")
+                }
+                documents.adoptSavedCopy(at: saved, of: document)
+                attach(saved, then: resume)
+            case .failure(let failure):
+                report(failure.description, doing: "save \u{201C}\(documents.displayName)\u{201D}")
+            }
         case nil:
             break
         }
@@ -464,7 +481,7 @@ public final class TouchDocumentController: NSObject, UIDocumentPickerDelegate {
 
     /// Removes an export's temporary copy and reports completion.
     private func finish(_ purpose: Pending?) {
-        if case .export(let file, _)? = purpose {
+        if case .export(let file, _, _)? = purpose {
             try? FileManager.default.removeItem(at: file.deletingLastPathComponent())
         }
         onFinish?()
