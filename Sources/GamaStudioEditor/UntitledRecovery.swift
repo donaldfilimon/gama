@@ -46,27 +46,70 @@ public struct UntitledRecovery: Sendable, Hashable {
         now: Date = Date(),
         gracePeriod: TimeInterval = orphanGracePeriod
     ) -> [URL] {
+        var deleted: [URL] = []
+        for file in recoveryFiles(in: directory) where file.setAside || !liveKeys.contains(file.key) {
+            guard now.timeIntervalSince(file.modified) >= gracePeriod else { continue }
+            if (try? FileManager.default.removeItem(at: file.url)) != nil { deleted.append(file.url) }
+        }
+        return deleted
+    }
+
+    /// The recovery files no window is keeping: the live window keys are
+    /// the scene sessions the system still has, minus any it just discarded,
+    /// plus the keys of this process's windows (ADR 0014).
+    public static func liveKeys(open: Set<String>, discarded: Set<String>, active: Set<String>) -> Set<String> {
+        open.subtracting(discarded).union(active)
+    }
+
+    /// The newest recovery file a window without one of its own may adopt
+    /// (ADR 0014): a `<key>.usda` whose key is not in `liveKeys`, modified
+    /// within `gracePeriod`. Set-aside files and anything older, which the
+    /// sweep will delete, are never adopted.
+    public static func newestAdoptable(
+        in directory: URL,
+        keeping liveKeys: Set<String>,
+        now: Date = Date(),
+        gracePeriod: TimeInterval = orphanGracePeriod
+    ) -> URL? {
+        recoveryFiles(in: directory)
+            .filter { !$0.setAside && !liveKeys.contains($0.key) && now.timeIntervalSince($0.modified) < gracePeriod }
+            .max { $0.modified < $1.modified }?
+            .url
+    }
+
+    /// Takes over `orphan` as this window's recovery file by renaming it,
+    /// which keeps its content and date. Refuses, returning `false`, when
+    /// this window already has a recovery file or the orphan is gone.
+    public func adopt(_ orphan: URL) -> Bool {
+        guard !exists, orphan.standardizedFileURL != url.standardizedFileURL else { return false }
+        return (try? FileManager.default.moveItem(at: orphan, to: url)) != nil
+    }
+
+    /// One file in the recovery directory that looks like a recovery file:
+    /// `<key>.usda`, or `<key>.unreadable-<time>.usda` when set aside.
+    private struct RecoveryFile {
+        let url: URL
+        let key: String
+        let setAside: Bool
+        let modified: Date
+    }
+
+    /// The recovery files in `directory`. Files with any other name are left
+    /// out, so nothing here ever touches them.
+    private static func recoveryFiles(in directory: URL) -> [RecoveryFile] {
         let manager = FileManager.default
         guard let names = try? manager.contentsOfDirectory(atPath: directory.path) else { return [] }
         let suffix = ".\(StudioDocumentIO.fileExtension)"
-        var deleted: [URL] = []
-        for name in names where name.hasSuffix(suffix) {
-            let stem = name.dropLast(suffix.count)
-            let parts = stem.split(separator: ".", maxSplits: 1, omittingEmptySubsequences: false)
-            guard let key = parts.first, isValidKey(key) else { continue }
-            if parts.count == 2 {
-                // Only a set-aside file may carry a second part.
-                guard parts[1].hasPrefix("unreadable-") else { continue }
-            } else if liveKeys.contains(String(key)) {
-                continue
-            }
+        return names.compactMap { name in
+            guard name.hasSuffix(suffix) else { return nil }
+            let parts = name.dropLast(suffix.count).split(separator: ".", maxSplits: 1, omittingEmptySubsequences: false)
+            guard let key = parts.first, isValidKey(key) else { return nil }
+            // Only a set-aside file may carry a second part.
+            if parts.count == 2, !parts[1].hasPrefix("unreadable-") { return nil }
             let url = directory.appendingPathComponent(name)
-            guard let modified = (try? manager.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date,
-                  now.timeIntervalSince(modified) >= gracePeriod
-            else { continue }
-            if (try? manager.removeItem(at: url)) != nil { deleted.append(url) }
+            guard let modified = (try? manager.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date else { return nil }
+            return RecoveryFile(url: url, key: String(key), setAside: parts.count == 2, modified: modified)
         }
-        return deleted
     }
 
     /// `Application Support/GamaStudio Recovery`: private to the app, never

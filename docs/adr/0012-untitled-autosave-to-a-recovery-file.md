@@ -87,6 +87,8 @@ Untitled, and nothing appears in Files until the user saves.
   - Open then asked "Save changes to “Untitled.usda”?", so it was restored
     as unsaved.
   - On iPhone the window title, and so its "•", is not visible.
+  - Added by ADR 0014: swiping the app away in the app switcher also kept
+    the session, and the edit came back.
 - **Not verified:**
   - Save As removing the file by hand (the gate covers the same
     `becomeCurrent` path through opening a file);

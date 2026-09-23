@@ -35,13 +35,22 @@ public final class StudioHostViewController: UIViewController {
     private var recoveryResolved = false
     /// Whether launch restored an Untitled document's unsaved changes.
     public private(set) var restoredUntitledChanges = false
+    /// Whether this window may adopt a closed window's recovery file (ADR
+    /// 0014): always when the scene session names it, and with an explicit
+    /// key only when asked, so developer and gate leftovers stay put.
+    private let adoptsOrphans: Bool
+    /// Whether this window took over a closed window's recovery file.
+    public private(set) var adoptedOrphan = false
+    private var discardObserver: (any NSObjectProtocol)?
 
     public init(
         model: StudioModel = StudioModel(document: StudioModel.sampleScene()),
-        recoveryKey: String? = nil
+        recoveryKey: String? = nil,
+        adoptOrphans: Bool = false
     ) {
         self.model = model
         self.recoveryKey = recoveryKey
+        adoptsOrphans = recoveryKey == nil || adoptOrphans
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -101,24 +110,47 @@ public final class StudioHostViewController: UIViewController {
         }
     }
 
-    /// Chooses this window's recovery file, restores unsaved Untitled
-    /// changes from it (ADR 0012), and sweeps orphaned ones (ADR 0013).
-    /// Needs the window, for the scene session's identifier, so it runs on
-    /// first appearance, before any edit.
+    /// Chooses this window's recovery file and restores unsaved Untitled
+    /// changes from it (ADR 0012), first adopting a closed window's when it
+    /// has none of its own (ADR 0014), then sweeps orphans past the grace
+    /// period (ADR 0013). Needs the window, for the scene session's
+    /// identifier, so it runs on first appearance, before any edit.
     private func restoreUntitledChanges() {
         let key = recoveryKey ?? view.window?.windowScene?.session.persistentIdentifier
         guard let key, let recovery = UntitledRecovery(key: key, in: UntitledRecovery.defaultDirectory()) else { return }
+        RecoveryWindows.activeKeys.insert(key)
         files.untitledRecovery = recovery
+        adoptAndRestore(recovery)
+        UntitledRecovery.sweepOrphans(in: UntitledRecovery.defaultDirectory(), keeping: RecoveryWindows.liveKeys())
+        // A discard can arrive after this window appeared (ADR 0014).
+        discardObserver = NotificationCenter.default.addObserver(
+            forName: RecoveryWindows.sessionsDiscarded, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.adoptIfUntouched() }
+        }
+    }
+
+    /// Adopts the newest adoptable orphan when this window has no recovery
+    /// file, then restores whichever file it has.
+    private func adoptAndRestore(_ recovery: UntitledRecovery) {
+        if adoptsOrphans, !recovery.exists,
+           let orphan = UntitledRecovery.newestAdoptable(in: UntitledRecovery.defaultDirectory(), keeping: RecoveryWindows.liveKeys()) {
+            adoptedOrphan = recovery.adopt(orphan)
+        }
         do {
             restoredUntitledChanges = try recovery.restore(into: files.documents)
         } catch {
             files.reportUnrecoverable(error)
         }
-        // Recovery files of windows the system no longer keeps, after the
-        // grace period (ADR 0013). Every window the app still has a session
-        // for keeps its file, and so does this one, whose key may be given.
-        let live = Set(UIApplication.shared.openSessions.map(\.persistentIdentifier)).union([key])
-        UntitledRecovery.sweepOrphans(in: UntitledRecovery.defaultDirectory(), keeping: live)
+    }
+
+    /// After a discard: adopt only into a window nobody has touched yet,
+    /// never over an edit, a file, or changes it already restored.
+    private func adoptIfUntouched() {
+        guard let recovery = files?.untitledRecovery, !restoredUntitledChanges, !adoptedOrphan,
+              files.documents.currentURL == nil, !files.documents.hasUnsavedChanges, model.session.revision == 0
+        else { return }
+        adoptAndRestore(recovery)
     }
 
     /// Opens a `.usda` file the system handed to the app (ADR 0010): from
@@ -194,6 +226,62 @@ public final class StudioHostViewController: UIViewController {
         if !(await waitUntil({ files.coordinated != nil && !recovery.exists })) {
             failures.append(recovery.exists ? "opening a file left the recovery file behind" : "\(url.lastPathComponent) did not open")
         }
+        return failures
+    }
+
+    /// The gate's adoption smoke (ADR 0014): with no recovery file of its
+    /// own, the window took over the orphan the gate planted, which holds
+    /// `expected`, as unsaved Untitled changes, and now autosaves to its own
+    /// file.
+    public func recoveryAdoptSmokeFailures(expected url: URL) async -> [String] {
+        guard await waitUntil({ self.recoveryResolved }), let files, let recovery = files.untitledRecovery else {
+            return ["no recovery file was chosen"]
+        }
+        var failures: [String] = []
+        if !adoptedOrphan { failures.append("no orphan was adopted") }
+        if !restoredUntitledChanges { failures.append("nothing was restored") }
+        if files.documents.currentURL != nil { failures.append("the adopted document is not Untitled") }
+        if !files.documents.hasUnsavedChanges { failures.append("the adopted document does not read as unsaved") }
+        if (try? StudioDocumentIO.read(from: url)) != model.session.document {
+            failures.append("the adopted document differs from the orphan")
+        }
+        if !recovery.exists { failures.append("the window has no recovery file of its own") }
+        return failures
+    }
+
+    /// The gate's discard smoke (ADR 0014), without real sessions: a key
+    /// this run treated as live (a window closed during the run) and one
+    /// that never was are discarded. Only the old file of the two may go,
+    /// and this window's own recovery file stays.
+    public func recoveryDiscardSmokeFailures() async -> [String] {
+        guard await waitUntil({ self.recoveryResolved }), let files, let recovery = files.untitledRecovery else {
+            return ["no recovery file was chosen"]
+        }
+        model.addPrimitive(.box)
+        guard await waitUntil({ recovery.exists }) else { return ["an unsaved change did not create the recovery file"] }
+        let directory = UntitledRecovery.defaultDirectory()
+        let closedKey = "gate-closed-\(UUID().uuidString)"
+        let youngKey = "gate-young-\(UUID().uuidString)"
+        let closed = directory.appendingPathComponent("\(closedKey).usda")
+        let young = directory.appendingPathComponent("\(youngKey).usda")
+        do {
+            for file in [closed, young] { try StudioDocumentIO.write(model.session.document, to: file) }
+            try FileManager.default.setAttributes(
+                [.modificationDate: Date().addingTimeInterval(-UntitledRecovery.orphanGracePeriod - 3600)],
+                ofItemAtPath: closed.path
+            )
+        } catch {
+            return ["planting orphans failed: \(StudioDocumentIO.describe(error))"]
+        }
+        // As if a window of this run had used the old file until it closed.
+        RecoveryWindows.activeKeys.insert(closedKey)
+        StudioApplicationDelegate.sessionsDiscarded([closedKey, youngKey])
+        var failures: [String] = []
+        if FileManager.default.fileExists(atPath: closed.path) { failures.append("a discarded window's old file survived") }
+        if !FileManager.default.fileExists(atPath: young.path) { failures.append("a file inside the grace period was deleted") }
+        if !recovery.exists { failures.append("this window's own recovery file was deleted") }
+        if RecoveryWindows.activeKeys.contains(closedKey) { failures.append("a discarded key stayed live") }
+        try? FileManager.default.removeItem(at: young)
         return failures
     }
 
@@ -338,6 +426,8 @@ public struct GamaStudioView: UIViewControllerRepresentable {
     let recoveryKey: String?
     /// Which recovery smoke to run instead of the file smoke, if any.
     let recoverySmoke: RecoverySmoke?
+    /// Whether a window with an explicit key may adopt orphans (ADR 0014).
+    let adoptOrphans: Bool
 
     /// The two launches of the gate's recovery check (ADR 0012).
     public enum RecoverySmoke: Sendable {
@@ -345,17 +435,24 @@ public struct GamaStudioView: UIViewControllerRepresentable {
         case write
         /// Require them restored, then open this file.
         case restore(thenOpening: URL)
+        /// Require the planted orphan, holding this file's content, adopted
+        /// (ADR 0014).
+        case adopt(expecting: URL)
+        /// Discard sessions without real ones and check the sweep (ADR 0014).
+        case discard
     }
 
     public init(
         recoveryKey: String? = nil,
         incoming: IncomingDocument? = nil,
         recoverySmoke: RecoverySmoke? = nil,
+        adoptOrphans: Bool = false,
         onFirstLayout: (@MainActor ([String]) -> Void)? = nil
     ) {
         self.recoveryKey = recoveryKey
         self.incoming = incoming
         self.recoverySmoke = recoverySmoke
+        self.adoptOrphans = adoptOrphans
         self.onFirstLayout = onFirstLayout
     }
 
@@ -367,7 +464,7 @@ public struct GamaStudioView: UIViewControllerRepresentable {
     public func makeCoordinator() -> Coordinator { Coordinator() }
 
     public func makeUIViewController(context: Context) -> StudioHostViewController {
-        let controller = StudioHostViewController(recoveryKey: recoveryKey)
+        let controller = StudioHostViewController(recoveryKey: recoveryKey, adoptOrphans: adoptOrphans)
         if let onFirstLayout {
             let expected = incoming?.url
             let recoverySmoke = recoverySmoke
@@ -380,6 +477,10 @@ public struct GamaStudioView: UIViewControllerRepresentable {
                             onFirstLayout(failures + (await controller.recoveryWriteSmokeFailures()))
                         case .restore(let url)?:
                             onFirstLayout(failures + (await controller.recoveryRestoreSmokeFailures(thenOpening: url)))
+                        case .adopt(let url)?:
+                            onFirstLayout(failures + (await controller.recoveryAdoptSmokeFailures(expected: url)))
+                        case .discard?:
+                            onFirstLayout(failures + (await controller.recoveryDiscardSmokeFailures()))
                         case nil:
                             guard let expected else { return onFirstLayout(failures) }
                             onFirstLayout(failures + (await controller.fileSmokeFailures(expected: expected)))

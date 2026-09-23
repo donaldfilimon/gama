@@ -172,6 +172,56 @@ struct UntitledRecoveryTests {
         #expect(names.contains { $0.hasPrefix("stale.unreadable-") })
     }
 
+    // MARK: Discarded sessions and adoption (ADR 0014)
+
+    @Test func liveKeysDropDiscardedSessionsAndKeepThisProcessesWindows() {
+        let live = UntitledRecovery.liveKeys(open: ["A", "B", "C"], discarded: ["B", "X"], active: ["K"])
+        #expect(live == ["A", "C", "K"])
+        #expect(UntitledRecovery.liveKeys(open: [], discarded: ["K"], active: ["K"]) == ["K"], "a window of this process stays live")
+    }
+
+    @Test func theNewestYoungOrphanIsAdoptable() throws {
+        let directory = try scratch()
+        let now = Date()
+        let grace = UntitledRecovery.orphanGracePeriod
+        _ = try plant("OLDER.usda", in: directory, age: 3600, now: now)
+        let newest = try plant("NEWEST.usda", in: directory, age: 60, now: now)
+        _ = try plant("LIVE.usda", in: directory, age: 1, now: now)
+        _ = try plant("ASIDE.unreadable-1790000000.usda", in: directory, age: 1, now: now)
+        _ = try plant("EXPIRED.usda", in: directory, age: grace + 60, now: now)
+        _ = try plant("notes.usda.txt", in: directory, age: 1, now: now)
+
+        let found = UntitledRecovery.newestAdoptable(in: directory, keeping: ["LIVE"], now: now)
+        #expect(found?.lastPathComponent == newest.lastPathComponent)
+        #expect(UntitledRecovery.newestAdoptable(in: directory, keeping: ["LIVE", "NEWEST", "OLDER"], now: now) == nil,
+                "set-aside, expired, and foreign files are never adoptable")
+    }
+
+    @Test func adoptingMovesTheOrphanToTheWindowsOwnFileOnce() throws {
+        let directory = try scratch()
+        var edited = EditorSession()
+        try edited.execute(CreateEntity(name: "Orphaned", components: [.transform(.identity)]))
+        let orphan = directory.appendingPathComponent("GONE.usda")
+        try StudioDocumentIO.write(edited.document, to: orphan)
+        let bytes = try Data(contentsOf: orphan)
+        let mine = try #require(UntitledRecovery(key: "MINE", in: directory))
+
+        #expect(mine.adopt(orphan))
+        #expect(!FileManager.default.fileExists(atPath: orphan.path))
+        #expect(try Data(contentsOf: mine.url) == bytes)
+        #expect(!mine.adopt(orphan), "the orphan is gone")
+
+        let other = directory.appendingPathComponent("ANOTHER.usda")
+        try StudioDocumentIO.write(edited.document, to: other)
+        #expect(!mine.adopt(other), "a window that has a recovery file adopts nothing")
+        #expect(FileManager.default.fileExists(atPath: other.path))
+
+        let session = StudioDocumentSession(model: StudioModel(document: StudioModel.sampleScene()))
+        #expect(try mine.restore(into: session))
+        #expect(session.model.session.document == edited.document)
+        #expect(session.hasUnsavedChanges)
+    }
+
     @Test func replacingWithoutMarkingSavedKeepsTheSavedBaseline() {
         let start = StudioModel.sampleScene()
         let model = StudioModel(document: start)

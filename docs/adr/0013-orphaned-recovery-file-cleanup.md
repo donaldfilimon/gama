@@ -63,6 +63,7 @@ immediately.
   new appears in Files, and orphans cannot pile up.
 - **Not built:**
   - sweeping when the system discards a session while the app runs
-    (`application(_:didDiscardSceneSessions:)`); the next launch catches it;
-  - any way to see or reopen an orphan during its grace period;
+    (since built: ADR 0014);
+  - any way to see or choose an orphan during its grace period (partly
+    built: ADR 0014 lets a new window adopt the newest);
   - macOS, which has no recovery files.

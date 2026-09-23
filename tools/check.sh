@@ -10,7 +10,7 @@ unset TOOLCHAINS
 # Minimum test count. A filter or a target that silently matches nothing
 # prints success with zero tests, so the gate asserts a floor. Raise it when
 # tests are added; never lower it to make the gate pass.
-MIN_TESTS=246
+MIN_TESTS=249
 # Standard-library-only targets (ADR 0001, ADR 0005, ADR 0006, ADR 0007).
 LIBRARIES=("Sources/GamaAuthoring" "Sources/GamaUSD" "Sources/GamaConsole" "Sources/GamaGraph")
 BANNED='Foundation|Darwin|Glibc|simd|RealityKit|SwiftUI|AppKit|UIKit|Combine|Dispatch'
@@ -105,7 +105,7 @@ swiftly run swift run gama-studio --open "$usd_dir/reformatted.usda" --export "$
 cmp "$usd_dir/sample.usda" "$usd_dir/again.usda" || { echo "error: usdcat round trip changed the document" >&2; exit 1; }
 echo "usd: usdchecker Success! (sample + ${#goldens[@]} goldens), usdcat round trip identical"
 
-echo "==> ios and visionos (ADR 0008, ADR 0010, ADR 0011, ADR 0012, ADR 0013)"
+echo "==> ios and visionos (ADR 0008, ADR 0010-0014)"
 # Builds the editor library and the app for both simulators with Xcode's
 # toolchain, then launches the app with --smoke on one simulator of each
 # platform and requires its OK line. Fails closed without Xcode, the
@@ -189,6 +189,23 @@ smoke_app() {  # $1 device name, $2 products subdirectory
   set -e
   grep -q 'gama-studio-app smoke: OK' <<<"$out" || { echo "$out" >&2; echo "error: recovery restore smoke failed on $1" >&2; exit 1; }
   echo "smoke OK on $1 (Untitled changes recovered after a relaunch; orphans swept after the grace period)"
+  # ADR 0014: a window with no recovery file adopts the newest young orphan,
+  # here one planted with the fixture's content; and discarding sessions
+  # sweeps with them no longer live (the smoke discards made-up keys).
+  local orphan="$recovery_dir/gate-orphan-$(uuidgen).usda" adopt_key="gate-$(uuidgen)" discard_key="gate-$(uuidgen)"
+  command cp -f Tests/GamaUSDTests/Fixtures/everything.usda "$orphan"
+  touch "$orphan"
+  set +e
+  out="$(timeout 150 xcrun simctl launch --console-pty --terminate-running-process "$udid" com.donaldfilimon.GamaStudio --smoke --recovery-key "$adopt_key" --adopt-orphans --smoke-recovery adopt --open "$data/tmp/gate-open.usda" 2>&1)"
+  set -e
+  grep -q 'gama-studio-app smoke: OK' <<<"$out" || { echo "$out" >&2; echo "error: recovery adopt smoke failed on $1" >&2; exit 1; }
+  [[ ! -e "$orphan" ]] || { echo "error: the adopted orphan was left in place on $1" >&2; exit 1; }
+  set +e
+  out="$(timeout 150 xcrun simctl launch --console-pty --terminate-running-process "$udid" com.donaldfilimon.GamaStudio --smoke --recovery-key "$discard_key" --smoke-recovery discard 2>&1)"
+  set -e
+  grep -q 'gama-studio-app smoke: OK' <<<"$out" || { echo "$out" >&2; echo "error: recovery discard smoke failed on $1" >&2; exit 1; }
+  rm -f "$recovery_dir/$adopt_key.usda" "$recovery_dir/$discard_key.usda"
+  echo "smoke OK on $1 (orphan adopted; discarded sessions swept)"
 }
 smoke_app "${GAMA_STUDIO_IOS_SIMULATOR:-iPhone 17}" Debug-iphonesimulator
 smoke_app "${GAMA_STUDIO_VISIONOS_SIMULATOR:-Apple Vision Pro}" Debug-xrsimulator

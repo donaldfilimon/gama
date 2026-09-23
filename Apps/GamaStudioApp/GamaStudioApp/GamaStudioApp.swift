@@ -6,8 +6,10 @@
 //  tools/check.sh's simulator launch stage; `--open <path>` opens a file at
 //  launch through the same path a file from Files takes. `--recovery-key <k>`
 //  names the window's recovery file (ADR 0012; otherwise the window's scene
-//  session does, or a fresh key under `--smoke`), and `--smoke-recovery
-//  write|restore` runs the two launches of the gate's recovery check.
+//  session does, or a fresh key under `--smoke`), `--adopt-orphans` lets such
+//  a key adopt a closed window's recovery file (ADR 0014), and
+//  `--smoke-recovery write|restore|adopt|discard` runs the gate's recovery
+//  checks. StudioApplicationDelegate hears discarded scene sessions.
 
 import Foundation
 import GamaStudioEditor
@@ -15,6 +17,7 @@ import SwiftUI
 
 @main
 struct GamaStudioApp: App {
+    @UIApplicationDelegateAdaptor(StudioApplicationDelegate.self) private var appDelegate
     private let isSmoke = ProcessInfo.processInfo.arguments.contains("--smoke")
     private let recoveryKey = Self.argument(after: "--recovery-key")
         ?? (ProcessInfo.processInfo.arguments.contains("--smoke") ? UUID().uuidString : nil)
@@ -30,6 +33,7 @@ struct GamaStudioApp: App {
                 recoveryKey: recoveryKey,
                 incoming: incoming,
                 recoverySmoke: recoverySmoke,
+                adoptOrphans: ProcessInfo.processInfo.arguments.contains("--adopt-orphans"),
                 onFirstLayout: isSmoke ? Self.reportSmoke : nil
             )
                 .ignoresSafeArea(.keyboard)
@@ -52,11 +56,13 @@ struct GamaStudioApp: App {
         argument(after: "--open").map { IncomingDocument(url: URL(fileURLWithPath: $0)) }
     }
 
-    /// `--smoke-recovery write`, or `--smoke-recovery restore` with `--open`.
+    /// `--smoke-recovery write|discard`, or `restore|adopt` with `--open`.
     private static func launchRecoverySmoke() -> GamaStudioView.RecoverySmoke? {
         switch argument(after: "--smoke-recovery") {
         case "write": return .write
         case "restore": return argument(after: "--open").map { .restore(thenOpening: URL(fileURLWithPath: $0)) }
+        case "adopt": return argument(after: "--open").map { .adopt(expecting: URL(fileURLWithPath: $0)) }
+        case "discard": return .discard
         default: return nil
         }
     }
