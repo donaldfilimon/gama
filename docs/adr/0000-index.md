@@ -6,7 +6,7 @@ are locked until a superseding ADR says otherwise.
 
 | # | Decision | Status |
 | --- | --- | --- |
-| [0001](0001-own-the-rendering.md) | Own the rendering: retained RenderNode IR, no platform-widget wrapping | Accepted; consequence narrowed by 0016 |
+| [0001](0001-own-the-rendering.md) | Own the rendering: retained RenderNode IR, no platform-widget wrapping | Accepted; consequence narrowed by 0016; widget clause superseded by 0017 if accepted |
 | [0002](0002-toolchain-pinning.md) | Toolchains.toml is the pin authority; Windows stays on 6.4.x by exception | Accepted |
 | [0003](0003-swift-testing-only.md) | Swift Testing only; XCTest is banned | Accepted |
 | [0004](0004-signal-confinement.md) | Interim unchecked Signal confinement and the final declaration-layer consequences | Superseded by 0009 |
@@ -22,3 +22,4 @@ are locked until a superseding ADR says otherwise.
 | [0014](0014-cursor-relative-text-editing.md) | TextField edits relative to a cursor; arrow keys reach the focused node before spatial navigation | Accepted |
 | [0015](0015-windowed-collections-use-the-surface-as-their-bound.md) | A windowed collection bounds itself by the surface size, not its own frame; rows are uniform and element-identified | Accepted |
 | [0016](0016-native-regions-narrow-own-the-rendering.md) | Native regions: an application-owned view may fill a region Gama lays out, with a mandatory portable fallback; widgets are still not wrapped | Accepted (implemented, unverified) |
+| [0017](0017-native-presentation.md) | Native presentation: a GUI host may present Gama views as platform controls at Gama-computed, platform-measured frames; the cell path stays | Proposed |
