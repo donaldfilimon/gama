@@ -1,0 +1,22 @@
+{
+  "originHash" : "c8f9d7bf651ae58d800adc068ab90b4db5cec64c3329e0f9b130828110128174",
+  "pins" : [
+    {
+      "identity" : "gama",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/donaldfilimon/gama.git",
+      "state" : {
+        "revision" : "2ef325c120674cfe218de44f492f435ff50a28e7"
+      }
+    },
+    {
+      "identity" : "swift-syntax",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/swiftlang/swift-syntax.git",
+      "state" : {
+        "revision" : "050f1a346fbbac0ca2cfb15a95274f7bd1cf0ccf"
+      }
+    }
+  ],
+  "version" : 3
+}
