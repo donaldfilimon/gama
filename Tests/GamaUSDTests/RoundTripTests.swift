@@ -47,6 +47,31 @@ struct RoundTripTests {
         #expect(usdaString(from: b.document).contains("def DistantLight \"Sun\""))
     }
 
+    @Test func graphsSurviveExactly() throws {
+        let document = try Scenes.graphs()
+        let read = try roundTrip(document)
+        #expect(read == document)
+        #expect(read.nextGraphID == document.nextGraphID)
+        #expect(read.graph(GraphID(rawValue: 1))?.nextNodeID == document.graph(GraphID(rawValue: 1))?.nextNodeID)
+    }
+
+    @Test func graphFreeFilesStayVersionOne() throws {
+        #expect(usdaString(from: try Scenes.everything()).contains("int \"gama:formatVersion\" = 1"))
+        let text = usdaString(from: try Scenes.graphs())
+        #expect(text.contains("int \"gama:formatVersion\" = 2"))
+        #expect(text.contains("def NodeGraph \"Rust_Look\""))
+        #expect(text.contains("def NodeGraph \"Rust_Look_2\""), "colliding graph names get a suffix")
+        #expect(text.contains("custom string gama:link:base_color = \"n1.color\""))
+    }
+
+    @Test func graphOnlyDocumentsNameTheLibraryAsDefaultPrim() throws {
+        var b = SceneBuilder()
+        try b.session.execute(CreateGraph(name: "Lonely", domain: .logic))
+        let text = usdaString(from: b.document)
+        #expect(text.contains("defaultPrim = \"GamaGraphs\""))
+        #expect(try sceneDocument(fromUSDA: text) == b.document)
+    }
+
     @Test func emptyDocumentSurvives() throws {
         let document = SceneDocument()
         #expect(try roundTrip(document) == document)

@@ -21,12 +21,13 @@ struct FixtureTests {
 
     /// `tools/check.sh` runs `usdchecker` over every golden here, so these
     /// scenes are also the gate's proof that the writer emits valid USD.
-    static let goldens = ["everything.usda", "nesting.usda", "awkward-names.usda"]
+    static let goldens = ["everything.usda", "nesting.usda", "awkward-names.usda", "graphs.usda"]
 
     static func scene(for golden: String) throws -> SceneDocument {
         switch golden {
         case "nesting.usda": try Scenes.nesting()
         case "awkward-names.usda": try Scenes.awkwardNames()
+        case "graphs.usda": try Scenes.graphs()
         default: try Scenes.everything()
         }
     }
@@ -46,5 +47,9 @@ struct FixtureTests {
         let reformatted = try fixture("everything.usdcat.usda")
         #expect(reformatted != (try fixture("everything.usda")))
         #expect(try sceneDocument(fromUSDA: reformatted) == Scenes.everything())
+        // The same for the graph library (`usdcat graphs.usda`).
+        let graphs = try fixture("graphs.usdcat.usda")
+        #expect(graphs != (try fixture("graphs.usda")))
+        #expect(try sceneDocument(fromUSDA: graphs) == Scenes.graphs())
     }
 }

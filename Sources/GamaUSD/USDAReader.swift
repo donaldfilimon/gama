@@ -26,7 +26,7 @@ private struct USDAReader {
             throw .unsupported(line: 1, "missing \(USDSchema.formatVersionKey); not a Gama Studio file")
         }
         let found = try integer(version, line: 1)
-        guard found == UInt64(USDSchema.formatVersion) else {
+        guard USDSchema.supportedVersions.contains(found) else {
             throw .unsupported(line: 1, "\(USDSchema.formatVersionKey) \(found) is not supported by this reader")
         }
 
@@ -38,8 +38,26 @@ private struct USDAReader {
             collectMaterials(prim, path: "")
         }
         var roots: [EntityID] = []
+        var graphs: [GraphDocument] = []
         for prim in layer.prims {
+            if prim.typeName == "Scope", prim.property(USDSchema.graphLibraryAttribute) != nil {
+                guard found >= UInt64(USDSchema.graphFormatVersion) else {
+                    throw .unsupported(line: prim.line, "a graph library needs \(USDSchema.formatVersionKey) 2")
+                }
+                for child in prim.children {
+                    graphs.append(try graph(child))
+                }
+                continue
+            }
             roots.append(try entity(prim, parent: nil))
+        }
+        var nextGraph: GraphID?
+        if let value = data[USDSchema.nextGraphIDKey] {
+            let raw = try integer(value, line: 1)
+            guard raw < UInt64.max else {
+                throw .unsupported(line: 1, "\(USDSchema.nextGraphIDKey) leaves no identifiers to allocate")
+            }
+            nextGraph = GraphID(rawValue: raw)
         }
 
         let next: EntityID
@@ -54,10 +72,137 @@ private struct USDAReader {
             next = EntityID(rawValue: (records.map(\.id.rawValue).max() ?? 0) + 1)
         }
         do {
-            return try SceneDocument(restoring: records, roots: roots, nextEntityID: next)
+            return try SceneDocument(
+                restoring: records, roots: roots, nextEntityID: next, graphs: graphs, nextGraphID: nextGraph
+            )
         } catch {
             throw .invalid(error)
         }
+    }
+
+    // MARK: Graphs
+
+    /// One `NodeGraph` from the graph library (ADR 0007).
+    func graph(_ prim: USDAPrim) throws(USDError) -> GraphDocument {
+        guard prim.typeName == "NodeGraph" else {
+            throw .unsupported(line: prim.line, "'\(prim.name)' in the graph library is not a NodeGraph")
+        }
+        let idProperty = try required(prim, USDSchema.graphIDAttribute)
+        let raw = try integer(idProperty.value ?? .word("None"), line: idProperty.line)
+        guard raw > 0, raw < UInt64.max else { throw .syntax(line: idProperty.line, "graph id out of range") }
+        let name = try string(try required(prim, USDSchema.nameAttribute))
+        let domainProperty = try required(prim, USDSchema.graphDomainAttribute)
+        guard let domain = GraphDomain(rawValue: try string(domainProperty)) else {
+            throw .unsupported(line: domainProperty.line, "unknown graph domain")
+        }
+        let nextProperty = try required(prim, USDSchema.nextNodeIDAttribute)
+        let nextNode = try integer(nextProperty.value ?? .word("None"), line: nextProperty.line)
+
+        var nodes: [GraphNode] = []
+        var connections: [GraphConnection] = []
+        for child in prim.children {
+            let id = try nodeID(child.name, line: child.line)
+            let definition = try string(try required(child, USDSchema.definitionAttribute))
+            let inputs = try ports(try required(child, USDSchema.inputsAttribute))
+            let outputs = try ports(try required(child, USDSchema.outputsAttribute))
+            var position = SIMD2<Float>.zero
+            if let p = child.property(USDSchema.positionAttribute) {
+                let v = try floats(p, count: 2)
+                position = SIMD2(v[0], v[1])
+            }
+            var values: [String: GraphValue] = [:]
+            for port in inputs {
+                if let property = child.property(USDSchema.valuePrefix + port.name) {
+                    values[port.name] = try graphValue(property, as: port.type)
+                }
+                if let property = child.property(USDSchema.linkPrefix + port.name) {
+                    let text = try string(property)
+                    guard let dot = text.firstIndex(of: "."), dot != text.startIndex else {
+                        throw .syntax(line: property.line, "link '\(text)' is not n<id>.<output>")
+                    }
+                    let source = try nodeID(String(text[..<dot]), line: property.line)
+                    connections.append(GraphConnection(
+                        from: PortReference(source, String(text[text.index(after: dot)...])),
+                        to: PortReference(id, port.name)
+                    ))
+                }
+            }
+            nodes.append(GraphNode(
+                id: id, definition: definition, inputs: inputs, outputs: outputs, values: values, position: position
+            ))
+        }
+        return GraphDocument(
+            id: GraphID(rawValue: raw), name: name, domain: domain, nodes: nodes,
+            connections: connections, nextNodeID: GraphNodeID(rawValue: nextNode)
+        )
+    }
+
+    func nodeID(_ name: String, line: Int) throws(USDError) -> GraphNodeID {
+        guard name.hasPrefix("n"), let raw = UInt64(name.dropFirst()), raw > 0 else {
+            throw .syntax(line: line, "'\(name)' is not a graph node name n<id>")
+        }
+        return GraphNodeID(rawValue: raw)
+    }
+
+    func ports(_ property: USDAProperty) throws(USDError) -> [GraphPort] {
+        guard case .list(let items)? = property.value else {
+            throw .syntax(line: property.line, "\(property.name) must be a string array")
+        }
+        var result: [GraphPort] = []
+        for item in items {
+            guard case .string(let text) = item, let colon = text.firstIndex(of: ":"),
+                  let type = PortType(String(text[text.index(after: colon)...]))
+            else {
+                throw .syntax(line: property.line, "\(property.name) entry is not name:type")
+            }
+            result.append(GraphPort(String(text[..<colon]), type))
+        }
+        return result
+    }
+
+    /// Reads a constant by the port's type, not the USD type name, so a
+    /// reformatted file reads the same.
+    func graphValue(_ property: USDAProperty, as type: PortType) throws(USDError) -> GraphValue {
+        switch type {
+        case .float: return .float(try float(property))
+        case .vector2: let v = try floats(property, count: 2); return .vector2(SIMD2(v[0], v[1]))
+        case .vector3: let v = try floats(property, count: 3); return .vector3(SIMD3(v[0], v[1], v[2]))
+        case .vector4: let v = try floats(property, count: 4); return .vector4(SIMD4(v[0], v[1], v[2], v[3]))
+        case .color: let v = try floats(property, count: 4); return .color(SIMD4(v[0], v[1], v[2], v[3]))
+        case .boolean: return .boolean(try bool(property))
+        case .string: return .string(try string(property))
+        case .integer:
+            guard case .number(let text)? = property.value, let v = Int64(text) else {
+                throw .syntax(line: property.line, "\(property.name) must be an integer")
+            }
+            return .integer(v)
+        case .entity:
+            let raw = try integer(property.value ?? .word("None"), line: property.line)
+            return .entity(raw == 0 ? nil : EntityID(rawValue: raw))
+        case .transform:
+            let v = try floatArray(property, count: 10)
+            return .transform(Transform(
+                position: SIMD3(v[0], v[1], v[2]),
+                rotation: Rotation(x: v[4], y: v[5], z: v[6], w: v[3]),
+                scale: SIMD3(v[7], v[8], v[9])
+            ))
+        case .material:
+            let v = try floatArray(property, count: 6)
+            return .material(Material(baseColor: SIMD4(v[0], v[1], v[2], v[3]), metallic: v[4], roughness: v[5]))
+        case .texture, .mesh, .execution, .custom:
+            throw .unsupported(line: property.line, "\(type) inputs carry no constants")
+        }
+    }
+
+    func floatArray(_ property: USDAProperty, count: Int) throws(USDError) -> [Float] {
+        guard case .list(let values)? = property.value, values.count == count else {
+            throw .syntax(line: property.line, "\(property.name) must be a \(count)-element float array")
+        }
+        var result: [Float] = []
+        for value in values {
+            result.append(try float(value, line: property.line))
+        }
+        return result
     }
 
     /// Composition arcs and non-`def` specs would change what the stage

@@ -3,7 +3,25 @@ import GamaAuthoring
 /// The names and constants the writer and reader share, so the two cannot
 /// drift (ADR 0005).
 enum USDSchema {
+    /// Version 1 has no graphs; version 2 adds the graph library (ADR 0007).
+    /// The writer uses 1 whenever it can, so graph-free files stay readable
+    /// by version-1 readers byte for byte.
     static let formatVersion = 1
+    static let graphFormatVersion = 2
+    static let supportedVersions: ClosedRange<UInt64> = 1...2
+    static let nextGraphIDKey = "gama:nextGraphID"
+
+    static let graphLibrary = "GamaGraphs"
+    static let graphLibraryAttribute = "gama:graphLibrary"
+    static let graphIDAttribute = "gama:graphID"
+    static let graphDomainAttribute = "gama:domain"
+    static let nextNodeIDAttribute = "gama:nextNodeID"
+    static let definitionAttribute = "gama:definition"
+    static let positionAttribute = "gama:position"
+    static let inputsAttribute = "gama:inputs"
+    static let outputsAttribute = "gama:outputs"
+    static let valuePrefix = "gama:value:"
+    static let linkPrefix = "gama:link:"
     static let formatVersionKey = "gama:formatVersion"
     static let nextEntityIDKey = "gama:nextEntityID"
 
@@ -26,7 +44,7 @@ enum USDSchema {
     static let shaderName = "Surface"
     /// Prim names the writer creates itself; an entity with one of these names
     /// gets a suffix so the two can never collide.
-    static let reservedNames: Set<String> = [looksScope, meshChild, lightChild, cameraChild]
+    static let reservedNames: Set<String> = [looksScope, meshChild, lightChild, cameraChild, graphLibrary]
 
     /// Camera film back height in millimetres. USD derives the field of view
     /// from aperture and focal length; `gama:fieldOfView` stays exact.

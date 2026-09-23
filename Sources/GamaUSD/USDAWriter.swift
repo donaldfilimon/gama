@@ -45,13 +45,20 @@ private struct USDAWriter {
             }
         }
 
+        let hasGraphs = !document.graphOrder.isEmpty || document.nextGraphID.rawValue > 1
         output += "#usda 1.0\n(\n"
         output += "    customLayerData = {\n"
-        output += "        int \"\(USDSchema.formatVersionKey)\" = \(USDSchema.formatVersion)\n"
+        let version = hasGraphs ? USDSchema.graphFormatVersion : USDSchema.formatVersion
+        output += "        int \"\(USDSchema.formatVersionKey)\" = \(version)\n"
         output += "        uint64 \"\(USDSchema.nextEntityIDKey)\" = \(document.nextEntityID.rawValue)\n"
+        if hasGraphs {
+            output += "        uint64 \"\(USDSchema.nextGraphIDKey)\" = \(document.nextGraphID.rawValue)\n"
+        }
         output += "    }\n"
         if let first = document.roots.first, let name = primNames[first] {
             output += "    defaultPrim = \(quoted(name))\n"
+        } else if !document.graphOrder.isEmpty {
+            output += "    defaultPrim = \(quoted(USDSchema.graphLibrary))\n"
         }
         output += "    metersPerUnit = 1\n"
         output += "    upAxis = \"Y\"\n"
@@ -59,6 +66,10 @@ private struct USDAWriter {
         for (index, id) in document.roots.enumerated() {
             output += "\n"
             writeEntity(id, depth: 0, holdsLooks: index == 0 && !materials.isEmpty)
+        }
+        if !document.graphOrder.isEmpty {
+            output += "\n"
+            writeGraphs()
         }
         return output
     }
@@ -264,6 +275,75 @@ private struct USDAWriter {
             output += "\(s)}\n\(m)}\n"
         }
         output += "\(indent)}\n"
+    }
+
+    // MARK: Graphs
+
+    /// The graph library (ADR 0007): one `NodeGraph` per graph under a root
+    /// `Scope`, one typeless prim per node named by its id (`n3`), port
+    /// signatures as `name:type` string arrays, constants as typed
+    /// `gama:value:<input>` attributes, and connections as
+    /// `gama:link:<input> = "n2.<output>"`.
+    mutating func writeGraphs() {
+        output += "def Scope \(quoted(USDSchema.graphLibrary))\n{\n"
+        line(1, "custom bool \(USDSchema.graphLibraryAttribute) = 1")
+        var used: Set<String> = []
+        for id in document.graphOrder {
+            guard let graph = document.graph(id) else { continue }
+            var name = sanitize(graph.name)
+            while used.contains(name) { name += "_\(id.rawValue)" }
+            used.insert(name)
+            output += "    def NodeGraph \(quoted(name))\n    {\n"
+            line(2, "custom uint64 \(USDSchema.graphIDAttribute) = \(id.rawValue)")
+            line(2, "custom string \(USDSchema.nameAttribute) = \(quoted(graph.name))")
+            line(2, "custom token \(USDSchema.graphDomainAttribute) = \(quoted(graph.domain.rawValue))")
+            line(2, "custom uint64 \(USDSchema.nextNodeIDAttribute) = \(graph.nextNodeID.rawValue)")
+            for nodeID in graph.order {
+                guard let node = graph.node(nodeID) else { continue }
+                output += "        def \(quoted(nodeID.description))\n        {\n"
+                line(3, "custom string \(USDSchema.definitionAttribute) = \(quoted(node.definition))")
+                line(3, "custom float2 \(USDSchema.positionAttribute) = \(tuple(node.position.x, node.position.y))")
+                line(3, "custom string[] \(USDSchema.inputsAttribute) = \(signature(node.inputs))")
+                line(3, "custom string[] \(USDSchema.outputsAttribute) = \(signature(node.outputs))")
+                for port in node.inputs {
+                    if let value = node.values[port.name] {
+                        line(3, graphValue(value, named: USDSchema.valuePrefix + port.name))
+                    }
+                    if let link = graph.connection(into: PortReference(nodeID, port.name)) {
+                        line(3, "custom string \(USDSchema.linkPrefix)\(port.name) = \(quoted(link.from.description))")
+                    }
+                }
+                output += "        }\n"
+            }
+            output += "    }\n"
+        }
+        output += "}\n"
+    }
+
+    func signature(_ ports: [GraphPort]) -> String {
+        "[" + ports.map { quoted("\($0.name):\($0.type)") }.joined(separator: ", ") + "]"
+    }
+
+    func graphValue(_ value: GraphValue, named name: String) -> String {
+        func floats(_ values: [Float]) -> String { "[" + values.map(number).joined(separator: ", ") + "]" }
+        switch value {
+        case .float(let v): return "custom float \(name) = \(number(v))"
+        case .vector2(let v): return "custom float2 \(name) = \(tuple(v.x, v.y))"
+        case .vector3(let v): return "custom float3 \(name) = \(tuple(v.x, v.y, v.z))"
+        case .vector4(let v): return "custom float4 \(name) = \(tuple(v.x, v.y, v.z, v.w))"
+        case .color(let v): return "custom color4f \(name) = \(tuple(v.x, v.y, v.z, v.w))"
+        case .boolean(let v): return "custom bool \(name) = \(bool(v))"
+        case .integer(let v): return "custom int64 \(name) = \(v)"
+        case .string(let v): return "custom string \(name) = \(quoted(v))"
+        case .entity(let v): return "custom uint64 \(name) = \(v?.rawValue ?? 0)"
+        case .transform(let t):
+            let p = t.position, r = t.rotation, s = t.scale
+            // Position, rotation (real part first, as xformOp:orient), scale.
+            return "custom float[] \(name) = " + floats([p.x, p.y, p.z, r.w, r.x, r.y, r.z, s.x, s.y, s.z])
+        case .material(let m):
+            let c = m.baseColor
+            return "custom float[] \(name) = " + floats([c.x, c.y, c.z, c.w, m.metallic, m.roughness])
+        }
     }
 
     // MARK: Formatting

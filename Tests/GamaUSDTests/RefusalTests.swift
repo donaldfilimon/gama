@@ -34,8 +34,8 @@ struct RefusalTests {
     }
 
     @Test func otherFormatVersionIsUnsupported() {
-        let text = "#usda 1.0\n(\n    customLayerData = {\n        int \"gama:formatVersion\" = 2\n    }\n)\n"
-        #expect(throws: USDError.unsupported(line: 1, "gama:formatVersion 2 is not supported by this reader")) {
+        let text = "#usda 1.0\n(\n    customLayerData = {\n        int \"gama:formatVersion\" = 3\n    }\n)\n"
+        #expect(throws: USDError.unsupported(line: 1, "gama:formatVersion 3 is not supported by this reader")) {
             try sceneDocument(fromUSDA: text)
         }
     }
@@ -197,6 +197,67 @@ struct RefusalTests {
         """
         let document = try read(body)
         #expect(document.entity(EntityID(rawValue: 1))?.name == "\u{7}\u{8}\u{C}\u{B}\u{0}AB")
+    }
+
+    @Test func aGraphLibraryNeedsVersionTwo() {
+        let body = """
+        def Scope "GamaGraphs"
+        {
+            custom bool gama:graphLibrary = 1
+        }
+        """
+        #expect(throws: USDError.unsupported(line: 8, "a graph library needs gama:formatVersion 2")) { try read(body) }
+    }
+
+    @Test func graphsWithBadLinksOrTypesAreRefused() {
+        let header = "#usda 1.0\n(\n    customLayerData = {\n        int \"gama:formatVersion\" = 2\n    }\n)\n"
+        func graphFile(_ node: String) -> String {
+            header + """
+            def Scope "GamaGraphs"
+            {
+                custom bool gama:graphLibrary = 1
+                def NodeGraph "G"
+                {
+                    custom uint64 gama:graphID = 1
+                    custom string gama:name = "G"
+                    custom token gama:domain = "logic"
+                    custom uint64 gama:nextNodeID = 3
+                    def "n1"
+                    {
+                        custom string gama:definition = "constant.float"
+                        custom string[] gama:inputs = []
+                        custom string[] gama:outputs = ["value:float"]
+                    }
+                    def "n2"
+                    {
+                        custom string gama:definition = "x"
+            \(node)
+                    }
+                }
+            }
+            """
+        }
+        #expect(throws: USDError.syntax(line: 25, "gama:inputs entry is not name:type")) {
+            try sceneDocument(fromUSDA: graphFile("""
+                        custom string[] gama:inputs = ["a:quaternion"]
+                        custom string[] gama:outputs = []
+            """))
+        }
+        #expect(throws: USDError.self) {
+            // A link from a color-less float into a color input fails validation.
+            try sceneDocument(fromUSDA: graphFile("""
+                        custom string[] gama:inputs = ["c:color"]
+                        custom string[] gama:outputs = []
+                        custom string gama:link:c = "n1.value"
+            """))
+        }
+        #expect(throws: USDError.syntax(line: 27, "link 'value' is not n<id>.<output>")) {
+            try sceneDocument(fromUSDA: graphFile("""
+                        custom string[] gama:inputs = ["f:float"]
+                        custom string[] gama:outputs = []
+                        custom string gama:link:f = "value"
+            """))
+        }
     }
 
     @Test func unterminatedPrimIsASyntaxError() {
