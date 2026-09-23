@@ -43,7 +43,7 @@ should ship with a "Key Light" and a "Camera".
    (luminous flux, the light's own output, which then falls off with
    distance). `Light` does not encode the unit as a type distinction: it is
    one `Float` whose meaning depends on `kind`, and the UI labels it ("lx"
-   vs. "lm" in `StudioApp.intensityUnit(_:)`). Consequently,
+   vs. "lm" in `InspectorPanel.intensityUnit(_:)`). Consequently,
    `StudioModel.cycleLightKind()` **resets intensity whenever a cycle step
    crosses the lux/lumens boundary** (directional → point, and spot →
    directional), to each family's default (`Light.defaultDirectional`'s
@@ -56,8 +56,11 @@ should ship with a "Key Light" and a "Camera".
 3. **`CameraSettings` holds field of view, near, and far, and nothing
    about the viewport.** Field of view is `1...179` degrees, `near` is
    finite and positive, `far` is finite and greater than `near`; defaults
-   are 60° / 0.01 / 1000, matching `ViewportController`'s previous fixed
-   camera. **A document camera never becomes a RealityKit camera, in either
+   are 60° / 0.01 / 1000. The 60° field of view and 0.01 near match
+   `ViewportController`'s previous fixed camera; RealityKit's
+   `PerspectiveCameraComponent` defaults `far` to `.infinity`, so 1000 is a
+   chosen finite bound, not a match to the previous camera. **A document
+   camera never becomes a RealityKit camera, in either
    direction.** `RealityBridge` never sets a `PerspectiveCameraComponent`
    for `.camera` (`RealityBridge.project(_:onto:)`), and the viewport's own
    `PerspectiveCamera` is never written back into the document — a camera
@@ -81,9 +84,7 @@ should ship with a "Key Light" and a "Camera".
    `NSColor`/`UIColor` for the other two, the bridge uses `NSColor`
    uniformly for all three (`PlatformColor.encoding(linear:)`), which also
    sidesteps `CGColor(colorSpace:components:)`'s raw-pointer initializer
-   that strict memory safety would flag as `unsafe`. This corrects ADR
-   0002 item 10's original wording, which described the SDK's `CGColor`
-   surface less precisely.
+   that strict memory safety would flag as `unsafe`.
 5. **A camera or light entity gets one unmapped marker child, named
    `"GamaReality.marker"`, so it can be seen and picked** (ADR 0002 item 10,
    ADR 0003 decision 5). The marker carries an `UnlitMaterial` and a
@@ -167,17 +168,19 @@ should ship with a "Key Light" and a "Camera".
      between the two actions, documented rather than fixed, because
      "Frame" predates cameras and changing its contract is out of scope
      here.
-8. **The picking-through-the-eye rule now has a concrete trigger.**
-   `ViewportController.pick(at:)` already ignored hits at or below
-   `insideHitDistance` (1e-4 m) because a shape containing the eye reports
-   distance 0 for every point in the view (ADR 0003 decision 5's
-   collision-based picking). Cameras and their markers make this common
-   rather than theoretical: the sample scene's "Camera" starts exactly at
-   the orbit eye's initial position, and `lookThrough(_:)` always moves the
-   eye to sit inside whatever camera's marker was looked through. A click
-   whose ray starts inside a shape — most often that camera's own marker,
-   right after adding it or looking through it — ignores that shape and
-   resolves to the nearest hit strictly farther than 1e-4 m instead.
+8. **Picking switches from `arView.entity(at:)` to a nearest-hit rule that
+   ignores the eye's own shape.** Before this branch, `pick(at:)` called
+   `arView.entity(at:)` directly (ADR 0003 decision 5). Cameras and their
+   markers make that insufficient: the sample scene's "Camera" marker starts
+   exactly at the orbit eye's initial position, and `lookThrough(_:)` always
+   moves the eye to sit inside whatever camera's marker was looked through,
+   so a pick ray now routinely starts inside a shape (that shape reports
+   distance 0 for every point in the view). `pick(at:)` now runs
+   `arView.hitTest(point, query: .all, mask: .all)` and takes the nearest hit
+   strictly farther than `insideHitDistance` (1e-4 m), so a ray starting
+   inside a shape ignores that shape rather than resolving to it. The cost is
+   symmetric: any pick whose ray starts inside a shape — not just a
+   camera's — ignores that shape.
 9. **The sample scene gained a "Key Light" and a "Camera".**
    `StudioModel.sampleScene()` now creates them last, after the ground and
    three primitives, so the first four hierarchy rows are unchanged: a
@@ -231,6 +234,11 @@ should ship with a "Key Light" and a "Camera".
   "is the document managing lighting," not "is the scene lit" — and is
   listed here as a known, accepted gap rather than a bug to fix silently
   later.
+- **Framing with nothing selected is wider than before this ADR.**
+  `ViewportController.frameSelection()` frames `bridge.root`'s recursive
+  visual bounds when there is no selection, and the sample scene's Key
+  Light and Camera markers (decision 5) are now part of that tree, so the
+  "Frame" button's default view pulls back further to include them.
 - **This ADR does not cover:** USD save/load of lights or cameras, a
   command console, a typed graph framework, non-macOS hosting, or
   selection highlighting. Those remain future ADRs (`AGENTS.md` "Not

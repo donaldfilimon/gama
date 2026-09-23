@@ -96,9 +96,12 @@ own views, but a `NativeRegion`'s content is opaque to Gama.
    anything future code parents under a projected entity) still resolves to
    the entity that owns it. It relies entirely on ADR 0002's bullet 9 —
    collision shapes projected alongside meshes — for there to be anything to
-   hit; without a collision shape, `arView.entity(at:)` returns nothing and
-   picking silently does nothing, which is why removing the collision
-   projection would be a regression this ADR depends on, not just ADR 0002.
+   hit; without a collision shape, picking silently does nothing, which is
+   why removing the collision projection would be a regression this ADR
+   depends on, not just ADR 0002. At the time this decision was written,
+   `pick(at:)` called `arView.entity(at:)` directly; ADR 0004 decision 8
+   replaces that with a `hitTest` + nearest-hit rule that also skips a hit
+   at or below `insideHitDistance` (1e-4 m), for cameras and their markers.
 6. **Keyboard focus after a click follows AppKit's own first-responder
    handoff, and Gama still receives it.** A click makes `StudioViewportView`
    first responder, as AppKit does for any view that accepts it. Nothing is

@@ -195,7 +195,11 @@ public final class ViewportController: NSObject {
     ///
     /// Hidden entities still frame (finding a hidden object is useful). An
     /// entity with no visual bounds, such as one without a mesh, frames at
-    /// its world position with ``OrbitCamera/frameMinimumRadius``.
+    /// its world position with ``OrbitCamera/frameMinimumRadius``. Framing
+    /// the whole scene uses `bridge.root`'s recursive visual bounds, which
+    /// now include the sample scene's Key Light and Camera markers (ADR
+    /// 0004), so default framing with nothing selected is wider than before
+    /// those markers existed.
     public func frameSelection() {
         let subject = model.session.selection.primary.flatMap { model.bridge.entity(for: $0) } ?? model.bridge.root
         let bounds = subject.visualBounds(recursive: true, relativeTo: nil, excludeInactive: false)

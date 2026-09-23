@@ -154,10 +154,10 @@ struct StudioFrameState: Sendable {
         func visit(_ id: EntityID, depth: Int) {
             guard let record = document.entity(id) else { return }
             var hint = ""
-            if record.components[.light] != nil {
-                hint = " (L)"
-            } else if record.components[.camera] != nil {
+            if record.components[.camera] != nil {
                 hint = " (C)"
+            } else if record.components[.light] != nil {
+                hint = " (L)"
             }
             rows.append(Row(id: id, name: record.name + hint, depth: depth, isSelected: id == primary))
             for child in record.children { visit(child, depth: depth + 1) }

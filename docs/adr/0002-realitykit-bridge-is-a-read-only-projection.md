@@ -77,13 +77,9 @@ and runtime probes under `swift test`):
     `SpotLightComponent`, and the other two are removed first, so a kind
     change or a removal leaves no stale light. The color follows item 8
     (linear, sRGB-encoded, sRGB initializer); on macOS the three light
-    initializers take `NSColor`, not `CGColor` — of the three,
-    `PointLightComponent` has a public `init(cgColor:intensity:attenuationRadius:)`,
-    but `DirectionalLightComponent` and `SpotLightComponent` have no public
-    `CGColor`-taking initializer, so all three use `NSColor` for
-    uniformity rather than mixing color types by kind (see ADR 0004,
-    which supersedes this bullet's original, less precise wording). A
-    `.camera` is never
+    initializers use `NSColor` uniformly rather than mixing color types by
+    kind, because only `PointLightComponent` has a public `CGColor`-taking
+    initializer (ADR 0004 decision 4 has the detail). A `.camera` is never
     projected as a RealityKit camera component, because the viewport owns
     its own camera. A camera or light entity gets one unmapped child named
     `GamaReality.marker` with an `UnlitMaterial` model and a collision shape:

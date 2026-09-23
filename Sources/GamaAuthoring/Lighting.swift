@@ -39,8 +39,11 @@ public struct Light: Hashable, Codable, Sendable {
     public var kind: LightKind
     /// Linear RGB, each channel in `0...1`.
     public var color: SIMD3<Float>
-    /// Brightness in the runtime projection's native unit (RealityKit
-    /// lumens). Finite and non-negative.
+    /// Brightness in the runtime projection's native unit: lux for
+    /// ``LightKind/directional``, lumens for
+    /// ``LightKind/point(attenuationRadius:)`` and
+    /// ``LightKind/spot(innerAngleDegrees:outerAngleDegrees:attenuationRadius:)``.
+    /// Finite and non-negative.
     public var intensity: Float
 
     public init(kind: LightKind, color: SIMD3<Float> = SIMD3(repeating: 1), intensity: Float) {
@@ -50,7 +53,7 @@ public struct Light: Hashable, Codable, Sendable {
     }
 
     /// A white directional light at intensity 3000, matching the editor's
-    /// fixed light (`ViewportController`).
+    /// fallback light (`ViewportController.editorLight`, ADR 0004 decision 6).
     public static let defaultDirectional = Light(kind: .directional, intensity: 3000)
 
     /// A white point light with a 10 m attenuation radius, at an intensity
