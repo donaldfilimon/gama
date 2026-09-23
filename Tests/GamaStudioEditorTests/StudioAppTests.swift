@@ -153,10 +153,147 @@ struct StudioAppTests {
         #expect(model.session.revision == revision, "framing is not an edit")
         #expect(StudioApp.toolbarActionIDs.contains(ActionID("studio.frame")))
     }
+
+    @Test func addLightButtonCreatesAndSelectsAPointLight() throws {
+        let model = StudioModel(document: StudioModel.sampleScene())
+        var host = try FrameHost(app: StudioApp(model: model))
+        _ = host.pump(size: frameSize)
+        let countBefore = model.session.document.count
+
+        host.perform(ActionID("studio.addLight"))
+        #expect(model.session.document.count == countBefore + 1)
+        let text = painted(host.pump(size: frameSize))
+        #expect(text.contains("Light"))
+        #expect(text.contains("Kind: Point"))
+        #expect(text.contains("lm"))
+        #expect(StudioApp.toolbarActionIDs.contains(ActionID("studio.addLight")))
+    }
+
+    @Test func addCameraButtonCreatesAndSelectsACamera() throws {
+        let model = StudioModel(document: StudioModel.sampleScene())
+        var host = try FrameHost(app: StudioApp(model: model))
+        _ = host.pump(size: frameSize)
+        let countBefore = model.session.document.count
+
+        host.perform(ActionID("studio.addCamera"))
+        #expect(model.session.document.count == countBefore + 1)
+        let text = painted(host.pump(size: frameSize))
+        #expect(text.contains("Camera"))
+        #expect(text.contains("FOV:"))
+        #expect(text.contains("Look through"))
+        #expect(StudioApp.toolbarActionIDs.contains(ActionID("studio.addCamera")))
+    }
+
+    @Test func inspectorShowsExistingLightFields() throws {
+        let model = StudioModel(document: StudioModel.sampleScene())
+        var host = try FrameHost(app: StudioApp(model: model))
+        _ = host.pump(size: frameSize)
+        let keyLight = try #require(entityID(named: "Key Light", in: model))
+        model.select(keyLight)
+
+        let text = painted(host.pump(size: frameSize))
+        #expect(text.contains("Kind: Directional"))
+        #expect(text.contains("Intensity: 3000.00 lx"))
+        #expect(text.contains("Color: 1.00, 1.00, 1.00"))
+    }
+
+    @Test func lightKindButtonCyclesTheSelectedLight() throws {
+        let model = StudioModel(document: StudioModel.sampleScene())
+        var host = try FrameHost(app: StudioApp(model: model))
+        let keyLight = try #require(entityID(named: "Key Light", in: model))
+        model.select(keyLight)
+        _ = host.pump(size: frameSize)
+
+        host.perform(ActionID("studio.lightKind"))
+        var text = painted(host.pump(size: frameSize))
+        #expect(text.contains("Kind: Point"))
+
+        host.perform(ActionID("studio.lightKind"))
+        text = painted(host.pump(size: frameSize))
+        #expect(text.contains("Kind: Spot"))
+    }
+
+    @Test func lightIntensityButtonsScaleTheSelectedLight() throws {
+        let model = StudioModel(document: StudioModel.sampleScene())
+        var host = try FrameHost(app: StudioApp(model: model))
+        let keyLight = try #require(entityID(named: "Key Light", in: model))
+        model.select(keyLight)
+        _ = host.pump(size: frameSize)
+
+        host.perform(ActionID("studio.lightIntensity.-"))
+        var text = painted(host.pump(size: frameSize))
+        #expect(text.contains("Intensity: 2400.00 lx"))
+
+        host.perform(ActionID("studio.lightIntensity.+"))
+        text = painted(host.pump(size: frameSize))
+        #expect(text.contains("Intensity: 3000.00 lx"))
+    }
+
+    @Test func inspectorShowsExistingCameraFields() throws {
+        let model = StudioModel(document: StudioModel.sampleScene())
+        var host = try FrameHost(app: StudioApp(model: model))
+        _ = host.pump(size: frameSize)
+        let camera = try #require(entityID(named: "Camera", in: model))
+        model.select(camera)
+
+        let text = painted(host.pump(size: frameSize))
+        #expect(text.contains("FOV: 60.00°"))
+        #expect(text.contains("Near: 0.01"))
+        #expect(text.contains("Far: 1000.00"))
+    }
+
+    @Test func cameraFovButtonsAdjustTheSelectedCamera() throws {
+        let model = StudioModel(document: StudioModel.sampleScene())
+        var host = try FrameHost(app: StudioApp(model: model))
+        let camera = try #require(entityID(named: "Camera", in: model))
+        model.select(camera)
+        _ = host.pump(size: frameSize)
+
+        host.perform(ActionID("studio.cameraFov.+"))
+        var text = painted(host.pump(size: frameSize))
+        #expect(text.contains("FOV: 65.00°"))
+
+        host.perform(ActionID("studio.cameraFov.-"))
+        text = painted(host.pump(size: frameSize))
+        #expect(text.contains("FOV: 60.00°"))
+    }
+
+    @Test func lookThroughButtonCallsTheViewportHookWithTheSelectedIDWithoutEditing() throws {
+        let model = StudioModel(document: StudioModel.sampleScene())
+        let calls = LookThroughCalls()
+        var host = try FrameHost(app: StudioApp(
+            model: model,
+            viewport: ViewportActions(frameSelection: {}, lookThrough: { id in calls.ids.append(id) })
+        ))
+        let camera = try #require(entityID(named: "Camera", in: model))
+        model.select(camera)
+        _ = host.pump(size: frameSize)
+        let revision = model.session.revision
+
+        host.perform(ActionID("studio.lookThrough"))
+        #expect(calls.ids == [camera])
+        #expect(model.session.revision == revision, "look through is not an edit")
+    }
+
+    @Test func hierarchyHintsLightAndCameraRows() throws {
+        let model = StudioModel(document: StudioModel.sampleScene())
+        var host = try FrameHost(app: StudioApp(model: model))
+        let text = painted(host.pump(size: frameSize))
+
+        #expect(text.contains("Key Light (L)"))
+        #expect(text.contains("Camera (C)"))
+    }
 }
 
 /// Counts frame-hook calls; main-actor isolated, so the `@Sendable` hook may capture it.
 @MainActor
 private final class FrameCalls {
     var count = 0
+}
+
+/// Records every id passed to `ViewportActions.lookThrough`; main-actor
+/// isolated, so the `@Sendable` hook may capture it.
+@MainActor
+private final class LookThroughCalls {
+    var ids: [EntityID] = []
 }

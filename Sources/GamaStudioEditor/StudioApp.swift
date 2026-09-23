@@ -35,6 +35,7 @@ public struct StudioApp: App {
     /// the button.
     public static let toolbarActionIDs: [ActionID] = [
         ActionID("studio.addBox"), ActionID("studio.addSphere"), ActionID("studio.addCone"),
+        ActionID("studio.addLight"), ActionID("studio.addCamera"),
         ActionID("studio.duplicate"), ActionID("studio.delete"),
         ActionID("studio.undo"), ActionID("studio.redo"), ActionID("studio.frame"),
     ]
@@ -122,11 +123,18 @@ struct StudioFrameState: Sendable {
 
     /// What the inspector shows about the primary selection.
     struct Inspected: Sendable {
+        var id: EntityID
         var name: String
         var position: SIMD3<Float>
         var mesh: Primitive?
         var material: Material?
         var isVisible: Bool
+        /// Present when the selection has a ``Light`` component; the
+        /// inspector's light section renders from this.
+        var light: Light?
+        /// Present when the selection has a ``CameraSettings`` component; the
+        /// inspector's camera section renders from this.
+        var camera: CameraSettings?
     }
 
     var rows: [Row]
@@ -145,7 +153,13 @@ struct StudioFrameState: Sendable {
         var rows: [Row] = []
         func visit(_ id: EntityID, depth: Int) {
             guard let record = document.entity(id) else { return }
-            rows.append(Row(id: id, name: record.name, depth: depth, isSelected: id == primary))
+            var hint = ""
+            if record.components[.light] != nil {
+                hint = " (L)"
+            } else if record.components[.camera] != nil {
+                hint = " (C)"
+            }
+            rows.append(Row(id: id, name: record.name + hint, depth: depth, isSelected: id == primary))
             for child in record.children { visit(child, depth: depth + 1) }
         }
         for root in document.roots { visit(root, depth: 0) }
@@ -153,10 +167,9 @@ struct StudioFrameState: Sendable {
 
         if let primary, let record = document.entity(primary) {
             var inspected = Inspected(
-                name: record.name, position: .zero, mesh: nil, material: nil, isVisible: true
+                id: primary, name: record.name, position: .zero, mesh: nil, material: nil,
+                isVisible: true, light: nil, camera: nil
             )
-            // `.light` and `.camera` components have no inspector rows yet —
-            // inspector in Task 4.
             if case .transform(let transform)? = record.components[.transform] {
                 inspected.position = transform.position
             }
@@ -167,6 +180,8 @@ struct StudioFrameState: Sendable {
             if case .visibility(let visibility)? = record.components[.visibility] {
                 inspected.isVisible = visibility.visible
             }
+            if case .light(let light)? = record.components[.light] { inspected.light = light }
+            if case .camera(let camera)? = record.components[.camera] { inspected.camera = camera }
             self.inspected = inspected
             self.selectionName = record.name
         } else {
@@ -204,7 +219,7 @@ struct StudioRootView: View {
                     Text("3D viewport — RealityKit on macOS")
                 }
                 .frame(maxWidth: .max, maxHeight: .max)
-                InspectorPanel(model: model, inspected: state.inspected)
+                InspectorPanel(model: model, viewport: viewport, inspected: state.inspected)
             }
             .frame(maxWidth: .max, maxHeight: .max)
             Text(Self.statusLine(state))
@@ -219,6 +234,10 @@ struct StudioRootView: View {
                 .actionIdentity(ActionID("studio.addSphere"))
             Button("Add Cone", action: onMain(model) { $0.addPrimitive(.cone) })
                 .actionIdentity(ActionID("studio.addCone"))
+            Button("Add Light", action: onMain(model) { $0.addLight(.point(attenuationRadius: 10)) })
+                .actionIdentity(ActionID("studio.addLight"))
+            Button("Add Camera", action: onMain(model) { $0.addCamera() })
+                .actionIdentity(ActionID("studio.addCamera"))
             Button("Duplicate", action: onMain(model) { $0.duplicateSelection() })
                 .actionIdentity(ActionID("studio.duplicate"))
             Button("Delete", action: onMain(model) { $0.deleteSelection() })
@@ -272,6 +291,7 @@ struct HierarchyPanel: View {
 /// visibility controls.
 struct InspectorPanel: View {
     let model: StudioModel
+    let viewport: ViewportActions
     let inspected: StudioFrameState.Inspected?
 
     /// One nudge step, in scene units.
@@ -299,6 +319,12 @@ struct InspectorPanel: View {
                 }
                 Button(inspected.isVisible ? "Hide" : "Show", action: onMain(model) { $0.toggleVisibility() })
                     .actionIdentity(ActionID("studio.toggleVisibility"))
+                if let light = inspected.light {
+                    lightSection(light)
+                }
+                if let camera = inspected.camera {
+                    cameraSection(camera, id: inspected.id)
+                }
             } else {
                 Text("Nothing selected")
             }
@@ -311,6 +337,62 @@ struct InspectorPanel: View {
     private func nudge(_ title: String, _ id: String, _ delta: SIMD3<Float>) -> some View {
         Button(title, action: onMain(model) { $0.nudgeSelection(by: delta) })
             .actionIdentity(ActionID(id))
+    }
+
+    /// Kind (cycling button), intensity with −/+, and color, for a selected
+    /// light.
+    private func lightSection(_ light: Light) -> some View {
+        VStack {
+            Text("Light").bold()
+            Button("Kind: \(Self.kindLabel(light.kind))", action: onMain(model) { $0.cycleLightKind() })
+                .actionIdentity(ActionID("studio.lightKind"))
+            Text("Intensity: \(formatted(light.intensity)) \(Self.intensityUnit(light.kind))")
+            HStack {
+                Button("-", action: onMain(model) { $0.scaleLightIntensity(by: 0.8) })
+                    .actionIdentity(ActionID("studio.lightIntensity.-"))
+                Button("+", action: onMain(model) { $0.scaleLightIntensity(by: 1.25) })
+                    .actionIdentity(ActionID("studio.lightIntensity.+"))
+            }
+            Text("Color: \(formatted(light.color.x)), \(formatted(light.color.y)), \(formatted(light.color.z))")
+        }
+    }
+
+    /// FOV with −/+, near/far, and a "Look through" button, for a selected
+    /// camera.
+    private func cameraSection(_ camera: CameraSettings, id: EntityID) -> some View {
+        VStack {
+            Text("Camera").bold()
+            Text("FOV: \(formatted(camera.fieldOfViewDegrees))°")
+            HStack {
+                Button("-", action: onMain(model) { $0.adjustFieldOfView(by: -5) })
+                    .actionIdentity(ActionID("studio.cameraFov.-"))
+                Button("+", action: onMain(model) { $0.adjustFieldOfView(by: 5) })
+                    .actionIdentity(ActionID("studio.cameraFov.+"))
+            }
+            Text("Near: \(formatted(camera.near))")
+            Text("Far: \(formatted(camera.far))")
+            Button("Look through", action: { [viewport, id] in MainActor.assumeIsolated { viewport.lookThrough(id) } })
+                .actionIdentity(ActionID("studio.lookThrough"))
+        }
+    }
+
+    /// "Directional", "Point", or "Spot", for the kind-cycling button.
+    private static func kindLabel(_ kind: LightKind) -> String {
+        switch kind {
+        case .directional: "Directional"
+        case .point: "Point"
+        case .spot: "Spot"
+        }
+    }
+
+    /// Lux for a directional light (illuminance), lumens for point and spot
+    /// (luminous flux) — the two families ``StudioModel/cycleLightKind()``
+    /// documents as measured in different units.
+    private static func intensityUnit(_ kind: LightKind) -> String {
+        switch kind {
+        case .directional: "lx"
+        case .point, .spot: "lm"
+        }
     }
 }
 
