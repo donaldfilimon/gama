@@ -99,11 +99,15 @@ Files: `Sources/GamaCore/FrameHost.swift`; tests in `Tests/gamaTests/LayoutMetri
 (new suite `FrameHostMetricsTests`).
 
 1. Test first: a `FrameHost(app:metrics:)` with the scaling fake lays out a
-   small app at point frames; `surfaceSize` seen by the app is still the
-   `size` passed to `pump` (cells, unchanged); default init equals `.cell`.
+   small app at point frames; the `size` passed to `pump` is in layout units,
+   and `surfaceSize` seen by the app is that size divided per axis by
+   `metrics.units(1, axis)` (integer division, divisor at least 1), so with
+   `.cell` it equals the pump size exactly as today; default init equals
+   `.cell`.
 2. Add `metrics: LayoutMetrics = .cell` to `init(app:)` (:139) and
    `init(surface:)` (:146), store it, use it at `LayoutEngine.layout` in
-   `buildFrame` (:228). `HostPump` is unchanged.
+   `buildFrame` (:228), and compute `surfaceSize` (:190) as in step 1.
+   `HostPump` is unchanged.
 3. Run `FrameHostTests`, `HostPumpTests`, `NativeRegionTests`, the new suite.
 
 ## Task 3: ControlDescriptor side table
@@ -125,6 +129,15 @@ Files: create `Sources/GamaCore/ControlDescriptor.swift`; modify
 4. `HostActionStore` gains `controls`, cleared in `beginBuildPass()` (:46);
    wire it in `buildFrame` (:218). Expose `FrameHost.controls` and
    `HostPump.controls` beside `nativeRegions` (`HostPump.swift:82`).
+5. `LayoutMetrics` gains `descriptorSize: (ControlDescriptor, ProposedSize) ->
+   Size?` (memberwise-init parameter defaulting to a closure returning nil;
+   `.cell` returns nil). In `buildFrame`, after render and before layout,
+   FrameHost passes the engine a per-frame copy of its metrics whose
+   `controlSize` looks the `NodeID` up in this build's control table and
+   calls `descriptorSize`, falling back to the base `controlSize`. Test:
+   with a fake whose `descriptorSize` returns a fixed size for `.button`, a
+   `Button` inside a `FrameHost` lays out at that size; with `.cell`, layout
+   is unchanged.
 
 ## Task 4: Controls register descriptors
 
