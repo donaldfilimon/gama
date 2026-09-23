@@ -1,7 +1,8 @@
 //  ViewportController.swift — GamaStudioEditor
 //
 //  The RealityKit half of the editor: an `ARView` showing `StudioModel`'s
-//  bridge, lit by a fixed light and viewed through an orbit camera (drag,
+//  bridge, lit by its own lights (or a fallback editor light when it has
+//  none) and viewed through an orbit camera (drag,
 //  scroll, and pinch, chosen by device), that turns a click into a
 //  selection. The host (`GamaHostView`) owns placement; this file owns only
 //  what is drawn inside the viewport and what a click in it means.
@@ -58,11 +59,21 @@ public final class ViewportController: NSObject {
         anchor.addChild(camera)
         applyCamera()
 
-        // Angled down and across the scene so every primitive shows shading.
-        let light = DirectionalLight()
-        light.light.intensity = 3000
-        light.look(at: SIMD3<Float>(0, 0, 0), from: SIMD3<Float>(3, 6, 4), relativeTo: nil)
-        anchor.addChild(light)
+        // The fallback light: angled down and across the scene so every
+        // primitive shows shading, and lit only while the document has no
+        // enabled light of its own.
+        editorLight.light.intensity = 3000
+        editorLight.look(at: SIMD3<Float>(0, 0, 0), from: SIMD3<Float>(3, 6, 4), relativeTo: nil)
+        anchor.addChild(editorLight)
+        updateEditorLight()
+        // Chain rather than replace: a listener installed before this
+        // controller keeps running, first. A listener assigned after it
+        // must do the same, or the fallback light stops following edits.
+        let previousListener = model.onDocumentChange
+        model.onDocumentChange = { [weak self] in
+            previousListener?()
+            self?.updateEditorLight()
+        }
 
         arView.scene.addAnchor(anchor)
 
@@ -84,6 +95,36 @@ public final class ViewportController: NSObject {
             view.onScroll = { [weak self] event in self?.scroll(with: event) }
             view.onMagnify = { [weak self] magnification in self?.magnify(by: magnification) }
         }
+    }
+
+    // MARK: Editor light
+
+    /// The editor's fallback light, enabled only while the document has no
+    /// enabled light (``documentHasEnabledLight(_:)``), so an unlit scene is
+    /// still visible and an authored light is never washed out by it.
+    /// Editor state, not authored: it is not in the document.
+    public let editorLight = DirectionalLight()
+
+    /// Whether `document` has a light that is shining: an entity with a
+    /// light component whose own and every ancestor's ``Visibility`` is
+    /// visible. A missing `Visibility` component counts as visible.
+    public static func documentHasEnabledLight(_ document: SceneDocument) -> Bool {
+        document.entities.values.contains { record in
+            guard record.components[.light] != nil else { return false }
+            var cursor: EntityID? = record.id
+            while let id = cursor, let current = document.entity(id) {
+                if case .visibility(let visibility)? = current.components[.visibility], !visibility.visible {
+                    return false
+                }
+                cursor = current.parent
+            }
+            return true
+        }
+    }
+
+    /// Turns ``editorLight`` on exactly when the document has no enabled light.
+    private func updateEditorLight() {
+        editorLight.isEnabled = !Self.documentHasEnabledLight(model.session.document)
     }
 
     // MARK: Camera
@@ -171,6 +212,31 @@ public final class ViewportController: NSObject {
         applyCamera()
     }
 
+    /// Puts the viewport's eye where the authored camera `id` is and looks
+    /// the way it looks, with its field of view. Editor state only: the
+    /// document is not touched, and orbiting afterwards leaves the authored
+    /// camera where it was (ADR 0003).
+    ///
+    /// The eye is the entity's world position; the orbit target is that
+    /// position plus the entity's world forward (its local −Z) times the
+    /// current orbit distance, so the zoom level carries over. ``OrbitCamera``
+    /// clamps pitch to ±``OrbitCamera/pitchLimit``, so a camera aimed more
+    /// steeply than 85° is shown at 85°, and its roll is not reproduced.
+    /// An id without a camera component, or absent from the document, does
+    /// nothing.
+    public func lookThrough(_ id: EntityID) {
+        guard case .camera(let settings)? = model.session.document.component(.camera, of: id),
+              let entity = model.bridge.entity(for: id)
+        else { return }
+        let eye = entity.position(relativeTo: nil)
+        let direction = entity.convert(direction: SIMD3<Float>(0, 0, -1), to: nil)
+        let length = (direction * direction).sum().squareRoot()
+        guard length.isFinite, length > 0 else { return }
+        orbit = OrbitCamera(lookingAt: eye + direction / length * orbit.distance, from: eye)
+        camera.camera.fieldOfViewInDegrees = settings.fieldOfViewDegrees
+        applyCamera()
+    }
+
     @objc private func handleLeftDrag(_ recognizer: NSPanGestureRecognizer) {
         let t = recognizer.translation(in: arView)
         recognizer.setTranslation(.zero, in: arView)
@@ -204,11 +270,26 @@ public final class ViewportController: NSObject {
     /// Selects the entity under `point` (in ``arView``'s coordinates), or
     /// clears the selection when nothing projected is there, then reports
     /// the change.
+    ///
+    /// A shape that contains the eye is skipped: RealityKit reports it as a
+    /// hit at distance 0 for every point in the view, so without this the
+    /// marker of a camera the viewport sits in (the sample Camera starts at
+    /// the orbit eye, and ``lookThrough(_:)`` always puts the eye inside the
+    /// camera's marker) would swallow every click. The nearest hit in front
+    /// of the eye wins.
     public func pick(at point: CGPoint) {
-        let hit = arView.entity(at: point)
+        let hits: [CollisionCastHit] = arView.hitTest(point, query: .all, mask: .all)
+        let hit = hits
+            .filter { $0.distance > Self.insideHitDistance }
+            .min { $0.distance < $1.distance }?
+            .entity
         model.select(Self.pickedEntityID(for: hit, in: model.bridge))
         onSelectionChange()
     }
+
+    /// Hits at or below this distance, in meters, start inside the shape
+    /// (the eye is within it) and are ignored by ``pick(at:)``.
+    static let insideHitDistance: Float = 1e-4
 
     @objc private func handleClick(_ recognizer: NSClickGestureRecognizer) {
         pick(at: recognizer.location(in: arView))

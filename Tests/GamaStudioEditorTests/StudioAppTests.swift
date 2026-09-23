@@ -144,7 +144,7 @@ struct StudioAppTests {
     @Test func frameButtonCallsTheViewportHookWithoutEditing() throws {
         let model = StudioModel(document: StudioModel.sampleScene())
         let calls = FrameCalls()
-        var host = try FrameHost(app: StudioApp(model: model, onFrameSelection: { calls.count += 1 }))
+        var host = try FrameHost(app: StudioApp(model: model, viewport: ViewportActions(frameSelection: { calls.count += 1 }, lookThrough: { _ in })))
         let text = painted(host.pump(size: frameSize))
         #expect(text.contains("Frame"))
         let revision = model.session.revision

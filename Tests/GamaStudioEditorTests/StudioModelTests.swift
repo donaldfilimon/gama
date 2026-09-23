@@ -258,11 +258,11 @@ struct StudioModelConstructionTests {
         assertConverged(model)
     }
 
-    @Test func sampleSceneHasTheFourNamedEntities() {
+    @Test func sampleSceneHasTheSixNamedEntities() {
         let document = StudioModel.sampleScene()
 
         let names = Set(document.entities.values.map(\.name))
-        #expect(names == ["Ground", "Box", "Sphere", "Cone"])
-        #expect(document.count == 4)
+        #expect(names == ["Ground", "Box", "Sphere", "Cone", "Key Light", "Camera"])
+        #expect(document.count == 6)
     }
 }

@@ -158,7 +158,7 @@ struct ViewportTests {
         try press(right.0, right.1)
         try press(enter.0, enter.1)
         let names = Set(model.session.document.entities.values.map(\.name))
-        #expect(model.session.document.count == 7)
+        #expect(model.session.document.count == 9)
         #expect(names.isSuperset(of: ["Box 2", "Sphere 2", "Cone 2"]), "entities after the keys: \(names.sorted())")
     }
 

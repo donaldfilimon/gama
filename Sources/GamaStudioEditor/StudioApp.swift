@@ -19,7 +19,7 @@
 #if canImport(AppKit)
 
 public import GamaCore
-import GamaAuthoring
+public import GamaAuthoring
 
 /// The Gama Studio application root: one primary window laid out as a
 /// toolbar, a hierarchy panel, the RealityKit viewport region, an inspector
@@ -42,19 +42,19 @@ public struct StudioApp: App {
     /// The editing model every panel reads and every button edits.
     public let model: StudioModel
 
-    /// What the "Frame" toolbar button does. The camera is editor state that
-    /// the model deliberately does not own (ADR 0003), so the host injects
-    /// the viewport's action here; the default does nothing.
-    public let onFrameSelection: @MainActor @Sendable () -> Void
+    /// What the viewport buttons do. The camera is editor state that the
+    /// model deliberately does not own (ADR 0003), so the host injects the
+    /// viewport's actions here; ``ViewportActions/none`` does nothing.
+    public let viewport: ViewportActions
 
     /// Creates the application over an existing model, so a host can keep
     /// its own reference (for example to attach a viewport to its bridge).
     ///
-    /// - Parameter onFrameSelection: Run by the "Frame" button, typically
-    ///   `ViewportController.frameSelection()`.
-    public init(model: StudioModel, onFrameSelection: @escaping @MainActor @Sendable () -> Void = {}) {
+    /// - Parameter viewport: The viewport actions the buttons run, typically
+    ///   forwarding to a `ViewportController`.
+    public init(model: StudioModel, viewport: ViewportActions = .none) {
         self.model = model
-        self.onFrameSelection = onFrameSelection
+        self.viewport = viewport
     }
 
     /// Creates the application over ``StudioModel/sampleScene()``; Gama's
@@ -73,13 +73,38 @@ public struct StudioApp: App {
         // Capture the (Sendable, main-actor) model rather than `self`, which
         // is not Sendable and so cannot be sent into the isolated closure.
         let model = model
-        let onFrameSelection = onFrameSelection
+        let viewport = viewport
         return Window("Gama Studio", id: "main", role: .primary) {
-            StudioRootView(model: model, onFrameSelection: onFrameSelection, state: MainActor.assumeIsolated {
+            StudioRootView(model: model, viewport: viewport, state: MainActor.assumeIsolated {
                 StudioFrameState(model)
             })
         }
     }
+}
+
+// MARK: - Viewport actions
+
+/// The viewport operations the editor's buttons can request. The viewport
+/// camera is editor state that ``StudioModel`` does not own (ADR 0003), so a
+/// host that has a viewport (a `ViewportController`) injects these, and a
+/// host without one uses ``none``.
+public struct ViewportActions: Sendable {
+    /// Aims the viewport at the primary selection (the "Frame" button).
+    public var frameSelection: @MainActor @Sendable () -> Void
+    /// Views the scene through the authored camera with this id.
+    public var lookThrough: @MainActor @Sendable (EntityID) -> Void
+
+    /// Creates the actions; each defaults to doing nothing.
+    public init(
+        frameSelection: @escaping @MainActor @Sendable () -> Void = {},
+        lookThrough: @escaping @MainActor @Sendable (EntityID) -> Void = { _ in }
+    ) {
+        self.frameSelection = frameSelection
+        self.lookThrough = lookThrough
+    }
+
+    /// Actions that do nothing, for a host without a viewport (and tests).
+    public static let none = ViewportActions()
 }
 
 // MARK: - Frame state
@@ -167,7 +192,7 @@ private func onMain(
 /// The whole window: toolbar, body, status line.
 struct StudioRootView: View {
     let model: StudioModel
-    let onFrameSelection: @MainActor @Sendable () -> Void
+    let viewport: ViewportActions
     let state: StudioFrameState
 
     var body: some View {
@@ -202,7 +227,7 @@ struct StudioRootView: View {
                 .actionIdentity(ActionID("studio.undo"))
             Button("Redo", action: onMain(model) { $0.redo() })
                 .actionIdentity(ActionID("studio.redo"))
-            Button("Frame", action: { [onFrameSelection] in MainActor.assumeIsolated { onFrameSelection() } })
+            Button("Frame", action: { [viewport] in MainActor.assumeIsolated { viewport.frameSelection() } })
                 .actionIdentity(ActionID("studio.frame"))
         }
     }
