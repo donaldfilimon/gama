@@ -28,6 +28,7 @@ let package = Package(
         .library(name: "GamaReality", targets: ["GamaReality"]),
         .library(name: "GamaUSD", targets: ["GamaUSD"]),
         .library(name: "GamaConsole", targets: ["GamaConsole"]),
+        .library(name: "GamaGraph", targets: ["GamaGraph"]),
     ],
     dependencies: [
         // PR #108's head: the native-region API the viewport needs.
@@ -49,17 +50,30 @@ let package = Package(
             exclude: ["Fixtures"],
             swiftSettings: strictCore
         ),
+        // Graph evaluation (ADR 0007): node definitions, the standard node
+        // set, and the evaluator whose output nodes emit ordinary
+        // DocumentCommands. Standard library only, like GamaAuthoring.
+        .target(
+            name: "GamaGraph",
+            dependencies: ["GamaAuthoring"],
+            swiftSettings: strictLibrary
+        ),
+        .testTarget(
+            name: "GamaGraphTests",
+            dependencies: ["GamaGraph", "GamaAuthoring"],
+            swiftSettings: strictCore
+        ),
         // The command console's parser (ADR 0006): text in, the same
         // DocumentCommands every other surface produces out. Standard
         // library only; tools/check.sh bans platform imports here too.
         .target(
             name: "GamaConsole",
-            dependencies: ["GamaAuthoring"],
+            dependencies: ["GamaAuthoring", "GamaGraph"],
             swiftSettings: strictLibrary
         ),
         .testTarget(
             name: "GamaConsoleTests",
-            dependencies: ["GamaConsole", "GamaAuthoring"],
+            dependencies: ["GamaConsole", "GamaAuthoring", "GamaGraph"],
             swiftSettings: strictCore
         ),
         // Apple-only runtime projection; compiles to nothing without RealityKit.
@@ -87,6 +101,7 @@ let package = Package(
                 "GamaReality",
                 "GamaUSD",
                 "GamaConsole",
+                "GamaGraph",
                 .product(name: "GamaCore", package: "gama"),
                 .product(name: "GamaAppleUI", package: "gama"),
             ],
@@ -99,6 +114,7 @@ let package = Package(
                 "GamaAuthoring",
                 "GamaReality",
                 "GamaUSD",
+                "GamaGraph",
                 // StudioAppTests drives a FrameHost and paints its frames to
                 // text, which needs both gama modules imported directly.
                 .product(name: "GamaCore", package: "gama"),
