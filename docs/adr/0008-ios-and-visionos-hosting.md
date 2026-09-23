@@ -94,8 +94,8 @@ What was measured before designing, on 2026-09-23:
     simulator control tool do not reach visionOS apps at all. Device Hub
     clicks, which are gaze-and-pinch, do.
 - Not built:
-  - file open and save on iOS and visionOS, which needs a document picker;
-    the macOS File menu remains the only file I/O;
+  - file open and save on iOS and visionOS, which needs a document picker
+    (since built: ADR 0009);
   - a software-keyboard route to the console, which needs a hardware
     keyboard today;
   - a separate volumetric window on visionOS;

@@ -33,12 +33,14 @@ public final class StudioAppDelegate: NSObject, NSApplicationDelegate, NSWindowD
 
     // MARK: Documents
 
+    /// The file operations the menu drives (ADR 0009); `nil` until attached.
+    public private(set) var documents: StudioDocumentSession?
     /// The model whose document the File menu opens and saves.
-    public private(set) var model: StudioModel?
+    public var model: StudioModel? { documents?.model }
     /// The window whose title, proxy icon, and edited dot follow the document.
     public private(set) weak var window: NSWindow?
     /// Where the document was last opened from or saved to; `nil` until then.
-    public private(set) var currentURL: URL?
+    public var currentURL: URL? { documents?.currentURL }
     /// Asks the Gama host to repaint. A File-menu action arrives from AppKit,
     /// outside the host's own action path, so without this the panels would
     /// keep showing the previous document until the next input event.
@@ -58,14 +60,12 @@ public final class StudioAppDelegate: NSObject, NSApplicationDelegate, NSWindowD
         url: URL? = nil,
         redraw: @escaping @MainActor () -> Void = {}
     ) {
-        self.model = model
+        let documents = StudioDocumentSession(model: model, url: url)
+        self.documents = documents
         self.window = window
         self.redraw = redraw
-        currentURL = url
         window.delegate = self
-        let previousListener = model.onDocumentChange
-        model.onDocumentChange = { [weak self] in
-            previousListener?()
+        documents.onStateChange = { [weak self] in
             self?.updateWindow()
             // Deferred to the next main-actor turn: a document change made by
             // a gama button runs inside the host's own event dispatch, and
@@ -100,20 +100,14 @@ public final class StudioAppDelegate: NSObject, NSApplicationDelegate, NSWindowD
     /// Reads `url` and replaces the model's document with it. The previous
     /// document is gone and the load is not undoable.
     public func open(_ url: URL) throws {
-        guard let model else { throw StudioDocumentError.notAttached }
-        let document = try StudioDocumentIO.read(from: url)
-        model.replaceDocument(document)
-        currentURL = url
-        updateWindow()
+        guard let documents else { throw StudioDocumentError.notAttached }
+        try documents.open(url)
     }
 
     /// Writes the model's document to `url`, which becomes the current file.
     public func save(to url: URL) throws {
-        guard let model else { throw StudioDocumentError.notAttached }
-        try StudioDocumentIO.write(model.session.document, to: url)
-        model.markSaved()
-        currentURL = url
-        updateWindow()
+        guard let documents else { throw StudioDocumentError.notAttached }
+        try documents.save(to: url)
     }
 
     /// Title, proxy icon, and edited dot from the current document.

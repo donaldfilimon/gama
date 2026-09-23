@@ -23,6 +23,8 @@ public final class StudioHostViewController: UIViewController {
     public let model: StudioModel
     public let hostView = GamaHostView(frame: CGRect(x: 0, y: 0, width: 1024, height: 768))
     public private(set) var viewport: TouchViewportController!
+    /// File open and save through the document picker (ADR 0009).
+    public private(set) var files: TouchDocumentController!
 
     public init(model: StudioModel = StudioModel(document: StudioModel.sampleScene())) {
         self.model = model
@@ -57,8 +59,12 @@ public final class StudioHostViewController: UIViewController {
             frameSelection: { viewport.frameSelection() },
             lookThrough: { viewport.lookThrough($0) }
         )
+        let documents = StudioDocumentSession(model: model)
+        let files = TouchDocumentController(documents: documents, presenter: self)
+        self.files = files
+        documents.onStateChange = { [weak self] in self?.updateTitle() }
         do {
-            try hostView.install(app: StudioApp(model: model, viewport: actions))
+            try hostView.install(app: StudioApp(model: model, viewport: actions, documents: files.actions))
         } catch {
             assertionFailure("gama-studio: install failed: \(error)")
         }
@@ -66,6 +72,34 @@ public final class StudioHostViewController: UIViewController {
         hostView.attach(viewport.view, to: StudioApp.viewportRegion)
         viewport.hostingController.didMove(toParent: self)
     }
+
+    public override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        updateTitle()
+    }
+
+    /// The window scene's title: the file name, with a bullet while edited.
+    private func updateTitle() {
+        guard let documents = files?.documents else { return }
+        let name = documents.displayName
+        view.window?.windowScene?.title = documents.hasUnsavedChanges ? "\(name) \u{2022}" : name
+    }
+
+    // MARK: Keyboard
+
+    /// ⌘O, ⌘S, and ⇧⌘S on a hardware keyboard, as on macOS. Found through
+    /// the responder chain from the gama host, which is first responder.
+    public override var keyCommands: [UIKeyCommand]? {
+        [
+            UIKeyCommand(title: "Open…", action: #selector(openDocument), input: "o", modifierFlags: .command),
+            UIKeyCommand(title: "Save", action: #selector(saveDocument), input: "s", modifierFlags: .command),
+            UIKeyCommand(title: "Save As…", action: #selector(saveDocumentAs), input: "s", modifierFlags: [.command, .shift]),
+        ]
+    }
+
+    @objc func openDocument() { files.open() }
+    @objc func saveDocument() { files.save() }
+    @objc func saveDocumentAs() { files.saveAs() }
 
     /// What the gate's launch smoke check verifies after the first layout:
     /// the host drew, the viewport is attached, visible, and non-empty, and
@@ -81,6 +115,19 @@ public final class StudioHostViewController: UIViewController {
         if !(frame.width > 0 && frame.height > 0) { failures.append("viewport frame is empty: \(frame)") }
         if model.bridge.count != model.session.document.count {
             failures.append("bridge holds \(model.bridge.count) entities, document \(model.session.document.count)")
+        }
+        // The app's own sandbox can write a .usda copy and read it back.
+        if let files {
+            let directory = FileManager.default.temporaryDirectory.appendingPathComponent("GamaStudioSmoke-\(UUID().uuidString)")
+            defer { try? FileManager.default.removeItem(at: directory) }
+            do {
+                let (file, document) = try files.documents.writeCopyForExport(in: directory)
+                if try StudioDocumentIO.read(from: file) != document { failures.append("file round trip changed the document") }
+            } catch {
+                failures.append("file round trip failed: \(StudioDocumentIO.describe(error))")
+            }
+        } else {
+            failures.append("document controller not created")
         }
         return failures
     }

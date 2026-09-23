@@ -49,14 +49,27 @@ public struct StudioApp: App {
     /// viewport's actions here; ``ViewportActions/none`` does nothing.
     public let viewport: ViewportActions
 
+    /// The toolbar's Open, Save, and Save As buttons, shown only when a host
+    /// supplies them (the touch hosts, ADR 0009); macOS uses its File menu.
+    public let documents: DocumentActions?
+
+    /// The file buttons' action identities, in toolbar order, present only
+    /// when ``documents`` is set.
+    public static let fileActionIDs: [ActionID] = [
+        ActionID("studio.file.open"), ActionID("studio.file.save"), ActionID("studio.file.saveAs"),
+    ]
+
     /// Creates the application over an existing model, so a host can keep
     /// its own reference (for example to attach a viewport to its bridge).
     ///
-    /// - Parameter viewport: The viewport actions the buttons run, typically
-    ///   forwarding to a `ViewportController`.
-    public init(model: StudioModel, viewport: ViewportActions = .none) {
+    /// - Parameters:
+    ///   - viewport: The viewport actions the buttons run, typically
+    ///     forwarding to a `ViewportController`.
+    ///   - documents: The file buttons' actions, or `nil` for no file buttons.
+    public init(model: StudioModel, viewport: ViewportActions = .none, documents: DocumentActions? = nil) {
         self.model = model
         self.viewport = viewport
+        self.documents = documents
     }
 
     /// Creates the application over ``StudioModel/sampleScene()``; Gama's
@@ -76,8 +89,9 @@ public struct StudioApp: App {
         // is not Sendable and so cannot be sent into the isolated closure.
         let model = model
         let viewport = viewport
+        let documents = documents
         return Window("Gama Studio", id: "main", role: .primary) {
-            StudioRootView(model: model, viewport: viewport, state: MainActor.assumeIsolated {
+            StudioRootView(model: model, viewport: viewport, documents: documents, state: MainActor.assumeIsolated {
                 StudioFrameState(model)
             })
         }
@@ -227,6 +241,7 @@ struct StudioRootView: View {
 
     let model: StudioModel
     let viewport: ViewportActions
+    let documents: DocumentActions?
     let state: StudioFrameState
 
     /// Scene (26) + Inspector (30) + a 30-column viewport.
@@ -291,6 +306,7 @@ struct StudioRootView: View {
 
     private var toolbar: some View {
         HStack(spacing: 1) {
+            if let documents { fileButtons(documents) }
             creationButtons(short: false)
             editingButtons(short: false)
         }
@@ -298,9 +314,22 @@ struct StudioRootView: View {
 
     private var compactToolbar: some View {
         VStack {
+            if let documents {
+                HStack(spacing: 1) { fileButtons(documents) }
+            }
             HStack(spacing: 1) { creationButtons(short: true) }
             HStack(spacing: 1) { editingButtons(short: true) }
         }
+    }
+
+    @ViewBuilder
+    private func fileButtons(_ documents: DocumentActions) -> some View {
+        Button("Open", action: { MainActor.assumeIsolated { documents.open() } })
+            .actionIdentity(StudioApp.fileActionIDs[0])
+        Button("Save", action: { MainActor.assumeIsolated { documents.save() } })
+            .actionIdentity(StudioApp.fileActionIDs[1])
+        Button("Save As", action: { MainActor.assumeIsolated { documents.saveAs() } })
+            .actionIdentity(StudioApp.fileActionIDs[2])
     }
 
     @ViewBuilder
