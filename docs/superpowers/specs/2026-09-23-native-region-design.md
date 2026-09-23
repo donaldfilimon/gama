@@ -5,15 +5,21 @@ Implements the policy in
 settles open question 1 of the
 [native view embedding draft](drafts/2026-09-23-native-view-embedding-draft.md).
 
-**Status: designed, not built.** No type, hook, or host API below exists yet.
-The owner approved the design section by section on 2026-09-23. The
-implementation plan follows this spec and nothing is claimed in
-`docs/Capabilities.md` until an implementation has evidence.
+**Status: implemented on branch `feat/native-regions`; locally gated on
+macOS only; no hosted run (billing lock).** The owner approved the design
+section by section on 2026-09-23. The implementation plan
+(`docs/superpowers/plans/2026-09-23-native-regions.md`) follows this spec
+and nothing is claimed in `docs/Capabilities.md` until an implementation has
+evidence at the layer that evidence supports (local or hosted).
 
 ## The decision: follow the action pattern
 
 A native region is **not** a new `RenderNode` case. `NativeRegion` compiles to
-the existing `interactive(id:focusable:child:)` node wrapping its fallback. It
+the existing `interactive(id:focusable:child:)` node wrapping its fallback,
+stretched with `.frame(maxWidth: .max, maxHeight: .max)` so the region is
+flexible on both axes. An `interactive` wrapper only passes through its child's
+flexibility, so an unstretched `Text` fallback would size the region to the
+text. It
 then registers `(NodeID, NativeRegionID)` with the owning host through a new
 `BuildContext` hook, the same way `Button` registers its closure through
 `registerAction` into the host's `HostActionStore` (cleared by
@@ -109,14 +115,14 @@ reports the region but leaves it out of focus order.
 
 ```swift
 extension GamaHostView {
-    public func attach(_ view: NSView, to id: NativeRegionID)   // UIView on UIKit
+    public func attach(_ view: GamaPlatformView, to id: NativeRegionID)
     public func detach(_ id: NativeRegionID)
 }
 ```
 
-There is no `PlatformView` typealias today, only `PlatformFont` and
-`PlatformColor`. The method is declared once per platform under the same
-`#if` split the file already uses.
+`GamaPlatformView` is the existing public alias for `NSView` on AppKit and
+`UIView` on UIKit, so the method is declared once. (An earlier revision of
+this spec said no such alias existed; that was wrong.)
 
 Every new public symbol carries a `///` comment. The doc-coverage gate
 requires it, and no allowlist entries are added.
@@ -130,6 +136,10 @@ requires it, and no allowlist entries are added.
     `frame = pixelRect(region.frame)` and is shown.
   - Every other attached view is hidden, not removed, so its state survives a
     region that is absent for a frame.
+  - A region whose frame has zero area counts as absent: its attached view is
+    hidden and never takes first responder, so a zero-area view shows nothing
+    and focus never lands on an invisible view. The Apple host already
+    implements this.
 - **No overdraw.** `draw(_:)` skips DrawList commands whose cell rectangle lies
   wholly inside a shown region's frame. A region with no attached view keeps
   its painted fallback, so the Apple host degrades exactly like the cell
@@ -140,6 +150,10 @@ requires it, and no allowlist entries are added.
     (`window.makeFirstResponder(_:)` on AppKit, `becomeFirstResponder()` on
     UIKit).
   - When `isFocused` turns false, the host takes first responder back.
+  - Exactly one view receives first responder per frame, and the host
+    reclaims first responder only when it is currently inside a region's view
+    that lost focus — never from an unrelated control; `detach` of a focused
+    region's view returns first responder to the host.
   - Leaving a native view that consumes Tab itself is out of scope here; it is
     open question 2.
 - **Duplicates.** When two regions share an id in one frame, the last
@@ -151,7 +165,9 @@ requires it, and no allowlist entries are added.
   - Attaching a different view to an already attached id detaches the first.
     Attaching to an id not yet laid out is allowed: the view stays hidden until
     its region appears.
-  - `detach`, or tearing the host down, removes the subview.
+  - `detach` removes the subview. Tearing the host down (`tearDown()`) does
+    not — attached views stay in place, left to the application, which owns
+    them.
   - Gama never creates, configures, or retains a platform view on its own.
 - **Accessibility.** Each shown attached view is inserted as an accessibility
   child, ordered by frame among the per-line elements from
@@ -168,8 +184,9 @@ requires it, and no allowlist entries are added.
 - Duplicate ids are reported, and the last one wins.
 - `isFocused` tracks host focus, and `focusable: false` stays out of focus
   order but is still reported.
-- The fallback paints identically through the TUI cell buffer,
-  `DrawListSerializer`, and `HTMLSerializer`.
+- The fallback paints identically in the painted `CellBuffer` and its
+  `DrawListSerializer` output. Every serializer, including the WASM
+  `HTMLSerializer` (internal to its module), consumes that same buffer.
 - MLIR emission for a region is exactly the existing `interactive` op around
   the fallback.
 
