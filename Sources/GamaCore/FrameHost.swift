@@ -41,12 +41,14 @@ private final class HostActionStore {
     var keyHandlers: [NodeID: (Key) -> Bool] = [:]
     var named: [ActionID: () -> Void] = [:]
     var shortcuts: [Key: ActionID] = [:]
+    var regions: [NodeID: NativeRegionID] = [:]
 
     func beginBuildPass() {
         actions.removeAll(keepingCapacity: true)
         keyHandlers.removeAll(keepingCapacity: true)
         named.removeAll(keepingCapacity: true)
         shortcuts.removeAll(keepingCapacity: true)
+        regions.removeAll(keepingCapacity: true)
     }
     func register(_ id: NodeID, action: @escaping () -> Void) { actions[id] = action }
     func registerKey(_ id: NodeID, handler: @escaping (Key) -> Bool) {
@@ -65,6 +67,8 @@ private final class HostActionStore {
         guard let id = shortcuts[key] else { return nil }
         return named[id]
     }
+    func registerRegion(_ id: NodeID, _ region: NativeRegionID) { regions[id] = region }
+    func region(for id: NodeID) -> NativeRegionID? { regions[id] }
 }
 
 /// The backend-independent heart of a running app. Each host owns focus,
@@ -107,6 +111,14 @@ public struct FrameHost: ~Copyable {
     /// storage are not reported. An empty list therefore does not prove
     /// that collection state follows the intended element identities.
     public private(set) var transientStateIDs: [NodeID] = []
+
+    /// Native regions (ADR 0016) in the most recent frame, in visual order,
+    /// with focus already reconciled. A presentation host places attached
+    /// views on these frames; every other backend ignores them.
+    public private(set) var nativeRegions: [NativeRegionFrame] = []
+    /// Native region identities registered more than once in the most
+    /// recent frame. The last registration wins in ``nativeRegions``.
+    public private(set) var duplicateNativeRegionIDs: [NativeRegionID] = []
 
     private let dirty: Signal<Bool>
     private let stateStore: HostStateStore
@@ -193,6 +205,7 @@ public struct FrameHost: ~Copyable {
         // build's marks are the live set.
         stateStore.sweep()
         transientStateIDs = stateStore.transientIDs
+        publishNativeRegions()
         return laid
     }
 
@@ -208,7 +221,8 @@ public struct FrameHost: ~Copyable {
             registerKeyHandler: { id, handler in actionStore.registerKey(id, handler: handler) },
             registerNamedAction: { id, shortcut, action in
                 actionStore.registerNamed(id, shortcut: shortcut, action: action)
-            }
+            },
+            registerNativeRegion: { id, region in actionStore.registerRegion(id, region) }
         )
         context.stateStore = stateStore
         let frame = LayoutEngine.layout(renderScene(context), in: Rect(origin: .zero, size: size))
@@ -217,6 +231,29 @@ public struct FrameHost: ~Copyable {
         validateIdentities()
         focusables = interactive.compactMap { $0.isFocusable ? (id: $0.id, rect: $0.frame) : nil }
         return frame
+    }
+
+    /// Joins the latest build's region registrations with its interactive
+    /// frames. Keeps the last registration of a repeated identity, at its
+    /// own visual position, and records the identity as a duplicate.
+    private mutating func publishNativeRegions() {
+        let all: [NativeRegionFrame] = interactive.compactMap { item in
+            actions.region(for: item.id).map {
+                NativeRegionFrame(id: $0, node: item.id, frame: item.frame, isFocused: item.id == focusedID)
+            }
+        }
+        var seen: Set<NativeRegionID> = []
+        var kept: [NativeRegionFrame] = []
+        for entry in all.reversed() where seen.insert(entry.id).inserted {
+            kept.append(entry)
+        }
+        nativeRegions = Array(kept.reversed())
+        var counted: [NativeRegionID: Int] = [:]
+        for entry in all { counted[entry.id, default: 0] += 1 }
+        var reported: Set<NativeRegionID> = []
+        duplicateNativeRegionIDs = all.compactMap { entry in
+            (counted[entry.id, default: 0] > 1 && reported.insert(entry.id).inserted) ? entry.id : nil
+        }
     }
 
     private var focusedIndex: Int? {

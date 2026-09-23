@@ -78,6 +78,11 @@ public struct HostPump: ~Copyable {
     /// Whether the host has requested application shutdown.
     public var wantsQuit: Bool { host.wantsQuit }
 
+    /// The host's native regions for the most recent frame (ADR 0016).
+    public var nativeRegions: [NativeRegionFrame] { host.nativeRegions }
+    /// Native region identities the most recent frame registered more than once.
+    public var duplicateNativeRegionIDs: [NativeRegionID] { host.duplicateNativeRegionIDs }
+
     /// Routes one event through the shared policy.
     ///
     /// `.resize` is the only case this type interprets: it updates ``size``

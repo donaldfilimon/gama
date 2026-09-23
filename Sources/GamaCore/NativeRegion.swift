@@ -55,3 +55,25 @@ public struct NativeRegion<Fallback: View>: View {
         )
     }
 }
+
+/// One native region of a laid-out frame, as a host consumes it: which
+/// region, which interactive node carries it, where it is in cells, and
+/// whether host focus is on it.
+public struct NativeRegionFrame: Hashable, Sendable {
+    /// The application's identity for the region.
+    public let id: NativeRegionID
+    /// The interactive node that carries the region.
+    public let node: NodeID
+    /// The region's absolute frame in grid cells.
+    public let frame: Rect
+    /// Whether host focus is on ``node`` in this frame.
+    public let isFocused: Bool
+
+    /// Creates a region record.
+    public init(id: NativeRegionID, node: NodeID, frame: Rect, isFocused: Bool) {
+        self.id = id
+        self.node = node
+        self.frame = frame
+        self.isFocused = isFocused
+    }
+}
