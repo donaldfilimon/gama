@@ -149,6 +149,28 @@ public final class ViewportController: NSObject {
         camera.look(at: orbit.target, from: orbit.position, relativeTo: nil)
     }
 
+    /// Aims the camera at the primary selection, or at the whole scene when
+    /// nothing is selected, keeping the current viewing direction.
+    ///
+    /// Hidden entities still frame (finding a hidden object is useful). An
+    /// entity with no visual bounds, such as one without a mesh, frames at
+    /// its world position with ``OrbitCamera/frameMinimumRadius``.
+    public func frameSelection() {
+        let subject = model.session.selection.primary.flatMap { model.bridge.entity(for: $0) } ?? model.bridge.root
+        let bounds = subject.visualBounds(recursive: true, relativeTo: nil, excludeInactive: false)
+        let center: SIMD3<Float>
+        let radius: Float
+        if bounds.isEmpty {
+            center = subject.position(relativeTo: nil)
+            radius = OrbitCamera.frameMinimumRadius
+        } else {
+            center = bounds.center
+            radius = (bounds.extents * bounds.extents).sum().squareRoot() / 2
+        }
+        orbit.frame(center: center, radius: radius, fieldOfViewDegrees: camera.camera.fieldOfViewInDegrees)
+        applyCamera()
+    }
+
     @objc private func handleLeftDrag(_ recognizer: NSPanGestureRecognizer) {
         let t = recognizer.translation(in: arView)
         recognizer.setTranslation(.zero, in: arView)

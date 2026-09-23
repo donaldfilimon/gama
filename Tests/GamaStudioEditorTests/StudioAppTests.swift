@@ -122,9 +122,9 @@ struct StudioAppTests {
         _ = host.pump(size: frameSize)
         let sphere = try #require(entityID(named: "Sphere", in: model))
 
-        // Tab past the seven toolbar buttons to the hierarchy rows
-        // (Ground, Box, Sphere) and activate the third.
-        for _ in 0..<9 { host.handle(.key(.tab)) }
+        // Tab past every toolbar button to the hierarchy rows (Ground, Box,
+        // Sphere) and activate the third.
+        for _ in 0..<(StudioApp.toolbarActionIDs.count + 2) { host.handle(.key(.tab)) }
         host.handle(.key(.enter))
         #expect(model.session.selection.primary == sphere)
     }
@@ -140,4 +140,23 @@ struct StudioAppTests {
         text = painted(host.pump(size: frameSize))
         #expect(text.contains("nothingToUndo"))
     }
+
+    @Test func frameButtonCallsTheViewportHookWithoutEditing() throws {
+        let model = StudioModel(document: StudioModel.sampleScene())
+        let calls = FrameCalls()
+        var host = try FrameHost(app: StudioApp(model: model, onFrameSelection: { calls.count += 1 }))
+        let text = painted(host.pump(size: frameSize))
+        #expect(text.contains("Frame"))
+        let revision = model.session.revision
+        host.perform(ActionID("studio.frame"))
+        #expect(calls.count == 1)
+        #expect(model.session.revision == revision, "framing is not an edit")
+        #expect(StudioApp.toolbarActionIDs.contains(ActionID("studio.frame")))
+    }
+}
+
+/// Counts frame-hook calls; main-actor isolated, so the `@Sendable` hook may capture it.
+@MainActor
+private final class FrameCalls {
+    var count = 0
 }

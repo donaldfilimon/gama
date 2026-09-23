@@ -95,4 +95,35 @@ struct OrbitCameraTests {
         camera.pan(right: .nan, up: 1)
         #expect(camera == before)
     }
+
+    @Test func framingCentersAndFitsTheSphere() {
+        var camera = OrbitCamera(target: .zero, yaw: 0.4, pitch: 0.3, distance: 20)
+        camera.frame(center: SIMD3(1, 2, 3), radius: 2, fieldOfViewDegrees: 60)
+        #expect(close(camera.target, SIMD3(1, 2, 3)))
+        #expect(camera.yaw == 0.4)
+        #expect(camera.pitch == 0.3)
+        let halfFOV: Float = 30 * .pi / 180
+        // The whole sphere is inside the view cone...
+        #expect(asin(2 / camera.distance) <= halfFOV + 1e-4)
+        // ...with exactly the documented margin.
+        #expect(abs(camera.distance - 2 / sin(halfFOV) * OrbitCamera.frameMargin) < 1e-3)
+    }
+
+    @Test func framingHandlesDegenerateInput() {
+        var camera = OrbitCamera(target: .zero, yaw: 0, pitch: 0, distance: 5)
+        camera.frame(center: SIMD3(1, 0, 0), radius: 0, fieldOfViewDegrees: 60)
+        let minimum = OrbitCamera.frameMinimumRadius / sin(30 * Float.pi / 180) * OrbitCamera.frameMargin
+        #expect(abs(camera.distance - max(minimum, OrbitCamera.distanceRange.lowerBound)) < 1e-4)
+        camera.frame(center: SIMD3(1, 0, 0), radius: .nan, fieldOfViewDegrees: 60)
+        #expect(abs(camera.distance - max(minimum, OrbitCamera.distanceRange.lowerBound)) < 1e-4)
+
+        camera.frame(center: .zero, radius: 1e6, fieldOfViewDegrees: 60)
+        #expect(camera.distance == OrbitCamera.distanceRange.upperBound)
+
+        let before = camera
+        camera.frame(center: SIMD3(.nan, 0, 0), radius: 1, fieldOfViewDegrees: 60)
+        camera.frame(center: .zero, radius: 1, fieldOfViewDegrees: 0)
+        camera.frame(center: .zero, radius: 1, fieldOfViewDegrees: 180)
+        #expect(camera == before)
+    }
 }

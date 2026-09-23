@@ -66,14 +66,15 @@ window.contentView = hostView
 // The model, host, and viewport are top-level globals, so they live for the
 // whole process; the viewport's click handler relies on that.
 let model = StudioModel(document: StudioModel.sampleScene())
+// Built before the app is installed so the toolbar's "Frame" button can
+// reach it; it depends on the host only through this redraw closure.
+let viewport = ViewportController(model: model, onSelectionChange: { hostView.invalidate() })
 do {
-    try hostView.install(app: StudioApp(model: model))
+    try hostView.install(app: StudioApp(model: model, onFrameSelection: { viewport.frameSelection() }))
 } catch {
     FileHandle.standardError.write(Data("gama-studio: install failed: \(error)\n".utf8))
     exit(1)
 }
-
-let viewport = ViewportController(model: model, onSelectionChange: { hostView.invalidate() })
 hostView.attach(viewport.arView, to: StudioApp.viewportRegion)
 
 /// Whether `rep` has more than one distinct colour across a coarse grid of

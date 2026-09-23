@@ -30,13 +30,31 @@ public struct StudioApp: App {
     /// cannot drift between declaration and attachment.
     public static let viewportRegion = NativeRegionID("viewport")
 
+    /// Every toolbar button's action identity, in toolbar order. Tests use
+    /// the count to Tab past the toolbar; add a button's id here when you add
+    /// the button.
+    public static let toolbarActionIDs: [ActionID] = [
+        ActionID("studio.addBox"), ActionID("studio.addSphere"), ActionID("studio.addCone"),
+        ActionID("studio.duplicate"), ActionID("studio.delete"),
+        ActionID("studio.undo"), ActionID("studio.redo"), ActionID("studio.frame"),
+    ]
+
     /// The editing model every panel reads and every button edits.
     public let model: StudioModel
 
+    /// What the "Frame" toolbar button does. The camera is editor state that
+    /// the model deliberately does not own (ADR 0003), so the host injects
+    /// the viewport's action here; the default does nothing.
+    public let onFrameSelection: @MainActor @Sendable () -> Void
+
     /// Creates the application over an existing model, so a host can keep
     /// its own reference (for example to attach a viewport to its bridge).
-    public init(model: StudioModel) {
+    ///
+    /// - Parameter onFrameSelection: Run by the "Frame" button, typically
+    ///   `ViewportController.frameSelection()`.
+    public init(model: StudioModel, onFrameSelection: @escaping @MainActor @Sendable () -> Void = {}) {
         self.model = model
+        self.onFrameSelection = onFrameSelection
     }
 
     /// Creates the application over ``StudioModel/sampleScene()``; Gama's
@@ -55,8 +73,9 @@ public struct StudioApp: App {
         // Capture the (Sendable, main-actor) model rather than `self`, which
         // is not Sendable and so cannot be sent into the isolated closure.
         let model = model
+        let onFrameSelection = onFrameSelection
         return Window("Gama Studio", id: "main", role: .primary) {
-            StudioRootView(model: model, state: MainActor.assumeIsolated {
+            StudioRootView(model: model, onFrameSelection: onFrameSelection, state: MainActor.assumeIsolated {
                 StudioFrameState(model)
             })
         }
@@ -146,6 +165,7 @@ private func onMain(
 /// The whole window: toolbar, body, status line.
 struct StudioRootView: View {
     let model: StudioModel
+    let onFrameSelection: @MainActor @Sendable () -> Void
     let state: StudioFrameState
 
     var body: some View {
@@ -180,6 +200,8 @@ struct StudioRootView: View {
                 .actionIdentity(ActionID("studio.undo"))
             Button("Redo", action: onMain(model) { $0.redo() })
                 .actionIdentity(ActionID("studio.redo"))
+            Button("Frame", action: { [onFrameSelection] in MainActor.assumeIsolated { onFrameSelection() } })
+                .actionIdentity(ActionID("studio.frame"))
         }
     }
 

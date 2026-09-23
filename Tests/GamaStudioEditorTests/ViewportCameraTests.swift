@@ -10,6 +10,7 @@ import AppKit
 import Foundation
 import GamaAppleUI
 import GamaAuthoring
+import GamaReality
 import GamaStudioEditor
 import RealityKit
 import Testing
@@ -124,6 +125,36 @@ struct ViewportCameraTests {
         #expect(model.session.selection.primary == selectionBefore, "a drag must not change the selection")
         #expect(changes == 0)
         #expect(close(viewport.camera.position(relativeTo: nil), viewport.orbit.position))
+    }
+
+    @Test func frameSelectionFramesTheSelectedEntityOrEverything() throws {
+        let model = StudioModel(document: StudioModel.sampleScene())
+        let viewport = ViewportController(model: model, onSelectionChange: {})
+
+        viewport.frameSelection()   // nothing selected: frame the whole scene
+        let all = model.bridge.root.visualBounds(relativeTo: nil)
+        #expect(close(viewport.orbit.target, all.center))
+        let allDistance = viewport.orbit.distance
+
+        let box = try #require(model.session.document.entities.values.first { $0.name == "Box" }?.id)
+        model.select(box)
+        viewport.frameSelection()
+        let boxBounds = try #require(model.bridge.entity(for: box)).visualBounds(relativeTo: nil)
+        #expect(close(viewport.orbit.target, boxBounds.center))
+        #expect(viewport.orbit.distance < allDistance, "a single primitive frames closer than the scene")
+        #expect(close(viewport.camera.position(relativeTo: nil), viewport.orbit.position))
+    }
+
+    @Test func frameSelectionFallsBackToThePositionOfAnEntityWithoutAMesh() throws {
+        var session = EditorSession()
+        let empty = session.document.nextEntityID
+        try session.execute(CreateEntity(name: "Empty", components: [.transform(Transform(position: SIMD3(3, 1, 0)))]))
+        let model = StudioModel(document: session.document)
+        let viewport = ViewportController(model: model, onSelectionChange: {})
+        model.select(empty)
+        viewport.frameSelection()
+        #expect(close(viewport.orbit.target, SIMD3(3, 1, 0)))
+        #expect(viewport.orbit.distance.isFinite)
     }
 }
 

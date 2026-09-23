@@ -140,7 +140,12 @@ own views, but a `NativeRegion`'s content is opaque to Gama.
   notched wheel; a trackpad (scroll events with precise deltas) orbits with
   two-finger scroll, pans with Shift+scroll, and zooms with pinch. A drag
   makes the click recognizer fail, so dragging never changes the selection.
-  No key is used, so decision 6's keyboard behavior is unchanged. The camera
+  No key is used, so decision 6's keyboard behavior is unchanged. The
+  toolbar's "Frame" button aims the camera at the primary selection's
+  visual bounds (or the whole scene with nothing selected), keeping the
+  viewing direction; it reaches the viewport through a closure the host
+  injects into `StudioApp(model:onFrameSelection:)`, so `StudioModel` stays
+  free of camera state and framing is not an edit. The camera
   is not a document command: it is not undoable, not saved, and not shared
   with any other view. Camera components in the document remain unbuilt
   (AGENTS.md "Not built").

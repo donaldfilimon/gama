@@ -88,4 +88,30 @@ public struct OrbitCamera: Hashable, Sendable {
         guard scale.isFinite, scale > 0 else { return }
         distance = min(max(distance * scale, Self.distanceRange.lowerBound), Self.distanceRange.upperBound)
     }
+
+    /// Head-room around a framed sphere: the fitted distance is multiplied
+    /// by this, so the framed object does not touch the view's edges.
+    public static let frameMargin: Float = 1.25
+    /// The smallest radius framing uses, so a flat or zero-size object
+    /// (a plane seen edge-on, an entity with no mesh) still frames sensibly.
+    public static let frameMinimumRadius: Float = 0.25
+
+    /// Aims at `center` and moves to the distance at which a sphere of
+    /// `radius` fits a view of `fieldOfViewDegrees`, times ``frameMargin``,
+    /// keeping ``yaw`` and ``pitch`` so the view direction does not jump.
+    ///
+    /// A non-finite or tiny `radius` uses ``frameMinimumRadius``; a
+    /// non-finite `center` or a field of view outside (0°, 180°) is ignored.
+    public mutating func frame(center: SIMD3<Float>, radius: Float, fieldOfViewDegrees: Float) {
+        guard center.x.isFinite, center.y.isFinite, center.z.isFinite,
+              fieldOfViewDegrees.isFinite, fieldOfViewDegrees > 0, fieldOfViewDegrees < 180
+        else { return }
+        let fitted = radius.isFinite ? max(radius, Self.frameMinimumRadius) : Self.frameMinimumRadius
+        let halfAngle = fieldOfViewDegrees * .pi / 360
+        target = center
+        distance = min(
+            max(fitted / sin(halfAngle) * Self.frameMargin, Self.distanceRange.lowerBound),
+            Self.distanceRange.upperBound
+        )
+    }
 }
