@@ -19,12 +19,25 @@ struct FixtureTests {
         try String(contentsOf: Self.fixtures.appendingPathComponent(name), encoding: .utf8)
     }
 
-    @Test func writerMatchesTheGoldenFile() throws {
-        let text = usdaString(from: try Scenes.everything())
-        if ProcessInfo.processInfo.environment["GAMA_UPDATE_GOLDEN"] == "1" {
-            try text.write(to: Self.fixtures.appendingPathComponent("everything.usda"), atomically: true, encoding: .utf8)
+    /// `tools/check.sh` runs `usdchecker` over every golden here, so these
+    /// scenes are also the gate's proof that the writer emits valid USD.
+    static let goldens = ["everything.usda", "nesting.usda", "awkward-names.usda"]
+
+    static func scene(for golden: String) throws -> SceneDocument {
+        switch golden {
+        case "nesting.usda": try Scenes.nesting()
+        case "awkward-names.usda": try Scenes.awkwardNames()
+        default: try Scenes.everything()
         }
-        #expect(text == (try fixture("everything.usda")))
+    }
+
+    @Test(arguments: goldens)
+    func writerMatchesTheGoldenFile(_ name: String) throws {
+        let text = usdaString(from: try Self.scene(for: name))
+        if ProcessInfo.processInfo.environment["GAMA_UPDATE_GOLDEN"] == "1" {
+            try text.write(to: Self.fixtures.appendingPathComponent(name), atomically: true, encoding: .utf8)
+        }
+        #expect(text == (try fixture(name)), "\(name)")
     }
 
     /// `everything.usdcat.usda` is `usdcat everything.usda` verbatim: attributes

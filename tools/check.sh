@@ -10,7 +10,7 @@ unset TOOLCHAINS
 # Minimum test count. A filter or a target that silently matches nothing
 # prints success with zero tests, so the gate asserts a floor. Raise it when
 # tests are added; never lower it to make the gate pass.
-MIN_TESTS=165
+MIN_TESTS=173
 # Standard-library-only targets (ADR 0001, ADR 0005).
 LIBRARIES=("Sources/GamaAuthoring" "Sources/GamaUSD")
 BANNED='Foundation|Darwin|Glibc|simd|RealityKit|SwiftUI|AppKit|UIKit|Combine|Dispatch'
@@ -92,9 +92,17 @@ trap 'rm -f "$log"; rm -rf "$usd_dir"' EXIT
 swiftly run swift run gama-studio --export "$usd_dir/sample.usda" </dev/null
 checker="$(usdchecker "$usd_dir/sample.usda" 2>&1)" || { echo "$checker" >&2; echo "error: usdchecker rejected the export" >&2; exit 1; }
 grep -q 'Success!' <<<"$checker" || { echo "$checker" >&2; echo "error: usdchecker did not report Success!" >&2; exit 1; }
+# The goldens cover what the sample cannot: nested gprims, a light first
+# root with materials, component children, and awkward names.
+goldens=(Tests/GamaUSDTests/Fixtures/*.usda)
+[[ -e "${goldens[0]}" ]] || { echo "error: no USDA goldens under Tests/GamaUSDTests/Fixtures" >&2; exit 1; }
+for golden in "${goldens[@]}"; do
+  checker="$(usdchecker "$golden" 2>&1)" || { echo "$checker" >&2; echo "error: usdchecker rejected $golden" >&2; exit 1; }
+  grep -q 'Success!' <<<"$checker" || { echo "$checker" >&2; echo "error: usdchecker did not report Success! for $golden" >&2; exit 1; }
+done
 usdcat "$usd_dir/sample.usda" -o "$usd_dir/reformatted.usda"
 swiftly run swift run gama-studio --open "$usd_dir/reformatted.usda" --export "$usd_dir/again.usda" </dev/null
 cmp "$usd_dir/sample.usda" "$usd_dir/again.usda" || { echo "error: usdcat round trip changed the document" >&2; exit 1; }
-echo "usd: usdchecker Success!, usdcat round trip identical"
+echo "usd: usdchecker Success! (sample + ${#goldens[@]} goldens), usdcat round trip identical"
 
 echo "check.sh: PASSED"

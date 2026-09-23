@@ -19,6 +19,9 @@ private struct USDAWriter {
     /// paths before those prims are written.
     var primNames: [EntityID: String] = [:]
     var looksPath = ""
+    /// Every entity holding a material, in document order; the `Looks` scope
+    /// is written only when this is non-empty.
+    var materials: [(EntityID, Material)] = []
 
     init(document: SceneDocument) {
         self.document = document
@@ -34,6 +37,13 @@ private struct USDAWriter {
         if let first = document.roots.first, let name = primNames[first] {
             looksPath = "/\(name)/\(USDSchema.looksScope)"
         }
+        for root in document.roots {
+            for id in document.subtree(root) {
+                if case .material(let material)? = document.component(.material, of: id) {
+                    materials.append((id, material))
+                }
+            }
+        }
 
         output += "#usda 1.0\n(\n"
         output += "    customLayerData = {\n"
@@ -48,7 +58,7 @@ private struct USDAWriter {
         output += ")\n"
         for (index, id) in document.roots.enumerated() {
             output += "\n"
-            writeEntity(id, depth: 0, holdsLooks: index == 0)
+            writeEntity(id, depth: 0, holdsLooks: index == 0 && !materials.isEmpty)
         }
         return output
     }
@@ -96,7 +106,15 @@ private struct USDAWriter {
         for kind in [ComponentKind.mesh, .light, .camera] where components[kind] != nil {
             primTyped.append(kind)
         }
-        let inline = primTyped.count == 1 ? primTyped[0] : nil
+        // A lone mesh, light, or camera is written as the entity prim itself,
+        // unless that would nest prims USD forbids: a gprim may not contain
+        // another gprim, and a light's descendants must all be connectable,
+        // which neither an Xform child nor the Looks scope is. Those entities
+        // become an Xform with a component child instead (ADR 0005).
+        var inline: ComponentKind? = primTyped.count == 1 ? primTyped[0] : nil
+        if !record.children.isEmpty || (holdsLooks && inline == .light) {
+            inline = nil
+        }
         let typeName = inline.map { primTypeName(components[$0]!) } ?? "Xform"
 
         var schemas: [String] = []
@@ -226,15 +244,6 @@ private struct USDAWriter {
     /// The material library: one UsdPreviewSurface material per entity that
     /// holds a material, in document order.
     mutating func writeLooks(depth: Int) {
-        var materials: [(EntityID, Material)] = []
-        for root in document.roots {
-            for id in document.subtree(root) {
-                if case .material(let material)? = document.component(.material, of: id) {
-                    materials.append((id, material))
-                }
-            }
-        }
-        guard !materials.isEmpty else { return }
         let indent = String(repeating: "    ", count: depth)
         output += "\(indent)def Scope \(quoted(USDSchema.looksScope))\n\(indent){\n"
         for (id, material) in materials {

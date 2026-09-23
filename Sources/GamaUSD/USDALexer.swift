@@ -84,6 +84,23 @@ func tokenizeUSDA(_ text: String) throws(USDError) -> [USDAToken] {
                     case "n": value += "\n"
                     case "t": value += "\t"
                     case "r": value += "\r"
+                    case "a": value += "\u{7}"
+                    case "b": value += "\u{8}"
+                    case "f": value += "\u{C}"
+                    case "v": value += "\u{B}"
+                    case "0"..."7":
+                        // Up to three octal digits, as USD's own unescaping reads them.
+                        var code = escaped.value - 48
+                        var digits = 1
+                        while digits < 3, index < scalars.count, ("0"..."7").contains(scalars[index]) {
+                            code = code * 8 + scalars[index].value - 48
+                            index += 1
+                            digits += 1
+                        }
+                        guard let decoded = Unicode.Scalar(code) else {
+                            throw .syntax(line: line, "bad octal escape")
+                        }
+                        value.unicodeScalars.append(decoded)
                     case "x":
                         guard index + 1 < scalars.count,
                               let code = UInt32(String(String.UnicodeScalarView(scalars[index...index + 1])), radix: 16),

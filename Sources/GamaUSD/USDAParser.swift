@@ -110,6 +110,14 @@ private struct USDAParser {
                     continue
                 case "variantSet":
                     throw .unsupported(line: token.line, "variant sets")
+                case "reorder":
+                    // `reorder nameChildren = [...]` / `reorder properties = [...]`:
+                    // ordering hints for composed layers; authored order wins here.
+                    position += 1
+                    _ = try word()
+                    try expect("=")
+                    _ = try value()
+                    continue
                 default:
                     break
                 }
@@ -204,6 +212,11 @@ private struct USDAParser {
             return .path(text)
         case .asset(let text):
             position += 1
+            // A reference or payload: `@layer.usda@</Prim>` targets a prim.
+            if case .path(let target)? = current?.kind {
+                position += 1
+                return .asset("\(text)@<\(target)>")
+            }
             return .asset(text)
         case .word(let text):
             position += 1

@@ -22,7 +22,7 @@ import UniformTypeIdentifiers
 /// (`NSApplication.delegate` itself is a weak reference), and sets it with
 /// `NSApplication.shared.delegate = appDelegate` before the window is shown.
 @MainActor
-public final class StudioAppDelegate: NSObject, NSApplicationDelegate {
+public final class StudioAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     public override init() {
         super.init()
     }
@@ -39,18 +39,35 @@ public final class StudioAppDelegate: NSObject, NSApplicationDelegate {
     public private(set) weak var window: NSWindow?
     /// Where the document was last opened from or saved to; `nil` until then.
     public private(set) var currentURL: URL?
+    /// Asks the Gama host to repaint. A File-menu action arrives from AppKit,
+    /// outside the host's own action path, so without this the panels would
+    /// keep showing the previous document until the next input event.
+    private var redraw: @MainActor () -> Void = {}
+    /// Set once the user has already answered the save prompt for closing the
+    /// window, so the quit that follows does not ask again.
+    private var closeConfirmed = false
 
-    /// Connects the File menu to `model` and `window`. `url` is where the
-    /// model's document came from, if a file. Chains ``StudioModel/onDocumentChange``
-    /// rather than replacing it, so earlier listeners keep running first.
-    public func attach(model: StudioModel, window: NSWindow, url: URL? = nil) {
+    /// Connects the File menu to `model` and `window` and becomes the
+    /// window's delegate, so closing it asks about unsaved changes. `url` is
+    /// where the model's document came from, if a file; `redraw` repaints the
+    /// Gama host. Chains ``StudioModel/onDocumentChange`` rather than
+    /// replacing it, so earlier listeners keep running first.
+    public func attach(
+        model: StudioModel,
+        window: NSWindow,
+        url: URL? = nil,
+        redraw: @escaping @MainActor () -> Void = {}
+    ) {
         self.model = model
         self.window = window
+        self.redraw = redraw
         currentURL = url
+        window.delegate = self
         let previousListener = model.onDocumentChange
         model.onDocumentChange = { [weak self] in
             previousListener?()
             self?.updateWindow()
+            self?.redraw()
         }
         updateWindow()
     }
@@ -76,7 +93,7 @@ public final class StudioAppDelegate: NSObject, NSApplicationDelegate {
     /// Reads `url` and replaces the model's document with it. The previous
     /// document is gone and the load is not undoable.
     public func open(_ url: URL) throws {
-        guard let model else { return }
+        guard let model else { throw StudioDocumentError.notAttached }
         let document = try StudioDocumentIO.read(from: url)
         model.replaceDocument(document)
         currentURL = url
@@ -85,7 +102,7 @@ public final class StudioAppDelegate: NSObject, NSApplicationDelegate {
 
     /// Writes the model's document to `url`, which becomes the current file.
     public func save(to url: URL) throws {
-        guard let model else { return }
+        guard let model else { throw StudioDocumentError.notAttached }
         try StudioDocumentIO.write(model.session.document, to: url)
         model.markSaved()
         currentURL = url
@@ -121,9 +138,19 @@ public final class StudioAppDelegate: NSObject, NSApplicationDelegate {
         _ = saveWithPanel()
     }
 
-    /// Asks before quitting over unsaved changes.
+    /// Asks before quitting over unsaved changes, unless closing the window
+    /// already asked.
     public func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        confirmDiscardingChanges() ? .terminateNow : .terminateCancel
+        if closeConfirmed { return .terminateNow }
+        return confirmDiscardingChanges() ? .terminateNow : .terminateCancel
+    }
+
+    /// Asks before closing the window over unsaved changes. Closing the last
+    /// window quits, so a Cancel here keeps both the window and the document.
+    public func windowShouldClose(_ sender: NSWindow) -> Bool {
+        let proceed = confirmDiscardingChanges()
+        closeConfirmed = proceed
+        return proceed
     }
 
     // MARK: Prompts
@@ -203,5 +230,9 @@ public final class StudioAppDelegate: NSObject, NSApplicationDelegate {
         window.isReleasedWhenClosed = false
         return window
     }
+}
+/// A File-menu operation was attempted before ``StudioAppDelegate/attach(model:window:url:redraw:)``.
+public enum StudioDocumentError: Error, Hashable, Sendable {
+    case notAttached
 }
 #endif

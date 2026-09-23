@@ -80,6 +80,30 @@ struct StudioDocumentTests {
         #expect(model.session.document == before)
     }
 
+    @Test func openRedrawsTheHostAndCloseAsksOnlyWhenEdited() throws {
+        let url = try scratchURL("redraw.usda")
+        try StudioDocumentIO.write(StudioModel.sampleScene(), to: url)
+        let model = StudioModel()
+        let window = StudioAppDelegate.makeMainWindow(contentRect: NSRect(x: 0, y: 0, width: 320, height: 240))
+        defer { window.close() }
+        let delegate = StudioAppDelegate()
+        var redraws = 0
+        delegate.attach(model: model, window: window, redraw: { redraws += 1 })
+        #expect(window.delegate === delegate)
+        try delegate.open(url)
+        #expect(redraws == 1, "a File-menu open must repaint the Gama panels")
+        #expect(delegate.windowShouldClose(window), "nothing unsaved: closes without asking")
+        #expect(delegate.applicationShouldTerminate(NSApplication.shared) == .terminateNow)
+    }
+
+    @Test func fileOperationsBeforeAttachThrow() throws {
+        let delegate = StudioAppDelegate()
+        let url = try scratchURL("never.usda")
+        #expect(throws: StudioDocumentError.notAttached) { try delegate.save(to: url) }
+        #expect(throws: StudioDocumentError.notAttached) { try delegate.open(url) }
+        #expect(!FileManager.default.fileExists(atPath: url.path))
+    }
+
     @Test func errorsDescribeTheirLine() {
         #expect(StudioDocumentIO.describe(USDError.syntax(line: 4, "expected a number")) == "Line 4: expected a number.")
         #expect(StudioDocumentIO.describe(USDError.unsupported(line: 2, "variant sets")) == "Line 2: unsupported: variant sets.")

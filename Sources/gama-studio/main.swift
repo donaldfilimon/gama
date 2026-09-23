@@ -34,6 +34,24 @@ func path(after flag: String) -> String? {
     }
     return arguments[next]
 }
+// Every option is known, and the modes exclude each other: a mistyped flag
+// must not fall through to launching the GUI, which would hang a script.
+let valueFlags: Set<String> = ["--snapshot", "--open", "--export"]
+var skipNext = false
+for argument in arguments.dropFirst() {
+    if skipNext { skipNext = false; continue }
+    guard argument.hasPrefix("--") else { continue }
+    guard valueFlags.contains(argument) || argument == "--smoke" else {
+        FileHandle.standardError.write(Data("gama-studio: unknown option \(argument)\n".utf8))
+        exit(2)
+    }
+    skipNext = valueFlags.contains(argument)
+}
+let modes = ["--smoke", "--snapshot", "--export"].filter(arguments.contains)
+if modes.count > 1 {
+    FileHandle.standardError.write(Data("gama-studio: \(modes.joined(separator: " and ")) cannot be combined\n".utf8))
+    exit(2)
+}
 let snapshotPath = path(after: "--snapshot")
 let openURL = path(after: "--open").map { URL(fileURLWithPath: $0) }
 let exportURL = path(after: "--export").map { URL(fileURLWithPath: $0) }
@@ -113,7 +131,7 @@ do {
 hostView.attach(viewport.arView, to: StudioApp.viewportRegion)
 // After the viewport, so the window title follows edits once the fallback
 // light already has.
-appDelegate.attach(model: model, window: window, url: openURL)
+appDelegate.attach(model: model, window: window, url: openURL, redraw: { hostView.invalidate() })
 
 /// Whether `rep` has more than one distinct colour across a coarse grid of
 /// samples: a blank or single-colour render fails this.

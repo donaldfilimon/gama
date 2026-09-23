@@ -153,6 +153,52 @@ struct RefusalTests {
         }
     }
 
+    @Test func compositionIsRefusedNotDropped() {
+        let referenced = """
+        def Xform "A" (
+            references = @other.usda@</B>
+        )
+        {
+            custom uint64 gama:id = 1
+        }
+        """
+        #expect(throws: USDError.unsupported(line: 8, "references on 'A'")) { try read(referenced) }
+        let over = """
+        def Xform "A"
+        {
+            custom uint64 gama:id = 1
+            over "B"
+            {
+            }
+        }
+        """
+        #expect(throws: USDError.unsupported(line: 11, "'over' prim 'B'")) { try read(over) }
+        let layered = "#usda 1.0\n(\n    subLayers = [@base.usda@]\n    customLayerData = {\n        int \"gama:formatVersion\" = 1\n    }\n)\n"
+        #expect(throws: USDError.unsupported(line: 1, "layer subLayers")) { try sceneDocument(fromUSDA: layered) }
+    }
+
+    @Test func identifiersAtTheLimitAreRefusedNotTrapped() {
+        let maxID = "def Xform \"A\"\n{\n    custom uint64 gama:id = 18446744073709551615\n}\n"
+        #expect(throws: USDError.syntax(line: 10, "gama:id must be in 1..<18446744073709551615")) { try read(maxID) }
+        let full = "#usda 1.0\n(\n    customLayerData = {\n        int \"gama:formatVersion\" = 1\n        uint64 \"gama:nextEntityID\" = 18446744073709551615\n    }\n)\n"
+        #expect(throws: USDError.unsupported(line: 1, "gama:nextEntityID leaves no identifiers to allocate")) {
+            try sceneDocument(fromUSDA: full)
+        }
+    }
+
+    @Test func usdEscapesAndReorderStatementsRead() throws {
+        let body = """
+        def Xform "A"
+        {
+            reorder properties = ["gama:name", "gama:id"]
+            custom uint64 gama:id = 1
+            custom string gama:name = "\\a\\b\\f\\v\\0\\101\\x42"
+        }
+        """
+        let document = try read(body)
+        #expect(document.entity(EntityID(rawValue: 1))?.name == "\u{7}\u{8}\u{C}\u{B}\u{0}AB")
+    }
+
     @Test func unterminatedPrimIsASyntaxError() {
         #expect(throws: USDError.self) { try read("def Xform \"A\"\n{\n    custom uint64 gama:id = 1\n") }
     }

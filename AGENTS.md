@@ -26,7 +26,7 @@ It is green only when the log ends with `check.sh: PASSED`. It runs, in order:
 3. `swift build` with warnings as errors.
 4. `swift test`, with a test-count floor (`MIN_TESTS`) applied to the sum over all test targets. Every target's run must pass.
 5. `gama-studio --smoke`, which launches the real executable headless (one frame, no event loop): it asserts the host produced draw commands, the RealityKit `ARView` is an attached, visible, non-empty subview of the host, and the bridge's entity count matches the document's.
-6. `usd` (ADR 0005): `gama-studio --export` writes the sample scene, `usdchecker` must report `Success!`, `usdcat` reformats it, and `--open` of that plus `--export` must reproduce the first export byte for byte. It fails closed when Apple's USD tools are missing.
+6. `usd` (ADR 0005): `gama-studio --export` writes the sample scene, `usdchecker` must report `Success!`, every golden in `Tests/GamaUSDTests/Fixtures` must pass `usdchecker` too, `usdcat` reformats the export, and `--open` of that plus `--export` must reproduce the first export byte for byte. It fails closed when Apple's USD tools are missing.
 
 When you add tests, raise the floor. Never lower it to make the gate pass. The full gate takes over a minute, mostly the bridge convergence suite.
 

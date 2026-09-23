@@ -30,17 +30,26 @@ private struct USDAReader {
             throw .unsupported(line: 1, "\(USDSchema.formatVersionKey) \(found) is not supported by this reader")
         }
 
+        for key in ["subLayers", "relocates"] where layer.metadata[key] != nil {
+            throw .unsupported(line: 1, "layer \(key)")
+        }
         for prim in layer.prims {
+            try refuseComposition(prim)
             collectMaterials(prim, path: "")
         }
         var roots: [EntityID] = []
-        for prim in layer.prims where prim.specifier == "def" {
+        for prim in layer.prims {
             roots.append(try entity(prim, parent: nil))
         }
 
         let next: EntityID
         if let value = data[USDSchema.nextEntityIDKey] {
-            next = EntityID(rawValue: try integer(value, line: 1))
+            let raw = try integer(value, line: 1)
+            // The allocator hands out `next` and then increments it.
+            guard raw < UInt64.max else {
+                throw .unsupported(line: 1, "\(USDSchema.nextEntityIDKey) leaves no identifiers to allocate")
+            }
+            next = EntityID(rawValue: raw)
         } else {
             next = EntityID(rawValue: (records.map(\.id.rawValue).max() ?? 0) + 1)
         }
@@ -48,6 +57,22 @@ private struct USDAReader {
             return try SceneDocument(restoring: records, roots: roots, nextEntityID: next)
         } catch {
             throw .invalid(error)
+        }
+    }
+
+    /// Composition arcs and non-`def` specs would change what the stage
+    /// means; Gama cannot keep them, so it refuses rather than drop them on
+    /// the next save.
+    func refuseComposition(_ prim: USDAPrim) throws(USDError) {
+        guard prim.specifier == "def" else {
+            throw .unsupported(line: prim.line, "'\(prim.specifier)' prim '\(prim.name)'")
+        }
+        for key in ["references", "payload", "inherits", "specializes", "variants", "variantSets", "instanceable"]
+        where prim.metadata[key] != nil {
+            throw .unsupported(line: prim.line, "\(key) on '\(prim.name)'")
+        }
+        for child in prim.children {
+            try refuseComposition(child)
         }
     }
 
@@ -66,7 +91,9 @@ private struct USDAReader {
             throw .unsupported(line: prim.line, "prim '\(prim.name)' has no \(USDSchema.idAttribute)")
         }
         let raw = try integer(idValue, line: idProperty.line)
-        guard raw > 0 else { throw .syntax(line: idProperty.line, "\(USDSchema.idAttribute) must be positive") }
+        guard raw > 0, raw < UInt64.max else {
+            throw .syntax(line: idProperty.line, "\(USDSchema.idAttribute) must be in 1..<\(UInt64.max)")
+        }
         let id = EntityID(rawValue: raw)
         if let first = seen[id] {
             throw .syntax(line: idProperty.line, "\(USDSchema.idAttribute) \(raw) already used on line \(first)")
@@ -82,7 +109,7 @@ private struct USDAReader {
         try readOwnComponents(prim, into: &components)
 
         var children: [EntityID] = []
-        for child in prim.children where child.specifier == "def" {
+        for child in prim.children {
             if child.property(USDSchema.componentAttribute) != nil {
                 try fold(child, into: &components)
             } else if child.typeName == "Scope", child.name == USDSchema.looksScope {

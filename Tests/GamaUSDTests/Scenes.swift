@@ -64,6 +64,20 @@ enum Scenes {
         return b.document
     }
 
+    /// Hierarchies USD's encapsulation rules constrain: the first root is a
+    /// light while materials exist, a mesh holds a mesh, and a light holds
+    /// an entity that holds a light. Each must still pass `usdchecker`.
+    static func nesting() throws -> SceneDocument {
+        var b = SceneBuilder()
+        let key = try b.add("Key", [.transform(.identity), .light(.defaultDirectional)])
+        let table = try b.add("Table", under: key, [.transform(Transform(position: SIMD3(0, 1, 0))), .mesh(.box), .material(Material())])
+        try b.add("Cup", under: table, [.mesh(.cylinder), .material(Material(baseColor: SIMD4(0.1, 0.2, 0.9, 1)))])
+        let group = try b.add("Group", under: key)
+        try b.add("Fill", under: group, [.light(.defaultPoint)])
+        try b.add("Lens", [.camera(.default)])
+        return b.document
+    }
+
     /// Names that need sanitizing, collide, or hit reserved prim names.
     static func awkwardNames() throws -> SceneDocument {
         var b = SceneBuilder()
