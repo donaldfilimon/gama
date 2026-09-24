@@ -17,7 +17,79 @@ concurrency:
 
 jobs:
   macos-swift-64:
-    name: macOS / Apple Swift 6.5-dev
+    name: macOS / Apple Swift 6.5-dev (self-hosted)
+    if: >
+      github.repository == 'donaldfilimon/gama' &&
+      (github.event_name == 'push' ||
+       github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name == github.repository))
+    # Trusted same-repo events run on the macOS arm64 self-hosted runner
+    # registered to this repository with the label gama. It needs Xcode 27
+    # (xcodebuild platform gates use its default 6.4 toolchain) and Homebrew.
+    # Fork PRs use the GitHub-hosted job below: never schedule untrusted code
+    # on the self-hosted machine. See docs/SelfHostedRunner.md.
+    runs-on: [self-hosted, macOS, ARM64, gama]
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          # check-evidence-freshness.sh resolves capability anchors against
+          # history; the default depth-1 clone has none of them, so the gate
+          # would fail closed on every run.
+          fetch-depth: 0
+      - name: Install pinned Swift 6.5-dev snapshot toolchain
+        env:
+          GAMA_MACOS_TOOLCHAIN_URL: https://download.swift.org/development/xcode/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a/swift-DEVELOPMENT-SNAPSHOT-2026-08-21-a-osx.pkg
+          GAMA_MACOS_TOOLCHAIN_SHA256: 0a2437602704f1ceb6024452b5fa17be7c82bae3cd1d4a3569affd7706e27cbc
+        run: |
+          unset TOOLCHAINS
+          pkg="$RUNNER_TEMP/swift-snapshot.pkg"
+          curl --fail --location --retry 3 "$GAMA_MACOS_TOOLCHAIN_URL" --output "$pkg"
+          echo "$GAMA_MACOS_TOOLCHAIN_SHA256  $pkg" | shasum -a 256 --check --strict
+          # Per-user install into ~/Library/Developer/Toolchains: the runner
+          # account needs no sudo. Same pkg and SHA-256 as the hosted job.
+          installer -pkg "$pkg" -target CurrentUserHomeDirectory
+          /usr/bin/xcrun --toolchain org.swift.65202608211a swift --version | tee swift-version.txt
+          grep -q 'Swift version 6.5' swift-version.txt
+          grep -q 'Swift 95c5142e84b82c1' swift-version.txt
+      - name: Core, macros, POSIX TUI, Apple UI
+        run: ./scripts/check-apple.sh
+      - name: iOS, tvOS, and visionOS compile
+        run: ./scripts/check-apple-platforms.sh
+      - name: Source boundaries and documentation
+        run: ./scripts/check-boundaries.sh && ./scripts/check-concurrency-negative.sh && ./scripts/check-docs.sh && ./scripts/check-doc-coverage.sh && ./scripts/check-evidence-freshness.sh && ./scripts/check-package-graph.sh
+      - name: MLIR parse
+        run: |
+          brew install llvm
+          echo "$(brew --prefix llvm)/bin" >> "$GITHUB_PATH"
+          PATH="$(brew --prefix llvm)/bin:$PATH" ./scripts/check-mlir.sh
+      - name: Stage and verify the macOS app bundle
+        run: GAMA_DIST_ROOT="$RUNNER_TEMP/gama-dist" ./scripts/bundle-macos.sh
+      - name: Archive the macOS app bundle for transport
+        run: |
+          source scripts/lib/manifest.sh
+          name="$(manifest_get Distribution/gama-apple-demo.toml app name)"
+          ditto -c -k --keepParent \
+            "$RUNNER_TEMP/gama-dist/$name.app" "$RUNNER_TEMP/macos-app.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-app
+          path: ${{ runner.temp }}/macos-app.zip
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macos-evidence
+          path: |
+            swift-version.txt
+            Sources/GamaEmbedABI/include/GamaEmbed.h
+
+  macos-swift-64-hosted:
+    name: macOS / Apple Swift 6.5-dev (GitHub-hosted, fork PRs)
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name != github.repository
     # Preview image; Xcode 27's default toolchain stays 6.4 (xcodebuild platform
     # gates use it) while the pinned 6.5-dev snapshot is installed for primary gates.
     runs-on: xcode-27
