@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   macos-swift-64:
-    name: macOS / Apple Swift 6.5-dev (self-hosted)
+    name: macOS / Apple Swift 6.5-dev
     if: >
       github.repository == 'donaldfilimon/gama' &&
       (github.event_name == 'push' ||

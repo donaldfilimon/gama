@@ -1,6 +1,6 @@
 # Self-hosted macOS runner
 
-The `macOS / Apple Swift 6.5-dev (self-hosted)` job in `.github/workflows/ci.yml` runs on a macOS arm64 runner registered to this repository. GitHub-hosted jobs can't start while the account's Actions billing is locked, but self-hosted jobs still run.
+The `macOS / Apple Swift 6.5-dev` job (`macos-swift-64`) in `.github/workflows/ci.yml` runs on a macOS arm64 runner registered to this repository. GitHub-hosted jobs can't start while the account's Actions billing is locked, but self-hosted jobs still run.
 
 ## Registration
 
