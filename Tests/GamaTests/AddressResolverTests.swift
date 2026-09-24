@@ -92,3 +92,43 @@ import Testing
     // A rejected scheme must not fall through to navigation; it becomes a search.
     #expect(AddressResolver.resolveOffline("file:///etc/passwd").hasPrefix("https://duckduckgo.com/?q="))
 }
+
+@Test func navigableURLPreservesValidTargets() {
+    #expect(AddressResolver.navigableURL(for: "gama:home") == "about:home")
+    #expect(AddressResolver.navigableURL(for: "HTTPS://EXAMPLE.COM/a?b=c#part") == "HTTPS://EXAMPLE.COM/a?b=c#part")
+    #expect(AddressResolver.navigableURL(for: "http://[::1]:8080/a") == "http://[::1]:8080/a")
+    #expect(AddressResolver.navigableURL(for: "example.com/a?b=c#part") == "https://example.com/a?b=c#part")
+    #expect(AddressResolver.navigableURL(for: "127.0.0.1:65535") == "https://127.0.0.1:65535")
+}
+
+@Test func directTargetsMustHaveSafeAuthorities() {
+    for input in [
+        "https:///path", "https://?q=one", "http://#fragment",
+        "https://user:pass@example.com", "https://user@example.com",
+        "https://example.com:", "https://example.com:abc", "https://example.com:65536",
+        "example.com:65536", "256.1.1.1", "https://1.2.3.999", "001.2.3.4", "1.2.3",
+        "https://example.com/a b", "example.com\t/path", "https://example.com/\nnext",
+        " https://example.com", "https://example.com ",
+    ] {
+        #expect(AddressResolver.navigableURL(for: input) == nil)
+    }
+    #expect(AddressResolver.heuristicURL(for: "https://example.com/a b") == nil)
+    #expect(AddressResolver.heuristicURL(for: "1.2.3") == nil)
+}
+
+@Test func modelTargetsUseTheSameValidation() {
+    #expect(AddressResolver.sanitizeModelURL("'https://example.com/a?b=c#part'") == "https://example.com/a?b=c#part")
+    for input in [
+        "https:///missing", "https://user@example.com", "example.com:99999",
+        "http://999.1.1.1", "https://example.com/a b", "ftp://example.com",
+        "file:///etc/passwd", "javascript://example.com/alert(1)",
+    ] {
+        #expect(AddressResolver.sanitizeModelURL(input) == nil)
+    }
+}
+
+@Test func rejectedDirectNavigationBecomesOfflineSearch() {
+    let rejected = "https://user@example.com/private"
+    #expect(AddressResolver.heuristicURL(for: rejected) == nil)
+    #expect(AddressResolver.resolveOffline(rejected) == AddressResolver.searchURL(for: rejected))
+}

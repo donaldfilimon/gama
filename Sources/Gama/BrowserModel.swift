@@ -1,4 +1,5 @@
 import Foundation
+import GamaCore
 import Observation
 import SwiftData
 import SwiftUI
@@ -192,17 +193,22 @@ final class BrowserSession {
     }
 
     func navigateActive(to raw: String) {
-        guard let webView = selectedWebView else {
-            updateSelectedURL(raw)
+        guard let target = AddressResolver.navigableURL(for: raw) else {
+            addressField = selectedTab?.urlString ?? "about:home"
+            publishStatus("Invalid URL", for: selectedTabID)
             return
         }
-        WebPageView.load(raw, into: webView) { [weak self] message in
+        guard let webView = selectedWebView else {
+            updateSelectedURL(target)
+            return
+        }
+        WebPageView.load(target, into: webView) { [weak self] message in
             Task { @MainActor in
                 guard let self else { return }
                 self.publishStatus(message, for: self.selectedTabID)
             }
         }
-        updateSelectedURL(raw)
+        updateSelectedURL(target)
     }
 
     func goHome() {

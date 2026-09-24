@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import GamaCore
 import SwiftUI
 import WebKit
 
@@ -190,18 +191,17 @@ struct WebPageView: NSViewRepresentable {
         into webView: WKWebView,
         onStatus: @escaping @MainActor (String) -> Void
     ) {
-        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty || trimmed == "about:home" || trimmed == "gama:home" {
-            webView.loadHTMLString(homeHTML, baseURL: URL(string: "about:home"))
-            return
-        }
-        let text = trimmed.contains("://") ? trimmed : "https://\(trimmed)"
-        guard let url = URL(string: text), url.scheme != nil else {
+        guard let target = AddressResolver.navigableURL(for: raw) else {
             Task { @MainActor in
                 onStatus("Invalid URL")
             }
             return
         }
+        if target == "about:home" {
+            webView.loadHTMLString(homeHTML, baseURL: URL(string: "about:home"))
+            return
+        }
+        guard let url = URL(string: target) else { return }
         webView.load(URLRequest(url: url))
     }
 }

@@ -2,15 +2,32 @@ import Foundation
 
 /// Pure address-bar → navigable URL helpers (no UI / FoundationModels).
 public enum AddressResolver: Sendable {
-    /// Schemes a resolved address may carry into the web view. Anything else
-    /// (`file:`, `javascript:`, custom schemes — especially from model
-    /// output) is rejected rather than loaded.
-    private static let allowedSchemes: Set<String> = ["http", "https", "about"]
+    /// Validate a direct or restored navigation target and normalize home aliases.
+    public static func navigableURL(for raw: String) -> String? {
+        guard !raw.isEmpty else { return nil }
+        let lower = raw.lowercased()
+        if lower == "home" || lower == "about:home" || lower == "gama:home" {
+            return "about:home"
+        }
 
-    /// True when `text` is a full URL whose scheme is on the allowlist.
-    private static func isAllowedFullURL(_ text: String) -> Bool {
-        guard let colon = text.firstIndex(of: ":") else { return false }
-        return allowedSchemes.contains(text[..<colon].lowercased())
+        let candidate: String
+        if raw.contains("://") {
+            candidate = raw
+        } else {
+            guard looksLikeHostOrIP(raw) else { return nil }
+            candidate = "https://\(raw)"
+        }
+        guard let schemeEnd = candidate.range(of: "://")?.upperBound else { return nil }
+        let authorityEnd = candidate[schemeEnd...].firstIndex(where: { "/?#".contains($0) }) ?? candidate.endIndex
+        guard !candidate.unicodeScalars.contains(where: { CharacterSet.whitespacesAndNewlines.contains($0) || CharacterSet.controlCharacters.contains($0) }),
+              let url = URL(string: candidate),
+              let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https",
+              let host = url.host, !host.isEmpty,
+              url.user == nil, url.password == nil,
+              !candidate[schemeEnd..<authorityEnd].contains("@"),
+              validPort(in: String(candidate[schemeEnd..<authorityEnd])),
+              validIPv4(host) else { return nil }
+        return candidate
     }
 
     /// Fast path before CoreAI: home aliases, full URLs, bare domains / localhost.
@@ -18,17 +35,7 @@ public enum AddressResolver: Sendable {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return "about:home" }
 
-        let lower = trimmed.lowercased()
-        if lower == "home" || lower == "about:home" || lower == "gama:home" {
-            return "about:home"
-        }
-        if trimmed.contains("://") {
-            return isAllowedFullURL(trimmed) ? trimmed : nil
-        }
-        if looksLikeHostOrIP(trimmed) {
-            return "https://\(trimmed)"
-        }
-        return nil
+        return navigableURL(for: trimmed)
     }
 
     /// Normalize a model reply into a single navigable target, or `nil`.
@@ -36,17 +43,7 @@ public enum AddressResolver: Sendable {
         let line = raw.split(whereSeparator: \.isNewline).first.map(String.init) ?? raw
         let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
             .trimmingCharacters(in: CharacterSet(charactersIn: "\"'`"))
-        if trimmed.isEmpty { return nil }
-        if trimmed.lowercased() == "about:home" || trimmed.lowercased() == "gama:home" {
-            return "about:home"
-        }
-        if trimmed.contains("://") {
-            return isAllowedFullURL(trimmed) ? trimmed : nil
-        }
-        if looksLikeHostOrIP(trimmed) {
-            return "https://\(trimmed)"
-        }
-        return nil
+        return navigableURL(for: trimmed)
     }
 
     public static func searchURL(for query: String) -> String {
@@ -77,5 +74,29 @@ public enum AddressResolver: Sendable {
         }
         // Bare domain (has a dot, no spaces).
         return hostPart.contains(".")
+    }
+
+    private static func validPort(in authority: String) -> Bool {
+        let hostEnd: String.SubSequence
+        if authority.hasPrefix("["), let closing = authority.firstIndex(of: "]") {
+            hostEnd = authority[authority.index(after: closing)...]
+        } else {
+            hostEnd = authority[...]
+        }
+        guard let colon = hostEnd.firstIndex(of: ":") else { return true }
+        let digits = hostEnd[hostEnd.index(after: colon)...]
+        guard !digits.isEmpty, digits.allSatisfy(\.isASCII), digits.allSatisfy(\.isNumber),
+              let port = Int(digits) else { return false }
+        return (0...65535).contains(port)
+    }
+
+    private static func validIPv4(_ host: String) -> Bool {
+        let octets = host.split(separator: ".", omittingEmptySubsequences: false)
+        guard octets.allSatisfy({ !$0.isEmpty && $0.allSatisfy(\.isNumber) }) else { return true }
+        guard octets.count == 4 else { return false }
+        return octets.allSatisfy {
+            !$0.isEmpty && ($0.count == 1 || $0.first != "0") &&
+                $0.allSatisfy(\.isASCII) && Int($0).map { (0...255).contains($0) } == true
+        }
     }
 }
