@@ -19,10 +19,12 @@ public enum AddressResolver: Sendable {
         }
         guard let schemeEnd = candidate.range(of: "://")?.upperBound else { return nil }
         let authorityEnd = candidate[schemeEnd...].firstIndex(where: { "/?#".contains($0) }) ?? candidate.endIndex
-        guard !candidate.unicodeScalars.contains(where: { CharacterSet.whitespacesAndNewlines.contains($0) || CharacterSet.controlCharacters.contains($0) }),
+        let forbidden = CharacterSet.whitespacesAndNewlines.union(.controlCharacters)
+        guard !candidate.unicodeScalars.contains(where: forbidden.contains),
               let url = URL(string: candidate),
               let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https",
               let host = url.host, !host.isEmpty,
+              !host.unicodeScalars.contains(where: forbidden.contains),
               url.user == nil, url.password == nil,
               !candidate[schemeEnd..<authorityEnd].contains("@"),
               validPort(in: String(candidate[schemeEnd..<authorityEnd])),

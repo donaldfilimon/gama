@@ -132,3 +132,12 @@ import Testing
     #expect(AddressResolver.heuristicURL(for: rejected) == nil)
     #expect(AddressResolver.resolveOffline(rejected) == AddressResolver.searchURL(for: rejected))
 }
+
+@Test func percentEncodedWhitespaceCannotEnterParsedHost() {
+    let rejected = "https://example.com%20.evil.com"
+    #expect(AddressResolver.navigableURL(for: rejected) == nil)
+    #expect(AddressResolver.heuristicURL(for: rejected) == nil)
+    #expect(AddressResolver.sanitizeModelURL(rejected) == nil)
+    #expect(AddressResolver.resolveOffline(rejected) == AddressResolver.searchURL(for: rejected))
+    #expect(AddressResolver.navigableURL(for: "https://example.com/a%20b") == "https://example.com/a%20b")
+}
