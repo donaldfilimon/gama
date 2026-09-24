@@ -93,8 +93,8 @@ public enum AddressResolver: Sendable {
     }
 
     private static func validIPv4(_ host: String) -> Bool {
+        guard host.allSatisfy({ $0 == "." || $0.isNumber }) else { return true }
         let octets = host.split(separator: ".", omittingEmptySubsequences: false)
-        guard octets.allSatisfy({ !$0.isEmpty && $0.allSatisfy(\.isNumber) }) else { return true }
         guard octets.count == 4 else { return false }
         return octets.allSatisfy {
             !$0.isEmpty && ($0.count == 1 || $0.first != "0") &&

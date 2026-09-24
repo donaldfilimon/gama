@@ -141,3 +141,31 @@ import Testing
     #expect(AddressResolver.resolveOffline(rejected) == AddressResolver.searchURL(for: rejected))
     #expect(AddressResolver.navigableURL(for: "https://example.com/a%20b") == "https://example.com/a%20b")
 }
+
+@Test func numericHostsRejectEmptyOctetsAcrossEntryPoints() {
+    for host in ["256.1.1.1.", "1..2.3", ".1.2.3", "1.2.3.", "999..1.1", "127.0.0.1."] {
+        for input in [host, "https://\(host)"] {
+            #expect(AddressResolver.navigableURL(for: input) == nil)
+            #expect(AddressResolver.heuristicURL(for: input) == nil)
+            #expect(AddressResolver.sanitizeModelURL("'\(input)'") == nil)
+            #expect(AddressResolver.resolveOffline(input) == AddressResolver.searchURL(for: input))
+        }
+    }
+}
+
+@Test func numericHostValidationPreservesValidAddressesAndDomains() {
+    for host in ["127.0.0.1", "example.com", "123.example.com", "example.com."] {
+        let target = "https://\(host)"
+        for input in [host, target] {
+            #expect(AddressResolver.navigableURL(for: input) == target)
+            #expect(AddressResolver.heuristicURL(for: input) == target)
+            #expect(AddressResolver.sanitizeModelURL("'\(input)'") == target)
+            #expect(AddressResolver.resolveOffline(input) == target)
+        }
+    }
+    let ipv6 = "http://[::1]:8080/a"
+    #expect(AddressResolver.navigableURL(for: ipv6) == ipv6)
+    #expect(AddressResolver.heuristicURL(for: ipv6) == ipv6)
+    #expect(AddressResolver.sanitizeModelURL(ipv6) == ipv6)
+    #expect(AddressResolver.resolveOffline(ipv6) == ipv6)
+}
