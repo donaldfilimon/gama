@@ -43,6 +43,7 @@ evidence ledger.
 - [Apple UI backend](backends/AppleUI.md)
 - [macOS application shell](backends/AppleShell.md)
 - [Packaging and distribution](Packaging.md)
+- [Self-hosted macOS runner](SelfHostedRunner.md)
 - [Swift 6.5-dev and SDK 27 audit](Swift65SDK27.md)
 
 ### Backend and embedding authors
