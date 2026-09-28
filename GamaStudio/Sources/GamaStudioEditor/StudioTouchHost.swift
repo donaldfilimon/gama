@@ -1,0 +1,573 @@
+//  StudioTouchHost.swift — GamaStudioEditor
+//
+//  Hosts Gama Studio on iOS and visionOS (ADR 0008): gama's UIKit
+//  GamaHostView draws the panels, and the touch viewport fills its native
+//  viewport region. The app target (Apps/GamaStudioApp) only wraps
+//  ``GamaStudioView`` in a SwiftUI WindowGroup, so everything testable lives
+//  here.
+
+#if canImport(UIKit) && canImport(RealityKit) && canImport(SwiftUI)
+
+public import UIKit
+public import SwiftUI
+public import GamaAuthoring
+public import GamaAppleUI
+public import GamaCore
+import GamaDraw
+import GamaReality
+
+/// A view controller whose view is the gama host, with the RealityKit
+/// viewport attached to ``StudioApp/viewportRegion``.
+@MainActor
+public final class StudioHostViewController: UIViewController {
+    public let model: StudioModel
+    public let hostView = GamaHostView(frame: CGRect(x: 0, y: 0, width: 1024, height: 768))
+    public private(set) var viewport: TouchViewportController!
+    /// File open and save through the document picker (ADR 0009).
+    public private(set) var files: TouchDocumentController!
+    /// A file handed over before the view was on screen, opened once it is
+    /// (the prompt and pickers need a window to present from).
+    private var pendingExternalURL: URL?
+    /// Names this window's recovery file (ADR 0012); `nil` uses the window
+    /// scene's session identifier, which the system keeps per window.
+    private let recoveryKey: String?
+    /// Whether recovery was set up, which happens once, on first appearance.
+    private var recoveryResolved = false
+    /// Whether launch restored an Untitled document's unsaved changes.
+    public private(set) var restoredUntitledChanges = false
+    /// Whether this window may adopt a closed window's recovery file (ADR
+    /// 0014): always when the scene session names it, and with an explicit
+    /// key only when asked, so developer and gate leftovers stay put.
+    private let adoptsOrphans: Bool
+    /// Whether this window took over a closed window's recovery file.
+    public private(set) var adoptedOrphan = false
+    private var discardObserver: (any NSObjectProtocol)?
+
+    public init(
+        model: StudioModel = StudioModel(document: StudioModel.sampleScene()),
+        recoveryKey: String? = nil,
+        adoptOrphans: Bool = false
+    ) {
+        self.model = model
+        self.recoveryKey = recoveryKey
+        adoptsOrphans = recoveryKey == nil || adoptOrphans
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    public required init?(coder: NSCoder) {
+        fatalError("StudioHostViewController is created in code")
+    }
+
+    public override func loadView() {
+        view = hostView
+    }
+
+    public override func viewDidLoad() {
+        super.viewDidLoad()
+        let host = hostView
+        let viewport = TouchViewportController(model: model, onSelectionChange: { host.invalidate() })
+        self.viewport = viewport
+        // A change that did not come through a gama action (a viewport tap,
+        // a document replaced) must still repaint the panels.
+        let previousDocumentListener = model.onDocumentChange
+        model.onDocumentChange = {
+            previousDocumentListener?()
+            // Deferred: a change made by a gama button runs inside the host's
+            // event dispatch, and invalidating from there re-enters its frame
+            // pump (see StudioAppDelegate.attach).
+            Task { @MainActor in host.invalidate() }
+        }
+        // Notes from UIKit events (ADR 0017) arrive outside gama actions.
+        model.onConsoleChange = { Task { @MainActor in host.invalidate() } }
+        let actions = ViewportActions(
+            frameSelection: { viewport.frameSelection() },
+            lookThrough: { viewport.lookThrough($0) }
+        )
+        let documents = StudioDocumentSession(model: model)
+        let files = TouchDocumentController(documents: documents, presenter: self)
+        self.files = files
+        files.onStateChange = { [weak self] in self?.updateTitle() }
+        do {
+            try hostView.install(app: StudioApp(model: model, viewport: actions, documents: files.actions))
+        } catch {
+            assertionFailure("gama-studio: install failed: \(error)")
+        }
+        addChild(viewport.hostingController)
+        hostView.attach(viewport.view, to: StudioApp.viewportRegion)
+        viewport.hostingController.didMove(toParent: self)
+    }
+
+    public override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        if !recoveryResolved {
+            recoveryResolved = true
+            restoreUntitledChanges()
+        }
+        updateTitle()
+        // After restoring, so a handed-over file meets the Untitled prompt.
+        if let url = pendingExternalURL {
+            pendingExternalURL = nil
+            files.openExternally(url)
+        }
+    }
+
+    /// Chooses this window's recovery file and restores unsaved Untitled
+    /// changes from it (ADR 0012), first adopting a closed window's when it
+    /// has none of its own (ADR 0014), then sweeps orphans past the grace
+    /// period (ADR 0013). Needs the window, for the scene session's
+    /// identifier, so it runs on first appearance, before any edit.
+    private func restoreUntitledChanges() {
+        let key = recoveryKey ?? view.window?.windowScene?.session.persistentIdentifier
+        guard let key, let recovery = UntitledRecovery(key: key, in: UntitledRecovery.defaultDirectory()) else { return }
+        RecoveryWindows.activeKeys.insert(key)
+        files.untitledRecovery = recovery
+        adoptAndRestore(recovery)
+        UntitledRecovery.sweepOrphans(in: UntitledRecovery.defaultDirectory(), keeping: RecoveryWindows.liveKeys())
+        // A discard can arrive after this window appeared (ADR 0014).
+        discardObserver = NotificationCenter.default.addObserver(
+            forName: RecoveryWindows.sessionsDiscarded, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.adoptIfUntouched() }
+        }
+    }
+
+    /// Adopts the newest adoptable orphan when this window has no recovery
+    /// file, then restores whichever file it has.
+    private func adoptAndRestore(_ recovery: UntitledRecovery) {
+        var adopted = false
+        if adoptsOrphans, !recovery.exists,
+           let orphan = UntitledRecovery.newestAdoptable(in: UntitledRecovery.defaultDirectory(), keeping: RecoveryWindows.liveKeys()) {
+            adopted = recovery.adopt(orphan)
+            adoptedOrphan = adopted
+        }
+        do {
+            restoredUntitledChanges = try recovery.restore(into: files.documents, adopted: adopted)
+        } catch {
+            files.reportUnrecoverable(error)
+        }
+    }
+
+    /// After a discard: adopt only into a window nobody has touched yet,
+    /// never over an edit, a file, or changes it already restored.
+    private func adoptIfUntouched() {
+        guard let recovery = files?.untitledRecovery, !restoredUntitledChanges, !adoptedOrphan,
+              files.documents.currentURL == nil, !files.documents.hasUnsavedChanges, model.session.revision == 0
+        else { return }
+        adoptAndRestore(recovery)
+    }
+
+    /// Opens a `.usda` file the system handed to the app (ADR 0010): from
+    /// Files, the share sheet, or another app. Waits for the view to be on
+    /// screen when it arrives at launch.
+    public func openExternalDocument(_ url: URL) {
+        guard let files, viewIfLoaded?.window != nil else {
+            pendingExternalURL = url
+            return
+        }
+        files.openExternally(url)
+    }
+
+    /// The window scene's title: the file name, with a bullet while edited.
+    private func updateTitle() {
+        guard let documents = files?.documents else { return }
+        let name = documents.displayName
+        view.window?.windowScene?.title = documents.hasUnsavedChanges ? "\(name) \u{2022}" : name
+    }
+
+    // MARK: Keyboard
+
+    /// ⌘O, ⌘S, and ⇧⌘S on a hardware keyboard, as on macOS. Found through
+    /// the responder chain from the gama host, which is first responder.
+    public override var keyCommands: [UIKeyCommand]? {
+        [
+            UIKeyCommand(title: "Open…", action: #selector(openDocument), input: "o", modifierFlags: .command),
+            UIKeyCommand(title: "Save", action: #selector(saveDocument), input: "s", modifierFlags: .command),
+            UIKeyCommand(title: "Save As…", action: #selector(saveDocumentAs), input: "s", modifierFlags: [.command, .shift]),
+        ]
+    }
+
+    @objc func openDocument() { files.open() }
+    @objc func saveDocument() { files.save() }
+    @objc func saveDocumentAs() { files.saveAs() }
+
+    /// The gate's recovery smoke, first launch (ADR 0012): with a fresh key,
+    /// one edit creates the recovery file at once, and a second must reach
+    /// it through UIKit's autosave. The app then exits as a kill would.
+    public func recoveryWriteSmokeFailures() async -> [String] {
+        guard await waitUntil({ self.files?.untitledRecovery != nil }), let files, let recovery = files.untitledRecovery else {
+            return ["no recovery file was chosen"]
+        }
+        if restoredUntitledChanges { return ["a fresh key restored changes"] }
+        model.addPrimitive(.box)
+        if !(await waitUntil({ (try? StudioDocumentIO.read(from: recovery.url)) == self.model.session.document })) {
+            return ["the first unsaved change did not create the recovery file"]
+        }
+        model.addPrimitive(.sphere)
+        let expected = model.session.document
+        if !(await waitUntil({ (try? StudioDocumentIO.read(from: recovery.url)) == expected }, seconds: 45)) {
+            return ["a later change did not autosave to the recovery file"]
+        }
+        return []
+    }
+
+    /// The gate's recovery smoke, second launch with the same key: the
+    /// changes came back as an Untitled document with unsaved changes equal
+    /// to the recovery file, and opening a file (where Don't Save leads)
+    /// removes the recovery file.
+    public func recoveryRestoreSmokeFailures(thenOpening url: URL) async -> [String] {
+        guard await waitUntil({ self.recoveryResolved }), let files, let recovery = files.untitledRecovery else {
+            return ["no recovery file was chosen"]
+        }
+        var failures: [String] = []
+        if !restoredUntitledChanges { failures.append("nothing was restored") }
+        if model.notice != UntitledRecovery.restoredNotice { failures.append("no restored notice (ADR 0015)") }
+        if !model.consoleLog.contains(.note(UntitledRecovery.restoredNotice)) { failures.append("no console note (ADR 0016)") }
+        if files.documents.currentURL != nil { failures.append("the restored document is not Untitled") }
+        if !files.documents.hasUnsavedChanges { failures.append("the restored document does not read as unsaved") }
+        if (try? StudioDocumentIO.read(from: recovery.url)) != model.session.document {
+            failures.append("the restored document differs from the recovery file")
+        }
+        files.openCoordinated(url)
+        if !(await waitUntil({ files.coordinated != nil && !recovery.exists })) {
+            failures.append(recovery.exists ? "opening a file left the recovery file behind" : "\(url.lastPathComponent) did not open")
+        }
+        return failures
+    }
+
+    /// The gate's viewport-notes smoke (ADR 0018), in the plain launch: the
+    /// real touch viewport picks the Box, orbits, pinches, frames, and looks
+    /// through the Camera, and each event leaves its console note, in order.
+    /// Setup must log nothing (ADR 0018); only frameSelection() notes.
+    /// visionOS has no viewport camera, so its Look through frames the
+    /// camera instead and notes that.
+    public func viewportSmokeFailures() -> [String] {
+        guard let viewport else { return ["viewport not created"] }
+        let document = model.session.document
+        func id(_ name: String) -> EntityID? { document.entities.values.first { $0.name == name }?.id }
+        guard let box = id("Box"), let camera = id("Camera"), let boxEntity = model.bridge.entity(for: box) else {
+            return ["the sample scene has no Box or Camera"]
+        }
+
+        // Setup must log nothing
+        let setupNotes = model.consoleLog.filter(\.isNote)
+        if !setupNotes.isEmpty {
+            return ["setup logged notes \(setupNotes.map(\.output))"]
+        }
+
+        let before = model.consoleLog.count
+        viewport.pick(boxEntity)
+        viewport.orbit(byDragX: 20, dragY: 5)
+        viewport.pinch(by: 1.1)
+        viewport.frameSelection()
+        viewport.lookThrough(camera)
+        #if os(visionOS)
+        let lookedThrough = "framed Camera"
+        #else
+        let lookedThrough = "looking through Camera"
+        #endif
+        let expected = ["picked Box", "moved the camera", "framed Box", lookedThrough]
+        let logged = model.consoleLog.dropFirst(before).filter(\.isNote).map(\.output)
+        return logged == expected ? [] : ["viewport notes \(logged), expected \(expected)"]
+    }
+
+    /// The gate's adoption smoke (ADR 0014): with no recovery file of its
+    /// own, the window took over the orphan the gate planted, which holds
+    /// `expected`, as unsaved Untitled changes, and now autosaves to its own
+    /// file.
+    public func recoveryAdoptSmokeFailures(expected url: URL) async -> [String] {
+        guard await waitUntil({ self.recoveryResolved }), let files, let recovery = files.untitledRecovery else {
+            return ["no recovery file was chosen"]
+        }
+        var failures: [String] = []
+        if !adoptedOrphan { failures.append("no orphan was adopted") }
+        if model.notice != UntitledRecovery.adoptedNotice { failures.append("no recovered notice (ADR 0015)") }
+        if !model.consoleLog.contains(.note(UntitledRecovery.adoptedNotice)) { failures.append("no console note (ADR 0016)") }
+        if !restoredUntitledChanges { failures.append("nothing was restored") }
+        if files.documents.currentURL != nil { failures.append("the adopted document is not Untitled") }
+        if !files.documents.hasUnsavedChanges { failures.append("the adopted document does not read as unsaved") }
+        if (try? StudioDocumentIO.read(from: url)) != model.session.document {
+            failures.append("the adopted document differs from the orphan")
+        }
+        if !recovery.exists { failures.append("the window has no recovery file of its own") }
+        return failures
+    }
+
+    /// The gate's discard smoke (ADR 0014), without real sessions: a key
+    /// this run treated as live (a window closed during the run) and one
+    /// that never was are discarded. Only the old file of the two may go,
+    /// and this window's own recovery file stays.
+    public func recoveryDiscardSmokeFailures() async -> [String] {
+        guard await waitUntil({ self.recoveryResolved }), let files, let recovery = files.untitledRecovery else {
+            return ["no recovery file was chosen"]
+        }
+        model.addPrimitive(.box)
+        guard await waitUntil({ recovery.exists }) else { return ["an unsaved change did not create the recovery file"] }
+        let directory = UntitledRecovery.defaultDirectory()
+        let closedKey = "gate-closed-\(UUID().uuidString)"
+        let youngKey = "gate-young-\(UUID().uuidString)"
+        let closed = directory.appendingPathComponent("\(closedKey).usda")
+        let young = directory.appendingPathComponent("\(youngKey).usda")
+        do {
+            for file in [closed, young] { try StudioDocumentIO.write(model.session.document, to: file) }
+            try FileManager.default.setAttributes(
+                [.modificationDate: Date().addingTimeInterval(-UntitledRecovery.orphanGracePeriod - 3600)],
+                ofItemAtPath: closed.path
+            )
+        } catch {
+            return ["planting orphans failed: \(StudioDocumentIO.describe(error))"]
+        }
+        // As if a window of this run had used the old file until it closed.
+        RecoveryWindows.activeKeys.insert(closedKey)
+        StudioApplicationDelegate.sessionsDiscarded([closedKey, youngKey])
+        var failures: [String] = []
+        if FileManager.default.fileExists(atPath: closed.path) { failures.append("a discarded window's old file survived") }
+        if !FileManager.default.fileExists(atPath: young.path) { failures.append("a file inside the grace period was deleted") }
+        if !recovery.exists { failures.append("this window's own recovery file was deleted") }
+        if RecoveryWindows.activeKeys.contains(closedKey) { failures.append("a discarded key stayed live") }
+        try? FileManager.default.removeItem(at: young)
+        return failures
+    }
+
+    /// What the gate's launch smoke check verifies after `--open <path>`
+    /// (ADR 0010, ADR 0011), in order:
+    /// 1. the file opened as a coordinated `UIDocument` in the `.normal`
+    ///    state, and the model holds its content (``openedFileFailures(expected:)``);
+    /// 2. an edit autosaves to the file and the document reads as saved;
+    /// 3. another writer's coordinated write reloads the file when nothing
+    ///    is unsaved;
+    /// 4. the same write with unsaved changes asks instead, and Keep Mine
+    ///    leaves the document to overwrite the file.
+    /// The file is the gate's scratch copy. Empty means healthy.
+    public func fileSmokeFailures(expected url: URL) async -> [String] {
+        guard await waitUntil({ self.files?.coordinated?.documentState == .normal }) else {
+            return ["\(url.lastPathComponent) did not open as a coordinated document"]
+                + openedFileFailures(expected: url)
+        }
+        var failures = openedFileFailures(expected: url)
+        guard let files, let document = files.coordinated else { return failures + ["no coordinated document"] }
+        let original = model.session.document
+
+        model.addPrimitive(.box)
+        let edited = model.session.document
+        if !document.hasUnsavedChanges { failures.append("an edit did not mark the document for autosave") }
+        let autosaved = await withCheckedContinuation { continuation in
+            document.autosave { continuation.resume(returning: $0) }
+        }
+        if !autosaved { failures.append("autosave failed") }
+        if !(await waitUntil({ !files.documents.hasUnsavedChanges })) {
+            failures.append("the document still reads as unsaved after autosave")
+        }
+        if (try? StudioDocumentIO.read(from: url)) != edited { failures.append("autosave did not write the edit") }
+
+        if let error = await Self.writeAsAnotherApp(original, to: url) { return failures + ["external write failed: \(error)"] }
+        if !(await waitUntil({ self.model.session.document.hasSameContent(as: original) })) {
+            failures.append("another writer's change was not reloaded")
+        }
+
+        model.addPrimitive(.sphere)
+        if let error = await Self.writeAsAnotherApp(edited, to: url) { return failures + ["external write failed: \(error)"] }
+        if await waitUntil({ files.isAskingAboutExternalChange }) {
+            presentedViewController?.dismiss(animated: false)
+            files.resolveExternalChange(.keepMine)
+            if !document.hasUnsavedChanges { failures.append("Keep Mine did not mark the document to overwrite the file") }
+        } else {
+            failures.append("a change under unsaved edits did not ask")
+        }
+        // ADR 0017: each of those events left its note, in order.
+        let name = url.lastPathComponent
+        let expected = [
+            "opened \(name)",
+            "autosaved \(name)",
+            "reloaded \(name): changed by another app",
+            "kept your version of \(name); it replaces the file at the next save",
+        ]
+        var notes = model.consoleLog.filter(\.isNote).map(\.output)[...]
+        for note in expected {
+            guard let index = notes.firstIndex(of: note) else {
+                failures.append("no console note \"\(note)\" (in order)")
+                break
+            }
+            notes = notes[(index + 1)...]
+        }
+        return failures
+    }
+
+    /// Polls `condition` on the main actor for up to `seconds`.
+    private func waitUntil(_ condition: @MainActor () -> Bool, seconds: Double = 10) async -> Bool {
+        let deadline = ContinuousClock.now + .seconds(seconds)
+        while ContinuousClock.now < deadline {
+            if condition() { return true }
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        return condition()
+    }
+
+    /// Writes `document` to `url` the way another app would: a coordinated
+    /// write with no presenter of its own, so the open document is told. Off
+    /// the main actor, because the document relinquishes the file through
+    /// the main queue and a coordinated write on main would wait for itself.
+    private static func writeAsAnotherApp(_ document: SceneDocument, to url: URL) async -> String? {
+        await Task.detached { coordinatedWrite(document, to: url) }.value
+    }
+
+    nonisolated private static func coordinatedWrite(_ document: SceneDocument, to url: URL) -> String? {
+        var coordinationError: NSError?
+        var writeError: (any Error)?
+        // unsafe: the NSError out-parameter is an AutoreleasingUnsafeMutablePointer.
+        unsafe NSFileCoordinator(filePresenter: nil).coordinate(writingItemAt: url, options: .forReplacing, error: &coordinationError) { target in
+            do { try StudioDocumentIO.write(document, to: target) } catch { writeError = error }
+        }
+        if let coordinationError { return coordinationError.localizedDescription }
+        return writeError.map(StudioDocumentIO.describe)
+    }
+
+    /// What the gate's launch smoke check verifies after `--open <path>`: the
+    /// file became the current file, and the document is its unedited
+    /// content. Empty means healthy.
+    public func openedFileFailures(expected url: URL) -> [String] {
+        guard let documents = files?.documents else { return ["document controller not created"] }
+        guard let current = documents.currentURL else { return ["\(url.lastPathComponent) was not opened"] }
+        var failures: [String] = []
+        if current.standardizedFileURL.path != url.standardizedFileURL.path {
+            failures.append("opened \(current.path), expected \(url.path)")
+        }
+        if documents.hasUnsavedChanges { failures.append("the opened document has unsaved changes") }
+        do {
+            if try StudioDocumentIO.read(from: url) != model.session.document {
+                failures.append("the document differs from \(url.lastPathComponent)")
+            }
+        } catch {
+            failures.append("rereading \(url.lastPathComponent) failed: \(StudioDocumentIO.describe(error))")
+        }
+        return failures
+    }
+
+    /// What the gate's launch smoke check verifies after the first layout:
+    /// the host drew, the viewport is attached, visible, and non-empty, and
+    /// the projection matches the document. Empty means healthy.
+    public func smokeFailures() -> [String] {
+        hostView.invalidate()
+        var failures: [String] = []
+        if hostView.currentDrawList.commands.isEmpty { failures.append("0 draw commands") }
+        guard let viewport else { return failures + ["viewport not created"] }
+        if viewport.view.superview !== hostView { failures.append("viewport is not a subview of the host") }
+        if viewport.view.isHidden { failures.append("viewport is hidden") }
+        let frame = viewport.view.frame
+        if !(frame.width > 0 && frame.height > 0) { failures.append("viewport frame is empty: \(frame)") }
+        if model.bridge.count != model.session.document.count {
+            failures.append("bridge holds \(model.bridge.count) entities, document \(model.session.document.count)")
+        }
+        // The app's own sandbox can write a .usda copy and read it back.
+        if let files {
+            let directory = FileManager.default.temporaryDirectory.appendingPathComponent("GamaStudioSmoke-\(UUID().uuidString)")
+            defer { try? FileManager.default.removeItem(at: directory) }
+            do {
+                let (file, document) = try files.documents.writeCopyForExport(in: directory)
+                if try StudioDocumentIO.read(from: file) != document { failures.append("file round trip changed the document") }
+            } catch {
+                failures.append("file round trip failed: \(StudioDocumentIO.describe(error))")
+            }
+        } else {
+            failures.append("document controller not created")
+        }
+        return failures
+    }
+}
+
+/// Gama Studio as a SwiftUI view, for an app's `WindowGroup`.
+public struct GamaStudioView: UIViewControllerRepresentable {
+    /// Called once after the first layout with ``StudioHostViewController/smokeFailures()``
+    /// when the app runs its launch smoke check.
+    let onFirstLayout: (@MainActor ([String]) -> Void)?
+    /// The latest file the system handed to the app, if any (ADR 0010).
+    let incoming: IncomingDocument?
+    /// Names the recovery file; `nil` uses the window's session (ADR 0012).
+    let recoveryKey: String?
+    /// Which recovery smoke to run instead of the file smoke, if any.
+    let recoverySmoke: RecoverySmoke?
+    /// Whether a window with an explicit key may adopt orphans (ADR 0014).
+    let adoptOrphans: Bool
+
+    /// The two launches of the gate's recovery check (ADR 0012).
+    public enum RecoverySmoke: Sendable {
+        /// Make unsaved Untitled changes and wait for them to autosave.
+        case write
+        /// Require them restored, then open this file.
+        case restore(thenOpening: URL)
+        /// Require the planted orphan, holding this file's content, adopted
+        /// (ADR 0014).
+        case adopt(expecting: URL)
+        /// Discard sessions without real ones and check the sweep (ADR 0014).
+        case discard
+    }
+
+    public init(
+        recoveryKey: String? = nil,
+        incoming: IncomingDocument? = nil,
+        recoverySmoke: RecoverySmoke? = nil,
+        adoptOrphans: Bool = false,
+        onFirstLayout: (@MainActor ([String]) -> Void)? = nil
+    ) {
+        self.recoveryKey = recoveryKey
+        self.incoming = incoming
+        self.recoverySmoke = recoverySmoke
+        self.adoptOrphans = adoptOrphans
+        self.onFirstLayout = onFirstLayout
+    }
+
+    public final class Coordinator {
+        /// The last request passed on, so each one opens exactly once.
+        var handled: IncomingDocument.ID?
+    }
+
+    public func makeCoordinator() -> Coordinator { Coordinator() }
+
+    public func makeUIViewController(context: Context) -> StudioHostViewController {
+        let controller = StudioHostViewController(recoveryKey: recoveryKey, adoptOrphans: adoptOrphans)
+        if let onFirstLayout {
+            let expected = incoming?.url
+            let recoverySmoke = recoverySmoke
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                MainActor.assumeIsolated {
+                    let failures = controller.smokeFailures()
+                    Task { @MainActor in
+                        switch recoverySmoke {
+                        case .write?:
+                            onFirstLayout(failures + (await controller.recoveryWriteSmokeFailures()))
+                        case .restore(let url)?:
+                            onFirstLayout(failures + (await controller.recoveryRestoreSmokeFailures(thenOpening: url)))
+                        case .adopt(let url)?:
+                            onFirstLayout(failures + (await controller.recoveryAdoptSmokeFailures(expected: url)))
+                        case .discard?:
+                            onFirstLayout(failures + (await controller.recoveryDiscardSmokeFailures()))
+                        case nil:
+                            guard let expected else { return onFirstLayout(failures + controller.viewportSmokeFailures()) }
+                            onFirstLayout(failures + (await controller.fileSmokeFailures(expected: expected)))
+                        }
+                    }
+                }
+            }
+        }
+        return controller
+    }
+
+    public func updateUIViewController(_ controller: StudioHostViewController, context: Context) {
+        guard let incoming, context.coordinator.handled != incoming.id else { return }
+        context.coordinator.handled = incoming.id
+        controller.openExternalDocument(incoming.url)
+    }
+}
+
+/// One request to open a file handed over by the system. Each request has
+/// its own identity, so handing over the same file twice opens it twice.
+public struct IncomingDocument: Identifiable, Equatable, Sendable {
+    public let id = UUID()
+    public let url: URL
+
+    public init(url: URL) {
+        self.url = url
+    }
+}
+
+#endif

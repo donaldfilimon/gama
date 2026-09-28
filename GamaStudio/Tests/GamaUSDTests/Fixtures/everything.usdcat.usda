@@ -1,0 +1,247 @@
+#usda 1.0
+(
+    customLayerData = {
+        int "gama:formatVersion" = 1
+        uint64 "gama:nextEntityID" = 14
+    }
+    defaultPrim = "World"
+    metersPerUnit = 1
+    upAxis = "Y"
+)
+
+def Xform "World"
+{
+    custom uint64 gama:id = 1
+    custom string gama:name = "World"
+    quatf xformOp:orient = (1, 0, 0, 0)
+    float3 xformOp:scale = (1, 1, 1)
+    float3 xformOp:translate = (0, 0, 0)
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+
+    def Plane "Ground" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        uniform token axis = "Y"
+        custom uint64 gama:id = 2
+        custom string gama:name = "Ground"
+        double length = 1
+        rel material:binding = </World/Looks/M_2>
+        double width = 1
+        quatf xformOp:orient = (1, 0, 0, 0)
+        float3 xformOp:scale = (10, 1, 10)
+        float3 xformOp:translate = (0, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+    }
+
+    def Cube "Box" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        custom uint64 gama:id = 4
+        custom bool gama:locked = 1
+        custom string gama:name = "Box"
+        custom bool gama:visible = 0
+        rel material:binding = </World/Looks/M_4>
+        double size = 1
+        token visibility = "invisible"
+        quatf xformOp:orient = (0.9238795, 0, 0.38268343, 0)
+        float3 xformOp:scale = (1, 1, 1)
+        float3 xformOp:translate = (-2, 0.5, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+    }
+
+    def Sphere "Sphere"
+    {
+        custom uint64 gama:id = 5
+        custom bool gama:locked = 0
+        custom string gama:name = "Sphere"
+        custom bool gama:visible = 1
+        double radius = 0.5
+    }
+
+    def Cylinder "Cylinder"
+    {
+        uniform token axis = "Y"
+        custom uint64 gama:id = 6
+        custom string gama:name = "Cylinder"
+        double height = 1
+        double radius = 0.5
+    }
+
+    def Cone "Cone"
+    {
+        uniform token axis = "Y"
+        custom uint64 gama:id = 7
+        custom string gama:name = "Cone"
+        double height = 1
+        double radius = 0.5
+        quatf xformOp:orient = (1, 0, 0, 0)
+        float3 xformOp:scale = (-1, 2, 0.00001)
+        float3 xformOp:translate = (2, 0.1, -0.3)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+    }
+
+    def Scope "Looks"
+    {
+        def Material "M_2"
+        {
+            token outputs:surface.connect = </World/Looks/M_2/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.5, 0.5, 0.5)
+                float inputs:metallic = 0
+                float inputs:opacity = 1
+                float inputs:roughness = 0.5
+                token outputs:surface
+            }
+        }
+
+        def Material "M_4"
+        {
+            token outputs:surface.connect = </World/Looks/M_4/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.8, 0.2, 0.2)
+                float inputs:metallic = 0.3
+                float inputs:opacity = 0.75
+                float inputs:roughness = 0.1
+                token outputs:surface
+            }
+        }
+
+        def Material "M_12"
+        {
+            token outputs:surface.connect = </World/Looks/M_12/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.8, 0.8, 0.8)
+                float inputs:metallic = 0
+                float inputs:opacity = 1
+                float inputs:roughness = 0.5
+                token outputs:surface
+            }
+        }
+    }
+}
+
+def DistantLight "Sun"
+{
+    custom uint64 gama:id = 8
+    custom float gama:intensity = 3000
+    custom string gama:name = "Sun"
+    color3f inputs:color = (1, 0.9, 0.8)
+    float inputs:intensity = 3
+    quatf xformOp:orient = (1, 0, 0, 0)
+    float3 xformOp:scale = (1, 1, 1)
+    float3 xformOp:translate = (0, 0, 0)
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+}
+
+def SphereLight "Bulb"
+{
+    custom float gama:attenuationRadius = 10
+    custom uint64 gama:id = 9
+    custom float gama:intensity = 26963.76
+    custom string gama:name = "Bulb"
+    color3f inputs:color = (1, 1, 1)
+    float inputs:intensity = 26.96376
+    bool treatAsPoint = 1
+}
+
+def SphereLight "Spot" (
+    prepend apiSchemas = ["ShapingAPI"]
+)
+{
+    custom float gama:attenuationRadius = 7.5
+    custom uint64 gama:id = 10
+    custom float gama:innerAngle = 20
+    custom float gama:intensity = 1234.5
+    custom string gama:name = "Spot"
+    custom float gama:outerAngle = 45
+    color3f inputs:color = (1, 1, 1)
+    float inputs:intensity = 1.2345
+    float inputs:shaping:cone:angle = 22.5
+    float inputs:shaping:cone:softness = 0.5555556
+    bool treatAsPoint = 1
+}
+
+def Xform "Camera"
+{
+    custom uint64 gama:id = 11
+    custom string gama:name = "Camera"
+    quatf xformOp:orient = (1, 0, 0, 0)
+    float3 xformOp:scale = (1, 1, 1)
+    float3 xformOp:translate = (0, 0, 0)
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+
+    def DistantLight "GamaLight"
+    {
+        custom bool gama:component = 1
+        custom float gama:intensity = 3000
+        color3f inputs:color = (1, 1, 1)
+        float inputs:intensity = 3
+    }
+
+    def Camera "GamaCamera"
+    {
+        float2 clippingRange = (0.1, 250)
+        float focalLength = 38.05914
+        custom bool gama:component = 1
+        custom float gama:fieldOfView = 35
+        float verticalAperture = 24
+    }
+}
+
+def Xform "Gadget" (
+    prepend apiSchemas = ["MaterialBindingAPI"]
+)
+{
+    custom uint64 gama:id = 12
+    custom string gama:name = "Gadget"
+    rel material:binding = </World/Looks/M_12>
+
+    def Cube "GamaMesh"
+    {
+        custom bool gama:component = 1
+        double size = 1
+    }
+
+    def SphereLight "GamaLight" (
+        prepend apiSchemas = ["ShapingAPI"]
+    )
+    {
+        custom float gama:attenuationRadius = 1
+        custom bool gama:component = 1
+        custom float gama:innerAngle = 5
+        custom float gama:intensity = 0
+        custom float gama:outerAngle = 5
+        color3f inputs:color = (1, 1, 1)
+        float inputs:intensity = 0
+        float inputs:shaping:cone:angle = 2.5
+        float inputs:shaping:cone:softness = 0
+        bool treatAsPoint = 1
+    }
+
+    def Camera "GamaCamera"
+    {
+        float2 clippingRange = (0.01, 1000)
+        float focalLength = 20.784609
+        custom bool gama:component = 1
+        custom float gama:fieldOfView = 60
+        float verticalAperture = 24
+    }
+}
+
+def Xform "Empty"
+{
+    custom uint64 gama:id = 13
+    custom string gama:name = "Empty"
+}
+

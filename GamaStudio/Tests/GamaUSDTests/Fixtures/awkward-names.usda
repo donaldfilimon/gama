@@ -1,0 +1,86 @@
+#usda 1.0
+(
+    customLayerData = {
+        int "gama:formatVersion" = 1
+        uint64 "gama:nextEntityID" = 11
+    }
+    defaultPrim = "Root"
+    metersPerUnit = 1
+    upAxis = "Y"
+)
+
+def Xform "Root" (
+    prepend apiSchemas = ["MaterialBindingAPI"]
+)
+{
+    custom uint64 gama:id = 1
+    custom string gama:name = "Root"
+    rel material:binding = </Root/Looks/M_1>
+    def Cube "GamaMesh"
+    {
+        custom bool gama:component = 1
+        double size = 1
+    }
+    def Xform "Caf____"
+    {
+        custom uint64 gama:id = 2
+        custom string gama:name = "Café ☕️"
+    }
+    def Xform "Caf_____3"
+    {
+        custom uint64 gama:id = 3
+        custom string gama:name = "Café ☕️"
+    }
+    def Xform "Entity"
+    {
+        custom uint64 gama:id = 4
+        custom string gama:name = ""
+    }
+    def Xform "_9lives"
+    {
+        custom uint64 gama:id = 5
+        custom string gama:name = "9lives"
+    }
+    def Xform "Looks_6"
+    {
+        custom uint64 gama:id = 6
+        custom string gama:name = "Looks"
+    }
+    def Xform "GamaMesh_7"
+    {
+        custom uint64 gama:id = 7
+        custom string gama:name = "GamaMesh"
+    }
+    def Xform "a_quote_slash_line_"
+    {
+        custom uint64 gama:id = 8
+        custom string gama:name = "a\"quote\\slash\nline\x01"
+    }
+    def Xform "Entity_9"
+    {
+        custom uint64 gama:id = 9
+        custom string gama:name = "Entity"
+    }
+    def Scope "Looks"
+    {
+        def Material "M_1"
+        {
+            token outputs:surface.connect = </Root/Looks/M_1/Surface.outputs:surface>
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.8, 0.8, 0.8)
+                float inputs:metallic = 0
+                float inputs:opacity = 1
+                float inputs:roughness = 0.5
+                token outputs:surface
+            }
+        }
+    }
+}
+
+def Xform "Root_10"
+{
+    custom uint64 gama:id = 10
+    custom string gama:name = "Root"
+}
