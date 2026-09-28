@@ -99,7 +99,13 @@ to compile; `warn.*` must compile and emit `#UnavailableSendableConformance`),
 a real offender, and `TerminalSignal/` is a C probe that runs the signal
 handler outside Swift (re-raise through the displaced disposition, no write
 to a blocking tty on a fatal signal). Changing those contracts means updating
-the fixtures, not `GamaTests`.
+the fixtures, not `GamaTests`. One more directory there belongs to a different
+gate, `check-wasm.sh`: `Tests/Fixtures/WASMFailedInstall` is the source of the
+`GamaWASMFailedInstall` executable target, a wasm32 reactor whose app has no
+primary scene, so its first `GamaWeb.install` must throw `noPrimaryScene` and
+leave no host. The WASM gate builds it and runs it through
+`wasm-runtime-smoke.mjs --failed-install` to pin both export tiers' behavior
+with no host installed (`v1` returns nothing, `v2` returns `-1`).
 
 Gates also chain helpers that fail on their own, so a gate's name understates
 what it covers. `check-docs.sh` runs `scripts/check-doc-links.py` (relative
@@ -175,8 +181,9 @@ done
 ```
 
 `check-linux-leaks.sh` and `check-portable-symbols.sh` are not in that array:
-the first is a hosted-Linux LeakSanitizer proof (it exits non-zero on macOS by
-design — macOS can build `gama-leak-check` but cannot produce the evidence),
+the first is a hosted-Linux LeakSanitizer proof (off Linux it exits 2 by
+design — macOS can build `gama-leak-check` but cannot produce the evidence;
+never add it to the array to make leak proof "local"),
 and the second is a helper the platform gates call to scan emitted objects for
 forbidden libm/libc symbols.
 
@@ -200,7 +207,9 @@ checked *in both directions*, so a row parked at `unverified` when nothing has
 changed since its anchor fails too, and must be returned to the layer its
 evidence supports. **Its reach is one file:** `LEDGER =
 "docs/Capabilities.md"`, so hosted-evidence prose anywhere else (`docs/Packaging.md` carries a table of the
-same shape) is still unchecked and can go stale silently.
+same shape) is still unchecked and can go stale silently. It resolves anchors
+against git history and **fails closed on a shallow clone**, so any checkout
+that runs it needs full history (`fetch-depth: 0` in CI).
 `check-package-graph.sh` dumps the manifest and asserts ADR 0012's
 `strictLibrary` scope, the zero-runtime-package-dependency guarantee, and
 experimental-feature scoping.
@@ -210,7 +219,10 @@ experimental-feature scoping.
 count, and a tolerance percent, and it fails if the artifact moves outside the
 band **in either direction** or if the baseline's pinned revision is not the
 compiler in use — so a toolchain bump fails this gate until the baseline is
-deliberately re-measured.
+deliberately re-measured. It compiles `Sources/GamaCore` on its own and
+requires `Sources/GamaCore/HostPump.swift` to be there (ADR 0008 keeps the
+pump policy in GamaCore so this gate covers it); moving that file to GamaDraw
+fails the gate.
 
 **The `run-gama` skill is tracked twice and the docs gate enforces parity.**
 `.agents/skills/run-gama/{SKILL.md,driver.sh}` and
@@ -246,8 +258,10 @@ equivalent explicit form the scripts use.)
 `check-android-emulator.sh`, `check-doc-coverage.sh`, `bundle-web.sh`) derive
 scratch from `GAMA_SCRATCH_ROOT` → `RUNNER_TEMP` → `TMPDIR` → `/tmp`; a bare
 `SCRATCH_ROOT` is silently ignored and the run lands in the shared default.
-`check-apple.sh` reads its own `GAMA_APPLE_SCRATCH_PATH`; see the other
-`GAMA_*_SCRATCH_PATH` / `GAMA_*_OUTPUT` names in the scripts.
+`check-apple.sh` reads its own `GAMA_APPLE_SCRATCH_PATH`, `check-docs.sh`
+`GAMA_DOCC_SCRATCH_PATH`, and `check-concurrency-negative.sh`
+`GAMA_CONCURRENCY_NEGATIVE_SCRATCH_PATH`; see the other `GAMA_*_SCRATCH_PATH`
+/ `GAMA_*_OUTPUT` names in the scripts.
 
 **Toolchain paths are derived, never written down.** `scripts/lib/toolchain.sh`
 resolves the pinned snapshot from `Toolchains.toml`'s `[snapshot].xctoolchain`
@@ -432,7 +446,9 @@ Target layering (all under `Sources/`, single test target `GamaTests` at
   application semantics. GamaTUI (POSIX termios + Windows Console VT; its
   signal handling lives in the **C-only** `GamaTUISignal` target so that
   dispositions, restore bytes, and `sig_atomic_t` latches never run Swift
-  runtime code in async-signal context — do not reimplement it in Swift;
+  runtime code in async-signal context — do not reimplement it in Swift, and
+  `check-boundaries.sh` rejects `sigaction(`, `atexit(`, `@convention(c)`,
+  and `nonisolated(unsafe)` in `Sources/GamaTUI/TerminalRescue.swift`;
   `AdaptiveSurface.swift` adds `SurfaceMode` / `StreamRenderer` /
   `App.runAdaptive()` so a TTY gets `TUIRenderer` and a pipe gets plain
   lines with no termios, overridable by `--gama-plain` / `--gama-tui`;
