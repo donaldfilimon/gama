@@ -24,9 +24,19 @@
 # the previous 2% band. Capability detection and the C restore buffer are not
 # in this compile.
 #
+# Re-measured 2026-09-23 at the same compiler revision, after the pin had
+# gone stale on main (hosted CI has not run since the billing lock, so no
+# gate caught it). Growth over the 679112 pin, measured commit by commit:
+# 8f20024 TextField cursor and selection model (ADR 0014) +36140;
+# 371458a controller buttons through keyboard semantics +1968;
+# 6d6eec8 build only the rows a surface can show +304; and PR #107
+# native regions (NativeRegion, the host region tables; ADR 0016) +57280.
+# The linked artifact is 774804 bytes. Each addition is a recorded feature,
+# not an accidental dependency; the libm and global-state gates still pass.
+#
 # Grammar is deliberately tiny: blank lines, `#` comments, and key = "value".
 # Anything else fails the read, for the same reason scripts/lib/manifest.sh is
 # strict — this is a pin, not a configuration language.
 revision = "95c5142e84b82c1"
-bytes = "679112"
+bytes = "774804"
 tolerance_percent = "2"
