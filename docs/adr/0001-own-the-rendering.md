@@ -2,7 +2,11 @@
 
 Status: Accepted (locked in the sub-project 1 foundation spec,
 `../superpowers/specs/2026-08-26-gama-umbrella-foundation-design.md`, which
-is the authoritative text; this record indexes it).
+is the authoritative text; this record indexes it). The consequence below is
+narrowed by [0016](0016-native-regions-narrow-own-the-rendering.md): inside a
+native region filled by an application-owned view, the application's view
+defines what is seen. The decision itself stands, and widgets are still not
+wrapped.
 
 ## Context
 
