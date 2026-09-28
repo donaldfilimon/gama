@@ -58,6 +58,16 @@
             return elements
         }
 
+        /// Line elements and shown attached native views, in top-to-bottom
+        /// order, so VoiceOver reaches a native view between the rows around it.
+        func accessibilityChildrenInReadingOrder() -> [Any] {
+            let lines: [(row: Int, element: Any)] = accessibilityLineElements().map { ($0.line.frame.minY, $0) }
+            let views: [(row: Int, element: Any)] = attachedNativeViews.values
+                .filter { !$0.isHidden }
+                .map { (Int($0.frame.minY / max(accessibilityCellSize.height, 1)), $0) }
+            return (lines + views).sorted { $0.row < $1.row }.map(\.element)
+        }
+
         /// Called after each frame. Recomputing the snapshot on every frame
         /// would cost every host something only an assistive-technology
         /// client uses, so the change notification is armed only once a

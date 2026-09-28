@@ -3,7 +3,10 @@
 Status: Accepted. Narrows the consequence of [0001](0001-own-the-rendering.md);
 0001's decision stands.
 
-Nothing in this record is built. It settles the policy question the
+This is implemented on the `feat/native-regions` branch, locally gated on
+macOS only; the Apple-host capability rows stay parked unverified until a
+hosted run exists (see the spec's status line for the reasoning). It settles
+the policy question the
 [native view embedding draft](../superpowers/specs/drafts/2026-09-23-native-view-embedding-draft.md)
 raised as its sixth open question. The draft's other open questions belong to
 the implementation design and are not decided here.
