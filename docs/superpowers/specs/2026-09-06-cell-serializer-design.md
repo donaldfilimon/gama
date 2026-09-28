@@ -222,9 +222,11 @@ is not asserted here.
 The cost is not zero, but the first revision misstated it. Every PR pays the
 six-job matrix — `main` requires all six as strict status checks — so that is
 not a cost specific to this change. The real obligation is narrower and
-bookkeeping: the WebAssembly row in `docs/Capabilities.md` is hosted proven
-against a specific merge commit, and touching `GamaWASM` invalidates that
-recorded evidence until a new green merge re-establishes it.
+bookkeeping: the WebAssembly row in `docs/Capabilities.md` is anchored to a
+specific merge commit, and touching `GamaWASM` invalidates that recorded
+evidence until a new green merge re-establishes it. (Exactly that happened:
+on 2026-09-22 the row sat at `unverified` because `check-wasm.sh` changed
+after its anchor. Read the row, not this sentence, for its current layer.)
 
 ## Open questions
 

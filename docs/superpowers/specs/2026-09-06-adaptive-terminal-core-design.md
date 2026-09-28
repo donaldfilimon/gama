@@ -1,7 +1,8 @@
 # Adaptive terminal surface: core, presenter, and selection (phases 1-3)
 
 Status: Implemented and locally verified 2026-09-06. Twenty Swift Testing
-cases across three suites pass, and the suite is 291 in 53 suites. Local gates
+cases across three suites pass, and the suite was 291 in 53 suites when this
+was measured (57 suites by 2026-09-22; re-measure, do not trust either). Local gates
 are not hosted proof; the six-job matrix has not run against this work. One
 naming deviation from the design as written is recorded in *Phase 2*.
 Specifies phases 1 through 3 of
@@ -193,7 +194,7 @@ hosted evidence rather than a local green.
 - `App.connect(_:)` fires only on `FrameHost.init(app:)`, the primary-surface
   path used by `AppRuntime`, `GamaWASM`, and `GamaEmbed`. `GamaAppleUI` builds
   a host per surface through `init(surface:)`
-  (`Sources/GamaAppleUI/GamaHostView.swift:282`) and therefore never calls it.
+  (`Sources/GamaAppleUI/GamaHostView.swift:288`) and therefore never calls it.
   An application relying on `connect` gets one channel for the primary surface,
   not one per window. Whether an application-level outcome should be reportable
   from an auxiliary window at all is a design question, and it interacts with

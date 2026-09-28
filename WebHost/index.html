@@ -4,25 +4,171 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Gama</title>
+<meta name="description" content="Gama rendered in the browser: one retained Swift UI pipeline, painted to a cell grid and served as WebAssembly.">
 <style>
-  :root { color-scheme: dark; }
-  html, body { margin: 0; height: 100%; background: #0c0c0f; }
+  /* Two files ship: scripts/bundle-web.sh copies index.html and gama.js and
+     nothing else, so every style here stays inline. A third file would be
+     missing from the deployed site while the local smoke, which serves
+     WebHost/ directly, kept passing. */
+  :root {
+    color-scheme: light dark;
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --ink: #1b1d21;
+    --ink-dim: #5d636e;
+    --rule: #dcdfe5;
+    --accent: #b25a00;
+    --surface: #101217;
+    --surface-ink: #e6e6e6;
+    --ok: #0f7a52;
+    --bad: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b0c0f;
+      --panel: #14161b;
+      --ink: #e8eaed;
+      --ink-dim: #9aa1ad;
+      --rule: #272b33;
+      --accent: #ff8800;
+      --surface: #0c0c0f;
+      --surface-ink: #e6e6e6;
+      --ok: #34c9b0;
+      --bad: #ff6b60;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 24px 16px 32px;
+    min-height: 100vh;
+  }
+  header, main, footer { width: 100%; max-width: 860px; margin-inline: auto; }
+
+  .wordmark {
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  }
+  .wordmark h1 {
+    margin: 0; font-size: 22px; letter-spacing: -0.01em;
+  }
+  .wordmark h1 b { color: var(--accent); }
+  .wordmark p { margin: 0; color: var(--ink-dim); font-size: 14px; }
+
+  .status {
+    margin-top: 10px;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    font: 12px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color: var(--ink-dim);
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--ink-dim); flex: none;
+  }
+  .status[data-state="ready"] .dot { background: var(--ok); }
+  .status[data-state="failed"] .dot { background: var(--bad); }
+  .status[data-state="failed"] { color: var(--bad); }
+
+  .frame {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    padding: 10px;
+    position: relative;
+  }
   #gama {
-    height: 100%;
+    /* 8px of padding is part of the pointer mapping; gama.js reads it back
+       with getComputedStyle rather than assuming, so changing it here stays
+       correct. */
     padding: 8px;
-    box-sizing: border-box;
+    min-height: 460px;
+    height: 58vh;
     overflow: hidden;
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--surface-ink);
     font: 14px/1.25 ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
-    color: #e6e6e6;
     outline: none;
     cursor: default;
     -webkit-user-select: none; user-select: none;
   }
+  #gama:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
   .gama-row { margin: 0; font: inherit; white-space: pre; }
+
+  .overlay {
+    position: absolute; inset: 10px;
+    display: grid; place-content: center; gap: 8px;
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--surface-ink);
+    text-align: center;
+    padding: 24px;
+    font: 13px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  .overlay[hidden] { display: none; }
+  #fatal { color: var(--bad); white-space: pre-wrap; text-align: left; }
+  #fatal b { display: block; margin-bottom: 6px; color: var(--bad); }
+
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 6px 18px;
+    color: var(--ink-dim); font-size: 13px; margin: 0; padding: 0;
+    list-style: none;
+  }
+  .legend kbd {
+    font: 12px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    border: 1px solid var(--rule); border-radius: 5px;
+    padding: 3px 6px; background: var(--panel); color: var(--ink);
+  }
+  footer p { margin: 12px 0 0; color: var(--ink-dim); font-size: 12px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
 </style>
 </head>
 <body>
-<div id="gama" tabindex="0" role="application" aria-live="polite" aria-label="Gama application"></div>
+
+<header>
+  <div class="wordmark">
+    <h1><b>Gama</b> on WebAssembly</h1>
+    <p>one retained pipeline, painted to a cell grid</p>
+  </div>
+  <div class="status" id="status" data-state="loading">
+    <span class="dot" aria-hidden="true"></span>
+    <span id="status-text">loading wasm…</span>
+  </div>
+</header>
+
+<main>
+  <div class="frame">
+    <div id="gama" tabindex="0" role="application" aria-live="polite" aria-label="Gama application"></div>
+    <div class="overlay" id="boot">
+      <div>compiling and instantiating gama-web-demo.wasm…</div>
+    </div>
+    <div class="overlay" id="fatal" hidden></div>
+  </div>
+</main>
+
+<footer>
+  <ul class="legend">
+    <li><kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd> move focus</li>
+    <li><kbd>Enter</kbd> or <kbd>Space</kbd> press</li>
+    <li><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> move focus spatially</li>
+    <li>click works too</li>
+  </ul>
+  <p>
+    The same <code>CellBuffer</code> the terminal and Apple backends paint, run
+    through <code>HTMLSerializer</code> into styled spans. No runtime package
+    dependencies, no framework JavaScript.
+  </p>
+</footer>
+
 <script type="module" src="./gama.js"></script>
 </body>
 </html>

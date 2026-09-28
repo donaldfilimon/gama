@@ -246,7 +246,56 @@ status: done
   against hosted-proven AppKit for a presentational benefit.
 
 ## Capability-ledger honesty
-status: done
+status: in_progress
+
+- **2026-09-22 01:3x EDT, pushed on approval, PR #103:** branch
+  `docs/ledger-honesty-round-2` pushed and https://github.com/donaldfilimon/gama/pull/103 opened against `main`.
+  Named stop: the GitHub billing lock leaves its required checks unmeasured
+  until Donald clears it; merge after that. Next: none in this round beyond
+  the merge.
+- **2026-09-22 01:3x EDT, count correction and execution probe:** the two
+  bullets below say "twelve rows, eleven hosted"; measured from the lead-word
+  scan, thirteen rows changed layer (twelve to `hosted`, Windows console to
+  `implemented`) and row 73 had only its annotation re-anchored, fourteen
+  annotation edits in all. Path freshness alone does not show a suite ran, so
+  the macOS job (`101642264974`) of run `34090312518` was read: 321 tests in
+  56 suites passed, zero failures, and every suite behind a promoted row
+  passed by title (POSIX terminal, Terminal rescue, AppKit host, AppKit host
+  accessibility, Accessibility snapshot, Macro expansion, Macro public
+  surface, View-state identity, DrawList codec, Embed ABI additions, C
+  embedding context, Plugin runtime, AppKit scene shell); `check-mlir.sh`,
+  `check-apple-platforms.sh`, and the `bundle-macos.sh` offscreen smoke each
+  print their OK line in that log. The round-2 checklist in `todo.md` is now
+  fully ticked (six items had been left unticked after slice 2 landed). Named
+  stop unchanged: push and PR need approval; billing lock behind that.
+- **2026-09-22 01:2x EDT, `38abedf` on `docs/ledger-honesty-round-2` (two
+  commits over `35ad8c3`):** slice 2 landed: `docs/Packaging.md` defers its
+  wasm-smoke cell to the ledger row; the two adaptive-terminal specs and the
+  CellSerializer spec carry dated corrections instead of present-tense claims
+  the ledger no longer supports; README marks `GamaEmbedABI` as a target inside
+  the `GamaEmbed` product; ADR 0011 counts 10 identity tests. One audit claim
+  was false (README "missing" two executables it already listed) and was
+  caught by a row count before commit. Gate: three doc checkers and
+  `check-evidence-freshness.sh` exit 0 in-tree on `38abedf`; full
+  `check-docs.sh` exit 0 on a clean export of `1362bff` (DocC for all eight
+  modules; slice 2 touched nothing DocC reads). Named stop: push and PR need
+  approval, and the GitHub billing lock blocks every merge regardless. Next:
+  on approval, push the branch and open the PR against `main`.
+- **2026-09-22 01:2x EDT, round 2, branch `docs/ledger-honesty-round-2`:** a
+  read-only audit measured `docs/Capabilities.md` against the tree at `35ad8c3`.
+  The snapshot paragraph still said `origin/main` was `e735cb4` (19 commits
+  stale), and twelve rows sat at `unverified` or `locally` although the paths
+  each depends on are unchanged since `e735cb4`, whose six-job run
+  `34090312518` is green per `gh run view` (headSha and every job re-read
+  2026-09-22). Slice 1 re-anchors those rows to `e735cb4` with the layer their
+  enforcing job supports (eleven `hosted`, Windows console `implemented`),
+  fixes the snapshot sentence and the row-68 `origin/main` phrase, and corrects
+  the `ViewStateIdentityTests` count (10 `@Test`, not 8). Rows whose paths
+  changed after `e735cb4` (55, 65, 68-71) stay `unverified`; that is correct.
+  Gate: three doc checkers plus `check-evidence-freshness.sh`, then
+  `check-docs.sh`. Next: slice 2, the cross-document claims that nothing gates
+  (`docs/Packaging.md`, two specs, README products table, ADR 0011 count, the
+  stale CellSerializer tail in `todo.md`); checklist in `todo.md`.
 
 - **Full row audit delivered 2026-09-06.** Every one of the seven rows that
   named a commit was stale: the files each row's claim depends on had changed
@@ -402,6 +451,39 @@ status: done
   `connect` each have a regression test; the public flex API says what the
   solver does. Remaining manual and credential-gated acceptance is tracked
   in [`todo.md`](todo.md) as separate evidence layers, not as this goal.
+
+## Hosted acceptance evidence
+status: blocked
+
+- **2026-09-22 01:03 EDT:** Re-measured: still locked. Pull request #102's six
+  checks each ended in one to six seconds with the same annotation, and two
+  pull requests in the `abbey-bot` repository under this account show it too.
+  The waiting set in the 2026-09-16 bullet below is stale: the web demo
+  showcase (#98) and the v2 web-host exports (#99) merged into the
+  guide-surface branch (#97), so the stack is now #97 with #102 (the
+  `CLAUDE.md` trim) on top; the duplicate #101 and the superseded #41 are
+  closed. Next: the owner clears the billing state; then re-run #97's checks,
+  then #102's.
+- Blocked 2026-09-16: the six-job "Gama acceptance" workflow can no longer
+  report on a pushed commit. Every job is refused before it starts — zero
+  steps, no runner name, two to seven seconds — and each check-run annotation
+  reads `The job was not started because your account is locked due to a
+  billing issue.` The same annotation appeared on a sibling repository under
+  this account the same morning, so the lock is account-wide and not a Gama
+  configuration fault; `main`'s ruleset has no bypass actors, so no pull
+  request can merge while it holds.
+- What this means for the ledger, until it clears: a red hosted check is
+  unmeasured, never a failing gate and never a reason to change source; no
+  capability row may move to a stronger evidence layer on a hosted result that
+  does not exist; and the local driver in `scripts/check.sh` remains the only
+  evidence obtainable here. Clearing the billing state is the owner's action,
+  not an engineering task. See [`todo.md`](todo.md) for how it was measured and
+  the resume step.
+- Re-measured 2026-09-16 about five hours later: still locked, the newest
+  refused job reporting zero steps and the same annotation. Waiting on it now:
+  two open pull requests (the guide-surface docs, and the web demo showcase
+  stacked on it) and the packaged-site capability row, which the showcase
+  moved to `unverified`. Each is an open item in [`todo.md`](todo.md).
 
 ## Delivered foundation
 

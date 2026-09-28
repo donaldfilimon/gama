@@ -1,9 +1,13 @@
 # Adaptive terminal surface (umbrella)
 
-Status: Phases 1-3 implemented and locally verified 2026-09-06; phases 4-5
-proposed. The phase 5 spike has been run and its answer is recorded below,
-which rescopes that phase and reduces its evidence cost. No hosted proof
-covers any of this: local gates are not the platform matrix.
+Status, updated 2026-09-22: phases 1-4 shipped through PR #83 and are
+recorded as hosted-verified in `tasks/goals.md` (*Adaptive terminal surface*);
+phase 4 landed as the emitted-line channel described near the end of this
+document, not as the view-tree declaration first proposed. Phase 5 is closed
+unbuilt: the spike below rescoped it, and its designed successor is
+`2026-09-06-cell-serializer-design.md`. An earlier revision of this line said
+"phases 4-5 proposed" and "no hosted proof covers any of this"; both were true
+when written and stale by the time they were read.
 
 ## Problem
 
@@ -146,7 +150,10 @@ Phase 5 is not being done, so nothing resets. Recording one correction this
 review produced, because it was wrong in an earlier revision of this document:
 **`DrawList/C ABI` is `Locally proven`, not `Hosted proven`**, and `Embedded
 core` is locally compile/link proven. Only `WebAssembly/browser` and
-`Android/JNI` carry hosted rows among the backends phase 5 would have touched,
+`Android/JNI` carry hosted rows among the backends phase 5 would have touched
+(a statement about the ledger on 2026-09-06; by 2026-09-22 the ledger had
+moved on, with `DrawList/C ABI` anchored hosted and those two rows at
+`unverified`, so read `docs/Capabilities.md` rather than this sentence),
 and Embed reaches hosted evidence only indirectly through the Android
 acceptance that decodes the bytes `gama_embed_v1_frame` emits. Any future
 estimate of a refactor's evidence cost must read
