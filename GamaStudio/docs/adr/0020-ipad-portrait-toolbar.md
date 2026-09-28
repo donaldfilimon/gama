@@ -54,11 +54,12 @@ File menu instead, per ADR 0009). Both exceed 92.
 3. **Wrapping into three fixed groups is sufficient, not just convenient.**
    Each group's own row width is small enough to always fit once the width
    has already cleared `compactWidth`: the creation row (Add Box … Add
-   Camera) is 58 columns, editing (Duplicate … Graph/Inspector) is 50, and
-   file (Open, Save, Save As) is 23; each under `compactWidth` (86), so a
-   width of 86 or more that still cannot hold the single combined row of
-   133/109 can always hold each group on its own row. A more general
-   per-button wrap was not needed to satisfy requirement 1.
+   Camera) is 58 columns, editing (Duplicate … Graph/Inspector) is 50 (54
+   while the toggle reads Inspector), and file (Open, Save, Save As) is 23;
+   each under `compactWidth` (86), so a width of 86 or more that still
+   cannot hold the single combined row of 133/109 (137/113 while the toggle
+   reads Inspector) can always hold each group on its own row. A more
+   general per-button wrap was not needed to satisfy requirement 1.
 4. **The compact layout (below `compactWidth`) is unchanged.**
 
 ## Consequences

@@ -1,4 +1,4 @@
-//  IPadToolbarWrapTests.swift — GamaStudioEditorTests
+//  IPadToolbarWrapTests.swift (GamaStudioEditorTests)
 //
 //  ADR 0020: on iPad portrait the regular (single-row) toolbar was one row
 //  wider than the screen, so buttons after "Duplicate" (Delete, Undo, Redo,
@@ -107,8 +107,15 @@ struct IPadToolbarWrapTests {
     @Test func everyToolbarLabelFitsAtIPadPortraitWidthWithFileButtons() throws {
         let size = Size(width: Self.iPadPortraitWidth, height: 44)
         let model = StudioModel(document: StudioModel.sampleScene())
-        let documents = DocumentActions(open: {}, save: {}, saveAs: {})
-        var host = try FrameHost(app: StudioApp(model: model, documents: documents))
+        var fileCalls: [String] = []
+        let documents = DocumentActions(
+            open: { fileCalls.append("open") },
+            save: { fileCalls.append("save") },
+            saveAs: { fileCalls.append("saveAs") }
+        )
+        var frameCalls = 0
+        let viewport = ViewportActions(frameSelection: { frameCalls += 1 })
+        var host = try FrameHost(app: StudioApp(model: model, viewport: viewport, documents: documents))
         let text = painted(host.pump(size: size), size: size)
 
         expectLabelsFullyVisible(text, Self.fileLabels)
@@ -117,9 +124,59 @@ struct IPadToolbarWrapTests {
         #expect(labelIsFullyVisible(text, "Graph"), "Graph toggle is clipped or missing")
 
         // Every toolbar action must still be reachable by identity.
-        for id in StudioApp.fileActionIDs + StudioApp.toolbarActionIDs {
+        // `FrameHost.perform` returns Void and silently no-ops an
+        // unregistered id, so a bare `perform` call proves nothing about
+        // reachability; each assertion below checks the observable effect
+        // the button is documented to have (a `DocumentActions`/
+        // `ViewportActions` callback, or a `StudioModel`/`EditorSession`
+        // mutation), so a button that lost its `.actionIdentity` fails here.
+        for id in StudioApp.fileActionIDs { host.perform(id) }
+        #expect(fileCalls == ["open", "save", "saveAs"], "file buttons must reach DocumentActions by identity")
+
+        var count = model.session.document.count
+        var revision = model.session.revision
+        func expectCreatedOneEntity(_ id: ActionID, _ label: String, sourceLocation: SourceLocation = #_sourceLocation) {
             host.perform(id)
+            #expect(
+                model.session.document.count == count + 1, "\(label) must create an entity",
+                sourceLocation: sourceLocation
+            )
+            #expect(model.session.revision == revision + 1, sourceLocation: sourceLocation)
+            count = model.session.document.count
+            revision = model.session.revision
         }
+
+        expectCreatedOneEntity(ActionID("studio.addBox"), "studio.addBox")
+        expectCreatedOneEntity(ActionID("studio.addSphere"), "studio.addSphere")
+        expectCreatedOneEntity(ActionID("studio.addCone"), "studio.addCone")
+        expectCreatedOneEntity(ActionID("studio.addLight"), "studio.addLight")
+        expectCreatedOneEntity(ActionID("studio.addCamera"), "studio.addCamera")
+        // addCamera selects the new camera, so duplicate and delete below
+        // have a selection to act on.
+        expectCreatedOneEntity(ActionID("studio.duplicate"), "studio.duplicate")
+
+        host.perform(ActionID("studio.delete"))
+        #expect(model.session.document.count == count - 1, "studio.delete must remove the selected entity")
+        #expect(model.session.revision == revision + 1)
+        count = model.session.document.count
+        revision = model.session.revision
+
+        host.perform(ActionID("studio.undo"))
+        #expect(model.session.document.count == count + 1, "studio.undo must reverse the delete")
+        #expect(model.session.revision == revision + 1)
+        count = model.session.document.count
+        revision = model.session.revision
+
+        host.perform(ActionID("studio.redo"))
+        #expect(model.session.document.count == count - 1, "studio.redo must reapply the delete")
+        #expect(model.session.revision == revision + 1)
+
+        host.perform(ActionID("studio.frame"))
+        #expect(frameCalls == 1, "studio.frame must reach ViewportActions.frameSelection")
+
+        let showedGraphEditor = model.showsGraphEditor
+        host.perform(ActionID("studio.graph.toggle"))
+        #expect(model.showsGraphEditor == !showedGraphEditor, "studio.graph.toggle must flip the graph editor")
     }
 
     @Test func everyToolbarLabelFitsAtIPadPortraitWidthWithoutFileButtons() throws {

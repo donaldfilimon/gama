@@ -337,8 +337,9 @@ struct StudioRootView: View {
 
     /// Whether every regular-toolbar button fits on the single `toolbar`
     /// row at `width` columns. False below the iPad-portrait width (ADR
-    /// 0020's measured 92 columns is comfortably under the 134 the full
-    /// row needs with file buttons, 110 without).
+    /// 0020's measured 92 columns is comfortably under the 133 the full
+    /// row needs with file buttons (137 while the toggle reads Inspector),
+    /// 109 without (113 while the toggle reads Inspector)).
     private func regularToolbarFits(width: Int) -> Bool {
         var labels: [String] = []
         if documents != nil { labels += Self.fileLabelsRegular }
@@ -350,11 +351,12 @@ struct StudioRootView: View {
 
     /// Regular-layout toolbar, wrapped into one row per button group (file,
     /// creation, editing) when the single-row ``toolbar`` would run past
-    /// the surface width — the same shape ``compactToolbar`` uses, but
-    /// keeping the full (non-abbreviated) labels, since every group's row
-    /// width (59 columns for creation, 50 for editing, 23 for file) stays
-    /// under ``compactWidth`` regardless, so wrapping is always enough once
-    /// the width has already cleared the compact threshold. Reuses
+    /// the surface width (the same shape ``compactToolbar`` uses, but
+    /// keeping the full (non-abbreviated) labels), since every group's row
+    /// width (58 columns for creation, 50 for editing (54 while the toggle
+    /// reads Inspector), 23 for file) stays under ``compactWidth``
+    /// regardless, so wrapping is always enough once the width has already
+    /// cleared the compact threshold. Reuses
     /// ``fileButtons(_:)``, ``creationButtons(short:)``, and
     /// ``editingButtons(short:)`` verbatim, so the button actions and
     /// identities are the exact same closures the single-row toolbar uses.
