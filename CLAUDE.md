@@ -8,6 +8,13 @@ need to be productive. `GEMINI.md` is tracked but **empty**; it is a
 placeholder, not a third guide, and no gate reads it — do not treat its
 emptiness as missing documentation to fill.
 
+`GamaStudio/` is a second, separate SwiftPM package inside this repository:
+Gama Studio, the 3D authoring app, imported with its history on 2026-09-23.
+It has its own `AGENTS.md` and gate (`cd GamaStudio && ./tools/check.sh`),
+depends on this framework by path (`.package(path: "..")`), and is in neither
+`scripts/check.sh` nor CI, so run its gate yourself after framework changes to
+the Apple host or layout.
+
 This is the canonical checkout of `donaldfilimon/gama` — the Gama Framework
 umbrella (retained UI core, plugins, macros, drawing,
 TUI/Apple/WASM/Embed/MLIR backends, and platform capability services). The Qt

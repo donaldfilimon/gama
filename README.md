@@ -4,6 +4,9 @@ Gama is a modular declarative UI framework written in Swift. A single
 retained render tree drives terminal, CoreGraphics, WebAssembly, C/Android,
 MLIR, and Embedded Swift integrations.
 
+The `GamaStudio/` directory is a separate SwiftPM package, Gama Studio, a 3D
+authoring app built on the framework; see its own `AGENTS.md`.
+
 ```swift
 import GamaCore
 import GamaMacros

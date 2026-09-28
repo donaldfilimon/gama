@@ -36,8 +36,9 @@ let package = Package(
         .library(name: "GamaStudioEditor", targets: ["GamaStudioEditor"]),
     ],
     dependencies: [
-        // PR #108's head: the native-region API the viewport needs.
-        .package(url: "https://github.com/donaldfilimon/gama.git", revision: "2ef325c120674cfe218de44f492f435ff50a28e7"),
+        // The framework package this directory lives in (the gama repository
+        // root). Native regions and native presenters are on its main.
+        .package(path: ".."),
     ],
     targets: [
         // Standard library only: tools/check.sh rejects platform imports here.

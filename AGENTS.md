@@ -6,6 +6,7 @@
 - The module graph is `Package.swift`'s products and targets. Treat any other module list, or a `gama` CLI, as a design vision, not this checkout. Do not add targets to match it.
 - The umbrella path is `Sources/gama` and the test path is `Tests/gamaTests`. A wrong-case `Sources/Gama` or `Tests/GamaTests` directory is not in the package. Linux CI is case-sensitive.
 - The Android demo target path is `Examples/Android`, not a `Sources/GamaAndroidDemo` directory. JNI and Gradle stay there.
+- `GamaStudio/` is a separate SwiftPM package (the Gama Studio 3D authoring app) with its own `AGENTS.md` and gate (`cd GamaStudio && ./tools/check.sh`). It depends on this framework by path (`.package(path: "..")`), is not a framework product, and is not in `scripts/check.sh` or CI. Framework changes to the Apple host or layout can break its gate.
 
 ## Toolchain And Commands
 

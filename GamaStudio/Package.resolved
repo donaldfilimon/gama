@@ -1,14 +1,6 @@
 {
-  "originHash" : "c8f9d7bf651ae58d800adc068ab90b4db5cec64c3329e0f9b130828110128174",
+  "originHash" : "1dd1713a61bd37195ec41e0e9af345f17570a61e6879cfaabd45c7e83b54f866",
   "pins" : [
-    {
-      "identity" : "gama",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/donaldfilimon/gama.git",
-      "state" : {
-        "revision" : "2ef325c120674cfe218de44f492f435ff50a28e7"
-      }
-    },
     {
       "identity" : "swift-syntax",
       "kind" : "remoteSourceControl",
