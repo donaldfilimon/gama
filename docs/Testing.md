@@ -41,6 +41,7 @@ All suites live in `Tests/gamaTests/`:
 | `AccessibilitySnapshotTests.swift` | Accessibility snapshot |
 | `AppleHostAccessibilityTests.swift` | AppKit accessibility bridge |
 | `AppleHostFontCacheTests.swift` | AppKit host styled-font cache |
+| `AppleHostNativeRegionTests.swift` | AppKit host native regions |
 | `AppleHostTests.swift` | AppKit host |
 | `AppleShellTests.swift` | AppKit scene shell |
 | `CellSerializerTests.swift` | Cell serializer |
@@ -60,6 +61,7 @@ All suites live in `Tests/gamaTests/`:
 | `MLIRFixtureTests.swift` | MLIR fixtures |
 | `MLIRTests.swift` | MLIR |
 | `ModernTests.swift` | DrawList codec; overflow-safe geometry; CellPainter ↔ DrawList |
+| `NativeRegionTests.swift` | Native region build, host table — filter `NativeRegionBuildTests`, `NativeRegionHostTests` |
 | `P1LayoutTests.swift` | Border title, divider axis, TextField C0, emoji presentation, button focus |
 | `PluginCommandTests.swift` | Plugin commands |
 | `PluginRuntimeTests.swift` | Plugin runtime: manifest, grants, lifecycle |

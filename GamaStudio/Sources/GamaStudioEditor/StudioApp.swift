@@ -1,0 +1,652 @@
+//  StudioApp.swift — GamaStudioEditor
+//
+//  The editor's Gama view tree: a toolbar, a scene hierarchy, a native
+//  viewport region the AppKit host fills with RealityKit, an inspector, and a
+//  status line. Every edit goes through `StudioModel`; this file only reads
+//  it and forwards button presses.
+//
+//  Isolation. `App` is a nonisolated protocol and `Button` stores a plain
+//  `() -> Void`, while `StudioModel` is `@MainActor`. Gama runs a surface's
+//  content closure inside `FrameHost.pump` and a button's action inside
+//  `FrameHost.handle`/`perform`; the only callers of those here are
+//  `GamaHostView` (`@MainActor`) and the `@MainActor` tests. So each crossing
+//  asserts the main actor with `MainActor.assumeIsolated`, which traps rather
+//  than races if that ever stops holding. The content closure copies what it
+//  needs into the `Sendable` `StudioFrameState` inside that assertion and
+//  builds the view tree from the copy, because a view tree (it holds
+//  non-`Sendable` action closures) cannot leave `assumeIsolated`.
+
+#if canImport(AppKit) || canImport(UIKit)
+
+public import GamaCore
+public import GamaAuthoring
+
+/// The Gama Studio application root: one primary window laid out as a
+/// toolbar, a hierarchy panel, the RealityKit viewport region, an inspector
+/// panel, and a status line, all driven by ``model``.
+public struct StudioApp: App {
+    /// The native region the host attaches the RealityKit view to. The
+    /// executable and the tests both use this constant, so the identity
+    /// cannot drift between declaration and attachment.
+    public static let viewportRegion = NativeRegionID("viewport")
+
+    /// Every toolbar button's action identity, in toolbar order. Tests use
+    /// the count to Tab past the toolbar; add a button's id here when you add
+    /// the button.
+    public static let toolbarActionIDs: [ActionID] = [
+        ActionID("studio.addBox"), ActionID("studio.addSphere"), ActionID("studio.addCone"),
+        ActionID("studio.addLight"), ActionID("studio.addCamera"),
+        ActionID("studio.duplicate"), ActionID("studio.delete"),
+        ActionID("studio.undo"), ActionID("studio.redo"), ActionID("studio.frame"),
+        ActionID("studio.graph.toggle"),
+    ]
+
+    /// The editing model every panel reads and every button edits.
+    public let model: StudioModel
+
+    /// What the viewport buttons do. The camera is editor state that the
+    /// model deliberately does not own (ADR 0003), so the host injects the
+    /// viewport's actions here; ``ViewportActions/none`` does nothing.
+    public let viewport: ViewportActions
+
+    /// The toolbar's Open, Save, and Save As buttons, shown only when a host
+    /// supplies them (the touch hosts, ADR 0009); macOS uses its File menu.
+    public let documents: DocumentActions?
+
+    /// The file buttons' action identities, in toolbar order, present only
+    /// when ``documents`` is set.
+    public static let fileActionIDs: [ActionID] = [
+        ActionID("studio.file.open"), ActionID("studio.file.save"), ActionID("studio.file.saveAs"),
+    ]
+
+    /// Creates the application over an existing model, so a host can keep
+    /// its own reference (for example to attach a viewport to its bridge).
+    ///
+    /// - Parameters:
+    ///   - viewport: The viewport actions the buttons run, typically
+    ///     forwarding to a `ViewportController`.
+    ///   - documents: The file buttons' actions, or `nil` for no file buttons.
+    public init(model: StudioModel, viewport: ViewportActions = .none, documents: DocumentActions? = nil) {
+        self.model = model
+        self.viewport = viewport
+        self.documents = documents
+    }
+
+    /// Creates the application over ``StudioModel/sampleScene()``; Gama's
+    /// `App` protocol requires a no-argument initializer. Must run on the
+    /// main thread, which it asserts, because `StudioModel` is main-actor
+    /// isolated.
+    public init() {
+        self.init(model: MainActor.assumeIsolated {
+            StudioModel(document: StudioModel.sampleScene())
+        })
+    }
+
+    /// One primary window, `"Gama Studio"`, rebuilt from ``model`` on every
+    /// frame.
+    public var scenes: some Scene {
+        // Capture the (Sendable, main-actor) model rather than `self`, which
+        // is not Sendable and so cannot be sent into the isolated closure.
+        let model = model
+        let viewport = viewport
+        let documents = documents
+        return Window("Gama Studio", id: "main", role: .primary) {
+            StudioRootView(model: model, viewport: viewport, documents: documents, state: MainActor.assumeIsolated {
+                StudioFrameState(model)
+            })
+        }
+    }
+}
+
+// MARK: - Viewport actions
+
+/// The viewport operations the editor's buttons can request. The viewport
+/// camera is editor state that ``StudioModel`` does not own (ADR 0003), so a
+/// host that has a viewport (a `ViewportController`) injects these, and a
+/// host without one uses ``none``.
+public struct ViewportActions: Sendable {
+    /// Aims the viewport at the primary selection (the "Frame" button).
+    public var frameSelection: @MainActor @Sendable () -> Void
+    /// Views the scene through the authored camera with this id.
+    public var lookThrough: @MainActor @Sendable (EntityID) -> Void
+
+    /// Creates the actions; each defaults to doing nothing.
+    public init(
+        frameSelection: @escaping @MainActor @Sendable () -> Void = {},
+        lookThrough: @escaping @MainActor @Sendable (EntityID) -> Void = { _ in }
+    ) {
+        self.frameSelection = frameSelection
+        self.lookThrough = lookThrough
+    }
+
+    /// Actions that do nothing, for a host without a viewport (and tests).
+    public static let none = ViewportActions()
+}
+
+// MARK: - Frame state
+
+/// Everything the panels display, copied out of the model on the main actor
+/// once per frame. Plain `Sendable` data, so it can leave `assumeIsolated`.
+struct StudioFrameState: Sendable {
+    /// One hierarchy row, in depth-first authored order.
+    struct Row: Sendable {
+        var id: EntityID
+        var name: String
+        var depth: Int
+        var isSelected: Bool
+    }
+
+    /// What the inspector shows about the primary selection.
+    struct Inspected: Sendable {
+        var id: EntityID
+        var name: String
+        var position: SIMD3<Float>
+        var mesh: Primitive?
+        var material: Material?
+        var isVisible: Bool
+        /// Present when the selection has a ``Light`` component; the
+        /// inspector's light section renders from this.
+        var light: Light?
+        /// Present when the selection has a ``CameraSettings`` component; the
+        /// inspector's camera section renders from this.
+        var camera: CameraSettings?
+    }
+
+    var rows: [Row]
+    var inspected: Inspected?
+    var revision: UInt64
+    var selectionName: String?
+    var undoLabel: String?
+    var lastError: AuthoringError?
+    /// ``StudioModel/notice``, shown at the end of the status line.
+    var notice: String?
+    /// The console exchanges the panel shows, oldest first.
+    var console: [StudioModel.ConsoleEntry]
+    /// Whether the right-hand panel is the graph editor.
+    var showsGraphEditor: Bool
+    var graph: GraphPanelState
+
+    @MainActor
+    init(_ model: StudioModel) {
+        let session = model.session
+        let document = session.document
+        let primary = session.selection.primary
+
+        var rows: [Row] = []
+        func visit(_ id: EntityID, depth: Int) {
+            guard let record = document.entity(id) else { return }
+            var hint = ""
+            if record.components[.camera] != nil {
+                hint = " (C)"
+            } else if record.components[.light] != nil {
+                hint = " (L)"
+            }
+            rows.append(Row(id: id, name: record.name + hint, depth: depth, isSelected: id == primary))
+            for child in record.children { visit(child, depth: depth + 1) }
+        }
+        for root in document.roots { visit(root, depth: 0) }
+        self.rows = rows
+
+        if let primary, let record = document.entity(primary) {
+            var inspected = Inspected(
+                id: primary, name: record.name, position: .zero, mesh: nil, material: nil,
+                isVisible: true, light: nil, camera: nil
+            )
+            if case .transform(let transform)? = record.components[.transform] {
+                inspected.position = transform.position
+            }
+            if case .mesh(let mesh)? = record.components[.mesh] { inspected.mesh = mesh }
+            if case .material(let material)? = record.components[.material] {
+                inspected.material = material
+            }
+            if case .visibility(let visibility)? = record.components[.visibility] {
+                inspected.isVisible = visibility.visible
+            }
+            if case .light(let light)? = record.components[.light] { inspected.light = light }
+            if case .camera(let camera)? = record.components[.camera] { inspected.camera = camera }
+            self.inspected = inspected
+            self.selectionName = record.name
+        } else {
+            self.inspected = nil
+            self.selectionName = nil
+        }
+        self.revision = session.revision
+        self.undoLabel = session.undoLabel
+        self.lastError = model.lastError
+        self.notice = model.notice
+        self.console = Array(model.consoleLog.suffix(ConsolePanel.visibleEntries))
+        self.showsGraphEditor = model.showsGraphEditor
+        self.graph = GraphPanelState(model)
+    }
+}
+
+// MARK: - Views
+
+/// Forwards `edit` to `model` on the main actor. Button actions run inside
+/// `FrameHost.handle`/`perform`, which only main-actor hosts call.
+func onMain(
+    _ model: StudioModel, _ edit: @escaping @MainActor (StudioModel) -> Void
+) -> () -> Void {
+    { MainActor.assumeIsolated { edit(model) } }
+}
+
+/// The whole window: toolbar, body, console, status line.
+///
+/// Two layouts, chosen by the surface's width in cells (ADR 0008). The
+/// regular one puts the Scene panel, viewport, and Inspector side by side.
+/// Below ``compactWidth`` columns, as on an iPhone in portrait, the side
+/// panels would leave the viewport no width at all, so the compact one
+/// stacks the viewport above half-width panels and splits the toolbar into
+/// two rows of short labels. Both use the same action identities.
+struct StudioRootView: View {
+    typealias Body = Never_
+    var body: Never_ { Never_() }
+
+    let model: StudioModel
+    let viewport: ViewportActions
+    let documents: DocumentActions?
+    let state: StudioFrameState
+
+    /// Scene (26) + Inspector (30) + a 30-column viewport.
+    static let compactWidth = 86
+    /// Rows the compact layout gives the Scene and Inspector panels.
+    static let compactPanelHeight = 14
+
+    func render(in context: BuildContext) -> RenderNode {
+        let width = context.environment.surfaceSize?.width ?? Int.max
+        if width < Self.compactWidth {
+            return compact(width: width).render(in: context)
+        }
+        return regular(width: width).render(in: context)
+    }
+
+    private func regular(width: Int) -> some View {
+        VStack {
+            toolbarForRegularLayout(width: width)
+            HStack {
+                HierarchyPanel(model: model, rows: state.rows)
+                viewportRegion
+                rightPanel(width: 30)
+            }
+            .frame(maxWidth: .max, maxHeight: .max)
+            ConsolePanel(model: model, entries: state.console)
+            Text(Self.statusLine(state))
+        }
+    }
+
+    private func compact(width: Int) -> some View {
+        let left = max(width / 2, 12)
+        return VStack {
+            compactToolbar
+            viewportRegion
+            HStack {
+                HierarchyPanel(model: model, rows: state.rows, width: left)
+                rightPanel(width: max(width - left, 12))
+            }
+            .frame(height: Self.compactPanelHeight)
+            ConsolePanel(model: model, entries: state.console)
+            Text(Self.statusLine(state))
+        }
+    }
+
+    private var viewportRegion: some View {
+        // The fallback stays blank: on visionOS the RealityView is
+        // transparent, and fallback text would show through it.
+        NativeRegion(StudioApp.viewportRegion) {
+            Text(" ")
+        }
+        .frame(maxWidth: .max, maxHeight: .max)
+    }
+
+    @ViewBuilder
+    private func rightPanel(width: Int) -> some View {
+        if state.showsGraphEditor {
+            GraphPanel(model: model, state: state.graph, width: width)
+        } else {
+            InspectorPanel(model: model, viewport: viewport, inspected: state.inspected, width: width)
+        }
+    }
+
+    private var toolbar: some View {
+        HStack(spacing: 1) {
+            if let documents { fileButtons(documents) }
+            creationButtons(short: false)
+            editingButtons(short: false)
+        }
+    }
+
+    /// Full-label toolbar button text, in the order the regular toolbar
+    /// builds them, mirroring ``fileButtons(_:)``, ``creationButtons(short:)``,
+    /// and ``editingButtons(short:)`` with `short: false`. Used only to
+    /// measure whether the single-row toolbar fits (ADR 0020); the buttons
+    /// themselves are still built by those methods, so a labeling change
+    /// there cannot silently drift from what gets measured here except for
+    /// this list, which must be kept in sync.
+    private static let creationLabelsRegular = ["Add Box", "Add Sphere", "Add Cone", "Add Light", "Add Camera"]
+    private static let editingLabelsRegular = ["Duplicate", "Delete", "Undo", "Redo", "Frame"]
+    private static let fileLabelsRegular = ["Open", "Save", "Save As"]
+
+    /// A `Button(title, action:)`'s painted width: `" \(title) "` (one
+    /// space padding each side), plus the `HStack(spacing: 1)` gap before
+    /// it (omitted for the first item).
+    private func toolbarRowWidth(_ labels: [String]) -> Int {
+        guard !labels.isEmpty else { return 0 }
+        let buttons = labels.reduce(0) { $0 + $1.count + 2 }
+        return buttons + (labels.count - 1)
+    }
+
+    /// Whether every regular-toolbar button fits on the single `toolbar`
+    /// row at `width` columns. False below the iPad-portrait width (ADR
+    /// 0020's measured 92 columns is comfortably under the 133 the full
+    /// row needs with file buttons (137 while the toggle reads Inspector),
+    /// 109 without (113 while the toggle reads Inspector)).
+    private func regularToolbarFits(width: Int) -> Bool {
+        var labels: [String] = []
+        if documents != nil { labels += Self.fileLabelsRegular }
+        labels += Self.creationLabelsRegular
+        labels += Self.editingLabelsRegular
+        labels.append(state.showsGraphEditor ? "Inspector" : "Graph")
+        return toolbarRowWidth(labels) <= width
+    }
+
+    /// Regular-layout toolbar, wrapped into one row per button group (file,
+    /// creation, editing) when the single-row ``toolbar`` would run past
+    /// the surface width (the same shape ``compactToolbar`` uses, but
+    /// keeping the full (non-abbreviated) labels), since every group's row
+    /// width (58 columns for creation, 50 for editing (54 while the toggle
+    /// reads Inspector), 23 for file) stays under ``compactWidth``
+    /// regardless, so wrapping is always enough once the width has already
+    /// cleared the compact threshold. Reuses
+    /// ``fileButtons(_:)``, ``creationButtons(short:)``, and
+    /// ``editingButtons(short:)`` verbatim, so the button actions and
+    /// identities are the exact same closures the single-row toolbar uses.
+    @ViewBuilder
+    private func toolbarForRegularLayout(width: Int) -> some View {
+        if regularToolbarFits(width: width) {
+            toolbar
+        } else {
+            VStack {
+                if let documents { HStack(spacing: 1) { fileButtons(documents) } }
+                HStack(spacing: 1) { creationButtons(short: false) }
+                HStack(spacing: 1) { editingButtons(short: false) }
+            }
+        }
+    }
+
+    private var compactToolbar: some View {
+        VStack {
+            if let documents {
+                HStack(spacing: 1) { fileButtons(documents) }
+            }
+            HStack(spacing: 1) { creationButtons(short: true) }
+            HStack(spacing: 1) { editingButtons(short: true) }
+        }
+    }
+
+    @ViewBuilder
+    private func fileButtons(_ documents: DocumentActions) -> some View {
+        Button("Open", action: { MainActor.assumeIsolated { documents.open() } })
+            .actionIdentity(StudioApp.fileActionIDs[0])
+        Button("Save", action: { MainActor.assumeIsolated { documents.save() } })
+            .actionIdentity(StudioApp.fileActionIDs[1])
+        Button("Save As", action: { MainActor.assumeIsolated { documents.saveAs() } })
+            .actionIdentity(StudioApp.fileActionIDs[2])
+    }
+
+    @ViewBuilder
+    private func creationButtons(short: Bool) -> some View {
+        Button(short ? "Box" : "Add Box", action: onMain(model) { $0.addPrimitive(.box) })
+            .actionIdentity(ActionID("studio.addBox"))
+        Button(short ? "Sphere" : "Add Sphere", action: onMain(model) { $0.addPrimitive(.sphere) })
+            .actionIdentity(ActionID("studio.addSphere"))
+        Button(short ? "Cone" : "Add Cone", action: onMain(model) { $0.addPrimitive(.cone) })
+            .actionIdentity(ActionID("studio.addCone"))
+        Button(short ? "Light" : "Add Light", action: onMain(model) { $0.addLight(.point(attenuationRadius: 10)) })
+            .actionIdentity(ActionID("studio.addLight"))
+        Button(short ? "Camera" : "Add Camera", action: onMain(model) { $0.addCamera() })
+            .actionIdentity(ActionID("studio.addCamera"))
+    }
+
+    @ViewBuilder
+    private func editingButtons(short: Bool) -> some View {
+        Button(short ? "Dup" : "Duplicate", action: onMain(model) { $0.duplicateSelection() })
+            .actionIdentity(ActionID("studio.duplicate"))
+        Button(short ? "Del" : "Delete", action: onMain(model) { $0.deleteSelection() })
+            .actionIdentity(ActionID("studio.delete"))
+        Button("Undo", action: onMain(model) { $0.undo() })
+            .actionIdentity(ActionID("studio.undo"))
+        Button("Redo", action: onMain(model) { $0.redo() })
+            .actionIdentity(ActionID("studio.redo"))
+        Button("Frame", action: { [viewport] in MainActor.assumeIsolated { viewport.frameSelection() } })
+            .actionIdentity(ActionID("studio.frame"))
+        Button(state.showsGraphEditor ? (short ? "Insp" : "Inspector") : "Graph", action: onMain(model) { $0.toggleGraphEditor() })
+            .actionIdentity(ActionID("studio.graph.toggle"))
+    }
+
+    /// `rev N · <selection> · undo: <label> · <refusal> · <notice>`, the
+    /// refusal and notice only when there is one.
+    static func statusLine(_ state: StudioFrameState) -> String {
+        var line = "rev \(state.revision) · \(state.selectionName ?? "no selection")"
+        line += " · undo: \(state.undoLabel ?? "—")"
+        if let error = state.lastError { line += " · \(error)" }
+        if let notice = state.notice { line += " · \(notice)" }
+        return line
+    }
+}
+
+/// The command console (ADR 0006): the latest exchanges above an input
+/// line. Enter submits the line through ``StudioModel/submitConsole()``,
+/// which runs it through the same funnel as every other edit.
+struct ConsolePanel: View {
+    /// How many past exchanges the panel shows.
+    static let visibleEntries = 3
+
+    let model: StudioModel
+    let entries: [StudioModel.ConsoleEntry]
+
+    var body: some View {
+        VStack {
+            ForEach(entries) { entry in
+                if entry.isNote {
+                    Text("· \(entry.output)", style: entry.isError ? TextStyle(attributes: [.dim]) : .plain)
+                } else {
+                    Text("> \(entry.input)  →  \(entry.output)", style: entry.isError ? TextStyle(attributes: [.dim]) : .plain)
+                }
+            }
+            HStack(spacing: 1) {
+                Text(">")
+                ConsoleField(
+                    placeholder: "type a command, e.g. move selected 0 1 0 — 'help' lists them",
+                    text: Binding(
+                        get: { [model] in MainActor.assumeIsolated { model.consoleInput } },
+                        set: { [model] value in MainActor.assumeIsolated { model.consoleInput = value } }
+                    ),
+                    onSubmit: onMain(model) { $0.submitConsole() }
+                )
+                .frame(maxWidth: .max)
+            }
+        }
+        .frame(maxWidth: .max, alignment: .topLeading)
+        .border(title: "Console")
+    }
+}
+
+/// A `TextField` whose Enter submits instead of doing nothing.
+///
+/// `TextField` declines Enter, and the host then activates the node. A
+/// plain action would also fire on a click into the field, since a pointer
+/// press invokes the hit node's action, so the submit is attached to Enter
+/// alone by wrapping the key handler the field registers.
+struct ConsoleField: View {
+    typealias Body = Never_
+    var body: Never_ { Never_() }
+
+    let placeholder: String
+    let text: Binding<String>
+    let onSubmit: () -> Void
+
+    func render(in context: BuildContext) -> RenderNode {
+        var inner = context
+        let register = context.registerKeyHandler
+        let submit = onSubmit
+        inner.registerKeyHandler = { id, handler in
+            register(id) { key in
+                if key == .enter {
+                    submit()
+                    return true
+                }
+                return handler(key)
+            }
+        }
+        return TextField(placeholder, text: text).render(in: inner)
+    }
+}
+
+/// Stable per-entity identity for hierarchy rows, namespaced away from
+/// gama's structural ids so focus follows the entity across edits.
+private let hierarchyScope = NodeID(raw: 0x5354_5544_494F_0000)
+
+/// The "Scene" panel: one selectable row per entity, indented by depth.
+struct HierarchyPanel: View {
+    let model: StudioModel
+    let rows: [StudioFrameState.Row]
+    var width = 26
+
+    var body: some View {
+        VStack {
+            IdentifiedForEach(rows, id: { hierarchyScope.child(Int(truncatingIfNeeded: $0.id.rawValue)) }) { row in
+                Button(action: onMain(model) { [id = row.id] in $0.select(id) }) {
+                    Text(
+                        String(repeating: "  ", count: row.depth) + (row.isSelected ? "▸ " : "  ") + row.name,
+                        style: row.isSelected ? TextStyle(attributes: [.inverse]) : .plain
+                    )
+                }
+            }
+        }
+        .frame(maxWidth: .max, maxHeight: .max, alignment: .topLeading)
+        .border(title: "Scene")
+        .frame(width: width)
+    }
+}
+
+/// The "Inspector" panel: the primary selection's properties plus nudge and
+/// visibility controls.
+struct InspectorPanel: View {
+    let model: StudioModel
+    let viewport: ViewportActions
+    let inspected: StudioFrameState.Inspected?
+    var width = 30
+
+    /// One nudge step, in scene units.
+    static let step: Float = 0.25
+
+    var body: some View {
+        VStack {
+            if let inspected {
+                Text("Name: \(inspected.name)").bold()
+                Text("Position")
+                Text("  x: \(formatted(inspected.position.x))")
+                Text("  y: \(formatted(inspected.position.y))")
+                Text("  z: \(formatted(inspected.position.z))")
+                Text("Mesh: \(inspected.mesh?.rawValue ?? "—")")
+                Text("Metallic: \(inspected.material.map { formatted($0.metallic) } ?? "—")")
+                Text("Roughness: \(inspected.material.map { formatted($0.roughness) } ?? "—")")
+                Text("Visible: \(inspected.isVisible ? "yes" : "no")")
+                HStack {
+                    nudge("-X", "studio.nudge.-x", SIMD3(-Self.step, 0, 0))
+                    nudge("+X", "studio.nudge.+x", SIMD3(Self.step, 0, 0))
+                    nudge("-Y", "studio.nudge.-y", SIMD3(0, -Self.step, 0))
+                    nudge("+Y", "studio.nudge.+y", SIMD3(0, Self.step, 0))
+                    nudge("-Z", "studio.nudge.-z", SIMD3(0, 0, -Self.step))
+                    nudge("+Z", "studio.nudge.+z", SIMD3(0, 0, Self.step))
+                }
+                Button(inspected.isVisible ? "Hide" : "Show", action: onMain(model) { $0.toggleVisibility() })
+                    .actionIdentity(ActionID("studio.toggleVisibility"))
+                if let light = inspected.light {
+                    lightSection(light)
+                }
+                if let camera = inspected.camera {
+                    cameraSection(camera, id: inspected.id)
+                }
+            } else {
+                Text("Nothing selected")
+            }
+        }
+        .frame(maxWidth: .max, maxHeight: .max, alignment: .topLeading)
+        .border(title: "Inspector")
+        .frame(width: width)
+    }
+
+    private func nudge(_ title: String, _ id: String, _ delta: SIMD3<Float>) -> some View {
+        Button(title, action: onMain(model) { $0.nudgeSelection(by: delta) })
+            .actionIdentity(ActionID(id))
+    }
+
+    /// Kind (cycling button), intensity with −/+, and color, for a selected
+    /// light.
+    private func lightSection(_ light: Light) -> some View {
+        VStack {
+            Text("Light").bold()
+            Button("Kind: \(Self.kindLabel(light.kind))", action: onMain(model) { $0.cycleLightKind() })
+                .actionIdentity(ActionID("studio.lightKind"))
+            Text("Intensity: \(formatted(light.intensity)) \(Self.intensityUnit(light.kind))")
+            HStack {
+                Button("-", action: onMain(model) { $0.scaleLightIntensity(by: 0.8) })
+                    .actionIdentity(ActionID("studio.lightIntensity.-"))
+                Button("+", action: onMain(model) { $0.scaleLightIntensity(by: 1.25) })
+                    .actionIdentity(ActionID("studio.lightIntensity.+"))
+            }
+            Text("Color: \(formatted(light.color.x)), \(formatted(light.color.y)), \(formatted(light.color.z))")
+        }
+    }
+
+    /// FOV with −/+, near/far, and a "Look through" button, for a selected
+    /// camera.
+    private func cameraSection(_ camera: CameraSettings, id: EntityID) -> some View {
+        VStack {
+            Text("Camera").bold()
+            Text("FOV: \(formatted(camera.fieldOfViewDegrees))°")
+            HStack {
+                Button("-", action: onMain(model) { $0.adjustFieldOfView(by: -5) })
+                    .actionIdentity(ActionID("studio.cameraFov.-"))
+                Button("+", action: onMain(model) { $0.adjustFieldOfView(by: 5) })
+                    .actionIdentity(ActionID("studio.cameraFov.+"))
+            }
+            Text("Near: \(formatted(camera.near))")
+            Text("Far: \(formatted(camera.far))")
+            Button("Look through", action: { [viewport, id] in MainActor.assumeIsolated { viewport.lookThrough(id) } })
+                .actionIdentity(ActionID("studio.lookThrough"))
+        }
+    }
+
+    /// "Directional", "Point", or "Spot", for the kind-cycling button.
+    private static func kindLabel(_ kind: LightKind) -> String {
+        switch kind {
+        case .directional: "Directional"
+        case .point: "Point"
+        case .spot: "Spot"
+        }
+    }
+
+    /// Lux for a directional light (illuminance), lumens for point and spot
+    /// (luminous flux) — the two families ``StudioModel/cycleLightKind()``
+    /// documents as measured in different units.
+    private static func intensityUnit(_ kind: LightKind) -> String {
+        switch kind {
+        case .directional: "lx"
+        case .point, .spot: "lm"
+        }
+    }
+}
+
+/// `value` rounded to two decimals, without Foundation: `-2.00`, `0.50`.
+/// Values too large for exact hundredths fall back to Swift's own spelling.
+func formatted(_ value: Float) -> String {
+    guard value.isFinite, abs(value) < 1e12 else { return "\(value)" }
+    let hundredths = Int((Double(value) * 100).rounded())
+    let magnitude = abs(hundredths)
+    let fraction = magnitude % 100
+    return (hundredths < 0 ? "-" : "") + "\(magnitude / 100)." + (fraction < 10 ? "0" : "") + "\(fraction)"
+}
+
+#endif

@@ -33,9 +33,11 @@ struct WebDemoStateTests {
         #expect(painted(host.pump(size: size)).contains("count 1 "))
         host.handle(.key(.enter))
         #expect(painted(host.pump(size: size)).contains("count 2 "))
+        // Four demo slots (count, step, name, notifications) plus the
+        // TextField's cursor slot (ADR 0014).
         let live = host.reactiveStateCount
         let transient = host.transientStateIDs
-        #expect(live == 4)
+        #expect(live == 5)
         #expect(transient.isEmpty)
     }
 
@@ -76,7 +78,7 @@ struct WebDemoStateTests {
         #expect(painted(left.pump(size: size)).contains("count 1 "))
         let live = (left.reactiveStateCount, right.reactiveStateCount)
         let transient = (left.transientStateIDs, right.transientStateIDs)
-        #expect(live.0 == 4 && live.1 == 4)
+        #expect(live.0 == 5 && live.1 == 5)
         #expect(transient.0.isEmpty && transient.1.isEmpty)
     }
 

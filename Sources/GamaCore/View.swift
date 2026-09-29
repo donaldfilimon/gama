@@ -29,6 +29,11 @@ public struct BuildContext {
     /// the environment names an identity. Reserved shortcuts are dropped
     /// by the host; see ``View/actionIdentity(_:shortcut:)``.
     public var registerNamedAction: (ActionID, Key?, @escaping () -> Void) -> Void
+    /// Registers a native region (ADR 0016) with the owning host, pairing the
+    /// region's interactive node with the application's region identity. The
+    /// default is a no-op, so a host-less build renders the fallback and
+    /// reports no regions.
+    public var registerNativeRegion: (NodeID, NativeRegionID) -> Void
     /// The owning host's `@Reactive` storage; `nil` for host-less rendering,
     /// which keeps every slot on instance-local storage.
     package var stateStore: HostStateStore? = nil
@@ -44,7 +49,8 @@ public struct BuildContext {
         registerKeyHandler: @escaping (
             NodeID, @escaping (Key) -> Bool
         ) -> Void = { _, _ in },
-        registerNamedAction: @escaping (ActionID, Key?, @escaping () -> Void) -> Void = { _, _, _ in }
+        registerNamedAction: @escaping (ActionID, Key?, @escaping () -> Void) -> Void = { _, _, _ in },
+        registerNativeRegion: @escaping (NodeID, NativeRegionID) -> Void = { _, _ in }
     ) {
         self.id = id
         self.inheritedStyle = inheritedStyle
@@ -52,6 +58,7 @@ public struct BuildContext {
         self.registerAction = registerAction
         self.registerKeyHandler = registerKeyHandler
         self.registerNamedAction = registerNamedAction
+        self.registerNativeRegion = registerNativeRegion
     }
 
     /// The context for the child at `index`: identity descends one step;
