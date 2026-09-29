@@ -2,11 +2,12 @@
 
 ## Repository Identity
 
-- This is the SwiftPM Gama Framework checkout. `~/dev/active/gama-qt` is an unrelated Qt browser app.
+- This is the SwiftPM Gama Framework checkout. The Qt browser app formerly at `~/dev/active/gama-qt` now lives in `qt/` (below); it is unrelated framework-wise and only shares the name.
 - The module graph is `Package.swift`'s products and targets. Treat any other module list, or a `gama` CLI, as a design vision, not this checkout. Do not add targets to match it.
 - The umbrella path is `Sources/gama` and the test path is `Tests/gamaTests`. A wrong-case `Sources/Gama` or `Tests/GamaTests` directory is not in the package. Linux CI is case-sensitive.
 - The Android demo target path is `Examples/Android`, not a `Sources/GamaAndroidDemo` directory. JNI and Gradle stay there.
 - `GamaStudio/` is a separate SwiftPM package (the Gama Studio 3D authoring app) with its own `AGENTS.md` and gate (`cd GamaStudio && ./tools/check.sh`). It depends on this framework by path (`.package(path: "..")`), is not a framework product, and is not in `scripts/check.sh` or CI. Framework changes to the Apple host or layout can break its gate.
+- `qt/` is a separate SwiftPM package (Gama Qt, a SwiftUI browser shell over a Swift/C++23 bridge to Qt 6), folded in from `~/dev/active/gama-qt` on 2026-09-28 with its history. It has its own `AGENTS.md` and gate (`cd qt && env -u TOOLCHAINS ./Scripts/check.sh`, verdict `check.sh: PASSED`), builds with Xcode's default Swift 6.4 toolchain rather than the snapshot pin, needs Homebrew Qt 6 (`/opt/homebrew`, or `QT_PREFIX`), does not depend on the framework, and is not in `scripts/check.sh` or CI. Its `GamaCore`, `Gama` and `GamaTests` modules are unrelated code that share the framework's names; rename them before qt/ ever depends on the framework.
 
 ## Toolchain And Commands
 

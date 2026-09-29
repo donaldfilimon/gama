@@ -15,11 +15,24 @@ depends on this framework by path (`.package(path: "..")`), and is in neither
 `scripts/check.sh` nor CI, so run its gate yourself after framework changes to
 the Apple host or layout.
 
+`qt/` is a third, separate SwiftPM package: Gama Qt, a SwiftUI/SwiftData
+browser shell over a Swift/C++23 bridge to Qt 6, folded in with its history on
+2026-09-28 from the former local-only `~/dev/active/gama-qt` repository. It
+has its own `AGENTS.md` and gate (`cd qt && env -u TOOLCHAINS
+./Scripts/check.sh`, verdict `check.sh: PASSED`), uses Xcode's default Swift
+6.4 toolchain (not this repo's snapshot pin) plus Homebrew Qt 6, does **not**
+depend on the framework, and is in neither `scripts/check.sh` nor CI; no
+framework gate scans it. Its `GamaCore` library, `Gama` executable and
+`GamaTests` target share names with the framework's modules but are unrelated
+code: harmless while the two packages never share a build graph, and to be
+renamed (as Studio renamed its module to `GamaAuthoring`) before qt/ ever
+depends on the framework.
+
 This is the canonical checkout of `donaldfilimon/gama` — the Gama Framework
 umbrella (retained UI core, plugins, macros, drawing,
 TUI/Apple/WASM/Embed/MLIR backends, and platform capability services). The Qt
-adapter is gone; `~/dev/active/gama-qt` is an unrelated Qt browser app that
-shares only the name.
+adapter is gone from the framework; the Qt browser app in `qt/` is a separate
+package that shares only the name.
 
 ## Toolchain — this repo overrides the machine-wide Swift rule
 

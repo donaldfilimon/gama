@@ -7,6 +7,10 @@ MLIR, and Embedded Swift integrations.
 The `GamaStudio/` directory is a separate SwiftPM package, Gama Studio, a 3D
 authoring app built on the framework; see its own `AGENTS.md`.
 
+The `qt/` directory is another separate SwiftPM package, Gama Qt, a SwiftUI
+browser shell over a Swift/C++23 bridge to Qt 6. It does not use the framework
+and builds with Xcode's default toolchain; see its own `AGENTS.md`.
+
 ```swift
 import GamaCore
 import GamaMacros
