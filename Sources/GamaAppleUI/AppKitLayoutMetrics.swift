@@ -14,7 +14,8 @@
     ///
     /// Text is measured with `NSAttributedString.boundingRect` in the
     /// system font (bold and italic through the font's symbolic traits) and
-    /// cached by string, style, and wrap width. Controls are sized from a
+    /// cached by string, style, and wrap width, in a cache bounded to a
+    /// fixed number of entries. Controls are sized from a
     /// reusable prototype control's `fittingSize`. One authored cell is
     /// ``cellSize`` points: the rounded-up size of `"M"` in the system font.
     ///
@@ -35,6 +36,15 @@
         /// How many text measurements missed the cache and reached AppKit.
         /// Package-only, so a test can prove the cache is consulted.
         package private(set) var textMeasurementCount = 0
+
+        /// The most text measurements the cache holds. When a miss would
+        /// exceed it, the cache is emptied and refilled from the current
+        /// frame, so text that changes every frame (a counter, a clock, a
+        /// field being typed into) cannot grow memory without bound.
+        package static let textCacheLimit = 1024
+
+        /// How many text measurements the cache holds. Package-only.
+        package var textCacheCount: Int { textCache.count }
 
         private let fontSize = NSFont.systemFontSize
         private var fontCache: [TextAttributes: NSFont] = [:]
@@ -91,6 +101,7 @@
             if let cached = textCache[key] { return cached }
             textMeasurementCount += 1
             let measured = measure(text, attributes: key.attributes, width: width)
+            if textCache.count >= Self.textCacheLimit { textCache.removeAll(keepingCapacity: true) }
             textCache[key] = measured
             return measured
         }

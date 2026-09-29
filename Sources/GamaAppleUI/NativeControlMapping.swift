@@ -84,6 +84,26 @@
         /// Host-owned decoration showing the border title; not a presented
         /// view, so the op applier leaves it in place.
         var titleLabel: NSTextField?
+        /// The fill, or `nil` for none.
+        var fillColor: NSColor? { didSet { applyLayerColors() } }
+        /// The border color, or `nil` for no border. Often a dynamic
+        /// system color, so it is re-resolved on every appearance change.
+        var strokeColor: NSColor? { didSet { applyLayerColors() } }
+
+        override func viewDidChangeEffectiveAppearance() {
+            super.viewDidChangeEffectiveAppearance()
+            applyLayerColors()
+        }
+
+        /// Resolves the colors against this view's appearance into the
+        /// layer, which only holds static `CGColor`s.
+        func applyLayerColors() {
+            guard let layer else { return }
+            effectiveAppearance.performAsCurrentDrawingAppearance {
+                layer.backgroundColor = fillColor?.cgColor
+                layer.borderColor = strokeColor?.cgColor
+            }
+        }
     }
 
     /// An interactive node with no descriptor or region: takes focus when
@@ -102,7 +122,7 @@
         }
 
         override func keyDown(with event: NSEvent) {
-            guard let key = NativeKeyTranslation.key(from: event) else {
+            guard let key = AppKitKeyTranslation.key(from: event) else {
                 super.keyDown(with: event)
                 return
             }
@@ -212,13 +232,14 @@
                 break
             case .container(let background, let border, let title):
                 guard let container = view as? NativeContainer, let layer = container.layer else { return }
-                layer.backgroundColor = background.isDefault ? nil : color(background, fallback: .clear).cgColor
+                container.fillColor = background.isDefault ? nil : color(background, fallback: .clear)
                 if let border {
                     layer.borderWidth = 1
-                    layer.borderColor = color(style.foreground, fallback: .separatorColor).cgColor
+                    container.strokeColor = color(style.foreground, fallback: .separatorColor)
                     layer.cornerRadius = border == .rounded ? 6 : 0
                 } else {
                     layer.borderWidth = 0
+                    container.strokeColor = nil
                     layer.cornerRadius = 0
                 }
                 updateTitle(of: container, title: title, style: style, metrics: metrics)
@@ -303,9 +324,9 @@
         }
     }
 
-    /// Translates an AppKit key event into a Gama `Key`, with the same table
-    /// the cell host uses.
-    enum NativeKeyTranslation {
+    /// Translates an AppKit key event into a Gama `Key`. The one table both
+    /// AppKit hosts use: `GamaHostView` and `GamaNativeHostView`.
+    enum AppKitKeyTranslation {
         @MainActor
         static func key(from event: NSEvent) -> Key? {
             switch event.keyCode {

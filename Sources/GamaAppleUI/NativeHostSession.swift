@@ -38,10 +38,32 @@
             let next = PresentedNode.tree(from: advanced.frame, controls: controls, regions: pump.nativeRegions)
             let ops = PresentationDiff.between(tree, next)
             apply(ops, in: host, metrics: metrics)
+            reconcileControlValues()
             tree = next
             enforceOrder(of: next, parent: nil, in: host)
             linkKeyViews()
             return AdvanceOutcome(produced: true, followUp: advanced.followUp)
+        }
+
+        /// Writes each text field's and checkbox's value from the latest
+        /// descriptors into its AppKit control. AppKit changes a control's
+        /// value before Gama sees the edit, and the diff compares only
+        /// descriptors, so a binding that clamps or refuses an edit would
+        /// otherwise leave the control showing a value the model rejected.
+        func reconcileControlValues() {
+            for (id, descriptor) in controls {
+                switch descriptor {
+                case .textField(_, let text, _, _):
+                    guard let field = views[.node(id)] as? NativeTextField, field.stringValue != text else { continue }
+                    field.stringValue = text
+                case .toggle(_, let isOn, _):
+                    let state: NSControl.StateValue = isOn ? .on : .off
+                    guard let checkbox = views[.node(id)] as? NativeButton, checkbox.state != state else { continue }
+                    checkbox.state = state
+                case .button, .progress:
+                    continue
+                }
+            }
         }
 
         /// The view presenting `id`, if any.

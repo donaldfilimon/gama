@@ -90,6 +90,17 @@
             #expect(measurer.textMeasurementCount == count + 1)
         }
 
+        @Test("the text cache is bounded, so live text cannot grow it without limit")
+        func cacheBounded() {
+            let measurer = AppKitLayoutMetrics()
+            let metrics = measurer.metrics
+            for value in 0..<(AppKitLayoutMetrics.textCacheLimit + 50) {
+                _ = metrics.textSize("value \(value)", .plain, nil)
+            }
+            #expect(measurer.textCacheCount <= AppKitLayoutMetrics.textCacheLimit)
+            #expect(measurer.textCacheCount > 0)
+        }
+
         @Test("control sizes are positive for every mapped control")
         func controlSizes() throws {
             let metrics = AppKitLayoutMetrics().metrics
@@ -365,6 +376,121 @@
             let after = try view(NSButton.self, in: host, where: Self.isButton)
             #expect(after === button)
             #expect(after.title == "Pushed")
+        }
+
+        private struct ClampApp: App {
+            let name = Signal("abcde")
+            let flag = Signal(false)
+            var scenes: some Scene {
+                Window("Clamp", id: "main", role: .primary) {
+                    VStack {
+                        TextField(
+                            "Name",
+                            text: Binding(get: { name.get() }, set: { name.set(String($0.prefix(5))) }))
+                        Toggle("Locked", isOn: Binding(get: { flag.get() }, set: { _ in }))
+                    }
+                }
+            }
+        }
+
+        @Test("a binding that clamps an edit puts the field back in line with the model")
+        func clampedEdit() throws {
+            let app = ClampApp()
+            let host = try installed(app)
+            let field = try view(NSTextField.self, in: host, where: Self.isField)
+            field.stringValue = "abcdef"
+            field.delegate?.controlTextDidChange?(
+                Notification(name: NSControl.textDidChangeNotification, object: field))
+            #expect(app.name.get() == "abcde")
+            #expect(field.stringValue == "abcde")
+        }
+
+        @Test("a binding that refuses a toggle puts the checkbox back")
+        func refusedToggle() throws {
+            let app = ClampApp()
+            let host = try installed(app)
+            let checkbox = try view(NSButton.self, in: host, where: Self.isToggle)
+            checkbox.performClick(nil)
+            #expect(app.flag.get() == false)
+            #expect(checkbox.state == .off)
+        }
+
+        private struct LabelShapeApp: App {
+            let composite = Signal(true)
+            var scenes: some Scene {
+                Window("Shape", id: "main", role: .primary) {
+                    Button(action: {}) {
+                        if composite.get() {
+                            HStack {
+                                Text("A")
+                                Text("B")
+                            }
+                        } else {
+                            Text(" Go ")
+                        }
+                    }
+                }
+            }
+        }
+
+        @Test("a button whose label switches shape is rebuilt as the matching view")
+        func buttonLabelShapeSwitch() throws {
+            let app = LabelShapeApp()
+            let host = try installed(app)
+            let buttonNode = try node(in: host, where: Self.isButton)
+            let compositeView = try #require(host.presentedView(for: buttonNode.id))
+            #expect(!(compositeView is NSButton))
+            let labelA = try view(NSTextField.self, in: host, where: Self.isLabel("A"))
+            #expect(labelA.isDescendant(of: compositeView))
+
+            app.composite.set(false)
+            host.invalidate()
+            let titled = try #require(host.presentedView(for: buttonNode.id) as? NSButton)
+            #expect(titled.title == "Go")
+            #expect(titled.subviews.allSatisfy { !($0 is NSTextField) })
+            #expect(compositeView.superview == nil)
+
+            app.composite.set(true)
+            host.invalidate()
+            let again = try #require(host.presentedView(for: buttonNode.id))
+            #expect(!(again is NSButton))
+            let labelB = try view(NSTextField.self, in: host, where: Self.isLabel("B"))
+            #expect(labelB.isDescendant(of: again))
+            #expect(titled.superview == nil)
+        }
+
+        private struct BorderApp: App {
+            var scenes: some Scene {
+                Window("Border", id: "main", role: .primary) {
+                    Text("Boxed").border()
+                }
+            }
+        }
+
+        @Test("a default border color follows an appearance change")
+        func borderFollowsAppearance() throws {
+            let host = try installed(BorderApp())
+            let found = try node(in: host, where: {
+                if case .container = $0 { return true }
+                return false
+            })
+            let container = try #require(host.presentedView(for: found.id))
+            func separator(_ name: NSAppearance.Name) -> CGColor? {
+                var color: CGColor?
+                NSAppearance(named: name)?.performAsCurrentDrawingAppearance {
+                    color = NSColor.separatorColor.cgColor
+                }
+                return color
+            }
+            let light = try #require(separator(.aqua))
+            let dark = try #require(separator(.darkAqua))
+            #expect(light != dark)
+            host.appearance = NSAppearance(named: .aqua)
+            container.viewDidChangeEffectiveAppearance()
+            #expect(container.layer?.borderColor == light)
+            host.appearance = NSAppearance(named: .darkAqua)
+            container.viewDidChangeEffectiveAppearance()
+            #expect(container.layer?.borderColor == dark)
         }
 
         @Test("the surface is laid out in points, not cells")

@@ -111,10 +111,15 @@ the rounded size of `"M"` in the system font. Each frame is reduced to a
 `PresentedNode` tree and the `PresentationDiff` between frames is applied to
 subviews, so a control keeps its identity (and a text field its editor)
 across frames. Buttons and checkboxes call `FrameHost.activate(_:)`, text
-edits write the field's binding, first-responder changes report back through
+edits go through `FrameHost.setText(_:_:)` (which rebinds per-surface
+`@Reactive` state first, like any action), first-responder changes report back through
 `FrameHost.focus(_:)`, and `nextKeyView` follows Gama's focus order. Text
 with no explicit color uses `labelColor`, so light and dark appearance
-follow the system; the cell-only focus highlight is not drawn.
+follow the system; the cell-only focus highlight is not drawn, including the
+wrapper a focused button puts around a composite label. After every frame
+the host writes each text field's and checkbox's value from the new
+descriptor into the AppKit control, so a binding that clamps or refuses an
+edit puts the control back in line with the model.
 
 `GamaShell.run(_:presentation: .native)` opens every window with this host,
 sized in points. `gama-apple-demo --native` opens the demo that way, and
@@ -123,5 +128,7 @@ push button, checkbox, text field, progress indicator, and label are
 presented as AppKit views.
 
 Known limits: a progress view's label is its accessibility label only, not
-drawn; there is no UIKit native host; no row in
+drawn; there is no UIKit native host; layout cost with
+`AppKitLayoutMetrics` against `.cell` metrics has not been measured
+(`docs/Performance.md` has no entry for it); no row in
 [`Capabilities.md`](../Capabilities.md) covers this host yet.

@@ -62,6 +62,20 @@ application resident. A Dock reopen with no live windows recreates the primary
 scene from its initial payload. Only explicit Quit or Command-Q terminates and
 emits `willTerminate`.
 
+## Native presentation
+
+`GamaShell.run(_:presentation:)` takes a `GamaShellPresentation`. The
+default, `.cells`, hosts every window in a `GamaHostView` painting the cell
+grid. `.native` hosts every window in a `GamaNativeHostView` instead, which
+presents Gama views as AppKit controls laid out in points (ADR 0017); each
+scene's initial cell size is converted with that host's probed cell size.
+Window ownership, lifecycle, and close behavior are the same in both modes.
+`gama-apple-demo --native` opens the demo with native presentation, and
+`gama-apple-demo --native-smoke` hosts it offscreen and exits 0 only when
+the expected AppKit controls are presented. The host itself, its control
+mapping, and its known limits are described in
+[AppleUI.md](AppleUI.md).
+
 ## Demo and supplemental smoke
 
 Run the unbundled demonstration:

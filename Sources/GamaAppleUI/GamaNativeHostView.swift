@@ -20,8 +20,10 @@
     /// `NSProgressIndicator`, dividers are `NSBox` separators, and
     /// backgrounds and borders are plain layer-backed views, all at frames
     /// `LayoutEngine` computed in points with ``AppKitLayoutMetrics``.
-    /// Buttons and checkboxes call `FrameHost.activate(_:)`, text edits write
-    /// the field's binding, and first-responder changes report back through
+    /// Buttons and checkboxes call `FrameHost.activate(_:)`, text edits go
+    /// through `FrameHost.setText(_:_:)`, each edited control is put back in
+    /// line with the model after the frame, and first-responder changes
+    /// report back through
     /// `FrameHost.focus(_:)`; `FrameHost` stays the source of focus order,
     /// which the host mirrors into `nextKeyView`. Native regions (ADR 0016)
     /// work as they do in ``GamaHostView``, with frames in points.
@@ -170,6 +172,9 @@
             // focused; record it so the frame does not re-assign it.
             syncedFocus = session.pump.focusedID
             if session.pump.needsFrame { drive() }
+            // A checkbox flipped itself before the action ran; put it back
+            // when the binding refused the change, frame or not.
+            session.reconcileControlValues()
             afterEventDispatch?()
         }
 
@@ -181,14 +186,16 @@
             if session.pump.needsFrame { drive() }
         }
 
-        /// Writes a text field's edit through its binding.
+        /// Writes a text field's edit through its binding with
+        /// `FrameHost.setText(_:_:)`, which rebinds per-surface state first,
+        /// then presents the result and puts the field back in line with
+        /// the model when the binding changed the edit.
         public func controlTextDidChange(_ notification: Notification) {
-            guard let field = notification.object as? NativeTextField, let id = field.nodeID,
-                let session, case .textField(_, _, _, let setText)? = session.controls[id]
+            guard let field = notification.object as? NativeTextField, let id = field.nodeID, let session
             else { return }
-            setText(field.stringValue)
-            session.pump.invalidate()
-            drive()
+            session.pump.setText(id, field.stringValue)
+            if session.pump.needsFrame { drive() }
+            session.reconcileControlValues()
             afterEventDispatch?()
         }
 
@@ -321,7 +328,7 @@
         /// Routes keys that reach the host itself (no control has focus) to
         /// `FrameHost`.
         public override func keyDown(with event: NSEvent) {
-            guard let key = NativeKeyTranslation.key(from: event) else { return }
+            guard let key = AppKitKeyTranslation.key(from: event) else { return }
             send(.key(key))
         }
 
