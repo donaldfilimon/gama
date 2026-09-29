@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 # Deliberately pin the existing policy scope independently of the shell arrays.
 TARGETS = (
     "GamaCore", "GamaPlugin", "GamaDraw", "GamaMacros", "GamaMacrosImpl",
-    "gama", "GamaTUI", "GamaWASM", "GamaAppleUI", "GamaAppleShell",
+    "gama", "GamaTUI", "GamaWASM", "GamaAppleUI", "GamaAppleShell", "GamaSwiftUI",
     "GamaEmbed", "GamaEmbedABI", "GamaMLIR",
 )
 

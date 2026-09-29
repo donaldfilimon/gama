@@ -2,8 +2,9 @@
 
 Status: Direct AppKit hosting and the macOS shell are implemented and locally
 runtime proven; AppKit is hosted proven. UIKit branches are compile proven for
-iOS, tvOS, and visionOS only. Gama currently ships no SwiftUI, SwiftData, or
-Foundation Models product target.
+iOS, tvOS, and visionOS only. `GamaSwiftUI` embeds a primary scene in SwiftUI
+and has no evidence-ledger row yet. Gama ships no SwiftData or Foundation
+Models product target.
 
 This guide explains where Gama ends and an Apple application begins. The
 portable renderer owns application scene, layout, focus, action, and draw-list
@@ -18,6 +19,7 @@ model sessions, system presentation, and credentialed distribution.
 | CoreGraphics presentation in an existing native view | `GamaAppleUI` |
 | A complete macOS AppKit application and multi-window policy | `GamaAppleShell` |
 | Foundation-backed monotonic clock/files/logging | `GamaPlatformServices` behind interfaces |
+| One Gama surface inside a SwiftUI hierarchy | `GamaSwiftUI` |
 | SwiftUI navigation, commands, toolbar, settings, or Liquid Glass | application presentation layer |
 | SwiftData schema, model container, migrations, persistence | application data layer |
 | Foundation Models session, tools, prompts, generation | application/service layer |
@@ -100,12 +102,13 @@ or physical devices. Those remain separate runtime acceptance layers.
 
 ## SwiftUI composition
 
-There is no current `GamaSwiftUI` product. A SwiftUI application may still
-host an AppKit/UIKit-backed surface using its own representable/coordinator
-layer, but that bridge is application code until a separately designed and
-tested framework product lands.
+`GamaSwiftUI` provides `GamaView`, which validates an app's scene graph in
+its initializer and wraps `GamaHostView` through `NSViewRepresentable` or
+`UIViewRepresentable`; see [SwiftUI embedding](backends/SwiftUI.md). It shows
+the primary scene only and delivers no lifecycle events, so an application
+that needs more still writes its own representable around `GamaHostView`.
 
-The intended ownership shape is:
+The ownership shape `GamaView` follows:
 
 ```text
 SwiftUI scene/navigation/commands/native chrome
@@ -126,8 +129,9 @@ Important constraints:
 - Liquid Glass belongs to native control chrome with availability and fallback
   behavior; it does not enter `GamaCore` or the draw-list wire format.
 
-Do not copy proposed `GamaSwiftUI` APIs out of a dated roadmap and describe
-them as available source. Plans are not products.
+Do not copy proposed APIs out of a dated roadmap or draft (SwiftData
+persistence, native presentation selection) and describe them as available
+source. Plans are not products.
 
 ## SwiftData
 

@@ -65,6 +65,7 @@ let package = Package(
         .library(name: "GamaWASM", targets: ["GamaWASM"]),
         .library(name: "GamaAppleUI", targets: ["GamaAppleUI"]),
         .library(name: "GamaAppleShell", targets: ["GamaAppleShell"]),
+        .library(name: "GamaSwiftUI", targets: ["GamaSwiftUI"]),
         // Static so the C entry points fold into the host binary/.so.
         .library(name: "GamaEmbed", type: .static, targets: ["GamaEmbed", "GamaEmbedABI"]),
         .library(name: "GamaMLIR", targets: ["GamaMLIR"]),
@@ -188,6 +189,15 @@ let package = Package(
             swiftSettings: strictLibrary
         ),
 
+        // SwiftUI embedding: GamaView wraps GamaAppleUI's GamaHostView through
+        // NSViewRepresentable / UIViewRepresentable. The source compiles to an
+        // inert target when SwiftUI or a platform view toolkit is unavailable.
+        .target(
+            name: "GamaSwiftUI",
+            dependencies: ["GamaCore", "GamaAppleUI"],
+            swiftSettings: strictLibrary
+        ),
+
         // ── Embed backend: flat C ABI (events in, DrawList bytes out)
         //    for Android/NDK, game engines, and non-Swift hosts.
         .target(
@@ -278,7 +288,7 @@ let package = Package(
                 "Gama", "GamaCore", "GamaPlugin", "GamaPlatformServices",
                 "GamaMacros", "GamaMLIR",
                 "GamaTUI", "GamaDraw", "GamaEmbed", "GamaMacrosImpl",
-                "GamaAppleUI", "GamaAppleShell", "GamaWASM", "GamaWebDemo",
+                "GamaAppleUI", "GamaAppleShell", "GamaSwiftUI", "GamaWASM", "GamaWebDemo",
                 .product(name: "SwiftSyntaxMacroExpansion", package: "swift-syntax"),
                 .product(name: "SwiftSyntaxMacrosGenericTestSupport", package: "swift-syntax")
             ],

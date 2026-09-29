@@ -77,6 +77,14 @@ keeps this track out of the file tracks 1 and 2 edit.
   services target owns it.
 - **Deferred:** Gama hosting SwiftUI views as controls. That is a variant of
   track 3's presentation mapping and waits for it.
+- **Ahead of track 3:** the `GamaHostView`-wrapping half of the SwiftUI
+  embedding was deliberately built ahead of track 3, on a feature branch,
+  pending owner confirmation of this track's scope. It depends on nothing
+  track 3 adds; switching it to `GamaNativeHostView` still waits for track 3.
+- **Specs:** [SwiftUI embedding design](2026-09-29-swiftui-embedding-design.md)
+  (built on a feature branch, wrapping `GamaHostView` first) and the
+  [SwiftData persistence draft](drafts/2026-09-29-swiftdata-reactive-persistence-draft.md)
+  (open questions only).
 
 ### Track 5: Other native hosts
 
@@ -84,7 +92,8 @@ A `UIKitNativeHostView` following track 3's mapping table (iOS, iPadOS,
 visionOS; UIKit scene ownership is already listed as deferred scope in
 `tasks/todo.md`). Then an Android Views host over the existing JNI example.
 Windows stays blocked: no Windows Swift 6.5-dev toolchain exists and no
-Windows runner is registered.
+Windows runner is registered. The UIKit mapping and its open questions are in
+the [UIKit native host draft](drafts/2026-09-29-uikit-native-host-draft.md).
 
 ## Parallel execution
 
@@ -94,7 +103,8 @@ disjoint regions: track 1 the font and cell measurement, track 2 the event
 overrides. Whichever lands second rebases onto the first. Track 3 can run
 alongside them because its host is a new file; its Task 2 edits
 `FrameHost.swift`, which track 2 also edits, so tracks 2 and 3 merge in
-sequence. Tracks 4 and 5 follow track 3.
+sequence. Tracks 4 and 5 follow track 3, except the `GamaHostView`-wrapping
+SwiftUI embedding, which was built ahead of it pending owner confirmation.
 
 Every track lands as its own PR on `main` and is gated locally by
 `scripts/check-apple.sh` and then `scripts/check.sh`, reading each verdict
