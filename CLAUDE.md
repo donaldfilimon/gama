@@ -572,12 +572,13 @@ composition and bidi reordering. **Native regions exist** (ADR 0016; design
 is an `interactive` node registered like an action, and
 `GamaHostView.attach(_:to:)` fills it on Apple. Tab out of a native view,
 overlays, sub-cell placement, and Embed/WASM publication are still open.
-**Native presentation is Proposed, not built:** ADR 0017 (awaiting owner
-review; design `docs/superpowers/specs/2026-09-23-native-presentation-design.md`)
-would let a GUI host present Gama views as platform controls, superseding
-0001's widget clause and part of 0016 only if accepted. Nothing in `Sources/`
-implements it; read `docs/adr/0000-index.md` for its current status before
-building on either ADR. Building toward any of these starts from
+**Native presentation is accepted but mostly unbuilt:** ADR 0017 (accepted
+2026-09-29; design `docs/superpowers/specs/2026-09-23-native-presentation-design.md`,
+plan `docs/superpowers/plans/2026-09-23-native-presentation.md`) lets a GUI
+host present Gama views as platform controls, superseding 0001's widget clause
+and 0016's "What 0001 still forbids". Only `LayoutMetrics` (plan Task 1)
+exists in `Sources/`; `ControlDescriptor`, the presentation tree, and
+`GamaNativeHostView` do not. Building toward any of these starts from
 `docs/Plugins.md` or a new file under `docs/superpowers/specs/drafts/`, not
 from assuming the manifesto's module boundary already exists.
 
