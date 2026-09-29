@@ -11,6 +11,11 @@ written design for review; the implementation plan
 approved. Nothing is claimed in `docs/Capabilities.md` until an
 implementation has evidence at the layer that evidence supports.
 
+*2026-09-29:* ADR numbers renumbered. 0017 went to native presentation, so
+the pointer ADR is 0018 and the dock ADR is 0019. Native regions (PR #107)
+are now on `main`. Phases 1-2 are track 2 of the
+[native UI roadmap](2026-09-29-native-ui-roadmap-design.md).
+
 ## Why
 
 Gama apps should feel at home on iOS/iPadOS, macOS and, later, Windows, and
@@ -86,7 +91,7 @@ What A must do itself, because of how `Layout.swift` works today:
 
 ## 1. Pointer input model (GamaCore)
 
-A new `PointerGesture.swift` in `Sources/GamaCore`, and ADR 0017 "Pointer gestures
+A new `PointerGesture.swift` in `Sources/GamaCore`, and ADR 0018 "Pointer gestures
 are host-owned".
 
 **Event.** One additive case, `InputEvent.pointerEvent(PointerEvent)`:
@@ -172,7 +177,7 @@ Pure event mapping, one phase of work:
 
 Standard library only; depends on GamaCore; registered in
 `check-boundaries.sh`, `portable-global-state.py` and `package-graph.py`.
-ADR 0018 "Docking is a library over existing IR".
+ADR 0019 "Docking is a library over existing IR".
 
 **Layout tree.**
 
@@ -314,9 +319,9 @@ Swift Testing only; value goldens, as the rest of the suite.
 
 One Gama PR per phase; gama-studio has no remote and commits on `main`.
 
-1. Pointer model and ADR 0017.
+1. Pointer model and ADR 0018.
 2. Backend translation.
-3. `GamaDock` target and ADR 0018.
+3. `GamaDock` target and ADR 0019.
 4. Native regions in panes and the ADR 0016 addendum (requires PR #107 on
    `main`).
 5. gama-studio: bump its gama pin from `2ef325c` to the `main` revision that
