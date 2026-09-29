@@ -107,18 +107,11 @@ public indirect enum RenderNode: Hashable, Sendable {
     /// in layout.
     @available(*, deprecated, message: "Flexibility is per-axis; use flexPriority(along:). This answer is the disjunction of both axes and layout does not consult it.")
     public var flexPriority: FlexPriority {
-        switch self {
-        case .spacer: return .flexible(weight: 1)
-        case .flexFrame(_, let maxW, _, let maxH, _, _):
-            return (maxW == .max || maxH == .max) ? .flexible(weight: 1) : .fixed
-        case .padding(_, let c), .border(_, _, _, let c), .background(_, let c),
-             .styled(_, let c), .interactive(_, _, let c):
-            return c.flexPriority
-        // Exhaustive on purpose: a new case must choose its flex behavior
-        // here instead of silently inheriting `.fixed`.
-        case .empty, .text, .stack, .overlay, .group, .divider, .frame:
-            return .fixed
-        }
+        // Derived from the per-axis answer so the two cannot drift; every
+        // flexible answer has weight 1, so "horizontal, else vertical" is
+        // the disjunction of both axes.
+        let horizontal = flexPriority(along: .horizontal)
+        return horizontal == .fixed ? flexPriority(along: .vertical) : horizontal
     }
 
     /// How this node competes for space along `axis` — the answer the
