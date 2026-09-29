@@ -37,11 +37,7 @@
         /// Converts a grid rectangle to this view's coordinate space using
         /// the measured monospaced cell size.
         func viewRect(forGrid rect: Rect) -> CGRect {
-            CGRect(
-                x: CGFloat(rect.minX) * accessibilityCellSize.width,
-                y: CGFloat(rect.minY) * accessibilityCellSize.height,
-                width: CGFloat(rect.size.width) * accessibilityCellSize.width,
-                height: CGFloat(rect.size.height) * accessibilityCellSize.height)
+            pixelRect(rect)
         }
 
         /// Rebuilds the per-line elements if the frame changed since they
