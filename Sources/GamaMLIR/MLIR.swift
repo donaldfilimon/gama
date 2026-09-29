@@ -10,7 +10,7 @@
 
 import GamaCore
 
-/// Minimal MLIR text builder — SSA names, attributes, regions. Uses the
+/// Minimal MLIR text builder — attributes, regions. Uses the
 /// *generic* op syntax ("dialect.op"(...) {attrs} : type) which is always
 /// parseable without a registered dialect (with -allow-unregistered-dialect).
 ///
@@ -19,14 +19,8 @@ import GamaCore
 struct MLIRBuilder {
     private var lines: [String] = []
     private var indentLevel = 0
-    private var ssaCounter = 0
 
     init() {}
-
-    mutating func fresh() -> String {
-        defer { ssaCounter += 1 }
-        return "%\(ssaCounter)"
-    }
 
     mutating func line(_ s: String) {
         lines.append(String(repeating: "  ", count: indentLevel) + s)
