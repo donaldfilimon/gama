@@ -93,10 +93,22 @@ extension TupleView: ViewCandidates {
 /// under an unconstrained proposal, so it reports its ideal size; it fits
 /// when that size is no larger than ``EnvironmentValues/surfaceSize`` on
 /// both axes. Candidates are measured in order and measuring stops at the
-/// first fit. Measuring builds a candidate with a context whose
+/// first fit. Probing builds a candidate with a context whose
 /// registrations are discarded, so only the chosen candidate registers
 /// actions, key handlers and native regions; it then renders under its own
 /// positional identity, so each candidate keeps distinct state and focus.
+///
+/// **State.** Every candidate is built on every frame, including those
+/// after the first fit, which are built but not measured. The probe keeps
+/// the host's `@Reactive` store, so each candidate's state stays live
+/// whether or not it is the one shown: a counter in one layout survives a
+/// switch to another and back, in either direction, and a candidate is
+/// measured with its live state, so one that its own state pushed out of
+/// fitting stays out rather than being reset and chosen again. This is a
+/// deliberate exception to ADR 0011's rule that a subtree which stops
+/// rendering releases its state: the candidates are declared members of
+/// the tree, shown one at a time. The cost is one probe build of every
+/// candidate per frame, on top of the chosen candidate's real build.
 ///
 /// **Limit.** The choice is made while building, before layout, so it fits
 /// the whole surface, not the frame a parent stack later gives this view.
@@ -131,13 +143,19 @@ public struct ViewThatFits<Candidates: ViewCandidates>: View {
         probe.registerKeyHandler = { _, _ in }
         probe.registerNamedAction = { _, _, _ in }
         probe.registerNativeRegion = { _, _ in }
-        for index in 0..<(count - 1) {
+        // Build every candidate, so each one's `@Reactive` slots are
+        // resolved and kept live by the host's sweep; measure only until
+        // the first fit. The last candidate is the fallback and is never
+        // measured.
+        var chosen: Int? = nil
+        for index in 0..<count {
             let node = candidates.renderCandidate(index, in: probe)
+            guard chosen == nil, index < count - 1 else { continue }
             let ideal = LayoutEngine.measure(node, proposal: .unspecified)
             if ideal.width <= surface.width && ideal.height <= surface.height {
-                return index
+                chosen = index
             }
         }
-        return count - 1
+        return chosen ?? count - 1
     }
 }

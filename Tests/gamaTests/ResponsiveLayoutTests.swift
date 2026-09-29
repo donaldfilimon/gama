@@ -5,6 +5,7 @@
 //  register actions. Goldens read the painted frame back through
 //  `DrawListSerializer` (a `CellSerializer`) and `AccessibilitySnapshot`.
 
+import GamaMacros
 import Testing
 
 @testable import GamaCore
@@ -53,6 +54,58 @@ private struct ResponsiveApp: App {
                     Text("compact")
                 }
                 .actionIdentity(ActionID("compact"))
+            }
+        }
+    }
+}
+
+/// A labelled counter: one `@Reactive` slot and a button that bumps it.
+@Component
+private struct Tally {
+    let label: String
+    @Reactive var count: Int = 0
+
+    var body: some View {
+        Button("\(label) \(count)") { count += 1 }
+    }
+}
+
+/// Two candidates that each hold a `@Reactive` counter: the first needs a
+/// 100-column surface, the second fits anywhere.
+private struct TallyApp: App {
+    var scenes: some Scene {
+        Window("Tallies", id: "main", role: .primary) {
+            ViewThatFits {
+                VStack(spacing: 0) {
+                    Text(wideLine)
+                    Tally(label: "wide")
+                }
+                Tally(label: "narrow")
+            }
+        }
+    }
+}
+
+/// A candidate whose ideal width grows with its own state: 10 columns plus
+/// 20 per press, so the second press pushes it past a 40-column surface.
+@Component
+private struct Grower {
+    @Reactive var count: Int = 0
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Text(String(repeating: "#", count: 10 + 20 * count))
+            Button("grow") { count += 1 }
+        }
+    }
+}
+
+private struct GrowerApp: App {
+    var scenes: some Scene {
+        Window("Grower", id: "main", role: .primary) {
+            ViewThatFits {
+                Grower()
+                Text("fallback")
             }
         }
     }
@@ -139,6 +192,55 @@ struct ResponsiveLayoutTests {
         host.perform(ActionID("wide"))
         host.perform(ActionID("compact"))
         #expect(presses.get() == ["compact", "wide"])
+    }
+
+    @Test("every candidate's @Reactive state stays live, whichever one renders")
+    func everyCandidateKeepsItsState() throws {
+        var host = try FrameHost(app: TallyApp())
+        _ = frameLines(&host, Size(width: 120, height: 40))
+        let liveWhenWide = host.reactiveStateCount
+        #expect(liveWhenWide == 2)
+        _ = frameLines(&host, Size(width: 40, height: 20))
+        let liveWhenCompact = host.reactiveStateCount
+        #expect(liveWhenCompact == 2)
+    }
+
+    @Test("a counter survives a switch away and back, in both directions")
+    func stateSurvivesSwitchesBothWays() throws {
+        let wide = Size(width: 120, height: 40)
+        let compact = Size(width: 40, height: 20)
+        var host = try FrameHost(app: TallyApp())
+
+        // The narrow candidate renders after the wide one in the list.
+        _ = frameLines(&host, compact)
+        host.handle(.key(.enter))
+        #expect(frameLines(&host, compact).contains { $0.contains("narrow 1") })
+        #expect(frameLines(&host, wide).contains { $0.contains("wide 0") })
+        #expect(frameLines(&host, compact).contains { $0.contains("narrow 1") })
+
+        // The wide candidate renders before the narrow one.
+        _ = frameLines(&host, wide)
+        host.handle(.key(.enter))
+        host.handle(.key(.enter))
+        #expect(frameLines(&host, wide).contains { $0.contains("wide 2") })
+        #expect(frameLines(&host, compact).contains { $0.contains("narrow 1") })
+        #expect(frameLines(&host, wide).contains { $0.contains("wide 2") })
+    }
+
+    @Test("a candidate its own state pushed out of fitting stays out")
+    func stateDrivenRejectionIsStable() throws {
+        let size = Size(width: 40, height: 10)
+        var host = try FrameHost(app: GrowerApp())
+        #expect(frameLines(&host, size).contains { $0.contains("grow") })
+        host.handle(.key(.enter))
+        #expect(frameLines(&host, size).contains { $0.contains("grow") })
+        host.handle(.key(.enter))
+        // Thirty columns became fifty: measured with the live count, the
+        // grower no longer fits and the fallback renders.
+        #expect(frameLines(&host, size) == ["fallback"])
+        // Its state was kept, so it does not snap back on the next frame.
+        host.invalidate()
+        #expect(frameLines(&host, size) == ["fallback"])
     }
 
     @Test("host-less rendering has no surface, so the first candidate renders")
