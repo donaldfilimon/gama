@@ -41,6 +41,7 @@ All suites live in `Tests/gamaTests/`:
 | `AccessibilitySnapshotTests.swift` | Accessibility snapshot |
 | `AppleHostAccessibilityTests.swift` | AppKit accessibility bridge |
 | `AppleHostFontCacheTests.swift` | AppKit host styled-font cache |
+| `AppleHostFontScaleTests.swift` | AppKit host font scale; UIKit host Dynamic Type (UIKit builds only, which no gate runs) |
 | `AppleHostNativeRegionTests.swift` | AppKit host native regions |
 | `AppleHostTests.swift` | AppKit host |
 | `AppleShellTests.swift` | AppKit scene shell |
