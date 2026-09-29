@@ -71,6 +71,7 @@ All suites live in `Tests/gamaTests/`:
 | `PlatformServicesTests.swift` | Platform services: scoped filesystem, clock, log |
 | `POSIXTerminalIntegrationTests.swift` | PTY raw-mode restore (Darwin) |
 | `ProgressViewTests.swift` | ProgressView scale awareness |
+| `ResponsiveLayoutTests.swift` | `widthClass` thresholds; `ViewThatFits` choice, fallback, registration isolation and goldens — filter `ResponsiveLayoutTests` |
 | `RunIterationTests.swift` | Run iteration |
 | `RuntimeLoopTests.swift` | Runtime loop |
 | `SceneTests.swift` | Scene graph; window actions; lifecycle — filter `SceneGraphTests` |

@@ -595,6 +595,12 @@ not a `ScrollView` — no clipping, no nested scrolling, no pointer wheel —
 there is still no `Table` type, and `ForEach`/`IdentifiedForEach` stay
 eager by design. Its rows must be uniform height; that is a stated
 precondition, not a bug.
+`ViewThatFits` and `EnvironmentValues.widthClass` adapt to the space a
+view has, but both read `surfaceSize`, which is set before the build: they
+fit the whole surface, not the frame a parent stack later assigns, so a
+`ViewThatFits` nested in a split still measures against the full surface.
+It compares each candidate's ideal size (an unconstrained
+`LayoutEngine.measure`), and only the chosen candidate registers actions.
 
 ## Packaging
 
