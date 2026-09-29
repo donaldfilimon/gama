@@ -121,6 +121,16 @@ usable grid both read the surface's padding back with `getComputedStyle`
 rather than assuming it, so a CSS change cannot silently shift clicks by a
 cell.
 
+**Text size is a CSS custom property.** The surface's font size is
+`--gama-font-size` (default `14px`). `setFontSize(px)` in `gama.js` clamps to
+6...72, sets the property, re-measures the cell and calls `notifyResize()`,
+the path `document.fonts.ready` already uses, so the module sees an ordinary
+resize to a grid of larger or smaller cells. The page's A-, A and A+ buttons
+step it by 2 px or restore 14 px. Browser zoom keeps working as before.
+`Sources/GamaWASM` and both export tiers are unchanged. The browser smoke
+calls `setFontSize(28)` after its state readings and requires a resize to a
+grid smaller on both axes.
+
 **The host uses only the `v2` export tier.** The demo installs with `try?`,
 so a failed install is silent inside the module: `v1` calls then return
 nothing and do nothing, and the page would sit on its boot overlay

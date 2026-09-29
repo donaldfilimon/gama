@@ -210,6 +210,38 @@ function notifyResize() {
   if (booted) setStatus("ready", `ready · ${cols}×${rows} cells · wasm32`);
 }
 
+// ── Text size ──────────────────────────────────────────────────────────
+// The grid font size is the `--gama-font-size` custom property on the
+// surface. A new size re-measures the cell and refits the grid through the
+// same resize path `document.fonts.ready` uses, so the module sees an
+// ordinary resize in cells and nothing on the Swift side changes. The clamp
+// matches the Apple host's 6...72.
+const FONT_SIZE_DEFAULT = 14;
+const FONT_SIZE_STEP = 2;
+let fontSize = FONT_SIZE_DEFAULT;
+
+function setFontSize(px) {
+  const requested = Number(px);
+  const size = Math.min(72, Math.max(6, Number.isFinite(requested) ? Math.round(requested) : FONT_SIZE_DEFAULT));
+  fontSize = size;
+  root.style.setProperty("--gama-font-size", `${size}px`);
+  // Before boot there is no module to resize; boot measures the cell itself.
+  if (!ready || dead) return;
+  cell = cellMetrics();
+  guarded(notifyResize);
+}
+
+for (const [id, next] of [
+  ["gama-font-smaller", () => fontSize - FONT_SIZE_STEP],
+  ["gama-font-reset", () => FONT_SIZE_DEFAULT],
+  ["gama-font-bigger", () => fontSize + FONT_SIZE_STEP],
+]) {
+  document.getElementById(id)?.addEventListener("click", () => {
+    setFontSize(next());
+    root.focus();
+  });
+}
+
 // ── Keyboard: DOM → Gama key codes ─────────────────────────────────────
 // 1=up 2=down 3=left 4=right 5=enter 6=escape 7=tab 8=backspace
 // 9=delete 10=home 11=end 12=pageUp 13=pageDown 100+n=Fn 0=printable
@@ -355,6 +387,16 @@ if (new URLSearchParams(location.search).get("gama-smoke") === "1") {
   root.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   state.push(renderedCount());
+
+  // Text size: doubling the font must reach the module as a resize to a
+  // smaller grid. Read after the three state readings so the pinned
+  // 0->0->1 sequence is untouched.
+  const beforeFont = `${grid.cols}x${grid.rows}`;
+  const resizesBeforeFont = smoke.resizes;
+  setFontSize(28);
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  const afterFont = `${grid.cols}x${grid.rows}`;
+  const fontResizes = smoke.resizes - resizesBeforeFont;
   const accessible = root.getAttribute("role") === "application"
     && root.getAttribute("aria-label")?.includes("Gama Web");
   const rendered = root.textContent.includes("Gama Web");
@@ -362,5 +404,6 @@ if (new URLSearchParams(location.search).get("gama-smoke") === "1") {
     "OK", `frames=${smoke.frames}`, `keys=${smoke.keys}`,
     `pointers=${smoke.pointers}`, `resizes=${smoke.resizes}`,
     `rendered=${rendered}`, `accessible=${accessible}`, `state=${state.join("->")}`,
+    `fontResize=${beforeFont}->${afterFont}`, `fontResizes=${fontResizes}`,
   ].join(";");
 }
