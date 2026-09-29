@@ -101,7 +101,14 @@ callers ignore the result, so new result contracts require a new symbol
 family.
 
 The v3 tier adds rich pointer samples (ADR 0018) beside v1 and v2, which are
-unchanged:
+unchanged. The rule, shared with the C embed ABI ([CEmbed.md](CEmbed.md)):
+a symbol family names a closed contract, and a new entry point joins an
+existing family only when that family's stated contract admits it; otherwise
+it opens the next family number. The C `v1` contract is "status-returning
+calls on a context, with the open `GAMA_EMBED_ERR_*` enum", which admits
+additive calls. The WASM `v2` contract is "exactly the `v1` exports, with
+status results", which is closed, so exports with no `v1` counterpart open
+`v3`. The same rule applied to the same additions gives C `v1` and WASM `v3`.
 
 | Export | Meaning |
 | --- | --- |
@@ -121,7 +128,11 @@ otherwise, `pointercancel` is a cancel, `pointerleave` without a capture is a
 hover outside the grid, and `wheel` accumulates pixel, line or page deltas
 into whole cells (positive rows reveal the lines below). After every sample
 it re-arms one `setTimeout` from `gama_web_v3_pointer_deadline` and delivers
-a stationary sample for the captured pointer when it fires. The surface sets
+a stationary sample for the captured pointer when it fires. Like Gama, the
+page captures one pointer at a time: a second contact's `pointerdown` does
+not replace the captured one, and a deadline Gama still publishes after its
+stationary sample was delivered is not re-armed, so a mismatch cannot spin a
+zero-delay timer. The surface sets
 `touch-action: none` so a touch drag arrives as moves, not a browser pan.
 `GamaWeb.install(app:columns:rows:idiom:)` takes the idiom (desktop by
 default).

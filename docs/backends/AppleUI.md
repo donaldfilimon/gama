@@ -35,8 +35,11 @@ window attach.
 The view translates pointer input into raw `PointerEvent` samples and never
 recognizes a gesture itself: `FrameHost` decides tap, drag, long press,
 hover and scroll with the policy of the idiom the view creates it with
-(desktop on macOS; phone or pad from `traitCollection.userInterfaceIdiom` on
-UIKit, a Mac idiom counting as desktop; vision on visionOS).
+(desktop on macOS; vision on visionOS; on UIKit, from
+`traitCollection.userInterfaceIdiom`: phone for `.phone`, desktop for
+`.mac` (a Catalyst app optimized for Mac), and pad for every other idiom,
+including tvOS, an iPad-idiom Catalyst app, and an iPhone or iPad app
+running on a Mac, which keeps its original idiom).
 
 - **AppKit.** Left, right and other buttons (`mouseDown`/`Dragged`/`Up` and
   the `rightMouse*` and `otherMouse*` families) become down, move and up
@@ -59,15 +62,18 @@ UIKit, a Mac idiom counting as desktop; vision on visionOS).
   the columns to the right, on every backend; the platform's delta is negated
   into that sign.
 - **Long press.** After every sample the view reads the host's
-  `pointerDeadlineMillis` and arms (or cancels) a one-shot main-run-loop
-  timer, which delivers a stationary sample for the pressed pointer at its
+  `pointerDeadlineMillis` and arms (or cancels) a one-shot timer on the
+  main run loop in the common modes (so it fires during event tracking),
+  which delivers a stationary sample for the pressed pointer at its
   last cell. The clock is system uptime, the same one `NSEvent.timestamp`
   and `UITouch.timestamp` count in.
 
 `AppleHostPointerTests` drives real `NSEvent`s through a windowed host: a
 drag that leaves the pad, the secondary button with modifiers, the armed
-deadline and its stationary sample, and the scroll sign. The UIKit paths
-compile for iOS, tvOS and visionOS; no UIKit runtime test drives them.
+deadline and its stationary sample, a second button during a press, the
+timer firing in an event-tracking run-loop mode, and the scroll sign. The
+UIKit paths are written for iOS, tvOS and visionOS; their compile on those
+platforms is not yet measured and no UIKit runtime test drives them.
 Italic font styling resolves through `NSFontDescriptor`/`UIFontDescriptor`
 symbolic traits.
 

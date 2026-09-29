@@ -187,7 +187,7 @@ public final class GamaHostView: GamaPlatformView {
     package private(set) var armedPointerDeadlineMillis: UInt64?
     /// The pressed pointer and where it was last seen, so the deadline sample
     /// is for that same pointer at that same cell.
-    private var pressedPointer: (location: Point, kind: PointerEvent.Kind, pointerID: Int)?
+    private var pressedPointer: (location: Point, kind: PointerEvent.Kind, pointerID: Int, button: Int)?
     /// Sub-cell scroll travel carried to the next scroll event.
     private var scrollRemainder = CGSize.zero
     #if canImport(UIKit)
@@ -259,8 +259,11 @@ public final class GamaHostView: GamaPlatformView {
     }
 
     /// The interaction idiom this host's `FrameHost` recognizes gestures
-    /// with: desktop on macOS, and on UIKit the device idiom (a Mac Catalyst
-    /// or "designed for iPad" app on a Mac counts as desktop).
+    /// with: desktop on macOS, vision on visionOS, and on UIKit the
+    /// `userInterfaceIdiom`: phone for `.phone`, desktop for `.mac` (a Mac
+    /// Catalyst app optimized for Mac), and pad for everything else,
+    /// including tvOS, an iPad-idiom Catalyst app, and an iPhone or iPad
+    /// app running on a Mac, which reports its original idiom.
     package var interactionIdiom: InteractionIdiom {
         #if canImport(AppKit)
             return .desktop
@@ -542,12 +545,22 @@ public final class GamaHostView: GamaPlatformView {
     private func sendPointer(_ sample: PointerEvent) {
         switch sample.phase {
         case .down:
-            pressedPointer = (sample.location, sample.kind, sample.pointerID)
+            // Mirrors FrameHost: while a press is held, only the same
+            // pointer and button pressing again (a lost release) replaces it.
+            if pressedPointer == nil
+                || (pressedPointer?.pointerID == sample.pointerID && pressedPointer?.button == sample.button)
+            {
+                pressedPointer = (sample.location, sample.kind, sample.pointerID, sample.button)
+            }
         case .move:
             if pressedPointer?.pointerID == sample.pointerID {
                 pressedPointer?.location = sample.location
             }
-        case .up, .cancel:
+        case .up:
+            if pressedPointer?.pointerID == sample.pointerID, pressedPointer?.button == sample.button {
+                pressedPointer = nil
+            }
+        case .cancel:
             if pressedPointer?.pointerID == sample.pointerID { pressedPointer = nil }
         case .hover, .scroll, .stationary:
             break
@@ -556,8 +569,10 @@ public final class GamaHostView: GamaPlatformView {
     }
 
     /// Arms the one-shot timer for the host's pending deadline, or cancels
-    /// it when there is none. The timer runs on the main run loop, so its
-    /// callback is already on the main actor.
+    /// it when there is none. The timer runs on the main run loop in the
+    /// common modes, so it still fires during event tracking (a menu, a
+    /// live resize, a scroll view tracking a touch), and its callback is
+    /// already on the main actor.
     private func armPointerDeadline() {
         let deadline = pointerDeadline?()
         guard deadline != armedPointerDeadlineMillis else { return }
@@ -566,10 +581,11 @@ public final class GamaHostView: GamaPlatformView {
         armedPointerDeadlineMillis = deadline
         let now = Self.uptimeMillis()
         let delay = deadline > now ? Double(deadline - now) / 1000 : 0
-        pointerDeadlineTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) {
-            [weak self] _ in
+        let timer = Timer(timeInterval: delay, repeats: false) { [weak self] _ in
             MainActor.assumeIsolated { self?.deliverPointerDeadline() }
         }
+        RunLoop.main.add(timer, forMode: .common)
+        pointerDeadlineTimer = timer
     }
 
     private func cancelPointerDeadline() {

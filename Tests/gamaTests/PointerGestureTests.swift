@@ -127,6 +127,15 @@ struct PointerPolicyTests {
         #expect(InteractionIdiom.vision.pointerPolicy == InteractionIdiom.pad.pointerPolicy)
     }
 
+    @Test("translation follows start and location after mutation")
+    func translationIsDerived() {
+        var gesture = PointerGesture(phase: .dragMoved, start: Point(x: 1, y: 1), location: Point(x: 4, y: 3))
+        #expect(gesture.translation == Point(x: 3, y: 2))
+        gesture.location = Point(x: 9, y: 1)
+        gesture.start = Point(x: 2, y: 0)
+        #expect(gesture.translation == Point(x: 7, y: 1))
+    }
+
     @Test("host-less builds accept every pointer hook as a no-op")
     func hostlessHooks() {
         let context = BuildContext()
@@ -173,6 +182,64 @@ struct PointerGestureTests {
         host.handle(up(center(first.frame)))
         #expect(config.log.phases == [.pressed, .tap])
         #expect(config.log.actions == 1)
+    }
+
+    @Test("a declined tap from a non-primary button does not activate")
+    func declinedSecondaryTapDoesNotActivate() throws {
+        let config = PadConfig()
+        config.log.accepts = false
+        var host = try FrameHost(app: PadApp(config: config))
+        let first = regions(host.pump(size: surface))[0]
+        let p = center(first.frame)
+        host.handle(.pointerEvent(PointerEvent(phase: .down, location: p, button: 1, timestampMillis: 0)))
+        host.handle(.pointerEvent(PointerEvent(phase: .up, location: p, button: 1, timestampMillis: 1)))
+        #expect(config.log.phases == [.pressed, .tap])
+        #expect(config.log.actions == 0)
+    }
+
+    @Test("a second button pressed during a capture is ignored, press and release")
+    func chordedButtonIgnored() throws {
+        let config = PadConfig()
+        var host = try FrameHost(app: PadApp(config: config))
+        let first = regions(host.pump(size: surface))[0]
+        let p = center(first.frame)
+        host.handle(.pointerEvent(PointerEvent(phase: .down, location: p, button: 0, timestampMillis: 0)))
+        host.handle(.pointerEvent(PointerEvent(phase: .down, location: p, button: 1, timestampMillis: 1)))
+        host.handle(.pointerEvent(PointerEvent(phase: .up, location: p, button: 1, timestampMillis: 2)))
+        #expect(config.log.phases == [.pressed])
+        host.handle(.pointerEvent(PointerEvent(phase: .up, location: p, button: 0, timestampMillis: 3)))
+        #expect(config.log.phases == [.pressed, .tap])
+        #expect(config.log.entries.allSatisfy { $0.gesture.button == 0 })
+    }
+
+    @Test("the same button pressed again during a capture cancels the lost gesture")
+    func sameButtonRepressCancels() throws {
+        let config = PadConfig()
+        var host = try FrameHost(app: PadApp(config: config))
+        let first = regions(host.pump(size: surface))[0]
+        let p = center(first.frame)
+        host.handle(down(p))
+        host.handle(down(p, at: 1))
+        host.handle(up(p))
+        #expect(config.log.phases == [.pressed, .cancelled, .pressed, .tap])
+    }
+
+    @Test("a mouse release outside the surface clears hover")
+    func releaseOutsideClearsHover() throws {
+        let config = PadConfig()
+        var host = try FrameHost(app: PadApp(config: config))
+        let first = regions(host.pump(size: surface))[0]
+        let p = center(first.frame)
+        host.handle(.pointerEvent(PointerEvent(phase: .hover, location: p)))
+        host.handle(down(p))
+        // The view's exit notice arrives while the button is held.
+        host.handle(.pointerEvent(PointerEvent(phase: .hover, location: Point(x: -1, y: -1))))
+        host.handle(up(Point(x: -1, y: -1)))
+        let dirty = host.needsFrame
+        #expect(dirty)
+        config.log.hoveredDuringBuild = nil
+        _ = host.pump(size: surface)
+        #expect(config.log.hoveredDuringBuild == nil)
     }
 
     @Test("movement at the idiom threshold begins a drag", arguments: [

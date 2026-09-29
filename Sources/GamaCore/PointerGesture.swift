@@ -19,9 +19,11 @@ public struct PointerEvent: Hashable, Sendable {
         case move
         /// The button or contact was released.
         case up
-        /// The platform cancelled the contact (or the pointer left the
-        /// surface): any captured gesture ends with
-        /// ``PointerGesture/Phase/cancelled`` and hover clears.
+        /// The platform cancelled the contact. A cancel for the captured
+        /// pointer ends its gesture with ``PointerGesture/Phase/cancelled``
+        /// (a cancel from any other pointer is ignored); with nothing
+        /// captured it clears hover. Backends report the pointer leaving
+        /// the surface as a ``hover`` outside the grid, not a cancel.
         case cancel
         /// The pointer moved with nothing pressed.
         case hover
@@ -65,7 +67,10 @@ public struct PointerEvent: Hashable, Sendable {
     /// The device kind.
     public var kind: Kind
     /// The button: 0 primary, 1 secondary, 2 middle. Only the primary button
-    /// activates a region that registered no pointer handler.
+    /// activates a node's action, either on press for a region that
+    /// registered no pointer handler or when a handler declines the tap.
+    /// While a press is captured, another button's press and release are
+    /// ignored.
     public var button: Int
     /// Modifiers held during the sample.
     public var modifiers: Modifiers
@@ -197,8 +202,8 @@ public struct PointerGesture: Hashable, Sendable {
     public var start: Point
     /// Where the pointer is now.
     public var location: Point
-    /// `location - start`.
-    public var translation: Point
+    /// `location - start`, always derived from the current values.
+    public var translation: Point { location - start }
     /// The device kind.
     public var kind: PointerEvent.Kind
     /// The button that pressed.
@@ -225,7 +230,6 @@ public struct PointerGesture: Hashable, Sendable {
         self.phase = phase
         self.start = start
         self.location = location
-        self.translation = location - start
         self.kind = kind
         self.button = button
         self.modifiers = modifiers

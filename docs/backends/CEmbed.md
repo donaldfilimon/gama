@@ -68,7 +68,16 @@ after each pointer call. It writes the pending deadline on the host's own
 clock, or `GAMA_EMBED_POINTER_NO_TIME` when no press waits on one (and
 saturates rather than wrapping past `INT64_MAX`); at that time the host
 delivers a stationary sample for the pressed pointer. `abi_version` stays 1:
-both entry points are additions to the v1 family. `main.c` exercises the
+both entry points are additions to the v1 family. The rule, shared with the
+WASM tiers ([WASM.md](WASM.md)): a symbol family names a closed contract, and a new entry point joins an
+existing family only when that family's stated contract admits it; otherwise
+it opens the next family number. The C `v1` contract is "status-returning
+calls on a context, with the open `GAMA_EMBED_ERR_*` enum", which admits
+additive calls. The WASM `v2` contract is "exactly the `v1` exports, with
+status results", which is closed, so exports with no `v1` counterpart open
+`v3`. The same rule applied to the same additions gives C `v1` and WASM `v3`. The pointer constants carry
+their category in the name (`GAMA_EMBED_POINTER_PHASE_*`, `_KIND_*`,
+`_BUTTON_*`, `_MOD_*`), one enum per category. `main.c` exercises the
 invalid-code, hover, scroll, touch press and release paths and both deadline
 answers; `EmbedPointerABITests` drives a drag, a stationary long press and
 the idiom through a context whose app registers a pointer handler.

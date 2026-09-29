@@ -276,6 +276,11 @@ function gridPos(e) {
 // can deliver a stationary sample for that same pointer.
 let captured = null;
 let deadlineTimer = 0;
+// The deadline a stationary sample was last delivered for. If Gama still
+// publishes it afterwards, the sample did not reach the press that owns it
+// (Gama captured a different pointer than this page did), and re-arming would
+// spin a zero-delay timer until that press ends.
+let firedDeadline = -1;
 function sendPointer(phase, kind, button, modifiers, p, scroll, pointerId) {
   return guarded(() => checked(exports.gama_web_v3_pointer_event(
     phase, kind, button, modifiers, p.col, p.row, scroll.cols, scroll.rows,
@@ -288,10 +293,11 @@ function armDeadline() {
   clearTimeout(deadlineTimer);
   deadlineTimer = 0;
   const deadline = exports.gama_web_v3_pointer_deadline();
-  if (deadline < 0 || captured === null) return;
+  if (deadline < 0 || captured === null || deadline === firedDeadline) return;
   deadlineTimer = setTimeout(() => {
     deadlineTimer = 0;
     if (dead || captured === null) return;
+    firedDeadline = deadline;
     const { kind, pointerId, p } = captured;
     guarded(() => checked(exports.gama_web_v3_pointer_event(
       PHASE.stationary, kind, 0, 0, p.col, p.row, 0, 0, pointerId | 0,
@@ -308,7 +314,12 @@ function onPointer(phase, e) {
     { cols: 0, rows: 0 }, e.pointerId,
   );
   if (status !== 0) return;
-  if (phase === PHASE.down) captured = { kind, pointerId: e.pointerId, p };
+  // One pointer at a time, as Gama captures it: a second contact while one
+  // is held is ignored there, so it must not become this page's captured
+  // pointer either (the Apple host guards touches the same way).
+  if (phase === PHASE.down && captured === null) {
+    captured = { kind, pointerId: e.pointerId, p };
+  }
   else if (captured !== null && e.pointerId === captured.pointerId) {
     captured.p = p;
     if (phase === PHASE.up || phase === PHASE.cancel) captured = null;

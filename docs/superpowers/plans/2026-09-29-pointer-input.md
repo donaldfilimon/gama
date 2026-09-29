@@ -60,19 +60,19 @@ Windows console translator, the WASM exports and the C embed ABI.
 
 ### Task 1.1: the event and policy types
 
-- [ ] Write failing tests: `PointerEvent` defaults (mouse, button 0,
+- [x] Write failing tests: `PointerEvent` defaults (mouse, button 0,
   pointer 0, no modifiers, zero scroll, no timestamp); the idiom table
   (desktop 1 cell / 500 ms; terminal 1 cell / none; pad 2 cells / 400 ms;
   phone drag only after a 500 ms long press; vision follows pad until a
   vision host measures otherwise).
-- [ ] Run them and see the build fail on the missing types.
-- [ ] Implement `PointerGesture.swift`; add `InputEvent.pointerEvent`.
+- [x] Run them and see the build fail on the missing types.
+- [x] Implement `PointerGesture.swift`; add `InputEvent.pointerEvent`.
 
 ### Task 1.2: registration hooks
 
-- [ ] Failing test: a host-less `BuildContext()` accepts all three hooks as
+- [x] Failing test: a host-less `BuildContext()` accepts all three hooks as
   no-ops, and `EnvironmentValues().hoveredID` is `nil`.
-- [ ] Add the three `BuildContext` closures with no-op defaults and the
+- [x] Add the three `BuildContext` closures with no-op defaults and the
   `hoveredID` environment value.
 
 ### Task 1.3: recognition in FrameHost
@@ -80,51 +80,51 @@ Windows console translator, the WASM exports and the C embed ABI.
 Tests first, one behavior per test, driven through `FrameHost.handle` with a
 test app whose primitive registers a pointer handler and logs every gesture:
 
-- [ ] legacy `.pointer(p, pressed: true)` still activates a plain `Button`
+- [x] legacy `.pointer(p, pressed: true)` still activates a plain `Button`
   on press, and a release does nothing;
-- [ ] a down on a handler region delivers `.pressed`, captures it, and a
+- [x] a down on a handler region delivers `.pressed`, captures it, and a
   release inside the threshold delivers `.tap`; a declined tap falls back to
   the node's registered action;
-- [ ] per idiom: a move below the threshold stays a press; at the threshold it
+- [x] per idiom: a move below the threshold stays a press; at the threshold it
   delivers `.dragBegan`, later moves `.dragMoved`, the release `.dragEnded`;
-- [ ] capture: moves and the release outside the region still reach it, and a
+- [x] capture: moves and the release outside the region still reach it, and a
   second pointer id is ignored while one is captured;
-- [ ] long press: the deadline is `down timestamp + policy`, exposed as
+- [x] long press: the deadline is `down timestamp + policy`, exposed as
   `pointerDeadlineMillis`; a `stationary` sample at or after it delivers
   `.longPress` once and clears the deadline; terminal has none; a release
   after a long press ends with `.cancelled`, never `.tap`;
-- [ ] phone: movement past the slop before the long press cancels; after the
+- [x] phone: movement past the slop before the long press cancels; after the
   long press it drags;
-- [ ] cancel paths: `.cancel`, Escape (consumed), a resign-key or background
+- [x] cancel paths: `.cancel`, Escape (consumed), a resign-key or background
   lifecycle event, and the captured node vanishing on rebuild each deliver
   exactly one `.cancelled` and release the capture;
-- [ ] invariant: every `.pressed` is followed by exactly one of `.tap`,
+- [x] invariant: every `.pressed` is followed by exactly one of `.tap`,
   `.dragEnded`, `.cancelled`;
-- [ ] drop target: `dragMoved`/`dragEnded` carry the topmost registered drop
+- [x] drop target: `dragMoved`/`dragEnded` carry the topmost registered drop
   target under the pointer;
-- [ ] hover: `hoveredID` reaches the environment, the host is dirty only when
+- [x] hover: `hoveredID` reaches the environment, the host is dirty only when
   it changes, and a vanished hovered node clears silently;
-- [ ] scroll reaches the innermost handler region under the pointer;
-- [ ] `requestFocus` from a handler moves focus on the next `pump`; a request
+- [x] scroll reaches the innermost handler region under the pointer;
+- [x] `requestFocus` from a handler moves focus on the next `pump`; a request
   for a node that is not focusable is dropped.
-- [ ] Implement; iterate to green.
+- [x] Implement; iterate to green.
 
 ### Task 1.4: ADR 0018 and the index row
 
-- [ ] Write the ADR (Context / Decision / Consequences), status Accepted,
+- [x] Write the ADR (Context / Decision / Consequences), status Accepted,
   implementation unit-tested only.
-- [ ] Add the `0000-index.md` row.
+- [x] Add the `0000-index.md` row.
 
 ### Task 1.5: gate and commit
 
-- [ ] `scripts/check-apple.sh`, `scripts/check-boundaries.sh`,
+- [x] `scripts/check-apple.sh`, `scripts/check-boundaries.sh`,
   `scripts/check-docs.sh`, `scripts/check-doc-coverage.sh`,
   `scripts/check-concurrency-negative.sh`, `scripts/check-embedded.sh`,
   `scripts/check-evidence-freshness.sh`; `GamaStudio/tools/check.sh` only if
   the Apple host or layout changed (phase 1 does not). If the Embedded size
   band moves, re-measure `scripts/embedded-size-baseline.txt` deliberately and
   say so in the commit.
-- [ ] Commit only on green.
+- [x] Commit only on green.
 
 ## Phase 2: backend translation (chunk 2)
 
@@ -140,10 +140,11 @@ Pure event mapping; no backend decides anything. Each step is test-first.
   pan recognizer. A one-shot timer delivers the `stationary` sample at
   `pointerDeadlineMillis`. The host is created with its idiom (`desktop` on
   macOS, `pad` or `phone` from the trait collection, `vision` on visionOS).
-  Test: an AppKit host drag test in `AppleHostTests`.
+  Test: an AppKit host drag test (as built: in `AppleHostPointerTests`).
 - [x] **Terminal**: `Sources/GamaDraw/TerminalCapabilities.swift` enables and
   disables `?1002h` (button-held motion) beside the existing mouse modes.
-  `Sources/GamaTUI/Terminal.swift` decodes SGR button bits (button, +4
+  `Sources/GamaTUI/PointerTranslation.swift` (`SGRMouse`; `Terminal.swift`
+  only delegates to it) decodes SGR button bits (button, +4
   shift, +8 alt, +16 ctrl, +32 motion, 64-67 wheel) into `PointerEvent`; the
   Windows console translator handles `MOUSE_MOVED` and `MOUSE_WHEELED` and
   reads control-key state for modifiers. The TUI host uses the `terminal`
@@ -184,6 +185,24 @@ Pure event mapping; no backend decides anything. Each step is test-first.
   every platform `#if` and are tested on macOS.
 - SGR wheel reports were presses before this change and activated the
   region under the pointer; they are scroll samples now.
+
+### Review fixes (chunk 2)
+
+- `FrameHost` ignores the press and release of a second button while a
+  press is captured (every mouse reports pointer identity 0); only the same
+  button re-pressing cancels as a lost release. A declined tap activates the
+  node's action only for the primary button. A non-touch release re-resolves
+  an existing hover at the release location. `PointerGesture.translation` is
+  computed from `start` and `location`.
+- The Apple host's long-press timer runs in the run loop's common modes, and
+  its pressed-pointer record follows the same one-button rule. The web page
+  captures one pointer at a time and never re-arms a deadline it already
+  delivered.
+- The C pointer constants carry their category (`GAMA_EMBED_POINTER_PHASE_*`,
+  `_KIND_*`, `_BUTTON_*`, `_MOD_*`), one enum per category; the family rule
+  shared by C and WASM is written in both backend guides.
+- The UIKit iOS/tvOS/visionOS compile is not measured on this branch;
+  `check-apple-platforms.sh` is left to integration.
 
 ## Deliberately not in this plan
 

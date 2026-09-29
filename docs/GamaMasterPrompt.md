@@ -100,7 +100,7 @@ including a `gama` CLI, is design vision (see section 5).
 | `GamaMacros` + macro `GamaMacrosImpl` | `@Component`, `@Reactive`, `#rgb` declarations and the host compiler plugin | `GamaCore`; impl uses build-time-only `swift-syntax` |
 | `GamaDraw` | `CellBuffer`, `CellPainter`, `DrawList` plus versioned codec, `CellPresenter`/`CellSerializer` families, `TerminalCapabilities`, `AccessibilitySnapshot` | `GamaCore` |
 | `GamaTUI` + C `GamaTUISignal` | Terminal ownership, byte-wise input decode, `TUIRenderer` presentation (the `CellPresenter` family itself lives in `GamaDraw`), signal-safe rescue code in C | `GamaCore`, `GamaDraw`, `GamaTUISignal` |
-| `GamaWASM` | Browser WASI reactor, HTML serializer, versioned `gama_web_v1_*`/`gama_web_v2_*` exports | `GamaCore`, `GamaDraw` |
+| `GamaWASM` | Browser WASI reactor, HTML serializer, versioned `gama_web_v1_*`/`gama_web_v2_*`/`gama_web_v3_*` exports | `GamaCore`, `GamaDraw` |
 | `GamaAppleUI` | NSView/UIView hosts drawing the `DrawList` via CoreGraphics, VoiceOver bridge | `GamaCore`, `GamaDraw` |
 | `GamaAppleShell` | macOS app ownership: `NSApplication`, `NSWindow`, multi-window routing | `GamaCore`, `GamaDraw`, `GamaAppleUI` |
 | `GamaEmbed` (static) + C `GamaEmbedABI` | Opaque contexts and versioned C entry points: events in, `DrawList` bytes out | `GamaCore`, `GamaDraw`, `GamaEmbedABI` |
@@ -200,7 +200,7 @@ Authoritative index: [adr/0000-index.md](adr/0000-index.md). One line each:
 | Edge | What actually exists |
 | --- | --- |
 | Terminal | POSIX terminals (Darwin/Glibc, termios, `SIGWINCH`) and Windows Console (WinSDK, `ReadConsoleInputW`), one `Renderer` surface; `gama-demo` is the interactive app, `StreamRenderer` the pipe/CI path |
-| Browser | WASM reactor with two published export tiers, `gama_web_v1_*` and `gama_web_v2_*` (v2 reports status); HTML grid presentation |
+| Browser | WASM reactor with three published export tiers, `gama_web_v1_*`, `gama_web_v2_*` (v2 reports status) and `gama_web_v3_*` (rich pointer samples, ADR 0018); a change to any tier is a public-ABI change; HTML grid presentation |
 | Apple | `GamaAppleUI` hosts drawing `DrawList` via CoreGraphics on macOS/iOS/tvOS/visionOS; `GamaAppleShell` owns macOS app and multi-window lifecycle |
 | C embed | Flat versioned C ABI for Android/NDK and non-Swift hosts; `GamaAndroidDemo` under `Examples/Android` |
 | MLIR | Deterministic text lowering of `RenderNode` to the `gama` dialect |

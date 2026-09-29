@@ -119,6 +119,38 @@
             #expect(log.phases == [.pressed, .longPress, .cancelled])
         }
 
+        @Test("a second button during a press neither ends it nor drops its long-press sample")
+        func chordedButtonKeepsPress() throws {
+            let log = AppleGestureLog()
+            let (host, window) = try windowedHost(log)
+            host.mouseDown(with: try event(.leftMouseDown, at: Point(x: 1, y: 1), in: host, window: window, seconds: 9))
+            host.rightMouseDown(with: try event(.rightMouseDown, at: Point(x: 1, y: 1), in: host, window: window, seconds: 9.1))
+            host.rightMouseUp(with: try event(.rightMouseUp, at: Point(x: 1, y: 1), in: host, window: window, seconds: 9.2))
+            #expect(log.phases == [.pressed])
+            host.deliverPointerDeadline()
+            #expect(log.phases == [.pressed, .longPress])
+            host.mouseUp(with: try event(.leftMouseUp, at: Point(x: 1, y: 1), in: host, window: window, seconds: 10))
+            #expect(log.phases == [.pressed, .longPress, .cancelled])
+        }
+
+        @Test("the long-press timer fires while the run loop is in an event-tracking mode")
+        func longPressTimerFiresInTrackingMode() throws {
+            let log = AppleGestureLog()
+            let (host, window) = try windowedHost(log)
+            // A press far in the past: its deadline is already due, so the
+            // timer is armed with a zero delay.
+            host.mouseDown(with: try event(.leftMouseDown, at: Point(x: 1, y: 1), in: host, window: window, seconds: 1))
+            let armed = host.armedPointerDeadlineMillis
+            #expect(armed == 1_500)
+            // `run(mode:before:)` returns after the first input source, and
+            // timers do not count as one, so spin until the timer has fired.
+            let end = Date(timeIntervalSinceNow: 1)
+            while host.armedPointerDeadlineMillis != nil, Date() < end {
+                RunLoop.main.run(mode: .eventTracking, before: end)
+            }
+            #expect(log.phases == [.pressed, .longPress])
+        }
+
         @Test("a release before the deadline disarms the timer")
         func releaseDisarms() throws {
             let log = AppleGestureLog()

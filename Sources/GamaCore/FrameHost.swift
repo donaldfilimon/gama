@@ -485,7 +485,13 @@ public struct FrameHost: ~Copyable {
                 updateHover(event)
             }
         case .up:
-            if let captured = capture, captured.pointerID == event.pointerID { pointerUp(event) }
+            // A release of another button than the captured one belongs to
+            // a press that was ignored.
+            if let captured = capture, captured.pointerID == event.pointerID,
+                captured.button == event.button
+            {
+                pointerUp(event)
+            }
         case .cancel:
             if let captured = capture {
                 if captured.pointerID == event.pointerID { cancelCapture() }
@@ -509,9 +515,11 @@ public struct FrameHost: ~Copyable {
     /// focusable subset, so non-focusable targets stay clickable.
     private mutating func pointerDown(_ event: PointerEvent) {
         if let captured = capture {
-            // One pointer at a time; the same pointer pressing again means
-            // its release was lost, so the old gesture ends first.
-            guard captured.pointerID == event.pointerID else { return }
+            // One pointer and one button at a time: another pointer, or a
+            // second button of the captured one (every mouse reports one
+            // pointer identity), is ignored. The same button pressing again
+            // means its release was lost, so the old gesture ends first.
+            guard captured.pointerID == event.pointerID, captured.button == event.button else { return }
             cancelCapture()
         }
         guard let hit = interactive.last(where: { $0.frame.contains(event.location) }) else { return }
@@ -574,12 +582,19 @@ public struct FrameHost: ~Copyable {
         pointerMoved(event, releasing: true)
         guard let captured = capture else { return }
         capture = nil
+        // Hover is frozen while a capture holds; a cursor released
+        // elsewhere (outside the surface included) must not leave the
+        // pressed node hovered until the next move. Only a host that
+        // reports hover has one to refresh: legacy `.pointer` hosts never
+        // clear it, so a release must not start one for them.
+        if event.kind != .touch, hoveredID != nil { refreshHoveredID(at: event.location) }
         if captured.dragging {
             deliver(.dragEnded, captured, dropTarget: dropTarget(at: captured.location))
         } else if captured.longPressed {
             deliver(.cancelled, captured)
-        } else if !deliver(.tap, captured) {
-            // A declined tap activates, as Enter does for a declined key.
+        } else if !deliver(.tap, captured), captured.button == 0 {
+            // A declined primary tap activates, as Enter does for a
+            // declined key; other buttons never activate.
             actions.invoke(captured.id)
             dirty.set(true)
         }
@@ -602,6 +617,16 @@ public struct FrameHost: ~Copyable {
         guard let captured = capture else { return }
         capture = nil
         deliver(.cancelled, captured)
+    }
+
+    /// Recomputes ``hoveredID`` at `location` without delivering a hover
+    /// gesture.
+    private mutating func refreshHoveredID(at location: Point) {
+        let hit = interactive.last(where: { $0.frame.contains(location) })?.id
+        if hit != hoveredID {
+            hoveredID = hit
+            dirty.set(true)
+        }
     }
 
     private mutating func updateHover(_ event: PointerEvent) {

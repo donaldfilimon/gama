@@ -5,7 +5,8 @@ Status: Accepted. Implemented in GamaCore and unit-tested
 [dock system design](../superpowers/specs/2026-09-23-dock-system-design.md)
 and of the [pointer input plan](../superpowers/plans/2026-09-29-pointer-input.md)
 added the backend translations: AppKit and UIKit (`AppleHostPointerTests`
-drives AppKit; UIKit is compiled for iOS, tvOS and visionOS but not run),
+drives AppKit; the UIKit paths are written for iOS, tvOS and visionOS, but
+their compile on those platforms is not yet measured and nothing runs them),
 terminal SGR and the Windows console translator (`PointerBackendTests`, run
 on macOS; the Windows console backend itself is not compiled or run here), the WASM v3 pointer exports (Node and
 browser smokes) and the C embed pointer entry points (`EmbedPointerABITests`
@@ -43,13 +44,17 @@ gestures.**
    node through `BuildContext.registerPointerHandler`, the way it registers a
    key handler. A press on such a node captures the pointer: every later
    sample from that pointer reaches the node until the gesture ends, and
-   samples from any other pointer are ignored. **Nodes without a handler keep
+   samples from any other pointer are ignored. So are the press and release
+   of a second button of the captured pointer (every mouse reports one
+   pointer identity); only the same button pressing again ends the gesture,
+   as a lost release, with `cancelled`. **Nodes without a handler keep
    activate-on-press**, so every existing behavior and golden holds.
 3. **Recognition lives in `FrameHost`.** It delivers `PointerGesture`
    phases: pressed, tap, dragBegan, dragMoved, dragEnded, cancelled,
    longPress, hover and scroll. Every pressed is followed by exactly one of
-   tap, dragEnded or cancelled. A declined tap falls back to the node's
-   registered action, as Enter does for a declined key.
+   tap, dragEnded or cancelled. A declined primary-button tap falls back to
+   the node's registered action, as Enter does for a declined key; a
+   declined tap of any other button activates nothing.
 4. **The idiom is the policy.** The host supplies an `InteractionIdiom`
    (phone, pad, desktop, terminal, vision) at creation, and the idiom selects
    the drag threshold and long-press time. On a phone a drag is only possible
@@ -67,7 +72,10 @@ gestures.**
    the handler it last registered.
 7. **Hover is environment.** `FrameHost` tracks the topmost interactive node
    under a hovering pointer and publishes it as `EnvironmentValues.hoveredID`,
-   requesting a frame only when it changes.
+   requesting a frame only when it changes. Hover is frozen while a press is
+   captured; a non-touch release re-resolves an existing hover at the
+   release location, so a press released outside the surface stops hovering
+   the pressed node.
 8. **Drop targets and focus requests** are registered the same way
    (`registerDropTarget`, `requestFocus`). Drag phases report the topmost
    drop target under the pointer. A focus request is honored when the next
