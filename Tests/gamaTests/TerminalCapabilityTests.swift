@@ -57,6 +57,9 @@ struct TerminalCapabilityTests {
         #expect(enable.contains("?1049h"))
         #expect(enable.contains("?1000h"))
         #expect(enable.contains("?1006h"))
+        // Button-held motion (ADR 0018): drags reach FrameHost as moves.
+        #expect(enable.contains("?1002h"))
+        #expect(TerminalModeSequences.disable(caps).contains("?1002l"))
         #expect(enable.contains("?2004h"))
         #expect(enable.contains("?1004h"))
         #expect(TerminalModeSequences.disable(caps).contains("?1049l"))

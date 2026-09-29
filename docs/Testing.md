@@ -42,12 +42,13 @@ All suites live in `Tests/gamaTests/`:
 | `AppleHostAccessibilityTests.swift` | AppKit accessibility bridge |
 | `AppleHostFontCacheTests.swift` | AppKit host styled-font cache |
 | `AppleHostNativeRegionTests.swift` | AppKit host native regions |
+| `AppleHostPointerTests.swift` | AppKit host pointer translation: real NSEvents, the long-press timer, the scroll sign (ADR 0018) |
 | `AppleHostTests.swift` | AppKit host |
 | `AppleShellTests.swift` | AppKit scene shell |
 | `CellSerializerTests.swift` | Cell serializer |
 | `CompletionStatusTests.swift` | Completion status |
 | `DrawListTests.swift` | Cell buffer, DrawList, Cell painter |
-| `EmbedABITests.swift` | Embed ABI additions |
+| `EmbedABITests.swift` | Embed ABI additions; embed pointer ABI (ADR 0018) — filter `EmbedABITests`, `EmbedPointerABITests` |
 | `EmbedTests.swift` | C embedding context |
 | `FailureExitCodeTests.swift` | Validated failure exit codes — filter `--filter FailureExitCodeTests` |
 | `FormControlTests.swift` | Form controls and identity |
@@ -63,12 +64,14 @@ All suites live in `Tests/gamaTests/`:
 | `ModernTests.swift` | DrawList codec; overflow-safe geometry; CellPainter ↔ DrawList |
 | `NativeRegionTests.swift` | Native region build, host table — filter `NativeRegionBuildTests`, `NativeRegionHostTests` |
 | `P1LayoutTests.swift` | Border title, divider axis, TextField C0, emoji presentation, button focus |
+| `PointerBackendTests.swift` | Backend pointer translation (ADR 0018): the C/WASM wire codes, terminal SGR decoding, Windows console mouse, the cross-backend scroll sign, backend idioms — filter `PointerWireTests`, `SGRMouseTests`, `WindowsMouseTranslatorTests`, `ScrollConventionTests`, `BackendIdiomTests` |
+| `PointerGestureTests.swift` | Pointer event and idiom policy; host-owned gesture recognition (ADR 0018) — filter `PointerPolicyTests`, `PointerGestureTests` |
 | `PluginCommandTests.swift` | Plugin commands |
 | `PluginRuntimeTests.swift` | Plugin runtime: manifest, grants, lifecycle |
 | `PluginSceneTests.swift` | Plugin scene contributions |
 | `PluginSlotTests.swift` | Plugin slots |
 | `PlatformServicesTests.swift` | Platform services: scoped filesystem, clock, log |
-| `POSIXTerminalIntegrationTests.swift` | PTY raw-mode restore (Darwin) |
+| `POSIXTerminalIntegrationTests.swift` | PTY raw-mode restore; byte-wise escape, UTF-8 and SGR mouse decoding (Darwin) |
 | `ProgressViewTests.swift` | ProgressView scale awareness |
 | `RunIterationTests.swift` | Run iteration |
 | `RuntimeLoopTests.swift` | Runtime loop |
@@ -86,7 +89,7 @@ All suites live in `Tests/gamaTests/`:
 | `ViewStateIdentityTests.swift` | View-state identity |
 | `WASMSerializerTests.swift` | WASM HTML serializer (compiled off wasm32) |
 | `WebDemoStateTests.swift` | Web demo state |
-| `WindowsTerminalTests.swift` | Native Windows console translation |
+| `WindowsTerminalTests.swift` | Native Windows console key translation (runs on every host) |
 
 ## Conventions
 
@@ -100,8 +103,10 @@ All suites live in `Tests/gamaTests/`:
   `SwiftSyntaxMacrosGenericTestSupport` with a `failureHandler` that records
   a Swift Testing `Issue`. Do not reintroduce `SwiftSyntaxMacrosTestSupport`
   (it imports XCTest).
-- Platform suites stay behind `#if canImport(AppKit)`, `#if canImport(Darwin)`,
-  `#if os(Windows)`.
+- Platform suites stay behind `#if canImport(AppKit)` or
+  `#if canImport(Darwin)`. Pure translators that need no platform API (the
+  Windows console key and mouse translators, the SGR decoder) are compiled
+  everywhere and tested on every host instead.
 - New tests go in Swift Testing. There is no XCTest fallback.
 
 ## Linux sanitizers

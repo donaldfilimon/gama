@@ -42,6 +42,14 @@ private final class HostActionStore {
     var named: [ActionID: () -> Void] = [:]
     var shortcuts: [Key: ActionID] = [:]
     var regions: [NodeID: NativeRegionID] = [:]
+    var pointerHandlers: [NodeID: (PointerGesture) -> Bool] = [:]
+    var dropTargets: Set<NodeID> = []
+    /// Latest focus request. Survives `beginBuildPass`: a handler may set it
+    /// between frames, and `pump` consumes it.
+    var focusRequest: NodeID? = nil
+    /// True while a build pass runs, so a build-time focus request does not
+    /// also request another frame.
+    var isBuilding = false
 
     func beginBuildPass() {
         actions.removeAll(keepingCapacity: true)
@@ -49,6 +57,8 @@ private final class HostActionStore {
         named.removeAll(keepingCapacity: true)
         shortcuts.removeAll(keepingCapacity: true)
         regions.removeAll(keepingCapacity: true)
+        pointerHandlers.removeAll(keepingCapacity: true)
+        dropTargets.removeAll(keepingCapacity: true)
     }
     func register(_ id: NodeID, action: @escaping () -> Void) { actions[id] = action }
     func registerKey(_ id: NodeID, handler: @escaping (Key) -> Bool) {
@@ -69,6 +79,37 @@ private final class HostActionStore {
     }
     func registerRegion(_ id: NodeID, _ region: NativeRegionID) { regions[id] = region }
     func region(for id: NodeID) -> NativeRegionID? { regions[id] }
+    func pointerHandler(for id: NodeID) -> ((PointerGesture) -> Bool)? { pointerHandlers[id] }
+    func isDropTarget(_ id: NodeID) -> Bool { dropTargets.contains(id) }
+}
+
+/// The one pointer a host has captured: the press, its handler (refreshed on
+/// every build, retained so a vanished node can still be cancelled), and the
+/// recognizer's progress.
+private struct PointerCapture {
+    let id: NodeID
+    let pointerID: Int
+    let start: Point
+    let kind: PointerEvent.Kind
+    let button: Int
+    var location: Point
+    var modifiers: PointerEvent.Modifiers
+    var handler: (PointerGesture) -> Bool
+    /// Long-press deadline; `nil` once fired, once dragging, or when the
+    /// idiom or the press has no clock.
+    var deadline: UInt64?
+    var dragging = false
+    var longPressed = false
+}
+
+/// Lifecycle transitions that end any pointer interaction on the surface.
+private func endsPointerInteraction(_ event: LifecycleEvent) -> Bool {
+    switch event {
+    case .windowDidResignKey, .didEnterBackground, .willTerminate, .windowDidClose:
+        return true
+    default:
+        return false
+    }
 }
 
 /// The backend-independent heart of a running app. Each host owns focus,
@@ -100,6 +141,20 @@ public struct FrameHost: ~Copyable {
     /// that insert or remove unrelated nodes.
     private var focusedID: NodeID? = nil
     private let actions = HostActionStore()
+
+    /// The interaction family the host was created for; it selects the
+    /// pointer recognition thresholds (ADR 0018).
+    public let idiom: InteractionIdiom
+    /// Topmost interactive node under a hovering pointer, published to
+    /// builds as ``EnvironmentValues/hoveredID``.
+    public private(set) var hoveredID: NodeID? = nil
+    /// The captured pointer, if a press on a handler region is in progress.
+    private var capture: PointerCapture? = nil
+    /// While a press is held, the monotonic millisecond at which it becomes
+    /// a long press; `nil` otherwise. A host with a clock delivers a
+    /// ``PointerEvent/Phase/stationary`` sample at this time. Hosts deliver;
+    /// they never decide.
+    public var pointerDeadlineMillis: UInt64? { capture?.deadline }
 
     /// Duplicate interactive identities observed during the most recent frame.
     /// Backends can surface this as a development diagnostic without making a
@@ -135,15 +190,17 @@ public struct FrameHost: ~Copyable {
 
     /// Creates a host born dirty — the first `needsFrame` check is true —
     /// whose `SubscriptionContext` funnels every observed signal change
-    /// into that same dirty flag.
-    public init<A: App>(app: A) throws(SceneConfigurationError) {
+    /// into that same dirty flag. `idiom` selects the pointer recognition
+    /// policy; it defaults to ``InteractionIdiom/desktop``.
+    public init<A: App>(app: A, idiom: InteractionIdiom = .desktop) throws(SceneConfigurationError) {
         let graph = try compileSceneGraph(app)
         let surface = try graph.makePrimarySurface()
-        self.init(surface: surface)
+        self.init(surface: surface, idiom: idiom)
         app.connect(subscriptions)
     }
 
-    package init(surface: SceneSurface) {
+    package init(surface: SceneSurface, idiom: InteractionIdiom = .desktop) {
+        self.idiom = idiom
         self.sceneID = surface.sceneID
         self.windowInstanceID = surface.instanceID
         self.renderScene = surface.render
@@ -188,8 +245,13 @@ public struct FrameHost: ~Copyable {
         env.focusedID = focusedID
         env.windowContext = windowContext
         env.surfaceSize = size
+        env.hoveredID = hoveredID
         var laid = buildFrame(size: size, environment: env)
 
+        // Honor the latest focus request if its node is focusable now.
+        if let requested = actions.focusRequest, focusables.contains(where: { $0.id == requested }) {
+            focusedID = requested
+        }
         // Reconcile focus with the new tree.
         if let id = focusedID, !focusables.contains(where: { $0.id == id }) {
             focusedID = focusables.first?.id
@@ -201,6 +263,10 @@ public struct FrameHost: ~Copyable {
             env.focusedID = focusedID
             laid = buildFrame(size: size, environment: env)
         }
+        // A request is honored by this pump or dropped, including one the
+        // reconciliation build repeated.
+        actions.focusRequest = nil
+        reconcilePointer()
         // Sweep once, after whichever build painted: the reconciliation
         // build's marks are the live set.
         stateStore.sweep()
@@ -215,6 +281,7 @@ public struct FrameHost: ~Copyable {
         actions.beginBuildPass()
         stateStore.beginBuildPass()
         let actionStore = actions
+        let dirty = self.dirty
         var context = BuildContext(
             environment: environment,
             registerAction: { id, action in actionStore.register(id, action: action) },
@@ -222,10 +289,20 @@ public struct FrameHost: ~Copyable {
             registerNamedAction: { id, shortcut, action in
                 actionStore.registerNamed(id, shortcut: shortcut, action: action)
             },
-            registerNativeRegion: { id, region in actionStore.registerRegion(id, region) }
+            registerNativeRegion: { id, region in actionStore.registerRegion(id, region) },
+            registerPointerHandler: { id, handler in actionStore.pointerHandlers[id] = handler },
+            registerDropTarget: { id in actionStore.dropTargets.insert(id) },
+            requestFocus: { id in
+                actionStore.focusRequest = id
+                // Outside a build the request needs a frame to be honored.
+                if !actionStore.isBuilding { dirty.set(true) }
+            }
         )
         context.stateStore = stateStore
-        let frame = LayoutEngine.layout(renderScene(context), in: Rect(origin: .zero, size: size))
+        actionStore.isBuilding = true
+        let tree = renderScene(context)
+        actionStore.isBuilding = false
+        let frame = LayoutEngine.layout(tree, in: Rect(origin: .zero, size: size))
         interactive.removeAll(keepingCapacity: true)
         frame.collectInteractive(into: &interactive)
         validateIdentities()
@@ -295,8 +372,13 @@ public struct FrameHost: ~Copyable {
     /// first, and a declared action shortcut runs only when that handler
     /// declines, so a text field keeps the characters it consumes. Enter
     /// and Space are not shortcuts. A pointer press hit-tests the topmost
-    /// interactive node (focusing it only when focusable) and invokes its
-    /// action; a resize just marks the host dirty. Whenever an event
+    /// interactive node (focusing it only when focusable): a node with a
+    /// pointer handler captures the pointer and receives recognized
+    /// ``PointerGesture``s (ADR 0018); any other node's action is invoked,
+    /// as before. Escape, a resign-key, background, close, or terminate
+    /// lifecycle event, and an explicit pointer cancel end a captured
+    /// gesture with ``PointerGesture/Phase/cancelled``; Escape is consumed
+    /// when it does. A resize just marks the host dirty. Whenever an event
     /// changes state, the dirty flag is set so the next `pump` re-renders.
     public mutating func handle(_ event: InputEvent) {
         switch event {
@@ -305,11 +387,18 @@ public struct FrameHost: ~Copyable {
                 .windowCloseRequested(scene: sceneID, instance: windowInstanceID))
             wantsQuit = true
 
+        case .key(.escape) where capture != nil:
+            cancelCapture()
+
         case .lifecycle(let lifecycle):
             if let target = lifecycle.windowTarget,
                 (target.scene != sceneID || target.instance != windowInstanceID)
             {
                 break
+            }
+            if endsPointerInteraction(lifecycle) {
+                cancelCapture()
+                hoveredID = nil
             }
             deliverLifecycle(lifecycle)
             dirty.set(true)
@@ -352,15 +441,12 @@ public struct FrameHost: ~Copyable {
                 dirty.set(true)
             }
 
-        case .pointer(let p, pressed: true):
-            // Hit-test the full interactive set (topmost wins), not just
-            // the focusable subset — non-focusable targets stay clickable.
-            if let hit = interactive.last(where: { $0.frame.contains(p) }) {
-                if hit.isFocusable { focusedID = hit.id }
-                stateStore.activate()
-                actions.invoke(hit.id)
-                dirty.set(true)
-            }
+        case .pointer(let p, let pressed):
+            // The legacy event is a primary mouse down or up.
+            handlePointer(PointerEvent(phase: pressed ? .down : .up, location: p))
+
+        case .pointerEvent(let pointer):
+            handlePointer(pointer)
 
         case .gamepad(let button, pressed: true):
             // Re-enter with the equivalent keystroke rather than repeating
@@ -383,6 +469,228 @@ public struct FrameHost: ~Copyable {
 
         default:
             break
+        }
+    }
+
+    // MARK: - Pointer recognition (ADR 0018)
+
+    private mutating func handlePointer(_ event: PointerEvent) {
+        switch event.phase {
+        case .down:
+            pointerDown(event)
+        case .move:
+            if let captured = capture {
+                if captured.pointerID == event.pointerID { pointerMoved(event, releasing: false) }
+            } else if event.kind != .touch {
+                updateHover(event)
+            }
+        case .up:
+            // A release of another button than the captured one belongs to
+            // a press that was ignored.
+            if let captured = capture, captured.pointerID == event.pointerID,
+                captured.button == event.button
+            {
+                pointerUp(event)
+            }
+        case .cancel:
+            if let captured = capture {
+                if captured.pointerID == event.pointerID { cancelCapture() }
+            } else if hoveredID != nil {
+                hoveredID = nil
+                dirty.set(true)
+            }
+        case .hover:
+            if capture == nil { updateHover(event) }
+        case .scroll:
+            pointerScrolled(event)
+        case .stationary:
+            // A sample without a clock means the host says the deadline has come.
+            if let captured = capture, captured.pointerID == event.pointerID {
+                fireLongPressIfDue(at: event.timestampMillis ?? .max)
+            }
+        }
+    }
+
+    /// Hit-tests the full interactive set (topmost wins), not just the
+    /// focusable subset, so non-focusable targets stay clickable.
+    private mutating func pointerDown(_ event: PointerEvent) {
+        if let captured = capture {
+            // One pointer and one button at a time: another pointer, or a
+            // second button of the captured one (every mouse reports one
+            // pointer identity), is ignored. The same button pressing again
+            // means its release was lost, so the old gesture ends first.
+            guard captured.pointerID == event.pointerID, captured.button == event.button else { return }
+            cancelCapture()
+        }
+        guard let hit = interactive.last(where: { $0.frame.contains(event.location) }) else { return }
+        guard let handler = actions.pointerHandler(for: hit.id) else {
+            // No handler: today's activate-on-press, for the primary button.
+            guard event.button == 0 else { return }
+            if hit.isFocusable { focusedID = hit.id }
+            stateStore.activate()
+            actions.invoke(hit.id)
+            dirty.set(true)
+            return
+        }
+        if hit.isFocusable && focusedID != hit.id {
+            focusedID = hit.id
+            dirty.set(true)
+        }
+        var deadline: UInt64? = nil
+        if let longPress = idiom.pointerPolicy.longPressMillis, let now = event.timestampMillis {
+            let (sum, overflow) = now.addingReportingOverflow(longPress)
+            deadline = overflow ? .max : sum
+        }
+        let captured = PointerCapture(
+            id: hit.id, pointerID: event.pointerID, start: event.location, kind: event.kind,
+            button: event.button, location: event.location, modifiers: event.modifiers,
+            handler: handler, deadline: deadline)
+        capture = captured
+        deliver(.pressed, captured)
+    }
+
+    /// Advances the captured gesture to `event`'s location. A release only
+    /// settles whether the press became a drag; the final location travels
+    /// with ``PointerGesture/Phase/dragEnded``.
+    private mutating func pointerMoved(_ event: PointerEvent, releasing: Bool) {
+        fireLongPressIfDue(at: event.timestampMillis)
+        guard var captured = capture else { return }
+        let moved = captured.location != event.location
+        captured.location = event.location
+        captured.modifiers = event.modifiers
+        capture = captured
+        guard moved else { return }
+        if captured.dragging {
+            if !releasing { deliver(.dragMoved, captured, dropTarget: dropTarget(at: event.location)) }
+            return
+        }
+        let policy = idiom.pointerPolicy
+        let travel = event.location - captured.start
+        let distance = max(travel.x.magnitude, travel.y.magnitude)
+        guard distance >= UInt(max(0, policy.dragThreshold)) else { return }
+        if policy.dragRequiresLongPress && !captured.longPressed {
+            cancelCapture()
+            return
+        }
+        captured.dragging = true
+        captured.deadline = nil
+        capture = captured
+        deliver(.dragBegan, captured, dropTarget: dropTarget(at: event.location))
+    }
+
+    private mutating func pointerUp(_ event: PointerEvent) {
+        pointerMoved(event, releasing: true)
+        guard let captured = capture else { return }
+        capture = nil
+        // Hover is frozen while a capture holds; a cursor released
+        // elsewhere (outside the surface included) must not leave the
+        // pressed node hovered until the next move. Only a host that
+        // reports hover has one to refresh: legacy `.pointer` hosts never
+        // clear it, so a release must not start one for them.
+        if event.kind != .touch, hoveredID != nil { refreshHoveredID(at: event.location) }
+        if captured.dragging {
+            deliver(.dragEnded, captured, dropTarget: dropTarget(at: captured.location))
+        } else if captured.longPressed {
+            deliver(.cancelled, captured)
+        } else if !deliver(.tap, captured), captured.button == 0 {
+            // A declined primary tap activates, as Enter does for a
+            // declined key; other buttons never activate.
+            actions.invoke(captured.id)
+            dirty.set(true)
+        }
+    }
+
+    /// Fires the long press once when `now` has reached the deadline of a
+    /// press that is neither dragging nor already long-pressed.
+    private mutating func fireLongPressIfDue(at now: UInt64?) {
+        guard var captured = capture, let deadline = captured.deadline, let now, now >= deadline,
+            !captured.dragging, !captured.longPressed
+        else { return }
+        captured.longPressed = true
+        captured.deadline = nil
+        capture = captured
+        deliver(.longPress, captured)
+    }
+
+    /// Ends the captured gesture, if any, with `.cancelled`.
+    private mutating func cancelCapture() {
+        guard let captured = capture else { return }
+        capture = nil
+        deliver(.cancelled, captured)
+    }
+
+    /// Recomputes ``hoveredID`` at `location` without delivering a hover
+    /// gesture.
+    private mutating func refreshHoveredID(at location: Point) {
+        let hit = interactive.last(where: { $0.frame.contains(location) })?.id
+        if hit != hoveredID {
+            hoveredID = hit
+            dirty.set(true)
+        }
+    }
+
+    private mutating func updateHover(_ event: PointerEvent) {
+        let hit = interactive.last(where: { $0.frame.contains(event.location) })
+        if hit?.id != hoveredID {
+            hoveredID = hit?.id
+            dirty.set(true)
+        }
+        guard let hit, let handler = actions.pointerHandler(for: hit.id) else { return }
+        stateStore.activate()
+        let gesture = PointerGesture(
+            phase: .hover, start: event.location, location: event.location, kind: event.kind,
+            button: event.button, modifiers: event.modifiers)
+        if handler(gesture) { dirty.set(true) }
+    }
+
+    /// Scroll goes to the innermost region with a handler under the pointer.
+    private func pointerScrolled(_ event: PointerEvent) {
+        guard
+            let hit = interactive.last(where: {
+                $0.frame.contains(event.location) && actions.pointerHandler(for: $0.id) != nil
+            }),
+            let handler = actions.pointerHandler(for: hit.id)
+        else { return }
+        stateStore.activate()
+        let gesture = PointerGesture(
+            phase: .scroll, start: event.location, location: event.location, kind: event.kind,
+            button: event.button, modifiers: event.modifiers, scroll: event.scroll)
+        if handler(gesture) { dirty.set(true) }
+    }
+
+    private func dropTarget(at location: Point) -> NodeID? {
+        interactive.last(where: { $0.frame.contains(location) && actions.isDropTarget($0.id) })?.id
+    }
+
+    /// Delivers one phase of the captured gesture; an accepting handler
+    /// marks the host dirty.
+    @discardableResult
+    private func deliver(_ phase: PointerGesture.Phase, _ captured: PointerCapture, dropTarget: NodeID? = nil) -> Bool {
+        stateStore.activate()
+        let gesture = PointerGesture(
+            phase: phase, start: captured.start, location: captured.location, kind: captured.kind,
+            button: captured.button, modifiers: captured.modifiers, dropTarget: dropTarget)
+        let accepted = captured.handler(gesture)
+        if accepted { dirty.set(true) }
+        return accepted
+    }
+
+    /// After a pump: a hovered node that vanished stops being hovered (the
+    /// frame just built cannot show it), and a captured node that vanished,
+    /// or no longer registers a handler, is cancelled through the handler it
+    /// last registered. A surviving capture picks up this build's handler.
+    private mutating func reconcilePointer() {
+        if let hovered = hoveredID, !interactive.contains(where: { $0.id == hovered }) {
+            hoveredID = nil
+        }
+        guard var captured = capture else { return }
+        if interactive.contains(where: { $0.id == captured.id }),
+            let handler = actions.pointerHandler(for: captured.id)
+        {
+            captured.handler = handler
+            capture = captured
+        } else {
+            cancelCapture()
         }
     }
 

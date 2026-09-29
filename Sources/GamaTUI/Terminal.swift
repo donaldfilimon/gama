@@ -441,14 +441,8 @@ public struct Terminal: ~Copyable {
             default: return nil
             }
         case UInt8(ascii: "M"), UInt8(ascii: "m"):
-            // SGR mouse: ESC [ < btn ; col ; row (M=press, m=release)
-            guard params.hasPrefix("<") else { return nil }
-            let fields = params.dropFirst().split(separator: ";")
-            guard fields.count == 3,
-                let col = Int(fields[1]), let row = Int(fields[2])
-            else { return nil }
-            let pressed = final == UInt8(ascii: "M")
-            return .pointer(Point(x: col - 1, y: row - 1), pressed: pressed)
+            // SGR mouse: ESC [ < btn ; col ; row (M=press/motion, m=release)
+            return SGRMouse.decode(params, release: final == UInt8(ascii: "m"))
         default:
             return nil
         }
@@ -458,50 +452,6 @@ public struct Terminal: ~Copyable {
 #else
 
 // MARK: - Windows Console implementation
-
-/// Pure translation from Windows console input records to `InputEvent`s,
-/// kept free of console handles so it can be exercised in isolation.
-enum WindowsInputTranslator {
-    static func key(virtualKey: UInt16, scalar: UInt16, controlState: UInt32) -> InputEvent? {
-        let shift = controlState & 0x0010 != 0
-        let ctrl = controlState & (0x0008 | 0x0004) != 0
-
-        switch Int32(virtualKey) {
-        case 0x25: return .key(.left)
-        case 0x26: return .key(.up)
-        case 0x27: return .key(.right)
-        case 0x28: return .key(.down)
-        case 0x0D: return .key(.enter)
-        case 0x1B: return .key(.escape)
-        case 0x09: return .key(shift ? .backTab : .tab)
-        case 0x08: return .key(.backspace)
-        case 0x2E: return .key(.delete)
-        case 0x24: return .key(.home)
-        case 0x23: return .key(.end)
-        case 0x21: return .key(.pageUp)
-        case 0x22: return .key(.pageDown)
-        case 0x70...0x7B: return .key(.function(Int(virtualKey) - 0x70 + 1))
-        default: break
-        }
-
-        guard scalar != 0, let unicode = Unicode.Scalar(UInt32(scalar)) else { return nil }
-        let character = Character(unicode)
-        if ctrl, character.isLetter {
-            return .key(.ctrl(Character(character.lowercased())))
-        }
-        if scalar >= 0x01, scalar <= 0x1A, character != "\t", character != "\r" {
-            return .key(.ctrl(Character(UnicodeScalar(UInt8(scalar) + 0x60))))
-        }
-        return .key(.character(character))
-    }
-
-    static func pointer(
-        x: Int16, y: Int16, buttonState: UInt32, eventFlags: UInt32
-    ) -> InputEvent? {
-        guard eventFlags == 0 else { return nil }
-        return .pointer(Point(x: Int(x), y: Int(y)), pressed: buttonState & 0x0001 != 0)
-    }
-}
 
 /// Windows Console backend: output goes through the console with virtual
 /// terminal processing enabled, so `CellBuffer`'s ANSI diff stream is
@@ -522,6 +472,8 @@ enum WindowsInputTranslator {
     /// Capabilities captured when raw mode was entered. Exit writes the
     /// matching disable sequence.
     private var activeCapabilities = TerminalCapabilities.unknown
+    /// Button state carried between mouse records (ADR 0018).
+    private var mouse = WindowsMouseTranslator()
 
     // Console mode flags (WinCon.h)
     private static let ENABLE_PROCESSED_INPUT: DWORD = 0x0001
@@ -658,8 +610,9 @@ enum WindowsInputTranslator {
     // MARK: Input
 
     /// Waits up to `timeoutMillis` for one console input record and
-    /// translates it — key-down records to key events, mouse button
-    /// records to pointer events, buffer-size changes to `.resize`.
+    /// translates it — key-down records to key events, mouse records
+    /// (buttons, motion, both wheels) to pointer samples, buffer-size
+    /// changes to `.resize`.
     /// Returns `nil` on timeout or for records with no `InputEvent`
     /// mapping.
     public mutating func nextEvent(timeoutMillis: Int) throws(TerminalError) -> InputEvent? {
@@ -682,9 +635,10 @@ enum WindowsInputTranslator {
 
         case MOUSE_EVENT:
             let m = unsafe record.Event.MouseEvent
-            return WindowsInputTranslator.pointer(
+            return mouse.translate(
                 x: m.dwMousePosition.X, y: m.dwMousePosition.Y,
-                buttonState: m.dwButtonState, eventFlags: m.dwEventFlags)
+                buttonState: m.dwButtonState, controlState: m.dwControlKeyState,
+                eventFlags: m.dwEventFlags)
 
         case WINDOW_BUFFER_SIZE_EVENT:
             return .resize(size())

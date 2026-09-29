@@ -118,10 +118,16 @@ public enum InputEvent: Hashable, Sendable {
     /// The drawable area changed; the host marks itself dirty so the next
     /// pump lays out at the new size.
     case resize(Size)
-    /// Pointer (mouse or touch) state at a cell position. Only presses
-    /// (`pressed: true`) hit-test and activate; releases are accepted but
-    /// trigger nothing in the host today.
+    /// Pointer (mouse or touch) state at a cell position: a primary mouse
+    /// down or up. A press on a region without a pointer handler hit-tests
+    /// and activates it, as it always has; on a region with one, the pair is
+    /// a press and a tap.
     case pointer(Point, pressed: Bool)
+    /// A rich pointer sample (ADR 0018). The host recognizes gestures from
+    /// it: capture, drag thresholds per ``InteractionIdiom``, long press,
+    /// hover, scroll, and cancellation. ``pointer(_:pressed:)`` is the same
+    /// as a primary mouse ``PointerEvent/Phase/down`` or ``PointerEvent/Phase/up``.
+    case pointerEvent(PointerEvent)
     /// A timer pulse a backend may emit to wake its loop; the host itself
     /// takes no action on it.
     case tick
@@ -160,6 +166,11 @@ public protocol Renderer {
     /// unaffected.
     mutating func emit(_ lines: [String]) throws(Failure)
 
+    /// The interaction family this backend's input comes from. It selects
+    /// the pointer recognition policy of the host ``AppRuntime`` creates
+    /// (ADR 0018); defaults to ``InteractionIdiom/desktop``.
+    var interactionIdiom: InteractionIdiom { get }
+
     /// Whether this backend has an input source worth waiting on.
     ///
     /// Terminals, GUI hosts, and browsers do, so the default is `true`. A
@@ -171,6 +182,9 @@ public protocol Renderer {
 }
 
 extension Renderer {
+    /// Backends are desktop-class unless they say otherwise.
+    public var interactionIdiom: InteractionIdiom { .desktop }
+
     /// Backends have an input source unless they say otherwise.
     public var waitsForInput: Bool { true }
 
@@ -244,7 +258,8 @@ public struct AppRuntime<A: App, R: Renderer>: ~Copyable {
         renderer: R,
         frameTimeoutMillis: Int = 250
     ) throws(SceneConfigurationError) {
-        self.pump = HostPump(host: try FrameHost(app: app), size: renderer.size)
+        self.pump = HostPump(
+            host: try FrameHost(app: app, idiom: renderer.interactionIdiom), size: renderer.size)
         self.renderer = renderer
         self.frameTimeoutMillis = frameTimeoutMillis
     }

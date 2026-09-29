@@ -27,7 +27,8 @@ The gate also builds `Tests/Fixtures/WASMFailedInstall`, whose first and only
 install throws `SceneConfigurationError.noPrimaryScene`. After WASI startup,
 the Node smoke requires the fixture's exact-error marker and checks both
 export tiers: v1 returns void with no callbacks; v2 frame, key, pointer, and
-resize return `-1` with no callbacks. Unknown key codes and invalid Unicode
+resize return `-1` with no callbacks, and so do both v3 pointer exports,
+including for an invalid phase. Unknown key codes and invalid Unicode
 scalars also return `-1` in this state, while the installed demo separately
 requires `-2` for those inputs. This fixture does not exercise reinstall or
 recovery after failure.
@@ -60,7 +61,10 @@ are easy to break without noticing:
 `scripts/check-wasm.sh` proves the direct-slot runtime path twice: the Node smoke
 sends Enter through `gama_web_v1_key` and requires an exact `0` to `1`
 transition, while the browser smoke dispatches real DOM events and requires
-`state=0->0->1`. The middle zero proves that Tab, pointer, and resize coverage
+`state=0->0->1`. The browser smoke's pointer coverage is real Pointer Events
+(a hover, a primary press and release) plus a wheel event, all reaching the
+module through `gama_web_v3_pointer_event`. The middle zero proves that Tab,
+pointer, wheel, and resize coverage
 did not activate the counter; the final one is attributable to Enter.
 These smokes prove WASM state behavior; macro expansion is covered separately
 by the host-side macro tests.
@@ -94,7 +98,46 @@ no host installed returns `-1`, not `-2`; `-2` reports only that an otherwise
 deliverable event carried a code the backend cannot translate. Changing
 the result type of a published symbol is an ABI break even when JavaScript
 callers ignore the result, so new result contracts require a new symbol
-family. `GamaWebDemo` and the failed-install fixture use the same eight exports as
+family.
+
+The v3 tier adds rich pointer samples (ADR 0018) beside v1 and v2, which are
+unchanged. The rule, shared with the C embed ABI ([CEmbed.md](CEmbed.md)):
+a symbol family names a closed contract, and a new entry point joins an
+existing family only when that family's stated contract admits it; otherwise
+it opens the next family number. The C `v1` contract is "status-returning
+calls on a context, with the open `GAMA_EMBED_ERR_*` enum", which admits
+additive calls. The WASM `v2` contract is "exactly the `v1` exports, with
+status results", which is closed, so exports with no `v1` counterpart open
+`v3`. The same rule applied to the same additions gives C `v1` and WASM `v3`.
+
+| Export | Meaning |
+| --- | --- |
+| `gama_web_v3_pointer_event(phase, kind, button, modifiers, col, row, scrollCols, scrollRows, pointerId, timestampMillis)` | One raw pointer sample; `0` accepted, `-1` no host (checked first), `-2` a code outside the wire tables |
+| `gama_web_v3_pointer_deadline()` | The pending long-press deadline on the page's clock, `-3` when no press waits on one, `-1` no host |
+
+The codes are the same tables as the C embed ABI's `GAMA_EMBED_POINTER_*`
+(one decoder serves both): phases 0 down, 1 move, 2 up, 3 cancel, 4 hover,
+5 scroll, 6 stationary; kinds 0 mouse, 1 touch, 2 pen; modifier bits 1
+shift, 2 control, 4 option, 8 command. `timestampMillis` is an `f64`
+`performance.now()` reading; a negative, NaN or out-of-range value means no
+clock and is never converted, since a float-to-integer conversion traps in
+wasm. The page sends Pointer Events: `pointerdown` takes
+`setPointerCapture` (inside a `try`, because a synthetic event has no active
+pointer), `pointermove` is a move while a button is held and a hover
+otherwise, `pointercancel` is a cancel, `pointerleave` without a capture is a
+hover outside the grid, and `wheel` accumulates pixel, line or page deltas
+into whole cells (positive rows reveal the lines below). After every sample
+it re-arms one `setTimeout` from `gama_web_v3_pointer_deadline` and delivers
+a stationary sample for the captured pointer when it fires. Like Gama, the
+page captures one pointer at a time: a second contact's `pointerdown` does
+not replace the captured one, and a deadline Gama still publishes after its
+stationary sample was delivered is not re-armed, so a mismatch cannot spin a
+zero-delay timer. The surface sets
+`touch-action: none` so a touch drag arrives as moves, not a browser pan.
+`GamaWeb.install(app:columns:rows:idiom:)` takes the idiom (desktop by
+default).
+
+`GamaWebDemo` and the failed-install fixture use the same ten exports as
 WASI-conditioned target-local linker settings; build commands do not apply
 reactor exports to host tools.
 
@@ -121,7 +164,9 @@ usable grid both read the surface's padding back with `getComputedStyle`
 rather than assuming it, so a CSS change cannot silently shift clicks by a
 cell.
 
-**The host uses only the `v2` export tier.** The demo installs with `try?`,
+**The host never calls the `v1` tier.** Frames, keys and resizes use `v2`,
+and every pointer sample uses the `v3` pointer export, which keeps the same
+statuses. The demo installs with `try?`,
 so a failed install is silent inside the module: `v1` calls then return
 nothing and do nothing, and the page would sit on its boot overlay
 indefinitely. `v2` answers `-1` from the very first call, which the host turns
@@ -134,10 +179,10 @@ finished is dropped rather than forwarded, because a module with no exports
 yet would otherwise throw, and that throw would be misread as a lost host. The
 `v1` tier stays exported, unchanged, for other hosts.
 
-`scripts/check-wasm.sh` requires each of the four `v2` calls in `gama.js`
-individually and fails if any `v1` call remains. `scripts/browser-runtime-smoke.mjs`
+`scripts/check-wasm.sh` requires each of the three `v2` calls and both `v3`
+pointer calls in `gama.js` individually and fails if any `v1` call remains. `scripts/browser-runtime-smoke.mjs`
 adds two browser-level checks beyond the `0->0->1` state sequence: it fires a
-key and a pointer press at the moment `WebAssembly.instantiate` is called and
+key and a pointer press (as Pointer Events) at the moment `WebAssembly.instantiate` is called and
 requires them to be dropped without disabling later input, and with
 `--failed-install` it serves the failed-install fixture through the real page
 and requires the surface to report stage `install`, the failed status, and the

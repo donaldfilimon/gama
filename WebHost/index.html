@@ -97,6 +97,9 @@
     outline: none;
     cursor: default;
     -webkit-user-select: none; user-select: none;
+    /* Pointer Events own touch here: without this the browser claims a touch
+       drag for panning and sends pointercancel instead of pointermove. */
+    touch-action: none;
   }
   #gama:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
   .gama-row { margin: 0; font: inherit; white-space: pre; }

@@ -6,6 +6,7 @@ import GamaDraw
 private protocol AnyEmbedHost: AnyObject {
     func handle(_ event: InputEvent)
     var needsFrame: Bool { get }
+    var pointerDeadlineMillis: UInt64? { get }
     func frame() -> [UInt8]?
 }
 
@@ -18,12 +19,14 @@ private final class EmbedHostBox<A: App>: AnyEmbedHost {
     /// to name the family, not to carry frame state.
     let serializer = DrawListSerializer()
 
-    init(app: A, size: Size) throws(SceneConfigurationError) {
-        pump = HostPump(host: try FrameHost(app: app), size: size)
+    init(app: A, size: Size, idiom: InteractionIdiom) throws(SceneConfigurationError) {
+        pump = HostPump(host: try FrameHost(app: app, idiom: idiom), size: size)
         buffer = CellBuffer(size: size)
     }
 
     var needsFrame: Bool { pump.needsFrame }
+
+    var pointerDeadlineMillis: UInt64? { pump.pointerDeadlineMillis }
 
     var size: Size { pump.size }
 
@@ -88,17 +91,20 @@ public enum GamaEmbed {
     /// The returned pointer is owned by the caller and must be released with
     /// `gama_embed_v1_context_destroy`. All calls for a context must occur on
     /// the same render thread. Ownership of the app region transfers into the
-    /// retained opaque context.
+    /// retained opaque context. `idiom` selects the pointer recognition
+    /// policy (drag threshold, long press) for samples delivered through
+    /// `gama_embed_v1_pointer_event`; a desktop host keeps the default.
     public static func makeContext<A: App>(
         app: sending A,
         columns: Int = 80,
-        rows: Int = 24
+        rows: Int = 24,
+        idiom: InteractionIdiom = .desktop
     ) throws(SceneConfigurationError) -> UnsafeMutableRawPointer {
         let size = Size(
             width: min(Int(Int32.max), max(1, columns)),
             height: min(Int(Int32.max), max(1, rows))
         )
-        let context = EmbedContext(host: try EmbedHostBox(app: app, size: size))
+        let context = EmbedContext(host: try EmbedHostBox(app: app, size: size, idiom: idiom))
         return unsafe Unmanaged.passRetained(context).toOpaque()
     }
 }
@@ -210,6 +216,49 @@ public nonisolated func gama_embed_v1_pointer(
     context.host.handle(
         .pointer(Point(x: Int(column), y: Int(row)), pressed: pressed != 0)
     )
+    return 0
+}
+
+/// C ABI: delivers one rich pointer sample (ADR 0018). The codes are the
+/// `GAMA_EMBED_POINTER_*` tables in `GamaEmbed.h`; a negative timestamp means
+/// the host has no clock. Returns 0, -1 for a NULL context (checked first),
+/// or -4 (`GAMA_EMBED_ERR_INVALID_POINTER`) for a code outside the tables.
+@_cdecl("gama_embed_v1_pointer_event")
+public nonisolated func gama_embed_v1_pointer_event(
+    _ pointer: UnsafeMutableRawPointer?,
+    _ phase: Int32,
+    _ kind: Int32,
+    _ button: Int32,
+    _ modifiers: Int32,
+    _ column: Int32,
+    _ row: Int32,
+    _ scrollColumns: Int32,
+    _ scrollRows: Int32,
+    _ pointerID: Int32,
+    _ timestampMillis: Int64
+) -> Int32 {
+    guard let context = unsafe context(pointer) else { return -1 }
+    guard
+        let event = PointerWire.event(
+            phase: phase, kind: kind, button: button, modifiers: modifiers,
+            column: column, row: row, scrollColumns: scrollColumns, scrollRows: scrollRows,
+            pointerID: pointerID, timestampMillis: timestampMillis)
+    else { return -4 }
+    context.host.handle(.pointerEvent(event))
+    return 0
+}
+
+/// C ABI: writes the pending long-press deadline (monotonic milliseconds, on
+/// the clock the host stamps samples with) to `outputMillis`, or -1 when no
+/// press is waiting on one. The host delivers a stationary sample at that
+/// time. Returns 0, or -1 for a NULL context. `outputMillis` may be NULL.
+@_cdecl("gama_embed_v1_pointer_deadline")
+public nonisolated func gama_embed_v1_pointer_deadline(
+    _ pointer: UnsafeMutableRawPointer?,
+    _ outputMillis: UnsafeMutablePointer<Int64>?
+) -> Int32 {
+    guard let context = unsafe context(pointer) else { return -1 }
+    unsafe outputMillis?.pointee = PointerWire.deadline(context.host.pointerDeadlineMillis)
     return 0
 }
 

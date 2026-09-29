@@ -26,9 +26,54 @@ frame via the session's non-mutating `invalidate()` path
 
 Frames rasterize through the shared `CellPainter`/`DrawList` pipeline and
 draw via CoreGraphics; the most recent `DrawList` is exposed read-only as
-`currentDrawList` for accessibility adapters and diagnostics. Keyboard,
-pointer, scroll, and (on touch platforms) touch events translate into
-`InputEvent` values; the view claims first responder on window attach.
+`currentDrawList` for accessibility adapters and diagnostics. Keyboard
+events translate into `InputEvent` values; the view claims first responder on
+window attach.
+
+### Pointer input (ADR 0018)
+
+The view translates pointer input into raw `PointerEvent` samples and never
+recognizes a gesture itself: `FrameHost` decides tap, drag, long press,
+hover and scroll with the policy of the idiom the view creates it with
+(desktop on macOS; vision on visionOS; on UIKit, from
+`traitCollection.userInterfaceIdiom`: phone for `.phone`, desktop for
+`.mac` (a Catalyst app optimized for Mac), and pad for every other idiom,
+including tvOS, an iPad-idiom Catalyst app, and an iPhone or iPad app
+running on a Mac, which keeps its original idiom).
+
+- **AppKit.** Left, right and other buttons (`mouseDown`/`Dragged`/`Up` and
+  the `rightMouse*` and `otherMouse*` families) become down, move and up
+  samples with the button taken from the event type (0 primary, 1 secondary,
+  2 middle). A tracking area (`.mouseMoved`, `.inVisibleRect`) turns
+  `mouseMoved` into hover, and `mouseExited` into a hover outside the grid,
+  never a cancel, so a drag captured outside the view continues. Tablet
+  points report as pen. `scrollWheel` accumulates precise (point) deltas by
+  the cell size and line deltas one cell per line, carrying the fraction to
+  the next event. Modifiers come from `modifierFlags`; timestamps are
+  `event.timestamp` in milliseconds.
+- **UIKit.** The first touch is tracked by identity through `touchesBegan`,
+  `touchesMoved`, `touchesEnded` and `touchesCancelled` (a cancel sample, not
+  a release); `UITouch.type` maps a finger to touch, the pencil to pen, and an
+  indirect pointer to mouse. Outside tvOS a `UIHoverGestureRecognizer`
+  reports hover, and a pan recognizer restricted to indirect scrolling
+  (`allowedTouchTypes` empty) reports trackpad and wheel scroll. tvOS keeps
+  touch samples only.
+- **Scroll sign.** Positive rows reveal the lines below and positive columns
+  the columns to the right, on every backend; the platform's delta is negated
+  into that sign.
+- **Long press.** After every sample the view reads the host's
+  `pointerDeadlineMillis` and arms (or cancels) a one-shot timer on the
+  main run loop in the common modes (so it fires during event tracking),
+  which delivers a stationary sample for the pressed pointer at its
+  last cell. The clock is system uptime, the same one `NSEvent.timestamp`
+  and `UITouch.timestamp` count in.
+
+`AppleHostPointerTests` drives real `NSEvent`s through a windowed host: a
+drag that leaves the pad, the secondary button with modifiers, the armed
+deadline and its stationary sample, a second button during a press, the
+timer firing in an event-tracking run-loop mode, and the scroll sign. The
+UIKit paths are written for iOS, tvOS and visionOS; their compile on those
+platforms is not yet measured and no UIKit runtime test drives them.
 Italic font styling resolves through `NSFontDescriptor`/`UIFontDescriptor`
 symbolic traits.
 

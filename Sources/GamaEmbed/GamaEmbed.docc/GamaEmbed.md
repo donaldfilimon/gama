@@ -6,10 +6,12 @@ versioned `gama_embed_v1_*` ABI.
 ## Overview
 
 GamaEmbed is the context-owned flat C ABI backend:
-``GamaEmbed/GamaEmbed/makeContext(app:columns:rows:)`` wraps one app's
+``GamaEmbed/GamaEmbed/makeContext(app:columns:rows:idiom:)`` wraps one app's
 `FrameHost` behind an opaque pointer, and the `gama_embed_v1_*` symbol
 family drives it from plain C.
-Events go in through the key, pointer, and resize entry points; frames
+Events go in through the key, pointer, rich pointer sample
+(`gama_embed_v1_pointer_event`, with `gama_embed_v1_pointer_deadline` for
+long press), and resize entry points; frames
 come out as length-prefixed `DrawList` version 1 bytes. Ownership,
 status codes, and the single-render-thread rule are normative in
 `Sources/GamaEmbedABI/include/GamaEmbed.h`, and the canonical walkthrough

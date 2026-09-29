@@ -7,9 +7,11 @@ JavaScript.
 
 GamaWASM is the browser backend. The module is a wasi reactor: top-level
 code runs once at `_initialize` and calls
-`GamaWeb.install(app:columns:rows:)`; JavaScript then drives the installed
-host through the versioned `gama_web_v1_*` exports (`frame`, `key`,
-`pointer`, `resize`). Frames render as an HTML grid of styled spans handed
+`GamaWeb.install(app:columns:rows:idiom:)`; JavaScript then drives the
+installed host through the versioned `gama_web_v1_*` exports (`frame`,
+`key`, `pointer`, `resize`), their status-reporting `gama_web_v2_*`
+counterparts, and the `gama_web_v3_*` rich pointer tier
+(`pointer_event`, `pointer_deadline`; ADR 0018). Frames render as an HTML grid of styled spans handed
 to the page through the module's `"gama"` imports (`setHTML`, `setTitle`,
 `requestFrame`), and the mount point asserts `role="application"` plus an
 `aria-label`, the accessibility contract the browser smoke checks.

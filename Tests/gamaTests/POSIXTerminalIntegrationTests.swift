@@ -25,6 +25,21 @@ extension TerminalProcessGlobalTests {
             #expect(terminal.decodeForTesting() == .key(.character("🙂")))
         }
 
+        @Test("an SGR drag decodes byte-wise into rich pointer samples (ADR 0018)")
+        func sgrDragDecodesIntoPointerSamples() {
+            var terminal = Terminal(inputFD: STDIN_FILENO, outputFD: STDOUT_FILENO)
+            // Press, button-held motion split across two reads, release.
+            terminal.feedForTesting(Array("\u{1B}[<0;3;2M\u{1B}[<32;".utf8))
+            #expect(terminal.decodeForTesting()
+                == .pointerEvent(PointerEvent(phase: .down, location: Point(x: 2, y: 1))))
+            #expect(terminal.decodeForTesting() == nil)
+            terminal.feedForTesting(Array("6;2M\u{1B}[<0;6;2m".utf8))
+            #expect(terminal.decodeForTesting()
+                == .pointerEvent(PointerEvent(phase: .move, location: Point(x: 5, y: 1))))
+            #expect(terminal.decodeForTesting()
+                == .pointerEvent(PointerEvent(phase: .up, location: Point(x: 5, y: 1))))
+        }
+
         @Test("a nonblocking poll preserves a split escape sequence grace period")
         func nonblockingPollPreservesSplitEscapeGrace() throws {
             var descriptors: [Int32] = [-1, -1]

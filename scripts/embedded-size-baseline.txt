@@ -56,9 +56,22 @@
 # identical to the feat/native-presenters measurement, whose base already
 # carried the cursor, controller, and visible-row commits.
 #
+# Re-measured 2026-09-29 at the same compiler revision on feat/pointer-input
+# (dock phase 1, ADR 0018): host-owned pointer gesture recognition. New:
+# Sources/GamaCore/PointerGesture.swift (PointerEvent, PointerGesture,
+# InteractionIdiom, PointerPolicy); FrameHost gains the recognizer (capture,
+# thresholds, long press, cancel, hover, scroll, drop targets, focus
+# requests), a NodeID-keyed pointer-handler table, and three BuildContext
+# hooks. The same tree at the merge base measured 782256 bytes against this
+# pin (in band); with the change it is 836304 bytes, +54048. Symbol sizes
+# account for +24384 of that: the recognizer methods, the handler-table
+# Dictionary specialization, and the synthesized equality of the new value
+# types; the rest is metadata and relocations. A deliberate feature cost, not
+# an accidental dependency; the libm and global-state gates still pass.
+#
 # Grammar is deliberately tiny: blank lines, `#` comments, and key = "value".
 # Anything else fails the read, for the same reason scripts/lib/manifest.sh is
 # strict — this is a pin, not a configuration language.
 revision = "95c5142e84b82c1"
-bytes = "781964"
+bytes = "836304"
 tolerance_percent = "2"

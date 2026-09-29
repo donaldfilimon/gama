@@ -46,7 +46,8 @@ public struct TerminalCapabilities: Hashable, Sendable {
     /// Whether the locale and terminal claim UTF-8. This does not strip
     /// graphemes from the cell grid; it only records the claim.
     public var unicode: CapabilitySupport
-    /// SGR mouse tracking (`1000` / `1006`).
+    /// SGR mouse tracking: press and release (`1000`), motion while a
+    /// button is held (`1002`), in SGR encoding (`1006`).
     public var mouse: CapabilitySupport
     /// Alternate screen buffer (`1049`).
     public var alternateScreen: CapabilitySupport
@@ -216,7 +217,7 @@ public enum TerminalModeSequences {
             out += "\u{1B}[?25l"
         }
         if capabilities.mouse == .supported {
-            out += "\u{1B}[?1000h\u{1B}[?1006h"
+            out += "\u{1B}[?1000h\u{1B}[?1002h\u{1B}[?1006h"
         }
         if capabilities.bracketedPaste == .supported {
             out += "\u{1B}[?2004h"
@@ -238,7 +239,7 @@ public enum TerminalModeSequences {
             out += "\u{1B}[?2004l"
         }
         if capabilities.mouse == .supported {
-            out += "\u{1B}[?1006l\u{1B}[?1000l"
+            out += "\u{1B}[?1006l\u{1B}[?1002l\u{1B}[?1000l"
         }
         out += "\u{1B}[0m\u{1B}[?25h"
         if capabilities.alternateScreen == .supported {

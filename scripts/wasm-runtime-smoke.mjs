@@ -88,6 +88,7 @@ memory = instance.exports.memory;
 for (const name of [
   "gama_web_v1_frame", "gama_web_v1_key", "gama_web_v1_pointer", "gama_web_v1_resize",
   "gama_web_v2_frame", "gama_web_v2_key", "gama_web_v2_pointer", "gama_web_v2_resize",
+  "gama_web_v3_pointer_event", "gama_web_v3_pointer_deadline",
 ]) {
   if (typeof instance.exports[name] !== "function") throw new Error(`missing export ${name}`);
 }
@@ -120,7 +121,21 @@ if (failedInstall) {
       }
     }
   }
-  console.log("OK — WASM failed first install; v1=void/no-op; v2=-1 including invalid keys; no host callbacks");
+  // v3 fails closed the same way, the lifecycle check before argument
+  // validation: an invalid phase with no host is still -1.
+  for (const args of [[0, 0, 0, 0, 1, 1, 0, 0, 0, 0], [99, 0, 0, 0, 1, 1, 0, 0, 0, -1]]) {
+    const result = instance.exports.gama_web_v3_pointer_event(...args);
+    if (result !== -1) {
+      throw new Error(`gama_web_v3_pointer_event(${args}) without a host returned ${result}; expected -1`);
+    }
+  }
+  if (instance.exports.gama_web_v3_pointer_deadline() !== -1) {
+    throw new Error("gama_web_v3_pointer_deadline without a host must return -1");
+  }
+  if (htmlCalls !== 0 || titleCalls !== 0 || frameRequests !== 0) {
+    throw new Error("a v3 call without a host triggered a JavaScript callback");
+  }
+  console.log("OK — WASM failed first install; v1=void/no-op; v2=-1 including invalid keys; v3=-1; no host callbacks");
   process.exit(0);
 }
 
@@ -144,6 +159,30 @@ const v2Results = [
 ];
 if (v2Results.some((result) => result !== 0)) {
   throw new Error(`gama_web_v2_* accepted calls returned ${v2Results.join(",")}`);
+}
+// v3 rich pointer samples (ADR 0018): a hover, a scroll, and a primary press
+// and release with a clock are accepted; codes outside the wire tables are
+// -2; a NaN clock means "no clock", never a trap. The demo registers no
+// pointer handler, so no press waits on a long-press deadline (-3).
+const v3Results = [
+  instance.exports.gama_web_v3_pointer_event(4, 0, 0, 0, 2, 2, 0, 0, 0, 10.5),
+  instance.exports.gama_web_v3_pointer_event(5, 0, 0, 1, 2, 2, 0, 1, 0, 11),
+  instance.exports.gama_web_v3_pointer_event(0, 1, 0, 0, 40, 7, 0, 0, 3, 12),
+  instance.exports.gama_web_v3_pointer_event(2, 1, 0, 0, 40, 7, 0, 0, 3, Number.NaN),
+];
+if (v3Results.some((result) => result !== 0)) {
+  throw new Error(`gama_web_v3_pointer_event accepted calls returned ${v3Results.join(",")}`);
+}
+for (const args of [
+  [7, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 3, 0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 0, -1, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 16, 0, 0, 0, 0, 0, 0],
+]) {
+  if (instance.exports.gama_web_v3_pointer_event(...args) !== -2) {
+    throw new Error(`gama_web_v3_pointer_event(${args}) must reject an unknown code with -2`);
+  }
+}
+if (instance.exports.gama_web_v3_pointer_deadline() !== -3) {
+  throw new Error("gama_web_v3_pointer_deadline must report -3 with no press waiting");
 }
 if (instance.exports.gama_web_v2_key(999, 0, 0, 0) !== -2
     || instance.exports.gama_web_v2_key(0, 0x110000, 0, 0) !== -2) {

@@ -124,8 +124,8 @@ gate, `check-wasm.sh`: `Tests/Fixtures/WASMFailedInstall` is the source of the
 `GamaWASMFailedInstall` executable target, a wasm32 reactor whose app has no
 primary scene, so its first `GamaWeb.install` must throw `noPrimaryScene` and
 leave no host. The WASM gate builds it and runs it through
-`wasm-runtime-smoke.mjs --failed-install` to pin both export tiers' behavior
-with no host installed (`v1` returns nothing, `v2` returns `-1`).
+`wasm-runtime-smoke.mjs --failed-install` to pin every export tier's behavior
+with no host installed (`v1` returns nothing, `v2` and `v3` return `-1`).
 
 Gates also chain helpers that fail on their own, so a gate's name understates
 what it covers. `check-docs.sh` runs `scripts/check-doc-links.py` (relative
@@ -487,11 +487,13 @@ Target layering (all under `Sources/`, single test target `GamaTests` at
   backend that renders auxiliary scenes), GamaWASM
   (browser reactor, inert stubs off wasm32, experimental `Extern` feature
   scoped to this target only; `WebHost/` holds the page and JS glue the web
-  demo is served from. It publishes **two export tiers, not one**:
-  `gama_web_v1_*` and the argument-compatible status-reporting
+  demo is served from. It publishes **three export tiers, not one**:
+  `gama_web_v1_*`; the argument-compatible status-reporting
   `gama_web_v2_*`, which fails closed with `-1` before `GamaWeb.install` and
-  returns `-2` from `gama_web_v2_key` for an invalid key code — a change to
-  either tier is a public-ABI change, see `docs/backends/WASM.md`),
+  returns `-2` from `gama_web_v2_key` for an invalid key code; and the
+  `gama_web_v3_*` rich-pointer tier (ADR 0018: `gama_web_v3_pointer_event`
+  and `gama_web_v3_pointer_deadline`) — a change to any tier is a public-ABI
+  change, see `docs/backends/WASM.md`),
   GamaEmbed +
   GamaEmbedABI (context-owned flat C ABI `gama_embed_v1_*`; C header and
   ownership rules in `Sources/GamaEmbedABI/include/GamaEmbed.h`; static so the
