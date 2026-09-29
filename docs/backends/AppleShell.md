@@ -62,6 +62,17 @@ application resident. A Dock reopen with no live windows recreates the primary
 scene from its initial payload. Only explicit Quit or Command-Q terminates and
 emits `willTerminate`.
 
+## Text size
+
+The main menu has a View menu with Bigger (Command-+), Smaller (Command--)
+and Actual Size (Command-0). Each item has no target, so AppKit routes it
+through the responder chain to the key window's `GamaShellWindowController`,
+which steps that window's `GamaHostView.fontPointSize` by 1 pt or restores
+14 pt. Other windows keep their size. The step and the actual size are shell
+constants; the host clamps to 6...72, so a step past either end stays there.
+The larger cell refits the grid through an ordinary resize; layout stays in
+cells.
+
 ## Demo and supplemental smoke
 
 Run the unbundled demonstration:

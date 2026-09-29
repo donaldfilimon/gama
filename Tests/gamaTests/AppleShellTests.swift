@@ -176,6 +176,57 @@ struct AppleShellTests {
         #expect(coordinator.openWindow(group: shellDocumentKey, value: 1) == reopened)
     }
 
+    @Test("text size commands step the window's host and stop at the clamp")
+    func textSizeCommands() throws {
+        let coordinator = try makeCoordinator(events: Signal([]))
+        coordinator.beginApplication()
+        let instance = try #require(coordinator.liveInstanceIDs.first)
+        let controller = try #require(coordinator.controllers[instance])
+        let host = controller.hostView
+        #expect(host.fontPointSize == 14)
+
+        controller.makeTextBigger(nil)
+        #expect(host.fontPointSize == 15)
+        controller.makeTextSmaller(nil)
+        controller.makeTextSmaller(nil)
+        #expect(host.fontPointSize == 13)
+        controller.makeTextActualSize(nil)
+        #expect(host.fontPointSize == GamaShellWindowController.actualTextSize)
+        #expect(host.fontPointSize == 14)
+
+        host.fontPointSize = 72
+        controller.makeTextBigger(nil)
+        #expect(host.fontPointSize == 72)
+        host.fontPointSize = 6
+        controller.makeTextSmaller(nil)
+        #expect(host.fontPointSize == 6)
+
+        // Another window's host is untouched: the command acts on the
+        // controller that received it, which the responder chain makes the
+        // key window's.
+        let other = try #require(coordinator.openWindow("inspector"))
+        let otherHost = try #require(coordinator.controllers[other]).hostView
+        #expect(otherHost.fontPointSize == 14)
+    }
+
+    @Test("the View menu routes text size commands through the responder chain")
+    func viewMenuCommands() throws {
+        let menu = GamaShell.makeMainMenu()
+        let view = try #require(menu.items.first { $0.submenu?.title == "View" }?.submenu)
+        let expected: [(Selector, String)] = [
+            (#selector(GamaShellWindowController.makeTextBigger(_:)), "+"),
+            (#selector(GamaShellWindowController.makeTextSmaller(_:)), "-"),
+            (#selector(GamaShellWindowController.makeTextActualSize(_:)), "0"),
+        ]
+        #expect(view.items.count == expected.count)
+        for (item, (action, key)) in zip(view.items, expected) {
+            #expect(item.action == action)
+            #expect(item.keyEquivalent == key)
+            #expect(item.keyEquivalentModifierMask == .command)
+            #expect(item.target == nil)
+        }
+    }
+
     @Test("explicit termination emits willTerminate exactly once")
     func terminationOnce() throws {
         let events = Signal<[LifecycleEvent]>([])
