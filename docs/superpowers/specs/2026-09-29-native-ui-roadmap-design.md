@@ -77,6 +77,10 @@ keeps this track out of the file tracks 1 and 2 edit.
   services target owns it.
 - **Deferred:** Gama hosting SwiftUI views as controls. That is a variant of
   track 3's presentation mapping and waits for it.
+- **Specs:** [SwiftUI embedding design](2026-09-29-swiftui-embedding-design.md)
+  (built on a feature branch, wrapping `GamaHostView` first) and the
+  [SwiftData persistence draft](drafts/2026-09-29-swiftdata-reactive-persistence-draft.md)
+  (open questions only).
 
 ### Track 5: Other native hosts
 
@@ -84,7 +88,8 @@ A `UIKitNativeHostView` following track 3's mapping table (iOS, iPadOS,
 visionOS; UIKit scene ownership is already listed as deferred scope in
 `tasks/todo.md`). Then an Android Views host over the existing JNI example.
 Windows stays blocked: no Windows Swift 6.5-dev toolchain exists and no
-Windows runner is registered.
+Windows runner is registered. The UIKit mapping and its open questions are in
+the [UIKit native host draft](drafts/2026-09-29-uikit-native-host-draft.md).
 
 ## Parallel execution
 

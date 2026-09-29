@@ -42,8 +42,8 @@ platform_services_ban_dirs=(
   "$ROOT/Sources/GamaCore" "$ROOT/Sources/GamaPlugin" "$ROOT/Sources/GamaDraw"
   "$ROOT/Sources/GamaMacros" "$ROOT/Sources/GamaMacrosImpl" "$ROOT/Sources/gama"
   "$ROOT/Sources/GamaTUI" "$ROOT/Sources/GamaWASM" "$ROOT/Sources/GamaAppleUI"
-  "$ROOT/Sources/GamaAppleShell" "$ROOT/Sources/GamaEmbed" "$ROOT/Sources/GamaEmbedABI"
-  "$ROOT/Sources/GamaMLIR"
+  "$ROOT/Sources/GamaAppleShell" "$ROOT/Sources/GamaSwiftUI" "$ROOT/Sources/GamaEmbed"
+  "$ROOT/Sources/GamaEmbedABI" "$ROOT/Sources/GamaMLIR"
 )
 require_paths directory "${platform_services_ban_dirs[@]}"
 if grep -R -n -E --include='*.swift' \
@@ -328,4 +328,3 @@ echo "OK — Swift Testing only, no XCTest import (ADR 0003)"
 
 grep -q 'swift-tools-version: 6.4' "$ROOT/Package.swift"
 "$ROOT/scripts/check-toolchain-pins.sh"
-echo "OK — portable-core and explicit-ownership boundaries"

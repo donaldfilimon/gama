@@ -77,6 +77,7 @@ All suites live in `Tests/gamaTests/`:
 | `StreamOutputTests.swift` | Author-declared stream output |
 | `StreamPresenterTests.swift` | Stream presenter |
 | `StyleTests.swift` | Style |
+| `SwiftUIEmbeddingTests.swift` | SwiftUI embedding |
 | `TerminalCapabilityTests.swift` | Terminal capabilities and cell diff — filter `TerminalCapabilityTests` |
 | `TerminalRescueTests.swift` | Terminal process-global rescue |
 | `TestSupport.swift` | No suite; shared helpers, including `TestBox` |
