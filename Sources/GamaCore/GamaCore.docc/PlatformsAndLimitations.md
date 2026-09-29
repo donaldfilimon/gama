@@ -34,5 +34,6 @@ it is not a Swift compiler frontend.
 
 Cross-compilation does not prove a native runtime. The Android/JNI and
 Windows console rows in `docs/Capabilities.md` are currently Unverified;
-hosted emulator and native console jobs remain remaining proof. That table
+their CI jobs were removed and no runner exists, so they have no current
+proof route. That table
 is the status authority.

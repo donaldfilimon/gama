@@ -19,28 +19,32 @@ Details and traps (iCloud checkout, Windows exception): `docs/Toolchain.md`.
 `./scripts/check.sh` runs the full local acceptance matrix — fifteen gates,
 sequential, fail-closed. Do not weaken or skip a gate to make it green.
 
-| Gate | Proves | Hosted CI job / step |
+| Gate | Proves | CI job / step |
 | --- | --- | --- |
 | `check-apple.sh` | Debug build, full test suite, release build on the pinned snapshot | macOS — "Core, macros, POSIX TUI, Apple UI" |
 | `check-apple-platforms.sh` | iOS/tvOS/visionOS compile via xcodebuild | macOS — "iOS, tvOS, and visionOS compile" |
 | `check-boundaries.sh` | portable-target import bans (all five portable targets, not GamaCore alone), no process-global state, tools-version pin; chains `check-toolchain-pins.sh` | macOS — "Source boundaries and documentation" |
 | `check-concurrency-negative.sh` | Host-confined types cannot cross `Sendable` boundaries | macOS — "Source boundaries and documentation" |
-| `check-c-abi.sh` | C consumer compiles against `GamaEmbed.h` with -Werror, links `libGamaEmbed.a`, runs | Linux — "C ABI consumer compile, link, and run" |
-| `check-embedded.sh` | Embedded-Swift whole-module compile + relocatable link of GamaCore at the exact snapshot | Embedded job |
-| `check-linux.sh` | Static Linux SDK cross-compile | Linux — "Static Linux SDK" |
-| `check-wasm.sh` | WASM SDK build + Node and headless-Chrome runtime smokes | WebAssembly job |
-| `check-android.sh` | Android SDK cross-compile + JNI packaging | Android — "Cross-compile GamaEmbed" |
-| `check-android-emulator.sh` | API 36 emulator input/frame round trip | Android — "Required emulator input/frame round trip" |
+| `check-c-abi.sh` | C consumer compiles against `GamaEmbed.h` with -Werror, links `libGamaEmbed.a`, runs | none (local only since 2026-09-28) |
+| `check-embedded.sh` | Embedded-Swift whole-module compile + relocatable link of GamaCore at the exact snapshot | Embedded job (self-hosted macOS) |
+| `check-linux.sh` | Static Linux SDK cross-compile | none (local only since 2026-09-28) |
+| `check-wasm.sh` | WASM SDK build + Node and headless-Chrome runtime smokes | none (local only since 2026-09-28; `pages.yml` also runs `bundle-web.sh`) |
+| `check-android.sh` | Android SDK cross-compile + JNI packaging | none (local only since 2026-09-28) |
+| `check-android-emulator.sh` | API 36 emulator input/frame round trip | none (local only since 2026-09-28) |
 | `check-mlir.sh` | Emitted dialect parses under `mlir-opt --allow-unregistered-dialect` | macOS — "MLIR parse" |
 | `check-docs.sh` | Relative Markdown links pass; evidence claims stay in `docs/Capabilities.md`; named repository paths exist; run-gama mirrors, paths, modes, and failure cleanup agree; DocC builds with zero warnings | macOS — "Source boundaries and documentation" |
 | `check-doc-coverage.sh` | Every public declaration has a symbol-graph doc comment, excluding only justified allowlist entries | macOS — "Source boundaries and documentation" |
 | `check-evidence-freshness.sh` | Every `docs/Capabilities.md` row carries an evidence annotation, and no row's anchor commit predates a change to the paths it depends on | macOS — "Source boundaries and documentation" |
 | `check-package-graph.sh` | Every shipped Swift target enables strict memory safety with `StrictMemorySafety` promoted to an error; no shipped library depends on a package product; `Extern` stays scoped to `GamaWASM` | macOS — "Source boundaries and documentation" |
 
-The Linux job additionally runs the native test suite under Address and
-Thread Sanitizer; the Windows job runs the console smoke on Swift 6.4.x (the
-documented exception). Gates that need a pinned SDK or another OS fail
-locally by design — the hosted matrix is their proof.
+CI (`.github/workflows/ci.yml`) is two jobs on the self-hosted macOS arm64
+runner: the macOS job (every "macOS" step above) and the Embedded job. The
+GitHub-hosted Linux (native tests, ASan/TSan/LSan, C ABI, static SDK),
+WebAssembly, Android, Windows (console smoke on the Swift 6.4.x exception),
+and fork-PR macOS jobs were removed on 2026-09-28: hosted Actions are
+billing-locked and no other runner exists. Gates that need a pinned SDK or
+another OS fail locally by design, and nothing in CI proves them now; see
+`docs/Capabilities.md` for what that leaves unproven.
 
 ## Claim-honesty policy
 
@@ -72,7 +76,8 @@ not imply the others.
 
 Prefer small reviewable commits, each verified by the relevant gate before
 committing (gated slices). Preserve `Package.resolved`. Never force-push the
-default branch. Merge only after the required hosted matrix is green — a red
-or still-running matrix is a blocker, not a formality. Design specs go under
+default branch. Merge only after the CI jobs are green — a red or
+still-running job is a blocker, not a formality, even though branch
+protection no longer enforces it. Design specs go under
 `docs/superpowers/specs/` (drafts carry open questions and are not
 commitments); the running ledger is `tasks/goals.md` + `tasks/todo.md`.

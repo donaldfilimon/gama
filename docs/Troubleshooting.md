@@ -204,8 +204,8 @@ do not expand the allowlist to make an ordinary omission pass.
 ## A complete matrix fails for a missing prerequisite
 
 That is intended. The complete matrix is fail-closed. Install/use the exact
-pinned prerequisite or rely on a hosted job that genuinely supplies it, then
-report the local/hosted boundary. Do not edit a gate to reinterpret “missing”
+pinned prerequisite or rely on a CI job that genuinely supplies it, then
+report the local/CI boundary. Do not edit a gate to reinterpret “missing”
 as “passed.”
 
 ## Branches cannot be merged or deleted safely
@@ -216,7 +216,8 @@ Before integrating or deleting a branch:
 2. Check open pull requests.
 3. Compare branch-only commits and patch identity against `main`.
 4. Preserve dirty or unique concurrent work.
-5. Merge through the protected PR workflow.
+5. Merge through a PR once both CI jobs are green (branch protection is off,
+   so nothing enforces this).
 6. Delete only refs with no remaining unique history or active PR.
 
 Branch names and age are not evidence that their contents are obsolete.

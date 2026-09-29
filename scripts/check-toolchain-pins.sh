@@ -98,24 +98,15 @@ swift_version="$(<"$ROOT/.swift-version")"
 swift_version="${swift_version%%$'\n'}"
 must_equal ".swift-version" "$selector" "$swift_version"
 
+# ci.yml now holds only the self-hosted macOS and Embedded jobs (the
+# GitHub-hosted Linux, WASM, Android, and Windows jobs were removed on
+# 2026-09-28), so it carries the macOS snapshot pins alone. The Linux, SDK,
+# and Windows pins stay in Toolchains.toml for the local gates below and as
+# the documented Windows exception.
 must_contain "$CI" "$macos_url" "macOS toolchain URL"
 must_contain "$CI" "$macos_sha" "macOS toolchain SHA-256"
-must_contain "$CI" "$linux_url" "Linux toolchain URL"
-must_contain "$CI" "$linux_sha" "Linux toolchain SHA-256"
-must_contain "$CI" "$linux_sdk_id" "static Linux SDK id"
-must_contain "$CI" "$linux_sdk_url" "static Linux SDK URL"
-must_contain "$CI" "$linux_sdk_sha" "static Linux SDK SHA-256"
-must_contain "$CI" "$wasm_sdk_id" "WASM SDK id"
-must_contain "$CI" "$wasm_sdk_url" "WASM SDK URL"
-must_contain "$CI" "$wasm_sdk_sha" "WASM SDK SHA-256"
-must_contain "$CI" "$android_sdk_id" "Android SDK id"
-must_contain "$CI" "$android_sdk_url" "Android SDK URL"
-must_contain "$CI" "$android_sdk_sha" "Android SDK SHA-256"
 must_contain "$CI" "$xctoolchain_id" "xctoolchain id"
 must_contain "$CI" "Swift $swift_revision" "Swift 6.5-dev revision grep"
-must_contain "$CI" "$windows_url" "Windows toolchain URL"
-must_contain "$CI" "$windows_sha" "Windows toolchain SHA-256"
-must_contain "$CI" "Swift $windows_revision" "Windows Swift revision grep"
 
 # Pages independently builds the deployable WASM site, so its compiler and
 # SDK pins must drift-fail alongside the primary acceptance workflow.

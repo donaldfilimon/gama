@@ -8,7 +8,7 @@ SCRATCH_PATH="$SCRATCH_ROOT/gama-linux-leaks-swiftpm"
 EVIDENCE_PATH="$SCRATCH_ROOT/gama-linux-leaks-evidence"
 
 if [[ "$(uname -s)" != Linux ]]; then
-  echo "error: LeakSanitizer leak detection is a hosted Linux proof; macOS can only build and run gama-leak-check without LSan" >&2
+  echo "error: LeakSanitizer leak detection is a Linux-only proof; macOS can only build and run gama-leak-check without LSan" >&2
   exit 2
 fi
 

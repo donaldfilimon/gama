@@ -10,9 +10,10 @@ of the original terminal state — is recorded in
 Status: the POSIX declaration is locally proven (`check-apple.sh`,
 `check-linux.sh`, `check-boundaries.sh`) and pinned by the compile fixtures in
 `Tests/Fixtures/Ownership/`, which `scripts/check-boundaries.sh` drives. The
-Windows Console declaration is **hosted-proven only** — nothing available
-locally compiles the `#else` branch, so its `~Copyable` rests on the CI
-Windows job. Evidence vocabulary is defined in
+Windows Console declaration was **hosted-proven only** — nothing available
+locally compiles the `#else` branch, so its `~Copyable` rested on the CI
+Windows job, which was removed on 2026-09-28 (no Windows runner exists). It
+now has no current proof route. Evidence vocabulary is defined in
 [Capabilities.md](Capabilities.md#status-vocabulary).
 
 ## API diff

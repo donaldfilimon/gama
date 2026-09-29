@@ -4,7 +4,7 @@
 
 - This is the SwiftPM Gama Framework checkout. The Qt browser app formerly at `~/dev/active/gama-qt` now lives in `qt/` (below); it is unrelated framework-wise and only shares the name.
 - The module graph is `Package.swift`'s products and targets. Treat any other module list, or a `gama` CLI, as a design vision, not this checkout. Do not add targets to match it.
-- The umbrella path is `Sources/gama` and the test path is `Tests/gamaTests`. A wrong-case `Sources/Gama` or `Tests/GamaTests` directory is not in the package. Linux CI is case-sensitive.
+- The umbrella path is `Sources/gama` and the test path is `Tests/gamaTests`. A wrong-case `Sources/Gama` or `Tests/GamaTests` directory is not in the package. Linux builds are case-sensitive.
 - The Android demo target path is `Examples/Android`, not a `Sources/GamaAndroidDemo` directory. JNI and Gradle stay there.
 - `GamaStudio/` is a separate SwiftPM package (the Gama Studio 3D authoring app) with its own `AGENTS.md` and gate (`cd GamaStudio && ./tools/check.sh`). It depends on this framework by path (`.package(path: "..")`), is not a framework product, and is not in `scripts/check.sh` or CI. Framework changes to the Apple host or layout can break its gate.
 - `qt/` is a separate SwiftPM package (Gama Qt, a SwiftUI browser shell over a Swift/C++23 bridge to Qt 6), folded in from `~/dev/active/gama-qt` on 2026-09-28 with its history. It has its own `AGENTS.md` and gate (`cd qt && env -u TOOLCHAINS ./Scripts/check.sh`, verdict `check.sh: PASSED`), builds with Xcode's default Swift 6.4 toolchain rather than the snapshot pin, needs Homebrew Qt 6 (`/opt/homebrew`, or `QT_PREFIX`), does not depend on the framework, and is not in `scripts/check.sh` or CI. Its `GamaCore`, `Gama` and `GamaTests` modules are unrelated code that share the framework's names; rename them before qt/ ever depends on the framework.
@@ -41,8 +41,8 @@ swiftly run swift run gama-demo
 - Android cross-build/JNI packaging requires `ANDROID_NDK_HOME=... ./scripts/check-android.sh`.
 - Full acceptance is `./scripts/check.sh`. Its `gates` array is authoritative and currently runs 15 fail-closed gates: Apple, Apple platforms, boundaries, concurrency negatives, C ABI, Embedded, Linux, WASM, Android, Android emulator, MLIR, DocC, doc coverage, evidence freshness, and package graph. `scripts/check-linux-leaks.sh` is not in that array; off Linux it exits 2. Do not add it to make leak proof local.
 - python3 is a prerequisite of the documentation and boundary helpers; node is a prerequisite of the WASM gate.
-- Some full-matrix gates require pinned SDKs, the NDK, Node/browser tooling, MLIR, or hosted non-macOS runners. Missing proof is a failure; do not weaken or skip gates to make the matrix green. `check-evidence-freshness.sh` resolves anchors against git history; a depth-1 clone fails closed.
-- CI truth is `.github/workflows/ci.yml`. Windows deliberately uses the pinned Swift 6.4.x exception; other jobs use the 6.5-dev snapshot family. Push to `main` also deploys the WASM site via `.github/workflows/pages.yml`.
+- Some full-matrix gates require pinned SDKs, the NDK, Node/browser tooling, MLIR, or a Linux host (no CI runner provides one). Missing proof is a failure; do not weaken or skip gates to make the matrix green. `check-evidence-freshness.sh` resolves anchors against git history; a depth-1 clone fails closed.
+- CI truth is `.github/workflows/ci.yml`: two jobs, macOS and Embedded, both on the self-hosted macOS arm64 runner labelled `gama` (`docs/SelfHostedRunner.md`), and only for trusted same-repo events. The GitHub-hosted Linux, WebAssembly, Android, Windows, and fork-PR macOS jobs were removed on 2026-09-28; those platforms have local gates only. `.github/workflows/pages.yml` still deploys the WASM site on push to `main`, but it needs a GitHub-hosted Ubuntu runner and cannot start while the account's Actions billing is locked.
 
 ## Architecture Boundaries
 
@@ -72,5 +72,5 @@ swiftly run swift run gama-demo
 
 ## Repository Safety
 
-- Preserve `Package.resolved`. Never commit credentials or runner configuration, force-push `main`, or merge before required checks are green.
+- Preserve `Package.resolved`. Never commit credentials or runner configuration, or force-push `main`. Branch protection is off, so no check is required by GitHub; still do not merge while a CI job is red.
 - Never run `git gc`, `git prune`, `git fsck`, or `git repack` in this FileProvider-managed checkout.

@@ -83,18 +83,23 @@ Swift Testing filters match source type/test identifiers, not `@Suite`
 display names. Confirm the `Test run with N tests` line; an unmatched filter
 can warn and exit zero.
 
-## Hosted CI map
+## CI job map
 
-The workflow in `.github/workflows/ci.yml` is the hosted authority:
+The workflow in `.github/workflows/ci.yml` is the CI authority. Both jobs run
+on the self-hosted macOS arm64 runner labelled `gama`
+([SelfHostedRunner.md](SelfHostedRunner.md)), only for pushes, manual
+dispatch, and same-repository pull requests:
 
 - **macOS:** pinned Apple build/tests, Apple-family compile, boundaries,
   concurrency, documentation, MLIR, and staged macOS bundle.
-- **Linux:** native tests, C ABI, AddressSanitizer, harness-free
-  LeakSanitizer with negative control, ThreadSanitizer, static SDK.
-- **WebAssembly:** pinned compiler/SDK, runtime/browser checks, deployable site.
-- **Android:** pinned compiler/SDK/NDK, packaging, required API 36 emulator.
-- **Embedded:** exact snapshot compile/link.
-- **Windows:** native console route on the documented Swift 6.4.x exception.
+- **Embedded:** exact snapshot compile/link and size baseline.
+
+The GitHub-hosted Linux (native tests, C ABI, sanitizers, harness-free
+LeakSanitizer, static SDK), WebAssembly, Android (API 36 emulator), Windows
+(Swift 6.4.x console route), and fork-PR macOS jobs were removed on
+2026-09-28. Hosted Actions are billing-locked and no Linux, Windows, or
+Android runner exists, so those routes have local gates only, and a fork pull
+request gets no CI run at all.
 
 A green PR-head run proves the tested head. A merge commit is a different SHA;
 when the workflow runs again, report its result separately.
@@ -165,8 +170,9 @@ Before calling a delivery complete:
 2. Run the focused gate and verify the expected test count/output.
 3. Run the affected broad gates with external scratch paths.
 4. Run documentation and boundary gates for public or architectural changes.
-5. Push through the protected PR workflow; do not force-push `main`.
-6. Wait for every required exact-head check.
+5. Push through a PR (or directly to `main` when agreed; branch protection is
+   off); never force-push `main`.
+6. Wait for both CI jobs on the exact head.
 7. Merge, fetch, and verify local `main == origin/main`.
 8. Wait for post-merge workflows when they are part of delivery evidence.
 9. Delete a branch only after proving it has no open PR and no commits outside

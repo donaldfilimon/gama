@@ -151,5 +151,7 @@ policy, then preserves the existing compile, symbol, Node-runtime, and browser
 smokes. `scripts/bundle-web.sh` assembles those host files with
 `gama-web-demo.wasm` and runs the browser-runtime smoke against the assembled
 directory. `.github/workflows/pages.yml` repeats that exact pinned build and
-publishes the verified directory from `main`; Pages deployment and a live
-browser load are separate hosted evidence from the acceptance artifact upload.
+publishes the verified directory from `main` (it needs a GitHub-hosted
+Ubuntu runner). The acceptance-matrix WebAssembly CI job was removed on
+2026-09-28, so `check-wasm.sh` is a local gate; Pages deployment and a live
+browser load are separate evidence.

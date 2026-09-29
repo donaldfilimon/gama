@@ -201,7 +201,7 @@ done
 ```
 
 `check-linux-leaks.sh` and `check-portable-symbols.sh` are not in that array:
-the first is a hosted-Linux LeakSanitizer proof (off Linux it exits 2 by
+the first is a Linux-only LeakSanitizer proof with no CI job since 2026-09-28 (off Linux it exits 2 by
 design — macOS can build `gama-leak-check` but cannot produce the evidence;
 never add it to the array to make leak proof "local"),
 and the second is a helper the platform gates call to scan emitted objects for
@@ -359,18 +359,23 @@ Bind first (`let dirtyAfter = pump.needsFrame; #expect(dirtyAfter)`); every
 (`#expect(host.duplicateIDs == [...])`) take a different overload and are
 fine.
 
-CI is `.github/workflows/ci.yml` — six jobs pinned to the same snapshot family
-with SHA256-verified downloads (`scripts/ci-install-swift-*.sh`).
-`scripts/check-toolchain-pins.sh` (via `check-boundaries.sh`) fails if CI
-URLs/SHAs drift from `Toolchains.toml`. A second workflow,
-`.github/workflows/pages.yml`, runs `scripts/bundle-web.sh` on every push to
-`main` and deploys the browser-smoked WASM site to GitHub Pages, so a merge
-to `main` is also a web deploy. `main` is protected by a repository ruleset:
-pull requests only, no force-push or deletion, and all six CI jobs are
-required status checks under the strict policy, so a PR must be current with
-`main` before it can merge. That is GitHub-side state, not repo state, so
-re-check it with `gh api repos/donaldfilimon/gama/rulesets` rather than
-trusting this line.
+CI is `.github/workflows/ci.yml`: two jobs, `macos-swift-64` and
+`embedded-swift-64`, both on the self-hosted macOS arm64 runner labelled
+`gama` (`docs/SelfHostedRunner.md`) and both guarded to trusted same-repo
+events; fork PRs get no job. Each installs the pinned snapshot pkg after a
+SHA-256 check. The GitHub-hosted Linux, WebAssembly, Android, Windows, and
+fork-PR macOS jobs were removed on 2026-09-28 (hosted Actions have been
+billing-locked since 2026-09-08 and no other runner exists), so those
+platforms have local gates only. `scripts/check-toolchain-pins.sh` (via
+`check-boundaries.sh`) fails if CI's macOS pins or Pages' Linux/WASM pins
+drift from `Toolchains.toml`. A second workflow, `.github/workflows/pages.yml`,
+runs `scripts/bundle-web.sh` on every push to `main` and deploys the
+browser-smoked WASM site to GitHub Pages; it needs a GitHub-hosted Ubuntu
+runner, so it cannot start while the billing lock holds. As of 2026-09-28
+`main` has no branch protection and no rulesets, so nothing is a required
+status check and direct pushes are possible. That is GitHub-side state, not
+repo state, so re-check it with `gh api repos/donaldfilimon/gama/rulesets`
+rather than trusting this line.
 
 ## Architecture
 

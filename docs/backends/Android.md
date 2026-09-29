@@ -38,7 +38,8 @@ and the demo library for both ABIs with the pinned SDK (ids/SHA-256 in
 `Toolchains.toml`) and the pinned NDK 30.0.15729638, then packages
 `jniLibs` — including the transitive `.so` closure and `libc++_shared.so`,
 which the Swift runtime requires at load time.
-`scripts/check-android-emulator.sh` is the runtime proof CI runs.
-It first exercises the fail-closed readiness policy, enables hosted KVM, and
+`scripts/check-android-emulator.sh` is the runtime proof. CI ran it on a
+GitHub-hosted Ubuntu emulator until that job was removed on 2026-09-28; it is
+now a local gate only. It first exercises the fail-closed readiness policy, and
 then requires the input-driven frame assertion. See
 [`../Capabilities.md`](../Capabilities.md) for the current evidence boundary.

@@ -1,8 +1,8 @@
 schema = 1
 
 # Single pinned compiler for every gate except the xcodebuild platform gates
-# (which must use Xcode's integrated 6.4 toolchain) and the Windows job (see
-# [windows_exception]). Selected locally by `.swift-version`.
+# (which must use Xcode's integrated 6.4 toolchain) and the Windows console
+# route (see [windows_exception]). Selected locally by `.swift-version`.
 # Verified 2026-08-26: swift.org's newest complete main-development set
 # (macOS pkg, ubuntu24.04 tarball, static-linux / wasm / android SDKs) is
 # still 2026-08-21-a; no 08-22..08-26 main snapshot tag exists. Windows main
@@ -40,8 +40,10 @@ used_by = "scripts/check-apple-platforms.sh"
 
 # Deliberate exception, not drift: swift.org has published no Windows
 # main-development snapshot since 2026-05-20-a (verified 2026-08-26), so the
-# Windows job stays on the newest proven 6.4.x branch snapshot. Windows is NOT
-# verified on 6.5-dev; revisit when Windows main snapshots resume.
+# Windows console route stays on the newest proven 6.4.x branch snapshot.
+# Windows is NOT verified on 6.5-dev; revisit when Windows main snapshots
+# resume. The GitHub-hosted Windows CI job that consumed this pin was removed
+# on 2026-09-28 (no Windows runner exists); the pin is kept as the record.
 [windows_exception]
 selector = "6.4.x-snapshot-2026-08-14"
 swift_revision = "424cae54c1a10da"

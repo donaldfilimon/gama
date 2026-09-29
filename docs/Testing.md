@@ -106,7 +106,9 @@ All suites live in `Tests/gamaTests/`:
 
 ## Linux sanitizers
 
-The Linux job separates two contracts which cannot honestly share a process:
+Linux sanitizer proof separates two contracts which cannot honestly share a
+process. The GitHub-hosted Linux job that ran both was removed on 2026-09-28,
+so today they run only on a Linux host by hand:
 
 - `swift test --sanitize address` retains broad address-safety coverage, with
   `detect_leaks=0` only because SwiftPM's generated runner loads an XCTest
@@ -115,9 +117,9 @@ The Linux job separates two contracts which cannot honestly share a process:
   the executable directly under `detect_leaks=1`. The clean path constructs,
   pumps, and destroys a real `FrameHost` without Swift Testing or XCTest. The
   same binary's `--deliberate-leak` path intentionally retains a GamaCore
-  `Signal`; CI requires LeakSanitizer's exact configured failure code and
+  `Signal`; the gate requires LeakSanitizer's exact configured failure code and
   diagnostic before the gate can pass. No suppression file is involved.
 
 LeakSanitizer leak detection is unsupported on Darwin. macOS can prove that
-the executable builds and its clean lifecycle runs, but only the hosted Linux
-job can prove both the clean LSan result and the failing negative control.
+the executable builds and its clean lifecycle runs, but only a Linux host can
+prove both the clean LSan result and the failing negative control.
