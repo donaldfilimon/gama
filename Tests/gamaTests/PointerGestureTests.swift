@@ -233,6 +233,7 @@ struct PointerGestureTests {
         host.handle(.pointerEvent(PointerEvent(phase: .stationary, location: center(first.frame), timestampMillis: 1_499)))
         #expect(config.log.phases == [.pressed])
         host.handle(.pointerEvent(PointerEvent(phase: .stationary, location: center(first.frame), timestampMillis: 1_500)))
+        #expect(config.log.phases == [.pressed, .longPress])
         host.handle(.pointerEvent(PointerEvent(phase: .stationary, location: center(first.frame), timestampMillis: 1_600)))
         let cleared = host.pointerDeadlineMillis
         #expect(cleared == nil)
