@@ -6,8 +6,10 @@ WebKit content, an embedded Qt panel, and optional on-device CoreAI-assisted
 address resolution. The `--legacy-browser` path exists as a Qt Widgets bridge
 demonstration; it is not the default product shell.
 
-This checkout is the canonical local `gama-qt` project. It is distinct from the
-Swift framework at `~/Desktop/Gama`.
+This package lives at `qt/` inside the `donaldfilimon/gama` repository (folded
+in on 2026-09-28 from the former local-only `~/dev/active/gama-qt` checkout,
+history preserved). It is a separate SwiftPM package from the enclosing Gama
+framework: it does not depend on it and is not built by the framework's gates.
 
 ## Requirements
 
@@ -22,7 +24,7 @@ wrapper, prints `build EXIT:<n>` and `test EXIT:<n>`, and exits nonzero if
 either failed. Redirect it to a log rather than piping it.
 
 ```bash
-cd ~/dev/active/gama-qt
+cd ~/dev/active/Gama/qt
 Scripts/check.sh >| /tmp/gama-qt-check.log 2>&1; echo EXIT:$?
 ```
 
