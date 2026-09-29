@@ -481,13 +481,18 @@ Target layering (all under `Sources/`, single test target `GamaTests` at
   app declared `CompletionStatus`; `gama-demo` still drives `TUIRenderer`
   itself because of its plugin loop — use the `run-gama` skill, not a
   redirected `swift run`),
-  GamaAppleUI (`@MainActor` NSView/UIView via CoreGraphics), GamaAppleShell
+  GamaAppleUI (`@MainActor` NSView/UIView via CoreGraphics; text size is
+  `GamaHostView.fontPointSize`, and a new size refits the grid through an
+  ordinary cell resize), GamaAppleShell
   (NSApplication/NSWindow ownership, multi-window and per-shell command
-  routing; compiles to an inert target without AppKit — it is the one
+  routing; its View menu's Bigger/Smaller/Actual Size items have no target,
+  so by AppKit's contract (not a test here) they reach the key window's
+  `GamaShellWindowController` through the responder chain; compiles to an inert target without AppKit — it is the one
   backend that renders auxiliary scenes), GamaWASM
   (browser reactor, inert stubs off wasm32, experimental `Extern` feature
   scoped to this target only; `WebHost/` holds the page and JS glue the web
-  demo is served from. It publishes **three export tiers, not one**:
+  demo is served from, and `setFontSize(px)` in its `gama.js` changes the
+  `--gama-font-size` property so the module sees only a cell resize. It publishes **three export tiers, not one**:
   `gama_web_v1_*`; the argument-compatible status-reporting
   `gama_web_v2_*`, which fails closed with `-1` before `GamaWeb.install` and
   returns `-2` from `gama_web_v2_key` for an invalid key code; and the
@@ -607,6 +612,12 @@ not a `ScrollView` — no clipping, no nested scrolling, no pointer wheel —
 there is still no `Table` type, and `ForEach`/`IdentifiedForEach` stay
 eager by design. Its rows must be uniform height; that is a stated
 precondition, not a bug.
+`ViewThatFits` and `EnvironmentValues.widthClass` adapt to the space a
+view has, but both read `surfaceSize`, which is set before the build: they
+fit the whole surface, not the frame a parent stack later assigns, so a
+`ViewThatFits` nested in a split still measures against the full surface.
+It compares each candidate's ideal size (an unconstrained
+`LayoutEngine.measure`), and only the chosen candidate registers actions.
 
 ## Packaging
 

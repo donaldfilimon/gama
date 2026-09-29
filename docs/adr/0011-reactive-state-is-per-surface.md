@@ -69,6 +69,15 @@ called `observe()`.
   `IdentifiedForEach` and the new `.stateScope(_ id: NodeID)` modifier
   (`StateScopedView`, which replaces the inherited identity for its subtree
   exactly as `IdentifiedForEach` does per element) are the escape hatches.
+- Addendum, 2026-09-29: `ViewThatFits` is a deliberate exception to "a
+  subtree that stops rendering releases its state". It builds every
+  candidate on every frame, discarding the losers' registrations but not
+  their store resolutions, so each candidate's keys stay marked whichever
+  one is shown. The alternatives were worse: marking only candidates probed
+  before the winner made retention depend on candidate order, and releasing
+  every loser reset a candidate that its own state had pushed out of
+  fitting, so it fit again on the next frame and was chosen again.
+  `ResponsiveLayoutTests` pins both directions and that stability.
 - Erasure is `AnyObject` plus an `ObjectIdentifier(Signal<Value>.self)`
   type-id check and `unsafeDowncast` — the spec's simpler first option. The
   spec named `check-embedded.sh` as the arbiter and the `ScenePayload`-shaped

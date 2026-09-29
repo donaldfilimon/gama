@@ -41,6 +41,7 @@ All suites live in `Tests/gamaTests/`:
 | `AccessibilitySnapshotTests.swift` | Accessibility snapshot |
 | `AppleHostAccessibilityTests.swift` | AppKit accessibility bridge |
 | `AppleHostFontCacheTests.swift` | AppKit host styled-font cache |
+| `AppleHostFontScaleTests.swift` | AppKit host font scale; UIKit host Dynamic Type (UIKit builds only, which no gate runs) |
 | `AppleHostNativeRegionTests.swift` | AppKit host native regions |
 | `AppleHostPointerTests.swift` | AppKit host pointer translation: real NSEvents, the long-press timer, the scroll sign (ADR 0018) |
 | `AppleHostTests.swift` | AppKit host |
@@ -77,6 +78,7 @@ All suites live in `Tests/gamaTests/`:
 | `PlatformServicesTests.swift` | Platform services: scoped filesystem, clock, log |
 | `POSIXTerminalIntegrationTests.swift` | PTY raw-mode restore; byte-wise escape, UTF-8 and SGR mouse decoding (Darwin) |
 | `ProgressViewTests.swift` | ProgressView scale awareness |
+| `ResponsiveLayoutTests.swift` | `widthClass` thresholds; `ViewThatFits` choice, fallback, registration isolation, candidate state retention and goldens — filter `ResponsiveLayoutTests` |
 | `RunIterationTests.swift` | Run iteration |
 | `RuntimeLoopTests.swift` | Runtime loop |
 | `SceneTests.swift` | Scene graph; window actions; lifecycle — filter `SceneGraphTests` |

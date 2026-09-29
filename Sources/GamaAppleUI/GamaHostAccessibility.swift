@@ -83,6 +83,25 @@
             }.map(\.element)
         }
 
+        /// Drops the cached accessibility geometry after a cell-size change.
+        ///
+        /// Line elements capture their frames in points when they are built,
+        /// and the snapshot compares grid rectangles, so a new cell size with
+        /// an unchanged grid would otherwise leave stale frames and announce
+        /// nothing. The layout-change notification is still posted only once
+        /// a client has queried the view.
+        func invalidateAccessibilityGeometry() {
+            accessibilityCacheIsStale = true
+            cachedAccessibilityElements = nil
+            guard accessibilityHasBeenQueried else { return }
+            accessibilityLayoutChangePostCount += 1
+            #if canImport(AppKit)
+                unsafe NSAccessibility.post(element: self, notification: .layoutChanged)
+            #else
+                unsafe UIAccessibility.post(notification: .layoutChanged, argument: nil)
+            #endif
+        }
+
         /// Called after each frame. Recomputing the snapshot on every frame
         /// would cost every host something only an assistive-technology
         /// client uses, so the change notification is armed only once a
@@ -92,6 +111,7 @@
             let snapshot = accessibilitySnapshot
             guard snapshot != lastAnnouncedAccessibilitySnapshot else { return }
             lastAnnouncedAccessibilitySnapshot = snapshot
+            accessibilityLayoutChangePostCount += 1
             #if canImport(AppKit)
                 unsafe NSAccessibility.post(element: self, notification: .layoutChanged)
             #else

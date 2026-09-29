@@ -99,6 +99,10 @@ public final class GamaHostView: GamaPlatformView {
     package var accessibilityAnnouncedSnapshot: AccessibilitySnapshot? {
         lastAnnouncedAccessibilitySnapshot
     }
+    /// How many layout-change notifications this host has posted to
+    /// assistive technologies. Package-only, for the same reason as
+    /// ``accessibilityIsObserved``: the post itself is invisible to a test.
+    package internal(set) var accessibilityLayoutChangePostCount = 0
 
     // Font construction is not reliably inert under CoreText pressure: the
     // same failure described below for per-command styled fonts was observed
@@ -106,13 +110,67 @@ public final class GamaHostView: GamaPlatformView {
     // Platform fonts are immutable, so construct the measurement font once
     // and share that value; mutable render and accessibility caches remain
     // confined to each host.
-    private static let baseFont =
-        PlatformFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-    private var font: PlatformFont { Self.baseFont }
+    //
+    // With a settable text size the constraint still holds, one level up:
+    // the shared font is cached per point size, so every host at a given
+    // size shares one immutable font. Entries are never evicted: the cache
+    // holds one font per distinct size ever requested, within the clamp
+    // below, which in practice is a handful (the default, a few zoom steps,
+    // one per Dynamic Type category). The cache is main-actor state because
+    // every host that reads it is.
+    private static var baseFonts: [CGFloat: PlatformFont] = [:]
+
+    /// The one shared measurement font for `size`, built on first request.
+    private static func baseFont(ofSize size: CGFloat) -> PlatformFont {
+        if let cached = baseFonts[size] { return cached }
+        let built = PlatformFont.monospacedSystemFont(ofSize: size, weight: .regular)
+        baseFonts[size] = built
+        return built
+    }
+
+    /// The smallest and largest text sizes a host accepts, in points.
+    private static let fontPointSizeRange: ClosedRange<CGFloat> = 6...72
+    /// The text size a new host starts at, in points. Package-only so the
+    /// shell's Actual Size command restores this value rather than a copy.
+    package static let defaultFontPointSize: CGFloat = 14
+
+    private var font: PlatformFont = GamaHostView.baseFont(
+        ofSize: GamaHostView.defaultFontPointSize)
 
     /// Identity of the immutable measurement font. Package-only so the
-    /// regression test can pin one construction across multiple hosts.
+    /// regression test can pin one shared construction per size across
+    /// multiple hosts.
     package var baseFontIdentifier: ObjectIdentifier { ObjectIdentifier(font) }
+
+    /// The point size of the monospaced grid font, 14 by default and
+    /// clamped to 6...72.
+    ///
+    /// Scale stays in cells: a larger font makes each cell larger, so the
+    /// view holds fewer of them and the surface is re-laid out at the smaller
+    /// grid rather than clipped. Setting a new size re-measures the cell,
+    /// drops the styled fonts built for the old size, sends the surface a
+    /// resize with one frame, and refreshes the accessibility geometry.
+    /// Setting the current size again does nothing.
+    public var fontPointSize: CGFloat {
+        get { font.pointSize }
+        set { applyFontPointSize(newValue) }
+    }
+
+    private func applyFontPointSize(_ requested: CGFloat) {
+        let size = min(
+            max(requested, Self.fontPointSizeRange.lowerBound),
+            Self.fontPointSizeRange.upperBound)
+        guard size != font.pointSize else { return }
+        font = Self.baseFont(ofSize: size)
+        measureCellSize()
+        fontCache.removeAll()
+        invalidateAccessibilityGeometry()
+        // Every glyph changed size even when the integer grid did not, so
+        // the redraw is requested unconditionally, not left to a frame.
+        setNeedsDisplayCompat()
+        handleEvent?(.resize(gridSize()))
+        driver?()
+    }
 
     // MARK: Styled-font cache
     //
@@ -130,9 +188,10 @@ public final class GamaHostView: GamaPlatformView {
     // compilation only, not the crash rate.
     //
     // Only two of the six `TextAttributes` bits reach font selection —
-    // `.bold` picks the weight and `.italic` adds a symbolic trait — and
-    // the point size is fixed, so masking the style down to those two bits
-    // bounds the cache at four entries for the life of the view. The miss
+    // `.bold` picks the weight and `.italic` adds a symbolic trait — so
+    // masking the style down to those two bits bounds the cache at four
+    // entries per text size. A `fontPointSize` change empties it, since its
+    // fonts were built at the old size. The miss
     // path is the original construction verbatim, so a cached font is the
     // same font the uncached code would have built.
     //
@@ -152,6 +211,15 @@ public final class GamaHostView: GamaPlatformView {
     /// How many distinct fonts the cache currently retains — the bound the
     /// same test asserts. Package-only.
     package var styledFontCacheCount: Int { fontCache.count }
+
+    /// How many frames this host has produced. Package-only so a test can
+    /// prove a text-size change pumps exactly one frame and a no-op pumps
+    /// none, for the same reason as ``styledFontConstructionCount``.
+    package private(set) var producedFrameCount = 0
+    /// How many redraws this host has requested of the platform view.
+    /// Package-only: AppKit neither keeps `needsDisplay` on a windowless
+    /// view nor clears it offscreen, so a test counts requests instead.
+    package private(set) var redrawRequestCount = 0
 
     /// Measured monospaced cell size. `package` (not `public`) so tests can
     /// read it without duplicating its measurement math.
@@ -231,9 +299,7 @@ public final class GamaHostView: GamaPlatformView {
     }
 
     private func commonInit() {
-        let probe = NSAttributedString(string: "M", attributes: [.font: font])
-        let s = probe.size()
-        cellSize = CGSize(width: ceil(s.width), height: ceil(s.height))
+        measureCellSize()
         #if canImport(AppKit)
             // `.inVisibleRect` keeps the area matched to the visible bounds,
             // so `updateTrackingAreas` has nothing to recompute.
@@ -255,6 +321,11 @@ public final class GamaHostView: GamaPlatformView {
                 addGestureRecognizer(scroll)
             #endif
             backgroundColor = defaultBackground
+            // Cell size is in points, so a display-scale change moves no
+            // layout; it only needs the glyphs re-rasterized.
+            registerForTraitChanges([UITraitDisplayScale.self]) { (view: GamaHostView, _) in
+                view.setNeedsDisplayCompat()
+            }
         #endif
     }
 
@@ -276,6 +347,13 @@ public final class GamaHostView: GamaPlatformView {
             default: return .pad
             }
         #endif
+    }
+
+    /// Measures the monospaced cell with an "M" probe at the current font.
+    private func measureCellSize() {
+        let probe = NSAttributedString(string: "M", attributes: [.font: font])
+        let s = probe.size()
+        cellSize = CGSize(width: ceil(s.width), height: ceil(s.height))
     }
 
     /// Attaches `app`: creates its `FrameHost` and back buffer sized to
@@ -323,6 +401,7 @@ public final class GamaHostView: GamaPlatformView {
                 self.currentDrawList = self.drawListSerializer.serialize(painted)
             }
             guard outcome.produced else { return }
+            self.producedFrameCount += 1
             self.placeNativeRegions(session.pump.nativeRegions)
             self.setNeedsDisplayCompat()
             if outcome.followUp { self.driver?() }
@@ -661,6 +740,7 @@ public final class GamaHostView: GamaPlatformView {
     }
 
     private func setNeedsDisplayCompat() {
+        redrawRequestCount += 1
         #if canImport(AppKit)
             needsDisplay = true
         #else
@@ -683,6 +763,13 @@ public final class GamaHostView: GamaPlatformView {
         public override var acceptsFirstResponder: Bool { true }
         /// Uses a top-left origin so view coordinates match the cell grid.
         public override var isFlipped: Bool { true }  // y-down, like the grid
+        /// Requests a redraw when the backing scale changes, for example on
+        /// a move to a display with a different scale factor. Cell size is
+        /// in points, so no layout changes; only the glyphs re-rasterize.
+        public override func viewDidChangeBackingProperties() {
+            super.viewDidChangeBackingProperties()
+            setNeedsDisplayCompat()
+        }
         /// Claims first-responder status as soon as the view lands in a
         /// window, so keys flow without an extra click. Also clears and
         /// re-places native-region focus: a region already focused
@@ -709,6 +796,51 @@ public final class GamaHostView: GamaPlatformView {
         /// Accepts first-responder status so hardware key presses reach
         /// the view.
         public override var canBecomeFirstResponder: Bool { true }
+
+        /// Whether the text size follows the system Dynamic Type setting,
+        /// `false` by default.
+        ///
+        /// Turning it on takes the current ``fontPointSize`` as the base and
+        /// applies `UIFontMetrics.default` scaling of it for this view's
+        /// content size category, re-applied whenever that category changes.
+        /// Turning it off restores the base size.
+        ///
+        /// While it is on, a direct ``fontPointSize`` write takes effect but
+        /// does not change the base: the next content size category change
+        /// re-applies scaling to the base and replaces the written size, and
+        /// turning following off restores the base, not the last written
+        /// size. No gate compiles the UIKit tests, so this contract is
+        /// unverified at every evidence layer.
+        public var followsDynamicType: Bool = false {
+            didSet {
+                guard followsDynamicType != oldValue else { return }
+                if followsDynamicType {
+                    dynamicTypeBasePointSize = fontPointSize
+                    dynamicTypeRegistration = registerForTraitChanges(
+                        [UITraitPreferredContentSizeCategory.self]
+                    ) { (view: GamaHostView, _) in
+                        view.applyDynamicType()
+                    }
+                    applyDynamicType()
+                } else {
+                    if let registration = dynamicTypeRegistration {
+                        unregisterForTraitChanges(registration)
+                    }
+                    dynamicTypeRegistration = nil
+                    fontPointSize = dynamicTypeBasePointSize
+                }
+            }
+        }
+        /// The unscaled size Dynamic Type scales from while it is followed.
+        private var dynamicTypeBasePointSize: CGFloat = GamaHostView.defaultFontPointSize
+        /// The content-size-category observation, held only while following.
+        private var dynamicTypeRegistration: (any UITraitChangeRegistration)?
+
+        private func applyDynamicType() {
+            fontPointSize = UIFontMetrics.default.scaledValue(
+                for: dynamicTypeBasePointSize, compatibleWith: traitCollection)
+        }
+
         /// Becomes first responder as soon as the view lands in a window,
         /// so hardware keys flow immediately. Also clears and re-places
         /// native-region focus — see the AppKit `viewDidMoveToWindow`

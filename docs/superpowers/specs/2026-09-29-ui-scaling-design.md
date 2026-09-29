@@ -2,7 +2,10 @@
 
 Track 1 of the [native UI roadmap](2026-09-29-native-ui-roadmap-design.md).
 
-**Status: proposed, awaiting owner review (2026-09-29). Nothing is built.**
+**Status: built on branch `feat/ui-scaling` (2026-09-29), with the
+departures recorded below as "As built".** This spec began as a proposal;
+the text keeps the design as proposed and marks where the implementation
+differs.
 No row is added to `docs/Capabilities.md` until an implementation has
 evidence at the layer it supports.
 
@@ -63,6 +66,10 @@ package's minimums (iOS 17, tvOS 17, visionOS 1), so the deprecated
 the key window's host view. The step and bounds are constants in the shell,
 not the host.
 
+*As built:* only the step is a shell constant. The bounds (6...72) and the
+default size (14 pt) belong to the host, which clamps every write; Actual
+Size reads the host's default rather than repeating it.
+
 **Backing scale.** Cell size is in points, so a move between displays with
 different backing scales changes no layout. The host overrides
 `viewDidChangeBackingProperties` (AppKit) and reacts to `displayScale` trait
@@ -107,6 +114,12 @@ Two portable, stdlib-only additions, both decided at build time from
   case. Its limit is the same as `surfaceSize`'s: it fits the surface or the
   size it is proposed, not a frame solved later, and its documentation says
   so.
+
+  *As built:* each candidate is measured under an unconstrained proposal, so
+  it reports its ideal size, and that size is compared with `surfaceSize`
+  only; there is no fitting against a proposed size. Every candidate is
+  built on every frame so each one's `@Reactive` state stays live whichever
+  is shown, a recorded exception to ADR 0011 (see its addendum).
 
 Both compile under `check-embedded.sh` and add no imports to a portable
 target.

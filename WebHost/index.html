@@ -93,7 +93,12 @@
     border-radius: 8px;
     background: var(--surface);
     color: var(--surface-ink);
-    font: 14px/1.25 ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    /* The grid font size is a custom property so gama.js setFontSize(px)
+       can change it and refit the grid; var() stays out of the shorthand. */
+    --gama-font-size: 14px;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    font-size: var(--gama-font-size, 14px);
+    line-height: 1.25;
     outline: none;
     cursor: default;
     -webkit-user-select: none; user-select: none;
@@ -129,6 +134,14 @@
     padding: 3px 6px; background: var(--panel); color: var(--ink);
   }
   footer p { margin: 12px 0 0; color: var(--ink-dim); font-size: 12px; }
+  .text-size { display: flex; gap: 6px; margin: 0 0 10px; }
+  .text-size button {
+    font: 12px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    border: 1px solid var(--rule); border-radius: 5px;
+    padding: 5px 9px; background: var(--panel); color: var(--ink);
+    cursor: pointer;
+  }
+  .text-size button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
   @media (prefers-reduced-motion: reduce) {
     * { animation: none !important; transition: none !important; }
@@ -149,6 +162,11 @@
 </header>
 
 <main>
+  <div class="text-size" role="group" aria-label="Text size">
+    <button type="button" id="gama-font-smaller" aria-label="Smaller text">A&minus;</button>
+    <button type="button" id="gama-font-reset" aria-label="Actual size text">A</button>
+    <button type="button" id="gama-font-bigger" aria-label="Bigger text">A+</button>
+  </div>
   <div class="frame">
     <div id="gama" tabindex="0" role="application" aria-live="polite" aria-label="Gama application"></div>
     <div class="overlay" id="boot">

@@ -77,6 +77,17 @@ platforms is not yet measured and no UIKit runtime test drives them.
 Italic font styling resolves through `NSFontDescriptor`/`UIFontDescriptor`
 symbolic traits.
 
+## Text size
+
+`fontPointSize` (default 14, clamped to 6...72) sets the grid font. A new
+size re-measures the cell, clears the styled-font cache, sends the surface a
+`.resize` with the refitted grid and pumps one frame, so layout stays in
+cells: bigger text means fewer, larger cells. Every host at one size shares
+one font. On UIKit, `followsDynamicType` scales the size it was turned on at
+with the preferred content size category; it is off by default. A backing
+scale change (moving between displays) only redraws, because cells are in
+points. The macOS shell's View menu drives `fontPointSize` on the key window.
+
 ## Accessibility
 
 VoiceOver reads the frame the host already rendered — there is no second

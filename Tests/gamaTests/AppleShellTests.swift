@@ -219,6 +219,87 @@ struct AppleShellTests {
         #expect(coordinator.controllers[instance] == nil)
     }
 
+    @Test("text size commands leave a native-presentation window alone")
+    func textSizeCommandsIgnoreNativePresentation() throws {
+        let coordinator = GamaShellCoordinator(
+            graph: try compileSceneGraph(ShellTestApp(events: Signal([]))),
+            presentsWindows: false,
+            presentation: .native
+        )
+        coordinator.beginApplication()
+        let instance = try #require(coordinator.liveInstanceIDs.first)
+        let controller = try #require(coordinator.controllers[instance])
+        let native = try #require(controller.nativeHostView)
+        // A native window has no cell host whose text size the View menu
+        // could step; each command is a no-op rather than a crash.
+        controller.makeTextBigger(nil)
+        controller.makeTextSmaller(nil)
+        controller.makeTextActualSize(nil)
+        #expect(controller.hostView == nil)
+        #expect(controller.nativeHostView === native)
+    }
+
+    @Test("text size commands step the window's host and stop at the clamp")
+    func textSizeCommands() throws {
+        let coordinator = try makeCoordinator(events: Signal([]))
+        coordinator.beginApplication()
+        let instance = try #require(coordinator.liveInstanceIDs.first)
+        let controller = try #require(coordinator.controllers[instance])
+        let host = try #require(controller.hostView)
+        // Open the second window before any command, so the check at the
+        // end shows the commands left it alone rather than that a new host
+        // starts at the default.
+        let other = try #require(coordinator.openWindow("inspector"))
+        let otherController = try #require(coordinator.controllers[other])
+        let otherHost = try #require(otherController.hostView)
+        #expect(host.fontPointSize == GamaHostView.defaultFontPointSize)
+        #expect(otherHost.fontPointSize == GamaHostView.defaultFontPointSize)
+
+        controller.makeTextBigger(nil)
+        #expect(host.fontPointSize == 15)
+        controller.makeTextSmaller(nil)
+        controller.makeTextSmaller(nil)
+        #expect(host.fontPointSize == 13)
+        #expect(otherHost.fontPointSize == GamaHostView.defaultFontPointSize)
+        controller.makeTextActualSize(nil)
+        #expect(host.fontPointSize == GamaShellWindowController.actualTextSize)
+        // Actual Size is the size a fresh host starts at, not a second copy
+        // of it.
+        #expect(host.fontPointSize == GamaHostView(frame: .zero).fontPointSize)
+
+        host.fontPointSize = 72
+        controller.makeTextBigger(nil)
+        #expect(host.fontPointSize == 72)
+        host.fontPointSize = 6
+        controller.makeTextSmaller(nil)
+        #expect(host.fontPointSize == 6)
+
+        // Another window's host is untouched: each command acts only on the
+        // controller that received it.
+        #expect(otherHost.fontPointSize == GamaHostView.defaultFontPointSize)
+    }
+
+    // Routing itself is AppKit's contract for a target-less item (the key
+    // window's responder chain reaches its controller); a headless test
+    // process has no key window, so this pins only the items' shape.
+    @Test("the View menu's text size items are target-less with the expected selectors and keys")
+    func viewMenuCommands() throws {
+        let menu = GamaShell.makeMainMenu()
+        let view = try #require(menu.items.first { $0.submenu?.title == "View" }?.submenu)
+        let expected: [(Selector, String)] = [
+            (#selector(GamaShellWindowController.makeTextBigger(_:)), "+"),
+            (#selector(GamaShellWindowController.makeTextSmaller(_:)), "-"),
+            (#selector(GamaShellWindowController.makeTextActualSize(_:)), "0"),
+        ]
+        #expect(view.items.count == expected.count)
+        for (item, (action, key)) in zip(view.items, expected) {
+            #expect(item.action == action)
+            #expect(item.keyEquivalent == key)
+            #expect(item.keyEquivalentModifierMask == .command)
+            #expect(item.target == nil)
+        }
+    }
+
     @Test("explicit termination emits willTerminate exactly once")
     func terminationOnce() throws {
         let events = Signal<[LifecycleEvent]>([])

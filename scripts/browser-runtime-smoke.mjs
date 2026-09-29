@@ -10,15 +10,28 @@ const args = process.argv.slice(2);
 const failedInstall = args.includes("--failed-install");
 const positional = args.filter((arg) => arg === "--self-test" || !arg.startsWith("--"));
 const artifact = positional[0];
-const successMarker = /^OK;frames=[1-9]\d*;keys=[2-9]\d*;pointers=[2-9]\d*;resizes=[1-9]\d*;rendered=true;accessible=true;state=0->0->1$/;
+const successMarker = /^OK;frames=[1-9]\d*;keys=[2-9]\d*;pointers=[2-9]\d*;resizes=[1-9]\d*;rendered=true;accessible=true;state=0->0->1;fontResize=\d+x\d+->\d+x\d+;fontResizes=[1-9]\d*$/;
+// setFontSize(28) doubles the 14px default, so the refitted grid must be
+// strictly smaller on both axes. The regex only pins the shape.
+const fontShrank = (marker) => {
+  const match = /;fontResize=(\d+)x(\d+)->(\d+)x(\d+);/.exec(marker);
+  return match !== null && Number(match[3]) < Number(match[1]) && Number(match[4]) < Number(match[2]);
+};
+const markerAccepted = (marker) => successMarker.test(marker) && fontShrank(marker);
 
 // Pin the exact state sequence. In particular, a later multi-digit state of
 // 10 must not satisfy the expected final state of 1.
-const markerExample = "OK;frames=1;keys=2;pointers=2;resizes=1;rendered=true;accessible=true;state=0->0->1";
-if (!successMarker.test(markerExample)
-    || successMarker.test(markerExample.replace("state=0->0->1", "state=0->1->1"))
-    || successMarker.test(markerExample.replace(/1$/, "10"))) {
+const markerExample = "OK;frames=1;keys=2;pointers=2;resizes=1;rendered=true;accessible=true;state=0->0->1;fontResize=80x24->40x12;fontResizes=1";
+if (!markerAccepted(markerExample)
+    || markerAccepted(markerExample.replace("state=0->0->1", "state=0->1->1"))
+    || markerAccepted(markerExample.replace("state=0->0->1", "state=0->0->10"))) {
   throw new Error("browser state-marker parser self-test did not enforce exact 0->0->1");
+}
+if (markerAccepted(markerExample.replace("80x24->40x12", "80x24->80x24"))
+    || markerAccepted(markerExample.replace("80x24->40x12", "80x24->40x24"))
+    || markerAccepted(markerExample.replace("fontResizes=1", "fontResizes=0"))
+    || markerAccepted(markerExample.replace(";fontResize=80x24->40x12;fontResizes=1", ""))) {
+  throw new Error("browser font-size parser self-test did not require a resize to a smaller grid");
 }
 // --failed-install serves a module whose only install throws. A v2 host must
 // read the -1 from its first export call and name the failure on the surface;
@@ -35,7 +48,7 @@ if (!failedInstallReported(reportedExample)
   throw new Error("failed-install parser self-test did not require stage, status, and host diagnosis together");
 }
 if (artifact === "--self-test") {
-  console.log("OK — browser state-marker and failed-install parser self-tests");
+  console.log("OK — browser state-marker, font-size, and failed-install parser self-tests");
   process.exit(0);
 }
 const root = positional[1];
@@ -199,7 +212,7 @@ try {
       returnByValue: true,
     });
     marker = result.result?.result?.value ?? "";
-    if (successMarker.test(marker)) break;
+    if (markerAccepted(marker)) break;
     await delay(100);
   }
   const preBoot = await command("Runtime.evaluate", {
@@ -230,10 +243,10 @@ if (failedInstall) {
   console.log(`OK — browser names a failed install from the v2 status (stage=${failureState.failure})`);
   process.exit(0);
 }
-if (!successMarker.test(marker)) {
-  throw new Error(`browser event/frame/accessibility/state marker missing (state must be exactly 0->0->1, with only Enter activating the inline counter); marker=${marker}; runtime=${runtimeErrors.join(" | ")}; stderr=${errors}`);
+if (!markerAccepted(marker)) {
+  throw new Error(`browser event/frame/accessibility/state/font-size marker missing (state must be exactly 0->0->1, with only Enter activating the inline counter, and setFontSize(28) must resize to a smaller grid); marker=${marker}; runtime=${runtimeErrors.join(" | ")}; stderr=${errors}`);
 }
 if (expectedTitle !== undefined && pageTitle !== expectedTitle) {
   throw new Error(`browser title mismatch; expected=${expectedTitle}; actual=${pageTitle}`);
 }
-console.log("OK — browser DOM, keyboard, pointer, resize, rAF, accessibility, WASM frame, and pre-boot input smoke");
+console.log("OK — browser DOM, keyboard, pointer, resize, text size, rAF, accessibility, WASM frame, and pre-boot input smoke");

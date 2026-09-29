@@ -43,6 +43,14 @@ public enum GamaShell {
     }
 
     private static func installMainMenu(on application: NSApplication) {
+        application.mainMenu = makeMainMenu()
+    }
+
+    /// Builds the application and View menus. The View menu's text size
+    /// items have no target, so AppKit sends them down the responder chain
+    /// to the key window's delegate, its `GamaShellWindowController`, which
+    /// is what makes them act on the key window's host only.
+    package static func makeMainMenu() -> NSMenu {
         let mainMenu = NSMenu()
         let applicationItem = NSMenuItem()
         let applicationMenu = NSMenu()
@@ -54,7 +62,22 @@ public enum GamaShell {
         applicationMenu.addItem(quit)
         applicationItem.submenu = applicationMenu
         mainMenu.addItem(applicationItem)
-        application.mainMenu = mainMenu
+
+        let viewItem = NSMenuItem()
+        let viewMenu = NSMenu(title: "View")
+        let commands: [(String, Selector, String)] = [
+            ("Bigger", #selector(GamaShellWindowController.makeTextBigger(_:)), "+"),
+            ("Smaller", #selector(GamaShellWindowController.makeTextSmaller(_:)), "-"),
+            ("Actual Size", #selector(GamaShellWindowController.makeTextActualSize(_:)), "0"),
+        ]
+        for (title, action, key) in commands {
+            let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
+            item.keyEquivalentModifierMask = .command
+            viewMenu.addItem(item)
+        }
+        viewItem.submenu = viewMenu
+        mainMenu.addItem(viewItem)
+        return mainMenu
     }
 }
 
@@ -411,6 +434,33 @@ package final class GamaShellWindowController: NSWindowController, NSWindowDeleg
 
     package func windowDidResignKey(_ notification: Notification) {
         deliver(.windowDidResignKey(scene: sceneID, instance: instanceID))
+    }
+
+    // MARK: Text size (View menu)
+    //
+    // The commands step the cell host's text size. A native-presentation
+    // window has no cell host, so there each command does nothing.
+
+    /// Points one Bigger or Smaller command moves the host's text size. The
+    /// host clamps the result, so a step past either end stays at the end.
+    package static let textSizeStep: CGFloat = 1
+    /// The size Actual Size restores: the host's own default, read from the
+    /// host rather than repeated here.
+    package static let actualTextSize: CGFloat = GamaHostView.defaultFontPointSize
+
+    /// View > Bigger: one step larger on this window's host.
+    @objc package func makeTextBigger(_ sender: Any?) {
+        hostView?.fontPointSize += Self.textSizeStep
+    }
+
+    /// View > Smaller: one step smaller on this window's host.
+    @objc package func makeTextSmaller(_ sender: Any?) {
+        hostView?.fontPointSize -= Self.textSizeStep
+    }
+
+    /// View > Actual Size: restores the default text size on this window's host.
+    @objc package func makeTextActualSize(_ sender: Any?) {
+        hostView?.fontPointSize = Self.actualTextSize
     }
 }
 #endif
