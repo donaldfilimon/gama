@@ -389,26 +389,14 @@ public enum LayoutEngine {
             let mainLen = axis == .horizontal ? s.width : s.height
             let crossLen = axis == .horizontal ? s.height : s.width
 
-            let crossOffset: Int
-            switch axis {
-            case .horizontal:
-                switch alignment.vertical {
-                case .top: crossOffset = 0
-                case .center: crossOffset = max(0, (crossAvailable - crossLen) / 2)
-                case .bottom: crossOffset = max(0, crossAvailable - crossLen)
-                }
-            case .vertical:
-                switch alignment.horizontal {
-                case .leading: crossOffset = 0
-                case .center: crossOffset = max(0, (crossAvailable - crossLen) / 2)
-                case .trailing: crossOffset = max(0, crossAvailable - crossLen)
-                }
-            }
+            let offset = crossOffset(
+                axis: axis, alignment: alignment, available: crossAvailable, length: crossLen
+            )
 
             let rect =
                 axis == .horizontal
-                ? Rect(x: cursor, y: bounds.minY + crossOffset, width: mainLen, height: crossLen)
-                : Rect(x: bounds.minX + crossOffset, y: cursor, width: crossLen, height: mainLen)
+                ? Rect(x: cursor, y: bounds.minY + offset, width: mainLen, height: crossLen)
+                : Rect(x: bounds.minX + offset, y: cursor, width: crossLen, height: mainLen)
 
             if case .divider(let style, _) = child {
                 laid.append(
@@ -424,6 +412,27 @@ public enum LayoutEngine {
         }
 
         return LaidOutNode(node: node, frame: bounds, children: laid)
+    }
+
+    /// Cross-axis offset of a stack child. Unlike `align`, trailing and
+    /// bottom are clamped, so an oversized child never gets a negative offset.
+    private static func crossOffset(
+        axis: Axis, alignment: Alignment, available: Int, length: Int
+    ) -> Int {
+        switch axis {
+        case .horizontal:
+            switch alignment.vertical {
+            case .top: return 0
+            case .center: return max(0, (available - length) / 2)
+            case .bottom: return max(0, available - length)
+            }
+        case .vertical:
+            switch alignment.horizontal {
+            case .leading: return 0
+            case .center: return max(0, (available - length) / 2)
+            case .trailing: return max(0, available - length)
+            }
+        }
     }
 
     private static func align(size: Size, in bounds: Rect, alignment: Alignment) -> Rect {
