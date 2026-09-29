@@ -103,8 +103,10 @@ All suites live in `Tests/gamaTests/`:
   `SwiftSyntaxMacrosGenericTestSupport` with a `failureHandler` that records
   a Swift Testing `Issue`. Do not reintroduce `SwiftSyntaxMacrosTestSupport`
   (it imports XCTest).
-- Platform suites stay behind `#if canImport(AppKit)`, `#if canImport(Darwin)`,
-  `#if os(Windows)`.
+- Platform suites stay behind `#if canImport(AppKit)` or
+  `#if canImport(Darwin)`. Pure translators that need no platform API (the
+  Windows console key and mouse translators, the SGR decoder) are compiled
+  everywhere and tested on every host instead.
 - New tests go in Swift Testing. There is no XCTest fallback.
 
 ## Linux sanitizers

@@ -7,7 +7,7 @@ and of the [pointer input plan](../superpowers/plans/2026-09-29-pointer-input.md
 added the backend translations: AppKit and UIKit (`AppleHostPointerTests`
 drives AppKit; UIKit is compiled for iOS, tvOS and visionOS but not run),
 terminal SGR and the Windows console translator (`PointerBackendTests`, run
-on macOS; no Windows console run), the WASM v3 pointer exports (Node and
+on macOS; the Windows console backend itself is not compiled or run here), the WASM v3 pointer exports (Node and
 browser smokes) and the C embed pointer entry points (`EmbedPointerABITests`
 and the C consumer). Nothing is claimed in
 [the capability ledger](../Capabilities.md); rows arrive with backend

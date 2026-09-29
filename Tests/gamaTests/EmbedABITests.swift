@@ -1,5 +1,6 @@
 //  EmbedABITests.swift — additions to the C ABI surface: version
-//  interrogation, dimension clamping, and the frame reuse path.
+//  interrogation, dimension clamping, the frame reuse path, and the rich
+//  pointer entry points (ADR 0018).
 //  (EmbedTests.swift covers the create/input/frame/destroy lifecycle.)
 
 import GamaCore
