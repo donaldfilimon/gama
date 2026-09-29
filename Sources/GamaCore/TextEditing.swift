@@ -51,12 +51,7 @@ enum TextEditing {
     /// the start with no selection.
     static func deleteBackward(_ value: String, at selection: Selection) -> (String, Selection)? {
         let selection = selection.clamped(to: value.count)
-        if !selection.isCollapsed {
-            var characters = Array(value)
-            let range = selection.range
-            characters.removeSubrange(range)
-            return (String(characters), Selection(anchor: range.lowerBound, head: range.lowerBound))
-        }
+        if !selection.isCollapsed { return deleteSelection(value, selection) }
         guard selection.head > 0 else { return nil }
         var characters = Array(value)
         characters.remove(at: selection.head - 1)
@@ -69,16 +64,21 @@ enum TextEditing {
     /// end with no selection.
     static func deleteForward(_ value: String, at selection: Selection) -> (String, Selection)? {
         let selection = selection.clamped(to: value.count)
-        if !selection.isCollapsed {
-            var characters = Array(value)
-            let range = selection.range
-            characters.removeSubrange(range)
-            return (String(characters), Selection(anchor: range.lowerBound, head: range.lowerBound))
-        }
+        if !selection.isCollapsed { return deleteSelection(value, selection) }
         guard selection.head < value.count else { return nil }
         var characters = Array(value)
         characters.remove(at: selection.head)
         return (String(characters), selection)
+    }
+
+    /// Removes the selected range and collapses the caret to its start.
+    /// Callers clamp `selection` first and only call this when it is not
+    /// collapsed.
+    private static func deleteSelection(_ value: String, _ selection: Selection) -> (String, Selection) {
+        var characters = Array(value)
+        let range = selection.range
+        characters.removeSubrange(range)
+        return (String(characters), Selection(anchor: range.lowerBound, head: range.lowerBound))
     }
 
     /// Moves the caret one grapheme cluster left, collapsing any selection.
