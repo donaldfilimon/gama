@@ -69,3 +69,19 @@ process-global invalidation.
 - ``TextStyle``
 - ``BorderGlyphs``
 - ``Color``
+- ``LayoutMetrics``
+
+### Native presentation
+
+A GUI host that presents Gama views as platform controls (ADR 0017) lays
+out with its own ``LayoutMetrics``, reads the ``ControlDescriptor`` side
+table `FrameHost` keeps, reduces each frame to a ``PresentedNode`` tree, and
+applies the ``PresentationOp`` list ``PresentationDiff`` computes between
+frames. Every other backend ignores all of it.
+
+- ``ControlDescriptor``
+- ``PresentedNode``
+- ``PresentedKind``
+- ``PresentationID``
+- ``PresentationDiff``
+- ``PresentationOp``

@@ -62,7 +62,7 @@
             cellSize = CGSize(width: max(1, probe.width.rounded(.up)), height: max(1, probe.height.rounded(.up)))
         }
 
-        /// A ``LayoutMetrics`` value measuring through this object. Its
+        /// A `LayoutMetrics` value measuring through this object. Its
         /// closures must be called on the main actor.
         public var metrics: LayoutMetrics {
             let columnPoints = Int(cellSize.width)
@@ -85,7 +85,7 @@
         /// The size of `text` drawn in `style`, wrapped to `width` points
         /// when given, rounded up to whole points. Text AppKit cannot
         /// measure (empty, or a non-finite or empty bounding box) falls back
-        /// to ``LayoutMetrics/cell`` scaled by ``cellSize``.
+        /// to `LayoutMetrics.cell` scaled by ``cellSize``.
         public func textSize(_ text: String, style: TextStyle, width: Int?) -> Size {
             let key = TextKey(text: text, attributes: style.attributes.intersection([.bold, .italic]), width: width)
             if let cached = textCache[key] { return cached }

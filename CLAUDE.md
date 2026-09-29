@@ -572,16 +572,23 @@ composition and bidi reordering. **Native regions exist** (ADR 0016; design
 is an `interactive` node registered like an action, and
 `GamaHostView.attach(_:to:)` fills it on Apple. Tab out of a native view,
 overlays, sub-cell placement, and Embed/WASM publication are still open.
-**Native presentation is accepted but mostly unbuilt:** ADR 0017 (accepted
-2026-09-29; design `docs/superpowers/specs/2026-09-23-native-presentation-design.md`,
-plan `docs/superpowers/plans/2026-09-23-native-presentation.md`) lets a GUI
-host present Gama views as platform controls, superseding 0001's widget clause
-and 0016's "What 0001 still forbids". The portable half exists in
+**Native presentation is accepted and built for AppKit, without a
+capability row:** ADR 0017 (accepted 2026-09-29; design
+`docs/superpowers/specs/2026-09-23-native-presentation-design.md`, plan
+`docs/superpowers/plans/2026-09-23-native-presentation.md`) lets a GUI host
+present Gama views as platform controls, superseding 0001's widget clause
+and 0016's "What 0001 still forbids". The portable half is in
 `Sources/GamaCore` (plan Tasks 1-6): `LayoutMetrics`, a `FrameHost` that lays
 out with it, the `ControlDescriptor` side table the four controls register,
 `FrameHost.activate`/`focus`, and the `PresentedNode` tree with its
-`PresentationDiff`. No AppKit host consumes them yet: `AppKitLayoutMetrics`
-and `GamaNativeHostView` (Tasks 7 onward) do not exist. Building toward any of these starts from
+`PresentationDiff`. The AppKit half is in `Sources/GamaAppleUI` (Tasks 7-9):
+`AppKitLayoutMetrics` and `GamaNativeHostView`, a separate type from
+`GamaHostView` whose session and control mapping live in
+`NativeHostSession.swift` and `NativeControlMapping.swift`, with native
+regions inside it. `GamaShell.run(_:presentation: .native)` opts a shell in,
+and `gama-apple-demo --native` / `--native-smoke` show and check it. There is
+no UIKit native host, and `docs/Capabilities.md` has no row for it: the plan
+gates that row on the full matrix. Building toward any of these starts from
 `docs/Plugins.md` or a new file under `docs/superpowers/specs/drafts/`, not
 from assuming the manifesto's module boundary already exists.
 

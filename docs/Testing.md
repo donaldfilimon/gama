@@ -43,9 +43,11 @@ All suites live in `Tests/gamaTests/`:
 | `AppleHostFontCacheTests.swift` | AppKit host styled-font cache |
 | `AppleHostNativeRegionTests.swift` | AppKit host native regions |
 | `AppleHostTests.swift` | AppKit host |
+| `AppleNativeHostTests.swift` | AppKit layout metrics, AppKit native host, AppKit native host regions — filter `AppKitLayoutMetricsTests`, `AppleNativeHostTests`, `AppleNativeHostRegionTests` |
 | `AppleShellTests.swift` | AppKit scene shell |
 | `CellSerializerTests.swift` | Cell serializer |
 | `CompletionStatusTests.swift` | Completion status |
+| `ControlDescriptorTests.swift` | ControlDescriptor build, host table, sizing; control registration; host activation and focus — filter `ControlDescriptorBuildTests`, `ControlDescriptorHostTests`, `ControlDescriptorSizingTests`, `ControlRegistrationTests`, `HostActivationTests` |
 | `DrawListTests.swift` | Cell buffer, DrawList, Cell painter |
 | `EmbedABITests.swift` | Embed ABI additions |
 | `EmbedTests.swift` | C embedding context |
@@ -55,12 +57,14 @@ All suites live in `Tests/gamaTests/`:
 | `GamepadInputTests.swift` | Gamepad input — filter `GamepadInputTests` |
 | `GeometryTests.swift` | Geometry |
 | `HostPumpTests.swift` | Host pump |
+| `LayoutMetricsTests.swift` | LayoutMetrics parity with `.cell`, scaling; FrameHost metrics — filter `LayoutMetricsParityTests`, `LayoutMetricsScalingTests`, `FrameHostMetricsTests` |
 | `LayoutTests.swift` | Layout |
 | `MacroExpansionTests.swift` | Macro expansion |
 | `MacroUsageTests.swift` | Macro public surface; reactive state lifetime |
 | `MLIRFixtureTests.swift` | MLIR fixtures |
 | `MLIRTests.swift` | MLIR |
 | `ModernTests.swift` | DrawList codec; overflow-safe geometry; CellPainter ↔ DrawList |
+| `NativePresentationTests.swift` | Presentation tree, diff, and from a host — filter `PresentationTreeTests`, `PresentationDiffTests`, `PresentationHostTests` |
 | `NativeRegionTests.swift` | Native region build, host table — filter `NativeRegionBuildTests`, `NativeRegionHostTests` |
 | `P1LayoutTests.swift` | Border title, divider axis, TextField C0, emoji presentation, button focus |
 | `PluginCommandTests.swift` | Plugin commands |

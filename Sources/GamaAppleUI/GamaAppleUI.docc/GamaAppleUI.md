@@ -37,6 +37,14 @@ what the application means. The VoiceOver / assistive-text row in
 `docs/Capabilities.md` is Locally proven on AppKit; UIKit compile status
 and the absence of a screen-reader pass are in that ledger.
 
+``GamaNativeHostView`` is the second host (ADR 0017), macOS only: it
+presents the same surface with real AppKit controls (`NSTextField` labels
+and fields, `NSButton` push buttons and checkboxes, `NSProgressIndicator`,
+`NSBox` separators) at frames `LayoutEngine` computes in points with
+``AppKitLayoutMetrics``, and routes activation, text edits, and focus back
+to `FrameHost`. It paints no cells and publishes no `DrawList`; the native
+controls are the accessibility elements. No capability row covers it yet.
+
 This module embeds a view; it does not own the application. Applications
 that want Gama to own `NSApplication`, windows, and lifecycle use the
 separate `GamaAppleShell` product. The embedding guide is
@@ -48,6 +56,11 @@ separate `GamaAppleShell` product. The embedding guide is
 
 - ``GamaHostView``
 - ``GamaPlatformView``
+
+### Native presentation
+
+- ``GamaNativeHostView``
+- ``AppKitLayoutMetrics``
 
 ### Assistive technology
 

@@ -6,8 +6,12 @@ ADR 0016.
 
 **Status: ADR 0017 accepted 2026-09-29. Plan Tasks 1-6 (the portable
 half: `LayoutMetrics`, host metrics, control descriptors, host activation
-and focus, and the presentation tree and diff) are built; Tasks 7 onward
-(the AppKit host) are not started.** Originally drafted on branch
+and focus, and the presentation tree and diff) and Tasks 7-10 (the AppKit
+half: `AppKitLayoutMetrics`, `GamaNativeHostView` with native regions, the
+shell's `.native` presentation, and `gama-apple-demo --native` /
+`--native-smoke`) are built and covered by local tests. The full
+`scripts/check.sh` matrix has not been run on them, and no capability row
+exists.** Originally drafted on branch
 `feat/native-presenters`, stacked on `docs/native-surface-draft` (PR #107,
 which carries native regions and ADR 0016). No row is added to
 `docs/Capabilities.md` until an implementation has evidence at the layer it

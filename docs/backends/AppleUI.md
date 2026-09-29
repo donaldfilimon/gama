@@ -78,3 +78,50 @@ Applications that want Gama to own `NSApplication` and native windows use the
 separate `GamaAppleShell` product. See [AppleShell.md](AppleShell.md). The
 embeddable `GamaHostView` remains independent and renders only the explicit
 primary scene supplied by its app.
+
+## Native presentation host (macOS)
+
+`GamaNativeHostView` (ADR 0017, design in
+[`2026-09-23-native-presentation-design.md`](../superpowers/specs/2026-09-23-native-presentation-design.md))
+is a second AppKit host, separate from `GamaHostView`. It presents the same
+surface with real AppKit controls instead of a painted grid:
+
+| Presented kind | AppKit view |
+| --- | --- |
+| label | non-editable, non-bezeled `NSTextField` |
+| separator | `NSBox` of type `.separator` |
+| background, border | layer-backed view (fill; border width, color, corner, title) |
+| button with a plain-text label | `NSButton`, push style |
+| button with a composite label | clickable container presenting the label's views |
+| toggle | `NSButton`, checkbox style |
+| text field | editable `NSTextField` with placeholder |
+| progress | `NSProgressIndicator` (bar; spinner when indeterminate) |
+| native region | the attached application view, or the fallback presented natively |
+| other interactive node | focusable container forwarding keys to `FrameHost` |
+
+```swift
+let view = GamaNativeHostView(frame: bounds)
+try view.install(app: MyApp())
+```
+
+Layout stays Gama's. The host lays out in points with
+`AppKitLayoutMetrics`: system-font text measured by AppKit and cached,
+control sizes from prototype controls, and one authored cell converted to
+the rounded size of `"M"` in the system font. Each frame is reduced to a
+`PresentedNode` tree and the `PresentationDiff` between frames is applied to
+subviews, so a control keeps its identity (and a text field its editor)
+across frames. Buttons and checkboxes call `FrameHost.activate(_:)`, text
+edits write the field's binding, first-responder changes report back through
+`FrameHost.focus(_:)`, and `nextKeyView` follows Gama's focus order. Text
+with no explicit color uses `labelColor`, so light and dark appearance
+follow the system; the cell-only focus highlight is not drawn.
+
+`GamaShell.run(_:presentation: .native)` opens every window with this host,
+sized in points. `gama-apple-demo --native` opens the demo that way, and
+`gama-apple-demo --native-smoke` hosts it offscreen and exits 0 only when a
+push button, checkbox, text field, progress indicator, and label are
+presented as AppKit views.
+
+Known limits: a progress view's label is its accessibility label only, not
+drawn; there is no UIKit native host; no row in
+[`Capabilities.md`](../Capabilities.md) covers this host yet.
