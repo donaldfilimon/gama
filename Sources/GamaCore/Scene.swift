@@ -188,8 +188,7 @@ public struct Window<Content: View>: Scene {
     ) {
         self.id = id
         self.role = role
-        self.launchBehavior = launchBehavior
-            ?? (role == .primary ? .openAtLaunch : .onDemand)
+        self.launchBehavior = .resolved(launchBehavior, role: role)
         self.configuration = WindowConfiguration(
             title: title,
             initialCellSize: initialCellSize,
@@ -213,6 +212,17 @@ public struct Window<Content: View>: Scene {
                     return { context in content().render(in: context) }
                 }
             ))
+    }
+}
+
+extension SceneLaunchBehavior {
+    /// The explicit behavior, or the role default: a primary scene opens at
+    /// launch and an auxiliary scene waits until it is requested.
+    fileprivate static func resolved(
+        _ explicit: SceneLaunchBehavior?,
+        role: SceneRole
+    ) -> SceneLaunchBehavior {
+        explicit ?? (role == .primary ? .openAtLaunch : .onDemand)
     }
 }
 
@@ -247,8 +257,7 @@ public struct WindowGroup<Value: Hashable & Sendable, Content: View>: Scene {
     ) {
         self.key = key
         self.role = role
-        self.launchBehavior = launchBehavior
-            ?? (role == .primary ? .openAtLaunch : .onDemand)
+        self.launchBehavior = .resolved(launchBehavior, role: role)
         self.configuration = WindowConfiguration(
             title: title,
             initialCellSize: initialCellSize,
@@ -272,8 +281,7 @@ public struct WindowGroup<Value: Hashable & Sendable, Content: View>: Scene {
     ) {
         self.key = key
         self.role = role
-        self.launchBehavior = launchBehavior
-            ?? (role == .primary ? .openAtLaunch : .onDemand)
+        self.launchBehavior = .resolved(launchBehavior, role: role)
         self.configuration = WindowConfiguration(
             title: title,
             initialCellSize: initialCellSize,
