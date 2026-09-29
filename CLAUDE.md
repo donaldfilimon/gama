@@ -69,16 +69,16 @@ records pinned artifact URLs/SHA256s for non-Apple platforms; Windows
 deliberately remains on the 6.4.x snapshot. Override knobs: `GAMA_TOOLCHAIN_ID`,
 `GAMA_SWIFT_64` / `GAMA_SWIFTC_64` (+ `GAMA_SWIFTC_SHA256`).
 
-## iCloud constraints (measured, not theoretical)
+## Checkout location and scratch
 
-This tree is FileProvider-managed. In-place `swift test` fails at codesign
-("resource fork, Finder information, or similar detritus not allowed");
-`xattr -rc` does not fix it. The check scripts already route builds through
-`/private/tmp` scratch paths — use them, or pass `--scratch-path` outside
-iCloud yourself. `swift build` / `swift run` work in place.
-
-Git: prefer `.git`-internal reads; `git status` can hang here. NEVER run
-`git gc`, `git prune`, `git fsck`, or `git repack` in this directory.
+The canonical checkout is `~/dev/active/Gama`, outside iCloud since
+2026-09-24. The original iCloud checkout is parked as a recovery copy: never
+develop there, and never run `git gc`, `git prune`, `git fsck`, or
+`git repack` in it. While the tree lived on iCloud, in-place `swift test`
+failed at codesign ("resource fork, Finder information, or similar detritus
+not allowed", which `xattr -rc` did not fix); if that error reappears, suspect
+xattrs. The check scripts route builds through `/private/tmp` scratch paths —
+use them, or pass `--scratch-path` outside the tree yourself.
 
 ## Commands
 
@@ -258,8 +258,8 @@ tracked here, for Codex rather than Claude. It sits outside the mirror-parity
 rule and nothing under `scripts/`, `.github/`, `.agents/`, or `.claude/`
 references it; do not mirror it into either skill directory.
 
-Run tests directly (single test, filtered) — must use a scratch path outside
-iCloud, and one of your own: `/private/tmp/gama-framework-swiftpm` is
+Run tests directly (single test, filtered) — use a scratch path outside the
+tree, and one of your own: `/private/tmp/gama-framework-swiftpm` is
 hardcoded by `check-mlir.sh` and is `check-apple.sh`'s default, so reusing it
 collides with a gate run.
 
@@ -675,7 +675,7 @@ console native proof) as shipped.
 
 Prefer small reviewable commits, preserve `Package.resolved`, never commit
 credentials or runner configuration, never force-push the default branch, and
-only merge after required checks are green. Design specs live in
+do not merge while a CI job is red (no check is GitHub-required; see above). Design specs live in
 `docs/superpowers/specs/` (`drafts/` are open questions, not commitments) and
 dated execution plans in `docs/superpowers/plans/`; neither is a capability
 claim. The running goal ledger is `tasks/goals.md` + `tasks/todo.md`.

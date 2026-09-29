@@ -15,7 +15,7 @@
 - `Package.swift` deliberately stays `swift-tools-version: 6.4` so Xcode's SwiftPM can resolve platform gates. `check-boundaries.sh` enforces this. `check-apple-platforms.sh` requires `xcrun --toolchain default` to report Swift 6.4. Do not raise the tools version to match the compiler pin.
 - `Toolchains.toml` is the pin authority. `scripts/check-toolchain-pins.sh`, chained from the boundary gate, rejects drift in compiler/SDK revisions, URLs, and checksums; it discovers every `GAMA_TOOLCHAIN_ID` default rather than listing scripts, and fails on any checked-in home-directory path under `scripts/`.
 - Scripts derive the pinned snapshot's location from `Toolchains.toml` through `scripts/lib/toolchain.sh`. Do not write an absolute toolchain path into a script; override with `GAMA_SWIFT_64` / `GAMA_SWIFTC_64` / `GAMA_EMBEDDED_TOOLCHAIN` instead.
-- This checkout is iCloud/FileProvider-managed. `swift build` and `swift run` work in place. `swift test` does not (codesign detritus). Direct tests, `check-apple.sh`, and `check-mlir.sh` share `/private/tmp/gama-framework-swiftpm`. `GAMA_SCRATCH_ROOT` does not move those two (`GAMA_APPLE_SCRATCH_PATH`, and a hardcoded MLIR path). A bare `SCRATCH_ROOT` is ignored. DocC uses `GAMA_DOCC_SCRATCH_PATH`; the concurrency-negative gate uses `GAMA_CONCURRENCY_NEGATIVE_SCRATCH_PATH`.
+- The canonical checkout is `~/dev/active/Gama`, outside iCloud since 2026-09-24 (the parked iCloud original is a recovery copy; never develop there). Keep test scratch outside the tree anyway: an iCloud copy fails in-place `swift test` at codesign, and the gates use fixed scratch paths. Direct tests, `check-apple.sh`, and `check-mlir.sh` share `/private/tmp/gama-framework-swiftpm`. `GAMA_SCRATCH_ROOT` does not move those two (`GAMA_APPLE_SCRATCH_PATH`, and a hardcoded MLIR path). A bare `SCRATCH_ROOT` is ignored. DocC uses `GAMA_DOCC_SCRATCH_PATH`; the concurrency-negative gate uses `GAMA_CONCURRENCY_NEGATIVE_SCRATCH_PATH`.
 
 ```bash
 unset TOOLCHAINS
@@ -73,4 +73,4 @@ swiftly run swift run gama-demo
 ## Repository Safety
 
 - Preserve `Package.resolved`. Never commit credentials or runner configuration, or force-push `main`. Branch protection is off, so no check is required by GitHub; still do not merge while a CI job is red.
-- Never run `git gc`, `git prune`, `git fsck`, or `git repack` in this FileProvider-managed checkout.
+- Never run `git gc`, `git prune`, `git fsck`, or `git repack` in the parked iCloud recovery copy of this repository.

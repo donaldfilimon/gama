@@ -6,7 +6,7 @@ This file is the canonical agent guide for this repository; `CLAUDE.md` points h
 
 Gama Qt is a SwiftPM macOS package: a SwiftUI/SwiftData browser shell backed by a Swift/C++23 bridge to Qt 6.
 
-- This package lives at `qt/` inside `donaldfilimon/gama` (checked out at `~/dev/active/Gama`). It was folded in on 2026-09-28 from the former local-only repository `~/dev/active/gama-qt` via `git subtree add`, keeping its history. `donaldfilimon/gama`'s `main` is protected, so changes land through pull requests, not direct commits to `main`.
+- This package lives at `qt/` inside `donaldfilimon/gama` (checked out at `~/dev/active/Gama`). It was folded in on 2026-09-28 from the former local-only repository `~/dev/active/gama-qt` via `git subtree add`, keeping its history. `donaldfilimon/gama`'s `main` has no branch protection or rulesets (since 2026-09-28), so direct pushes to `main` are allowed; re-check with `gh api repos/donaldfilimon/gama/rulesets` rather than trusting this line.
 - It is its own SwiftPM package with its own gate (below), run from `qt/`. It does **not** depend on the enclosing Gama framework (the package at `..`), and the framework's `scripts/check.sh`, gates and CI neither build nor scan it. It uses Xcode's default Swift 6.4 toolchain, not the framework's pinned 6.5-dev snapshot.
 - **Module-name collision guard:** this package's `GamaCore` library (and its `Gama` executable and `GamaTests` test target) share names with the framework's modules but are unrelated code. That is harmless only while the two packages are never in one build graph. Before this package ever takes a dependency on the framework (for example `.package(path: "..")`), rename its colliding modules first (e.g. `GamaCore` to `GamaQtCore`, as Gama Studio renamed its `GamaCore` to `GamaAuthoring`).
 
@@ -46,8 +46,8 @@ Four targets:
 ## Git workflow (machine policy, 2026-08-27)
 
 This package has no repository of its own any more: git state is the
-enclosing `donaldfilimon/gama` checkout's, and its protected `main` takes
-changes through pull requests. Do not create
+enclosing `donaldfilimon/gama` checkout's (`~/dev/active/Gama`, work on
+`main`; no branch protection since 2026-09-28). Do not create
 branches or worktrees by default; they are for tasks that genuinely need
 isolation, or when Donald asks. Any worktree or topic branch created here
 must be merged back into this checkout's default branch, the worktree

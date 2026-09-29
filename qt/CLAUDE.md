@@ -6,8 +6,8 @@ See AGENTS.md — canonical. This is the `qt/` package inside `donaldfilimon/gam
 ## Git workflow (machine policy, 2026-08-27)
 
 This package has no repository of its own any more: git state is the
-enclosing `donaldfilimon/gama` checkout's, and its protected `main` takes
-changes through pull requests. Do not create
+enclosing `donaldfilimon/gama` checkout's (`~/dev/active/Gama`, work on
+`main`; no branch protection since 2026-09-28). Do not create
 branches or worktrees by default; they are for tasks that genuinely need
 isolation, or when Donald asks. Any worktree or topic branch created here
 must be merged back into this checkout's default branch, the worktree
