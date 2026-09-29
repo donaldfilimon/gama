@@ -79,9 +79,20 @@
 # registrations themselves, not string comparison. Intended; RenderNode,
 # the MLIR op set, and the DrawList wire are unchanged.
 #
+# Re-measured 2026-09-29 at the same compiler revision for plan Task 6,
+# after Task 5 (FrameHost.activate/focus/focusedNode, 848780, inside the
+# band). New: Sources/GamaCore/NativePresentation.swift, the portable
+# presentation tree (PresentationID, PresentedKind with a closure-ignoring
+# equality, PresentedNode.tree) and PresentationDiff with its op enum,
+# built on dictionaries and sets keyed by the new identity type. The
+# linked artifact is 926448 bytes, 79944 above the 846504 pin. Intended:
+# the tree and diff are portable by ADR 0017's design so every future
+# native host shares them; no RenderNode case, MLIR op, or DrawList wire
+# changed.
+#
 # Grammar is deliberately tiny: blank lines, `#` comments, and key = "value".
 # Anything else fails the read, for the same reason scripts/lib/manifest.sh is
 # strict — this is a pin, not a configuration language.
 revision = "95c5142e84b82c1"
-bytes = "846504"
+bytes = "926448"
 tolerance_percent = "2"

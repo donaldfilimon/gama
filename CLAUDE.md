@@ -576,9 +576,12 @@ overlays, sub-cell placement, and Embed/WASM publication are still open.
 2026-09-29; design `docs/superpowers/specs/2026-09-23-native-presentation-design.md`,
 plan `docs/superpowers/plans/2026-09-23-native-presentation.md`) lets a GUI
 host present Gama views as platform controls, superseding 0001's widget clause
-and 0016's "What 0001 still forbids". Only `LayoutMetrics` (plan Task 1)
-exists in `Sources/`; `ControlDescriptor`, the presentation tree, and
-`GamaNativeHostView` do not. Building toward any of these starts from
+and 0016's "What 0001 still forbids". The portable half exists in
+`Sources/GamaCore` (plan Tasks 1-6): `LayoutMetrics`, a `FrameHost` that lays
+out with it, the `ControlDescriptor` side table the four controls register,
+`FrameHost.activate`/`focus`, and the `PresentedNode` tree with its
+`PresentationDiff`. No AppKit host consumes them yet: `AppKitLayoutMetrics`
+and `GamaNativeHostView` (Tasks 7 onward) do not exist. Building toward any of these starts from
 `docs/Plugins.md` or a new file under `docs/superpowers/specs/drafts/`, not
 from assuming the manifesto's module boundary already exists.
 

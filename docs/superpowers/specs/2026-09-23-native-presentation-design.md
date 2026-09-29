@@ -4,8 +4,10 @@ Implements [ADR 0017](../../adr/0017-native-presentation.md), which supersedes
 the widget clause of ADR 0001 and the "What 0001 still forbids" section of
 ADR 0016.
 
-**Status: ADR 0017 accepted 2026-09-29. Only plan Task 1 (`LayoutMetrics`)
-is built; Tasks 2 onward are not started.** Originally drafted on branch
+**Status: ADR 0017 accepted 2026-09-29. Plan Tasks 1-6 (the portable
+half: `LayoutMetrics`, host metrics, control descriptors, host activation
+and focus, and the presentation tree and diff) are built; Tasks 7 onward
+(the AppKit host) are not started.** Originally drafted on branch
 `feat/native-presenters`, stacked on `docs/native-surface-draft` (PR #107,
 which carries native regions and ADR 0016). No row is added to
 `docs/Capabilities.md` until an implementation has evidence at the layer it
