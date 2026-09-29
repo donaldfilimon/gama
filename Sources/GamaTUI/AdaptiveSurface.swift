@@ -85,38 +85,7 @@ public final class StandardOutputSink: StreamSink {
     /// Writes `line` followed by a newline, resuming after `EINTR` and
     /// short writes until fully flushed.
     public func write(_ line: String) {
-        let bytes = Array((line + "\n").utf8)
-        var offset = 0
-        while offset < bytes.count {
-            let written = bytes.withUnsafeBytes { buffer -> Int in
-                guard let base = buffer.baseAddress else { return 0 }
-                #if canImport(Darwin)
-                    return unsafe Darwin.write(
-                        STDOUT_FILENO, base.advanced(by: offset), buffer.count - offset)
-                #elseif canImport(Glibc)
-                    return unsafe Glibc.write(
-                        STDOUT_FILENO, base.advanced(by: offset), buffer.count - offset)
-                #elseif canImport(Musl)
-                    return unsafe Musl.write(
-                        STDOUT_FILENO, base.advanced(by: offset), buffer.count - offset)
-                #elseif canImport(Android)
-                    return unsafe Android.write(
-                        STDOUT_FILENO, base.advanced(by: offset), buffer.count - offset)
-                #else
-                    // Windows has no write(2) here. Report zero rather than
-                    // the byte count: claiming a successful write that never
-                    // happened is worse than the guard below bailing out.
-                    // The Windows console row is Blocked regardless.
-                    return 0
-                #endif
-            }
-            #if !os(Windows)
-                // EINTR retry is POSIX-only; Windows has no `errno` here.
-                if written < 0, errno == EINTR { continue }
-            #endif
-            guard written > 0 else { return }
-            offset += written
-        }
+        writeLineFully(line, toStandardError: false)
     }
 }
 
@@ -266,30 +235,47 @@ extension App {
 /// Writes one line to standard error, used for a completion message so it
 /// never contaminates the stream surface's stdout chronology.
 func writeStandardError(_ message: String) {
-    let bytes = Array((message + "\n").utf8)
+    writeLineFully(message, toStandardError: true)
+}
+
+/// Writes `text` followed by a newline to standard output or standard
+/// error, resuming after `EINTR` and short writes until fully flushed.
+///
+/// The descriptor is chosen by a flag rather than passed in so that
+/// `STDOUT_FILENO` / `STDERR_FILENO` are named only inside the POSIX arms:
+/// Windows reaches this file without them in scope.
+private func writeLineFully(_ text: String, toStandardError: Bool) {
+    let bytes = Array((text + "\n").utf8)
     var offset = 0
     while offset < bytes.count {
         let written = bytes.withUnsafeBytes { buffer -> Int in
             guard let base = buffer.baseAddress else { return 0 }
             #if canImport(Darwin)
                 return unsafe Darwin.write(
-                    STDERR_FILENO, base.advanced(by: offset), buffer.count - offset)
+                    toStandardError ? STDERR_FILENO : STDOUT_FILENO,
+                    base.advanced(by: offset), buffer.count - offset)
             #elseif canImport(Glibc)
                 return unsafe Glibc.write(
-                    STDERR_FILENO, base.advanced(by: offset), buffer.count - offset)
+                    toStandardError ? STDERR_FILENO : STDOUT_FILENO,
+                    base.advanced(by: offset), buffer.count - offset)
             #elseif canImport(Musl)
                 return unsafe Musl.write(
-                    STDERR_FILENO, base.advanced(by: offset), buffer.count - offset)
+                    toStandardError ? STDERR_FILENO : STDOUT_FILENO,
+                    base.advanced(by: offset), buffer.count - offset)
             #elseif canImport(Android)
                 return unsafe Android.write(
-                    STDERR_FILENO, base.advanced(by: offset), buffer.count - offset)
+                    toStandardError ? STDERR_FILENO : STDOUT_FILENO,
+                    base.advanced(by: offset), buffer.count - offset)
             #else
-                // See StandardOutputSink.write: report zero, never a
-                // successful write that did not happen.
+                // Windows has no write(2) here. Report zero rather than
+                // the byte count: claiming a successful write that never
+                // happened is worse than the guard below bailing out.
+                // The Windows console row is Blocked regardless.
                 return 0
             #endif
         }
         #if !os(Windows)
+            // EINTR retry is POSIX-only; Windows has no `errno` here.
             if written < 0, errno == EINTR { continue }
         #endif
         guard written > 0 else { return }
