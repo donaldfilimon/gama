@@ -49,8 +49,24 @@
                     with: NSSize(width: CGFloat.greatestFiniteMagnitude, height: .greatestFiniteMagnitude),
                     options: [.usesLineFragmentOrigin, .usesFontLeading])
             let size = measurer.metrics.textSize("Gama", .plain, nil)
-            #expect(CGFloat(size.width) == raw.width.rounded(.up))
+            // The label cell's line-fragment padding is part of the width.
+            #expect(CGFloat(size.width) == (raw.width + AppKitLayoutMetrics.labelPadding).rounded(.up))
             #expect(CGFloat(size.height) == raw.height.rounded(.up))
+        }
+
+        @Test("a label given its measured size shows its whole text on one line")
+        func labelFits() {
+            let measurer = AppKitLayoutMetrics()
+            for text in ["Gama", "Native presentation", "Proportional system text measured by AppKit.", "W"] {
+                for style in [TextStyle.plain, TextStyle(attributes: [.bold])] {
+                    let size = measurer.metrics.textSize(text, style, nil)
+                    let label = NSTextField(wrappingLabelWithString: text)
+                    label.font = measurer.font(for: style.attributes)
+                    let fitting = label.fittingSize
+                    #expect(fitting.width <= CGFloat(size.width), "\(text) is clipped")
+                    #expect(fitting.height <= CGFloat(size.height), "\(text) wraps")
+                }
+            }
         }
 
         @Test("bold text measures wider than plain text")

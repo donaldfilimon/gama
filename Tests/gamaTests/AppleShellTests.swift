@@ -85,8 +85,10 @@ struct AppleShellTests {
         let firstController = try #require(coordinator.controllers[first])
         let secondController = try #require(coordinator.controllers[second])
         #expect(firstController !== secondController)
-        #expect(firstController.hostView !== secondController.hostView)
-        #expect(firstController.hostView.currentDrawList != secondController.hostView.currentDrawList)
+        let firstHost = try #require(firstController.hostView)
+        let secondHost = try #require(secondController.hostView)
+        #expect(firstHost !== secondHost)
+        #expect(firstHost.currentDrawList != secondHost.currentDrawList)
 
         let singleton = try #require(coordinator.openWindow("inspector"))
         #expect(coordinator.openWindow("inspector") == singleton)
@@ -174,6 +176,47 @@ struct AppleShellTests {
         let reopened = try #require(coordinator.liveInstanceIDs.first)
         #expect(reopened.rawValue > 2)
         #expect(coordinator.openWindow(group: shellDocumentKey, value: 1) == reopened)
+    }
+
+    @Test("cell presentation stays the default content view")
+    func defaultPresentation() throws {
+        let coordinator = try makeCoordinator(events: Signal([]))
+        coordinator.beginApplication()
+        let instance = try #require(coordinator.liveInstanceIDs.first)
+        let controller = try #require(coordinator.controllers[instance])
+        let window = try #require(controller.window)
+        #expect(window.contentView is GamaHostView)
+        #expect(controller.nativeHostView == nil)
+    }
+
+    @Test("native presentation hosts each window in a GamaNativeHostView sized in points")
+    func nativePresentation() throws {
+        let coordinator = GamaShellCoordinator(
+            graph: try compileSceneGraph(ShellTestApp(events: Signal([]))),
+            presentsWindows: false,
+            presentation: .native
+        )
+        coordinator.beginApplication()
+        let instance = try #require(coordinator.liveInstanceIDs.first)
+        let controller = try #require(coordinator.controllers[instance])
+        let window = try #require(controller.window)
+        let native = try #require(window.contentView as? GamaNativeHostView)
+        #expect(controller.hostView == nil)
+        #expect(controller.nativeHostView === native)
+        // The primary scene asks for 32x8 cells; a native window converts
+        // them with the host's probed cell size, keeping the shell's minimum.
+        let cell = native.layoutMetrics.cellSize
+        let content = try #require(window.contentView).bounds.size
+        #expect(content.width == max(320, 32 * cell.width))
+        #expect(content.height == max(180, 8 * cell.height))
+        #expect(native.presentedTree.contains {
+            if case .label("document:1") = $0.kind { return true }
+            return false
+        })
+
+        // Lifecycle still reaches the surface through the native host.
+        #expect(!controller.windowShouldClose(window))
+        #expect(coordinator.controllers[instance] == nil)
     }
 
     @Test("explicit termination emits willTerminate exactly once")

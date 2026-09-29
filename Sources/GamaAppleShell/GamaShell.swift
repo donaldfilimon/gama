@@ -4,6 +4,17 @@ package import GamaAppleUI
 public import GamaCore
 import GamaDraw
 
+/// How a shell window presents its Gama surface.
+public enum GamaShellPresentation: Hashable, Sendable {
+    /// A painted cell grid in a `GamaHostView`, sized from each scene's
+    /// initial cell size. The default.
+    case cells
+    /// Native AppKit controls in a `GamaNativeHostView` (ADR 0017), laid
+    /// out in points; the scene's initial cell size is converted with the
+    /// host's probed cell size.
+    case native
+}
+
 /// AppKit application owner for scene-first Gama applications.
 @MainActor
 public enum GamaShell {
@@ -12,8 +23,17 @@ public enum GamaShell {
     public static func run<A: App>(
         _ appType: A.Type
     ) throws(SceneConfigurationError) {
+        try run(appType, presentation: .cells)
+    }
+
+    /// Like ``run(_:)``, presenting every window with `presentation`.
+    public static func run<A: App>(
+        _ appType: A.Type,
+        presentation: GamaShellPresentation
+    ) throws(SceneConfigurationError) {
         let graph = try compileSceneGraph(A())
-        let coordinator = GamaShellCoordinator(graph: graph, presentsWindows: true)
+        let coordinator = GamaShellCoordinator(
+            graph: graph, presentsWindows: true, presentation: presentation)
         let application = NSApplication.shared
         application.setActivationPolicy(.regular)
         installMainMenu(on: application)
@@ -37,6 +57,22 @@ public enum GamaShell {
         application.mainMenu = mainMenu
     }
 }
+
+/// The package surface the shell drives on either host view.
+@MainActor
+package protocol GamaShellHostView: NSView {
+    /// Installs one validated scene surface.
+    func install(surface: SceneSurface)
+    /// Routes one event into the installed surface.
+    func send(_ event: InputEvent)
+    /// Cancels the installed surface's subscriptions.
+    func tearDown()
+    /// Runs after each native event has been handled.
+    var afterEventDispatch: (@MainActor () -> Void)? { get set }
+}
+
+extension GamaHostView: GamaShellHostView {}
+extension GamaNativeHostView: GamaShellHostView {}
 
 package enum ShellLogicalWindowKey: Hashable {
     case singleton(SceneID)
@@ -94,15 +130,21 @@ package final class GamaShellCoordinator: NSObject, NSApplicationDelegate {
     package let graph: CompiledSceneGraph
     package let commandStore: ShellCommandStore
     package let presentsWindows: Bool
+    package let presentation: GamaShellPresentation
     package private(set) var controllers: [WindowInstanceID: GamaShellWindowController] = [:]
     private var instancesByLogicalKey: [ShellLogicalWindowKey: WindowInstanceID] = [:]
     private var nextInstanceRawValue: UInt64 = 1
     private var didLaunch = false
     private var didTerminate = false
 
-    package init(graph: CompiledSceneGraph, presentsWindows: Bool) {
+    package init(
+        graph: CompiledSceneGraph,
+        presentsWindows: Bool,
+        presentation: GamaShellPresentation = .cells
+    ) {
         self.graph = graph
         self.presentsWindows = presentsWindows
+        self.presentation = presentation
         self.commandStore = ShellCommandStore(scenes: graph.scenes)
         super.init()
     }
@@ -229,9 +271,10 @@ package final class GamaShellCoordinator: NSObject, NSApplicationDelegate {
         let controller = GamaShellWindowController(
             surface: surface,
             configuration: scene.configuration,
-            coordinator: self
+            coordinator: self,
+            presentation: presentation
         )
-        controller.hostView.afterEventDispatch = { [weak self] in
+        controller.host.afterEventDispatch = { [weak self] in
             self?.drainWindowCommands()
         }
         controllers[instance] = controller
@@ -287,21 +330,39 @@ package final class GamaShellCoordinator: NSObject, NSApplicationDelegate {
 package final class GamaShellWindowController: NSWindowController, NSWindowDelegate {
     package let sceneID: SceneID
     package let instanceID: WindowInstanceID
-    package let hostView: GamaHostView
+    /// The window's content view, whichever presentation it uses.
+    package let host: any GamaShellHostView
     package weak var coordinator: GamaShellCoordinator?
     package var isClosingFromCoordinator = false
+
+    /// The cell host, when the window presents cells.
+    package var hostView: GamaHostView? { host as? GamaHostView }
+    /// The native host, when the window presents native controls.
+    package var nativeHostView: GamaNativeHostView? { host as? GamaNativeHostView }
 
     package init(
         surface: SceneSurface,
         configuration: WindowConfiguration,
-        coordinator: GamaShellCoordinator
+        coordinator: GamaShellCoordinator,
+        presentation: GamaShellPresentation = .cells
     ) {
         sceneID = surface.sceneID
         instanceID = surface.instanceID
         self.coordinator = coordinator
 
-        let width = max(320, CGFloat(configuration.initialCellSize.width) * 9)
-        let height = max(180, CGFloat(configuration.initialCellSize.height) * 18)
+        let pointsPerCell: CGSize
+        let host: any GamaShellHostView
+        switch presentation {
+        case .cells:
+            host = GamaHostView(frame: .zero)
+            pointsPerCell = CGSize(width: 9, height: 18)
+        case .native:
+            let native = GamaNativeHostView(frame: .zero)
+            host = native
+            pointsPerCell = native.layoutMetrics.cellSize
+        }
+        let width = max(320, CGFloat(configuration.initialCellSize.width) * pointsPerCell.width)
+        let height = max(180, CGFloat(configuration.initialCellSize.height) * pointsPerCell.height)
         var style: NSWindow.StyleMask = [.titled, .closable, .miniaturizable]
         if configuration.isResizable { style.insert(.resizable) }
         let window = NSWindow(
@@ -312,10 +373,11 @@ package final class GamaShellWindowController: NSWindowController, NSWindowDeleg
         )
         window.title = configuration.title
         window.isReleasedWhenClosed = false
-        hostView = GamaHostView(frame: window.contentView?.bounds ?? .zero)
-        hostView.autoresizingMask = [.width, .height]
-        hostView.install(surface: surface)
-        window.contentView = hostView
+        host.frame = window.contentView?.bounds ?? .zero
+        host.autoresizingMask = [.width, .height]
+        host.install(surface: surface)
+        window.contentView = host
+        self.host = host
         super.init(window: window)
         window.delegate = self
     }
@@ -326,11 +388,11 @@ package final class GamaShellWindowController: NSWindowController, NSWindowDeleg
     }
 
     package func deliver(_ event: LifecycleEvent) {
-        hostView.send(.lifecycle(event))
+        host.send(.lifecycle(event))
     }
 
     package func tearDown() {
-        hostView.tearDown()
+        host.tearDown()
     }
 
     package func windowShouldClose(_ sender: NSWindow) -> Bool {

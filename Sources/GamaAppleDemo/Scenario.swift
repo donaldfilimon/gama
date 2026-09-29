@@ -220,7 +220,10 @@
             print("error: scenario opened no primary window instance")
             exit(1)
         }
-        let view = controller.hostView
+        guard let view = controller.hostView else {
+            print("error: scenario window is not a cell host")
+            exit(1)
+        }
 
         /// Forces the host onto an exact cell grid and pumps the resulting
         /// layout pass. Fails loudly rather than measuring the wrong extent.

@@ -26,6 +26,12 @@
         /// system font and rounded up to whole points.
         public let cellSize: CGSize
 
+        /// Horizontal points an `NSTextField` label cell adds around its
+        /// text (its line-fragment padding, two points per side). Every
+        /// measured text width includes it, so a label given its measured
+        /// frame never clips or wraps its last word.
+        public static let labelPadding: CGFloat = 4
+
         /// How many text measurements missed the cache and reached AppKit.
         /// Package-only, so a test can prove the cache is consulted.
         package private(set) var textMeasurementCount = 0
@@ -126,14 +132,14 @@
             }()
             guard !text.isEmpty else { return cellFallback }
             let string = NSAttributedString(string: text, attributes: [.font: font(for: attributes)])
-            let bound = width.map { CGFloat(max(1, $0)) } ?? .greatestFiniteMagnitude
+            let bound = width.map { CGFloat(max(1, $0)) - Self.labelPadding } ?? .greatestFiniteMagnitude
             let rect = string.boundingRect(
                 with: NSSize(width: bound, height: .greatestFiniteMagnitude),
                 options: [.usesLineFragmentOrigin, .usesFontLeading])
-            guard rect.width.isFinite, rect.height.isFinite, rect.width > 0, rect.height > 0 else {
+            guard bound > 0, rect.width.isFinite, rect.height.isFinite, rect.width > 0, rect.height > 0 else {
                 return cellFallback
             }
-            var size = rounded(rect.size)
+            var size = rounded(CGSize(width: rect.width + Self.labelPadding, height: rect.height))
             if let width { size.width = min(size.width, max(0, width)) }
             return size
         }
