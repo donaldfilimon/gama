@@ -605,6 +605,12 @@ public final class GamaHostView: GamaPlatformView {
             height: CGFloat(r.size.height) * cellSize.height)
     }
 
+    private func gridPoint(_ local: CGPoint) -> Point {
+        Point(
+            x: Int(local.x / cellSize.width),
+            y: Int(local.y / cellSize.height))
+    }
+
     /// The font for `style`, built once per distinct bold/italic
     /// combination and reused thereafter. See the styled-font cache note
     /// above ``fontCache`` for why per-command construction had to stop.
@@ -718,20 +724,13 @@ public final class GamaHostView: GamaPlatformView {
         /// Routes a left-button press to the host as a pressed pointer
         /// event at the clicked cell.
         public override func mouseDown(with event: NSEvent) {
-            handleEvent?(.pointer(gridPoint(event.locationInWindow), pressed: true))
+            handleEvent?(.pointer(gridPoint(convert(event.locationInWindow, from: nil)), pressed: true))
         }
 
         /// Routes a left-button release to the host as a released pointer
         /// event at the clicked cell.
         public override func mouseUp(with event: NSEvent) {
-            handleEvent?(.pointer(gridPoint(event.locationInWindow), pressed: false))
-        }
-
-        private func gridPoint(_ windowPoint: NSPoint) -> Point {
-            let local = convert(windowPoint, from: nil)
-            return Point(
-                x: Int(local.x / cellSize.width),
-                y: Int(local.y / cellSize.height))
+            handleEvent?(.pointer(gridPoint(convert(event.locationInWindow, from: nil)), pressed: false))
         }
 
         private static func key(from event: NSEvent) -> Key? {
@@ -794,12 +793,6 @@ public final class GamaHostView: GamaPlatformView {
                 handled = true
             }
             if !handled { super.pressesBegan(presses, with: event) }
-        }
-
-        private func gridPoint(_ local: CGPoint) -> Point {
-            Point(
-                x: Int(local.x / cellSize.width),
-                y: Int(local.y / cellSize.height))
         }
 
         // Hardware keyboard (iPad etc.)
