@@ -77,7 +77,11 @@ A GUI host that presents Gama views as platform controls (ADR 0017) lays
 out with its own ``LayoutMetrics``, reads the ``ControlDescriptor`` side
 table `FrameHost` keeps, reduces each frame to a ``PresentedNode`` tree, and
 applies the ``PresentationOp`` list ``PresentationDiff`` computes between
-frames. Every other backend ignores all of it.
+frames. Other backends never read the descriptor table or build the
+tree. The registrations still shape the shared frame: `ProgressView` now
+compiles to a non-focusable `interactive` node, so it appears among the
+interactive regions and in the MLIR dialect, while pointer hit-testing looks
+through it.
 
 - ``ControlDescriptor``
 - ``PresentedNode``

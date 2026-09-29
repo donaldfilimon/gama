@@ -100,11 +100,14 @@ public struct HostPump: ~Copyable {
         host.handle(event)
     }
 
-    /// The host's focused node; see ``FrameHost/focusedNode``.
-    public var focusedNode: NodeID? { host.focusedNode }
+    /// The host's focused node; see ``FrameHost/focusedID``.
+    public var focusedID: NodeID? { host.focusedID }
 
     /// Activates `id` on the host; see ``FrameHost/activate(_:)``.
     public mutating func activate(_ id: NodeID) { host.activate(id) }
+
+    /// Writes a text field's binding; see ``FrameHost/setText(_:_:)``.
+    public mutating func setText(_ id: NodeID, _ text: String) { host.setText(id, text) }
 
     /// Moves host focus to `id`; see ``FrameHost/focus(_:)``.
     public mutating func focus(_ id: NodeID) { host.focus(id) }

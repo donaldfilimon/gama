@@ -64,6 +64,14 @@ private final class HostActionStore {
     }
     func invoke(_ id: NodeID) { actions[id]?() }
     func hasAction(_ id: NodeID) -> Bool { actions[id] != nil }
+    /// Whether `id` only displays state: a progress indicator with no
+    /// action. Pointer hit-testing looks through it, so a press lands on
+    /// the interactive node beneath (a progress bar inside a button label
+    /// still presses the button).
+    func isDisplayOnly(_ id: NodeID) -> Bool {
+        guard actions[id] == nil, case .progress? = controls[id] else { return false }
+        return true
+    }
     func invokeKey(_ key: Key, for id: NodeID) -> Bool { keyHandlers[id]?(key) ?? false }
     func effect(for id: ActionID) -> (() -> Void)? { named[id] }
     func shortcutEffect(for key: Key) -> (() -> Void)? {
@@ -105,7 +113,7 @@ public struct FrameHost: ~Copyable {
     private var focusables: [(id: NodeID, rect: Rect)] = []
     /// Focus is tracked by identity, not index, so it survives rebuilds
     /// that insert or remove unrelated nodes.
-    private var focusedID: NodeID? = nil
+    private var currentFocus: NodeID? = nil
     private let actions = HostActionStore()
 
     /// Duplicate interactive identities observed during the most recent frame.
@@ -205,20 +213,20 @@ public struct FrameHost: ~Copyable {
         dirty.set(false)
 
         var env = EnvironmentValues()
-        env.focusedID = focusedID
+        env.focusedID = currentFocus
         env.windowContext = windowContext
         env.surfaceSize = cellSize(of: size)
         var laid = buildFrame(size: size, environment: env)
 
         // Reconcile focus with the new tree.
-        if let id = focusedID, !focusables.contains(where: { $0.id == id }) {
-            focusedID = focusables.first?.id
+        if let id = currentFocus, !focusables.contains(where: { $0.id == id }) {
+            currentFocus = focusables.first?.id
         }
-        if focusedID == nil { focusedID = focusables.first?.id }
-        if env.focusedID != focusedID {
+        if currentFocus == nil { currentFocus = focusables.first?.id }
+        if env.focusedID != currentFocus {
             // Rebuild once so the frame returned by this pump already
             // contains the reconciled focus highlight.
-            env.focusedID = focusedID
+            env.focusedID = currentFocus
             laid = buildFrame(size: size, environment: env)
         }
         // Sweep once, after whichever build painted: the reconciliation
@@ -283,7 +291,7 @@ public struct FrameHost: ~Copyable {
     private mutating func publishNativeRegions() {
         let all: [NativeRegionFrame] = interactive.compactMap { item in
             actions.region(for: item.id).map {
-                NativeRegionFrame(id: $0, node: item.id, frame: item.frame, isFocused: item.id == focusedID)
+                NativeRegionFrame(id: $0, node: item.id, frame: item.frame, isFocused: item.id == currentFocus)
             }
         }
         var seen: Set<NativeRegionID> = []
@@ -301,7 +309,7 @@ public struct FrameHost: ~Copyable {
     }
 
     private var focusedIndex: Int? {
-        guard let id = focusedID else { return nil }
+        guard let id = currentFocus else { return nil }
         return focusables.firstIndex { $0.id == id }
     }
 
@@ -333,21 +341,39 @@ public struct FrameHost: ~Copyable {
 
     /// The node that holds keyboard focus after the most recent frame or
     /// focus change, or `nil` when nothing is focusable.
-    public var focusedNode: NodeID? { focusedID }
+    public var focusedID: NodeID? { currentFocus }
 
     /// Activates the interactive node `id` directly, the way a pointer
     /// press on it does but without hit-testing: a native presentation host
     /// (ADR 0017) calls it when a platform control fires.
     ///
     /// A focusable target takes focus; then per-surface state is rebound,
-    /// the node's action runs, and the host is marked dirty. A node the
-    /// latest build registered no action for (disabled, not in the tree,
-    /// or never actionable) is a no-op that does not mark the host dirty.
+    /// the node's action runs, and the host is marked dirty. Unlike a
+    /// pointer press, which marks the host dirty whenever it hits an
+    /// interactive node, a node the latest build registered no action for
+    /// (disabled, not in the tree, or never actionable) is a no-op that
+    /// does not mark the host dirty.
     public mutating func activate(_ id: NodeID) {
         guard actions.hasAction(id) else { return }
-        if focusables.contains(where: { $0.id == id }) { focusedID = id }
+        if focusables.contains(where: { $0.id == id }) { currentFocus = id }
         stateStore.activate()
         actions.invoke(id)
+        dirty.set(true)
+    }
+
+    /// Writes `text` through the binding of the text field `id`, for a
+    /// native host whose platform editor changed (ADR 0017).
+    ///
+    /// Per-surface state is rebound first, exactly as before an action
+    /// runs, so a component instance rendered by more than one host writes
+    /// this host's `@Reactive` storage. Then the host is marked dirty. A
+    /// node the latest build registered no
+    /// ``ControlDescriptor/textField(placeholder:text:isEnabled:setText:)``
+    /// for is a no-op that does not mark the host dirty.
+    public mutating func setText(_ id: NodeID, _ text: String) {
+        guard case .textField(_, _, _, let write)? = actions.controls[id] else { return }
+        stateStore.activate()
+        write(text)
         dirty.set(true)
     }
 
@@ -358,8 +384,8 @@ public struct FrameHost: ~Copyable {
     /// latest frame changes nothing and does not mark the host dirty, so a
     /// host that echoes Gama's own focus change back cannot loop.
     public mutating func focus(_ id: NodeID) {
-        guard id != focusedID, focusables.contains(where: { $0.id == id }) else { return }
-        focusedID = id
+        guard id != currentFocus, focusables.contains(where: { $0.id == id }) else { return }
+        currentFocus = id
         dirty.set(true)
     }
 
@@ -371,7 +397,8 @@ public struct FrameHost: ~Copyable {
     /// first, and a declared action shortcut runs only when that handler
     /// declines, so a text field keeps the characters it consumes. Enter
     /// and Space are not shortcuts. A pointer press hit-tests the topmost
-    /// interactive node (focusing it only when focusable) and invokes its
+    /// interactive node that is not display-only (a progress indicator is
+    /// looked through), focusing it only when focusable, and invokes its
     /// action; a resize just marks the host dirty. Whenever an event
     /// changes state, the dirty flag is set so the next `pump` re-renders.
     public mutating func handle(_ event: InputEvent) {
@@ -397,7 +424,7 @@ public struct FrameHost: ~Copyable {
 
         case .key(let key) where key == .up || key == .down || key == .left || key == .right:
             var handled = false
-            if let id = focusedID {
+            if let id = currentFocus {
                 stateStore.activate()
                 if actions.invokeKey(key, for: id) {
                     dirty.set(true)
@@ -415,7 +442,7 @@ public struct FrameHost: ~Copyable {
             }
 
         case .key(let key) where key == .enter || key == .character(" "):
-            if let id = focusedID {
+            if let id = currentFocus {
                 stateStore.activate()
                 // First refusal to the focused node's key handler: an editor
                 // has to be able to type a space, and Enter has to be able to
@@ -431,8 +458,10 @@ public struct FrameHost: ~Copyable {
         case .pointer(let p, pressed: true):
             // Hit-test the full interactive set (topmost wins), not just
             // the focusable subset — non-focusable targets stay clickable.
-            if let hit = interactive.last(where: { $0.frame.contains(p) }) {
-                if hit.isFocusable { focusedID = hit.id }
+            // Display-only nodes (progress) are looked through, so the
+            // press reaches the node beneath them.
+            if let hit = interactive.last(where: { $0.frame.contains(p) && !actions.isDisplayOnly($0.id) }) {
+                if hit.isFocusable { currentFocus = hit.id }
                 stateStore.activate()
                 actions.invoke(hit.id)
                 dirty.set(true)
@@ -450,7 +479,7 @@ public struct FrameHost: ~Copyable {
 
         case .key(let key):
             stateStore.activate()
-            if let id = focusedID, actions.invokeKey(key, for: id) {
+            if let id = currentFocus, actions.invokeKey(key, for: id) {
                 dirty.set(true)
             } else if let effect = actions.shortcutEffect(for: key) {
                 effect()
@@ -467,7 +496,7 @@ public struct FrameHost: ~Copyable {
         let n = focusables.count
         let current = focusedIndex ?? (delta > 0 ? -1 : 0)
         let next = ((current + delta) % n + n) % n
-        focusedID = focusables[next].id
+        currentFocus = focusables[next].id
         dirty.set(true)
     }
 
@@ -492,7 +521,7 @@ public struct FrameHost: ~Copyable {
             best = (j, score)
         }
         if let best {
-            focusedID = focusables[best.index].id
+            currentFocus = focusables[best.index].id
             dirty.set(true)
         } else {
             moveFocus(by: (dx + dy) >= 0 ? 1 : -1)

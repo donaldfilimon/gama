@@ -63,7 +63,9 @@ public enum PresentedKind: Equatable {
 
     /// Whether a host can update a view of kind `self` in place to
     /// `other`, as opposed to replacing it: the same case and, for
-    /// controls, the same control kind.
+    /// controls, the same control kind. A button with a `nil` title (a
+    /// composite label the host presents inside a generic view) and a
+    /// titled button are different view classes.
     public func isSameViewClass(as other: PresentedKind) -> Bool {
         switch (self, other) {
         case (.label, .label), (.separator, .separator), (.container, .container),
@@ -81,7 +83,7 @@ extension ControlDescriptor {
     /// Small integer naming the case, for view-class comparison.
     fileprivate var controlKindIndex: Int {
         switch self {
-        case .button: return 0
+        case .button(let title, _): return title == nil ? 4 : 0
         case .toggle: return 1
         case .textField: return 2
         case .progress: return 3
@@ -115,8 +117,9 @@ public struct PresentedNode: Equatable {
     /// (or to the laid-out root's origin for a top-level view).
     public var frame: Rect
     /// The text style in effect here, resolved with the same precedence
-    /// `CellPainter` uses: enclosing `styled` wrappers win over a node's
-    /// own style.
+    /// `CellPainter` uses: for text, enclosing `styled` wrappers win over
+    /// the node's own style; for a divider or a border, the node's own
+    /// style wins over the enclosing ones.
     public var style: TextStyle
     /// Presented descendants, in paint order.
     public var children: [PresentedNode]
@@ -143,8 +146,17 @@ public struct PresentedNode: Equatable {
     /// a ``PresentedKind/nativeRegion(_:)`` when `regions` names it, else a
     /// ``PresentedKind/focusGroup(focusable:)``. A control presents no
     /// children, except a button with a `nil` title, which presents its
-    /// label subtree inside itself. Returns the top-level views in paint
-    /// order.
+    /// label subtree inside itself; for an enabled one, the `styled`
+    /// wrapper `Button` puts directly around its label (the cell focus
+    /// highlight and bold) is skipped, because the platform draws focus
+    /// itself. Returns the top-level views in paint order.
+    ///
+    /// Identities in the result are unique. When an interactive identity
+    /// occurs more than once (``FrameHost/duplicateIDs`` reports it), only
+    /// its last occurrence in pre-order is presented, matching the
+    /// last-registration-wins rule of the control table; earlier
+    /// occurrences are dropped with their subtrees, and so is any
+    /// occurrence of another identity inside a dropped subtree.
     public static func tree(
         from laid: LaidOutNode,
         controls: [NodeID: ControlDescriptor],
@@ -153,7 +165,49 @@ public struct PresentedNode: Equatable {
         var regionTable: [NodeID: NativeRegionID] = [:]
         for region in regions { regionTable[region.node] = region.id }
         var builder = TreeBuilder(controls: controls, regions: regionTable)
-        return builder.present(laid, path: NodeID.root, origin: laid.frame.origin, style: .plain)
+        return deduplicated(builder.present(laid, path: NodeID.root, origin: laid.frame.origin, style: .plain))
+    }
+
+    /// `nodes` with every identity kept once: its last occurrence in
+    /// pre-order. An earlier occurrence is dropped with its whole subtree.
+    static func deduplicated(_ nodes: [PresentedNode]) -> [PresentedNode] {
+        var remaining: [PresentationID: Int] = [:]
+        count(nodes, into: &remaining)
+        guard remaining.values.contains(where: { $0 > 1 }) else { return nodes }
+        return keepLast(nodes, remaining: &remaining)
+    }
+
+    private static func count(_ nodes: [PresentedNode], into remaining: inout [PresentationID: Int]) {
+        for node in nodes {
+            remaining[node.id, default: 0] += 1
+            count(node.children, into: &remaining)
+        }
+    }
+
+    /// Keeps each node whose occurrence is the last one left, consuming
+    /// one count per visited node (dropped subtrees included).
+    private static func keepLast(
+        _ nodes: [PresentedNode], remaining: inout [PresentationID: Int]
+    ) -> [PresentedNode] {
+        var out: [PresentedNode] = []
+        for var node in nodes {
+            let left = (remaining[node.id] ?? 1) - 1
+            remaining[node.id] = left
+            guard left == 0 else {
+                discard(node.children, remaining: &remaining)
+                continue
+            }
+            node.children = keepLast(node.children, remaining: &remaining)
+            out.append(node)
+        }
+        return out
+    }
+
+    private static func discard(_ nodes: [PresentedNode], remaining: inout [PresentationID: Int]) {
+        for node in nodes {
+            remaining[node.id, default: 1] -= 1
+            discard(node.children, remaining: &remaining)
+        }
     }
 }
 
@@ -219,9 +273,16 @@ private struct TreeBuilder {
             } else {
                 kind = .focusGroup(focusable: focusable)
             }
-            let children =
-                presentsChildren
-                ? presentChildren(laid, path: path, origin: laid.frame.origin, style: style) : []
+            var children: [PresentedNode] = []
+            if case .control(.button(title: nil, isEnabled: true)) = kind,
+                laid.children.count == 1, case .styled = laid.children[0].node
+            {
+                // `Button`'s own focus/bold wrapper is cell-only styling.
+                children = presentChildren(
+                    laid.children[0], path: path.child(0), origin: laid.frame.origin, style: style)
+            } else if presentsChildren {
+                children = presentChildren(laid, path: path, origin: laid.frame.origin, style: style)
+            }
             return [PresentedNode(id: .node(id), kind: kind, frame: relative, style: style, children: children)]
         case .stack, .overlay, .group, .spacer, .padding, .frame, .flexFrame:
             return presentChildren(laid, path: path, origin: origin, style: style)
@@ -269,7 +330,15 @@ public enum PresentationDiff {
     /// changed, a `setFrame` when its frame changed, and an `update` when
     /// its kind or style changed, in that order. Identical trees produce
     /// no operations.
+    ///
+    /// Each identity is expected once per tree, as
+    /// ``PresentedNode/tree(from:controls:regions:)`` guarantees. A tree
+    /// that repeats an identity is first reduced the same way: the last
+    /// occurrence in pre-order is kept and earlier ones are dropped with
+    /// their subtrees.
     public static func between(_ old: [PresentedNode], _ new: [PresentedNode]) -> [PresentationOp] {
+        let old = PresentedNode.deduplicated(old)
+        let new = PresentedNode.deduplicated(new)
         var oldIndex: [PresentationID: Placement] = [:]
         var oldOrder: [PresentationID] = []
         index(old, parent: nil, into: &oldIndex, order: &oldOrder)
@@ -321,7 +390,7 @@ public enum PresentationDiff {
         into table: inout [PresentationID: Placement], order: inout [PresentationID]
     ) {
         for (position, node) in nodes.enumerated() {
-            if table[node.id] == nil { order.append(node.id) }
+            order.append(node.id)
             table[node.id] = Placement(node: node, parent: parent, index: position)
             index(node.children, parent: node.id, into: &table, order: &order)
         }

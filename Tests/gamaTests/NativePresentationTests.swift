@@ -111,6 +111,20 @@ struct PresentationTreeTests {
         #expect(tree[3].children.first?.kind == .label("g"))
     }
 
+    @Test("duplicate interactive identities present once, as the last occurrence")
+    func duplicateInteractiveIdentities() {
+        let node = RenderNode.stack(
+            axis: .vertical, spacing: 0, alignment: .topLeading,
+            children: [
+                .interactive(id: buttonID, focusable: true, child: .text("first", style: .plain)),
+                .interactive(id: buttonID, focusable: true, child: .text("second", style: .plain)),
+            ])
+        let tree = present(node)
+        #expect(tree.map(\.id) == [.node(buttonID)])
+        #expect(tree.first?.frame.origin == Point(x: 0, y: 1))
+        #expect(tree.first?.children.map(\.kind) == [.label("second")])
+    }
+
     @Test("a button with a composite label presents its label inside")
     func compositeButtonPresentsChildren() {
         let node = RenderNode.interactive(
@@ -240,6 +254,44 @@ struct PresentationDiffTests {
             ])
     }
 
+    @Test("a button switching between a composite and a titled label replaces the view")
+    func buttonLabelShapeChange() {
+        let composite = PresentedNode(
+            id: c, kind: .control(.button(title: nil, isEnabled: true)), frame: .zero, style: .plain,
+            children: [label(a, "a")])
+        let titled = PresentedNode(id: c, kind: .control(.button(title: "X", isEnabled: true)), frame: .zero, style: .plain)
+        #expect(
+            PresentationDiff.between([composite], [titled]) == [
+                .remove(id: c),
+                .remove(id: a),
+                .insert(id: c, kind: .control(.button(title: "X", isEnabled: true)), style: .plain, parent: nil, index: 0, frame: .zero),
+            ])
+        #expect(
+            PresentationDiff.between([titled], [composite]) == [
+                .remove(id: c),
+                .insert(id: c, kind: .control(.button(title: nil, isEnabled: true)), style: .plain, parent: nil, index: 0, frame: .zero),
+                .insert(id: a, kind: .label("a"), style: .plain, parent: c, index: 0, frame: Rect(x: 0, y: 0, width: 1, height: 1)),
+            ])
+    }
+
+    @Test("duplicate identities present only the last occurrence and its children")
+    func duplicateIdentities() {
+        let first = PresentedNode(
+            id: c, kind: .focusGroup(focusable: true), frame: .zero, style: .plain, children: [label(a, "a")])
+        let second = PresentedNode(
+            id: c, kind: .focusGroup(focusable: true), frame: Rect(x: 5, y: 0, width: 1, height: 1), style: .plain,
+            children: [label(b, "b")])
+        let ops = PresentationDiff.between([], [first, second])
+        #expect(
+            ops == [
+                .insert(
+                    id: c, kind: .focusGroup(focusable: true), style: .plain, parent: nil, index: 0,
+                    frame: Rect(x: 5, y: 0, width: 1, height: 1)),
+                .insert(id: b, kind: .label("b"), style: .plain, parent: c, index: 0, frame: Rect(x: 0, y: 0, width: 1, height: 1)),
+            ])
+        #expect(PresentationDiff.between([first, second], [first, second]).isEmpty)
+    }
+
     @Test("removed views are removed in old pre-order before any insert")
     func removals() {
         let old = [box(root, children: [label(a, "a"), label(b, "b")])]
@@ -284,5 +336,34 @@ struct PresentationHostTests {
             ])
         #expect(tree.allSatisfy { $0.children.isEmpty })
         #expect(PresentationDiff.between(tree, tree).isEmpty)
+    }
+
+    @Test("a focused composite button presents its label without the cell focus highlight")
+    func compositeButtonDropsCellFocusStyle() throws {
+        var host = try FrameHost(app: CompositeButtonApp())
+        _ = host.pump(size: Size(width: 40, height: 4))
+        let laid = host.pump(size: Size(width: 40, height: 4))
+        let tree = PresentedNode.tree(from: laid, controls: host.controls, regions: host.nativeRegions)
+        guard let button = tree.first, button.kind == .control(.button(title: nil, isEnabled: true)) else {
+            Issue.record("no composite button"); return
+        }
+        let focused = host.focusedID
+        #expect(focused.map(PresentationID.node) == button.id)
+        #expect(button.children.map(\.kind) == [.label("A"), .label("B")])
+        #expect(button.children.allSatisfy { $0.style.background.isDefault && $0.style.foreground.isDefault })
+    }
+}
+
+private struct CompositeButtonApp: App {
+    init() {}
+    var scenes: some Scene {
+        Window("Composite", id: "main", role: .primary) {
+            Button(action: {}) {
+                HStack {
+                    Text("A")
+                    Text("B")
+                }
+            }
+        }
     }
 }

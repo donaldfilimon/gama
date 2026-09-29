@@ -313,6 +313,32 @@ struct ControlRegistrationTests {
         // Same tree, including the focus highlight: focus did not move.
         #expect(after == before)
     }
+
+    @Test("a pointer press on a progress bar inside a button runs the button's action")
+    func progressInsideButtonPassesPressThrough() throws {
+        let app = NestedProgressApp()
+        var host = try FrameHost(app: app)
+        let laid = host.pump(size: Size(width: 40, height: 4))
+        var regions: [InteractiveRegion] = []
+        laid.collectInteractive(into: &regions)
+        guard let bar = regions.last, !bar.isFocusable else {
+            Issue.record("no nested progress region"); return
+        }
+        host.handle(.pointer(bar.frame.origin, pressed: true))
+        #expect(app.taps.get() == 1)
+    }
+}
+
+private struct NestedProgressApp: App {
+    let taps = Signal(0)
+    init() {}
+    var scenes: some Scene {
+        Window("Nested", id: "main", role: .primary) {
+            Button(action: { taps.update { $0 += 1 } }) {
+                ProgressView(value: 0.5, label: "Load")
+            }
+        }
+    }
 }
 
 private struct ProgressPointerApp: App {
@@ -370,11 +396,11 @@ struct HostActivationTests {
         _ = host.pump(size: Size(width: 40, height: 5))
         // A second pump settles any focus-reconciliation follow-up.
         let ids = interactiveIDs(host.pump(size: Size(width: 40, height: 5)))
-        let focusedBefore = host.focusedNode
+        let focusedBefore = host.focusedID
         host.activate(ids[2])
         host.activate(NodeID(raw: 42))
         let dirty = host.needsFrame
-        let focusedAfter = host.focusedNode
+        let focusedAfter = host.focusedID
         #expect(app.taps.get() == 0)
         #expect(!dirty)
         #expect(focusedAfter == focusedBefore)
@@ -388,7 +414,7 @@ struct HostActivationTests {
         host.focus(ids[1])
         _ = host.pump(size: Size(width: 40, height: 5))
         host.activate(ids[0])
-        let focused = host.focusedNode
+        let focused = host.focusedID
         #expect(focused == ids[0])
     }
 
@@ -396,10 +422,10 @@ struct HostActivationTests {
     func focusMoves() throws {
         var host = try FrameHost(app: ActivationApp())
         let ids = interactiveIDs(host.pump(size: Size(width: 40, height: 5)))
-        let initial = host.focusedNode
+        let initial = host.focusedID
         #expect(initial == ids[0])
         host.focus(ids[1])
-        let focused = host.focusedNode
+        let focused = host.focusedID
         let dirty = host.needsFrame
         #expect(focused == ids[1])
         #expect(dirty)
@@ -413,13 +439,39 @@ struct HostActivationTests {
         host.focus(ids[0])
         host.focus(ids[2])
         host.focus(NodeID(raw: 42))
-        let focused = host.focusedNode
+        let focused = host.focusedID
         let dirty = host.needsFrame
         #expect(focused == ids[0])
         #expect(!dirty)
     }
 
-    @Test("HostPump passes activate, focus, and focusedNode through")
+    @Test("setText writes a text field's binding and marks the host dirty")
+    func setTextWritesBinding() throws {
+        let app = ActivationApp()
+        var host = try FrameHost(app: app)
+        _ = host.pump(size: Size(width: 40, height: 5))
+        let ids = interactiveIDs(host.pump(size: Size(width: 40, height: 5)))
+        host.setText(ids[1], "typed")
+        let dirty = host.needsFrame
+        #expect(app.text.get() == "typed")
+        #expect(dirty)
+    }
+
+    @Test("setText on a node that is not a text field changes nothing")
+    func setTextIgnoresOtherNodes() throws {
+        let app = ActivationApp()
+        var host = try FrameHost(app: app)
+        _ = host.pump(size: Size(width: 40, height: 5))
+        let ids = interactiveIDs(host.pump(size: Size(width: 40, height: 5)))
+        host.setText(ids[0], "typed")
+        host.setText(NodeID(raw: 42), "typed")
+        let dirty = host.needsFrame
+        #expect(app.text.get() == "")
+        #expect(app.taps.get() == 0)
+        #expect(!dirty)
+    }
+
+    @Test("HostPump passes activate, focus, and focusedID through")
     func pumpPassThrough() throws {
         let app = ActivationApp()
         var pump = HostPump(host: try FrameHost(app: app), size: Size(width: 40, height: 5))
@@ -428,11 +480,13 @@ struct HostActivationTests {
         }
         let ids = interactiveIDs(frame)
         pump.focus(ids[1])
-        let focused = pump.focusedNode
+        let focused = pump.focusedID
         #expect(focused == ids[1])
         pump.activate(ids[0])
         #expect(app.taps.get() == 1)
         let dirty = pump.needsFrame
         #expect(dirty)
+        pump.setText(ids[1], "via pump")
+        #expect(app.text.get() == "via pump")
     }
 }

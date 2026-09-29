@@ -90,9 +90,18 @@
 # native host shares them; no RenderNode case, MLIR op, or DrawList wire
 # changed.
 #
+# Re-measured 2026-09-29 at the same compiler revision for the review
+# fixes on feat/native-presentation: FrameHost.setText (a per-surface
+# rebinding text write) and the display-only pointer hit-test rule, a
+# composite-button view class, last-occurrence deduplication of
+# presentation identities, and skipping Button's cell focus wrapper when
+# presenting a composite label. The linked artifact is 945124 bytes, 18676
+# above the 926448 pin, 148 bytes past the 2% band. Intended; no
+# RenderNode case, MLIR op, or DrawList wire changed.
+#
 # Grammar is deliberately tiny: blank lines, `#` comments, and key = "value".
 # Anything else fails the read, for the same reason scripts/lib/manifest.sh is
 # strict — this is a pin, not a configuration language.
 revision = "95c5142e84b82c1"
-bytes = "926448"
+bytes = "945124"
 tolerance_percent = "2"

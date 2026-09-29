@@ -491,9 +491,12 @@ public struct ProgressView: View {
     /// in the inherited style — and registers a
     /// ``ControlDescriptor/progress(fraction:label:)`` with the clamped
     /// fraction. The wrapper gives a native host an identity to key on; it
-    /// registers no action, so activating or clicking it does nothing, and
-    /// cell output is identical to the bare text. This view has no
-    /// indeterminate mode, so the fraction is never `nil`.
+    /// registers no action, so activating it does nothing, and pointer
+    /// hit-testing looks through it: a press on a progress bar inside a
+    /// button's label still presses the button. Cell output is identical
+    /// to the bare text, but the node now appears among the frame's
+    /// interactive regions and in the MLIR dialect as an `interactive` op.
+    /// This view has no indeterminate mode, so the fraction is never `nil`.
     public func render(in context: BuildContext) -> RenderNode {
         let fraction = Self.clampedFraction(value: value, total: total)
         let bar = Self.bar(fraction: fraction, width: width)

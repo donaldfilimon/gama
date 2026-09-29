@@ -124,7 +124,7 @@
         package func presentedView(for id: PresentationID) -> NSView? { session?.view(for: id) }
 
         /// The Gama node that holds focus. Package-only, for tests.
-        package var focusedNode: NodeID? { session?.pump.focusedNode }
+        package var focusedID: NodeID? { session?.pump.focusedID }
 
         /// The most recently published native regions, in points.
         /// Package-only, for tests.
@@ -168,7 +168,7 @@
             session.pump.activate(id)
             // Activation moved Gama focus to the control AppKit already
             // focused; record it so the frame does not re-assign it.
-            syncedFocus = session.pump.focusedNode
+            syncedFocus = session.pump.focusedID
             if session.pump.needsFrame { drive() }
             afterEventDispatch?()
         }
@@ -177,7 +177,7 @@
         func controlDidTakeFocus(_ id: NodeID) {
             guard !isApplyingFocus, let session else { return }
             session.pump.focus(id)
-            syncedFocus = session.pump.focusedNode
+            syncedFocus = session.pump.focusedID
             if session.pump.needsFrame { drive() }
         }
 
@@ -196,7 +196,7 @@
         /// when Gama moved focus.
         private func syncFirstResponder() {
             guard let session else { return }
-            let focused = session.pump.focusedNode
+            let focused = session.pump.focusedID
             guard focused != syncedFocus else { return }
             guard let window = unsafe window else { return }
             syncedFocus = focused

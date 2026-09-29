@@ -67,6 +67,15 @@ private struct LabeledCounter {
 }
 
 @Component
+private struct NameField {
+    @Reactive var name: String = ""
+
+    var body: some View {
+        TextField("Name", text: _name.binding())
+    }
+}
+
+@Component
 private struct NamedSlot {
     @Reactive var name: String = "x"
 
@@ -156,6 +165,48 @@ extension ViewStateIdentityTests {
         let rightFrame = right.pump(size: size)
         #expect(painted(leftFrame, size: size).hasPrefix(" n 6 "))
         #expect(painted(rightFrame, size: size).hasPrefix(" n 5 "))
+    }
+
+    @Test("a native text edit on a hoisted instance writes the editing surface")
+    func hoistedTextFieldWritesPerSurface() throws {
+        struct HoistedFieldApp: App {
+            let shared = NameField()
+            init() {}
+            var scenes: some Scene {
+                WindowGroup(
+                    "Doc", key: WindowGroupKey<Int>("doc"), role: .primary, initialValue: 0
+                ) { _ in shared }
+            }
+        }
+        let size = Size(width: 20, height: 1)
+        let graph = try compileSceneGraph(HoistedFieldApp())
+        var left = FrameHost(
+            surface: try graph.makeSurface(
+                scene: graph.primary, payload: ScenePayload(1),
+                instanceID: WindowInstanceID(rawValue: 10)))
+        var right = FrameHost(
+            surface: try graph.makeSurface(
+                scene: graph.primary, payload: ScenePayload(2),
+                instanceID: WindowInstanceID(rawValue: 11)))
+        let leftFrame = left.pump(size: size)
+        _ = right.pump(size: size)
+        var regions: [InteractiveRegion] = []
+        leftFrame.collectInteractive(into: &regions)
+        let field = try #require(regions.first).id
+        // Right rendered last, so the slot points at right's signal; the
+        // edit typed into left's field must still land in left's storage.
+        left.setText(field, "L")
+        _ = left.pump(size: size)
+        _ = right.pump(size: size)
+        let leftControls = left.controls
+        let rightControls = right.controls
+        guard case .textField(_, let leftText, _, _)? = leftControls[field],
+            case .textField(_, let rightText, _, _)? = rightControls[field]
+        else {
+            Issue.record("no text field descriptors"); return
+        }
+        #expect(leftText == "L")
+        #expect(rightText == "")
     }
 
     @Test("a subtree that stops rendering releases its state")

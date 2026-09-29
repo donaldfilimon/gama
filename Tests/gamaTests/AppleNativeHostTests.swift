@@ -307,17 +307,17 @@
             let secondNode = try node(in: host, where: Self.isField("Second"))
 
             // Gama focuses the first focusable node; the host mirrors it.
-            #expect(host.focusedNode.map(PresentationID.node) == firstNode.id)
+            #expect(host.focusedID.map(PresentationID.node) == firstNode.id)
             #expect(isEditing(first, in: window))
 
             // Gama moves focus: first responder follows.
             host.send(.key(.tab))
-            #expect(host.focusedNode.map(PresentationID.node) == secondNode.id)
+            #expect(host.focusedID.map(PresentationID.node) == secondNode.id)
             #expect(isEditing(second, in: window))
 
             // A native focus change is reported back to FrameHost.
             #expect(window.makeFirstResponder(first))
-            #expect(host.focusedNode.map(PresentationID.node) == firstNode.id)
+            #expect(host.focusedID.map(PresentationID.node) == firstNode.id)
             #expect(isEditing(first, in: window))
         }
 
