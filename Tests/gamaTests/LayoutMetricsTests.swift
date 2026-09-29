@@ -358,3 +358,104 @@ struct LayoutMetricsScalingTests {
         #expect(laid.children[0].frame.size.width == Self.controlSize.width)
     }
 }
+
+/// Records the `surfaceSize` its build pass saw; a reference box because
+/// views are values and the build runs inside the host.
+private final class SurfaceProbe {
+    var seen: Size?? = nil
+}
+
+/// A primitive that reports the environment's surface size to a probe and
+/// lays out as fixed text.
+private struct SurfaceReader: View {
+    typealias Body = Never_
+    var body: Never_ { Never_() }
+    let probe: SurfaceProbe
+    let label: String
+    func render(in context: BuildContext) -> RenderNode {
+        probe.seen = .some(context.environment.surfaceSize)
+        return .text(label, style: .plain)
+    }
+}
+
+private struct SurfaceProbeApp: App {
+    let probe: SurfaceProbe
+    init() { probe = SurfaceProbe() }
+    init(probe: SurfaceProbe) { self.probe = probe }
+    var scenes: some Scene {
+        Window("Probe", id: "main", role: .primary) {
+            VStack(spacing: 1) {
+                SurfaceReader(probe: probe, label: "hi")
+                Text("abc")
+            }
+        }
+    }
+}
+
+@Suite("FrameHost metrics")
+struct FrameHostMetricsTests {
+    /// Same fake as `LayoutMetricsScalingTests`: 8 units per horizontal
+    /// cell, 17 per vertical cell, 7 units per character, 17 per line.
+    private static func makeMetrics() -> LayoutMetrics {
+        LayoutMetrics(
+            textSize: { text, _, _ in Size(width: text.count * 7, height: 17) },
+            units: { cells, axis in cells * (axis == .horizontal ? 8 : 17) },
+            dividerThickness: 1,
+            controlSize: { _, _ in nil }
+        )
+    }
+
+    @Test("a host with scaling metrics lays out in layout units")
+    func scalingHostLaysOutInUnits() throws {
+        let probe = SurfaceProbe()
+        var host = try FrameHost(app: SurfaceProbeApp(probe: probe), metrics: Self.makeMetrics())
+        let laid = host.pump(size: Size(width: 160, height: 170))
+        var texts: [Rect] = []
+        func collect(_ node: LaidOutNode) {
+            if case .text = node.node { texts.append(node.frame) }
+            for child in node.children { collect(child) }
+        }
+        collect(laid)
+        // "hi" is 14 x 17; spacing 1 vertical cell is 17 units; "abc" 21 x 17.
+        #expect(texts.count == 2)
+        #expect(texts.first?.size == Size(width: 14, height: 17))
+        #expect(texts.last?.size == Size(width: 21, height: 17))
+        #expect((texts.last?.minY ?? 0) - (texts.first?.maxY ?? 0) == 17)
+    }
+
+    @Test("surfaceSize is the pump size divided by one cell per axis")
+    func surfaceSizeIsInCells() throws {
+        let probe = SurfaceProbe()
+        var host = try FrameHost(app: SurfaceProbeApp(probe: probe), metrics: Self.makeMetrics())
+        _ = host.pump(size: Size(width: 165, height: 170))
+        // 165 / 8 = 20 (integer division), 170 / 17 = 10.
+        #expect(probe.seen == .some(Size(width: 20, height: 10)))
+    }
+
+    @Test("a zero cell unit divides by one instead of trapping")
+    func zeroUnitDivisorFloorsAtOne() throws {
+        let probe = SurfaceProbe()
+        let metrics = LayoutMetrics(
+            textSize: { text, _, _ in Size(width: text.count, height: 1) },
+            units: { _, _ in 0 },
+            dividerThickness: 1,
+            controlSize: { _, _ in nil }
+        )
+        var host = try FrameHost(app: SurfaceProbeApp(probe: probe), metrics: metrics)
+        _ = host.pump(size: Size(width: 30, height: 12))
+        #expect(probe.seen == .some(Size(width: 30, height: 12)))
+    }
+
+    @Test("the default host uses cell metrics and reports the pump size")
+    func defaultHostIsCell() throws {
+        let defaultProbe = SurfaceProbe()
+        let cellProbe = SurfaceProbe()
+        var defaulted = try FrameHost(app: SurfaceProbeApp(probe: defaultProbe))
+        var explicit = try FrameHost(app: SurfaceProbeApp(probe: cellProbe), metrics: .cell)
+        let a = defaulted.pump(size: Size(width: 20, height: 6))
+        let b = explicit.pump(size: Size(width: 20, height: 6))
+        #expect(a == b)
+        #expect(defaultProbe.seen == .some(Size(width: 20, height: 6)))
+        #expect(cellProbe.seen == .some(Size(width: 20, height: 6)))
+    }
+}

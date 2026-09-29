@@ -91,6 +91,9 @@ public struct FrameHost: ~Copyable {
     private let renderScene: (BuildContext) -> RenderNode
     private let deliverLifecycle: (LifecycleEvent) -> Void
     private let windowContext: WindowContext
+    /// Measurements this host lays out with; `.cell` unless a presentation
+    /// host supplies its own (ADR 0017).
+    private let metrics: LayoutMetrics
 
     /// Every interactive node — the pointer hit-test set.
     private var interactive: [InteractiveRegion] = []
@@ -136,14 +139,21 @@ public struct FrameHost: ~Copyable {
     /// Creates a host born dirty — the first `needsFrame` check is true —
     /// whose `SubscriptionContext` funnels every observed signal change
     /// into that same dirty flag.
-    public init<A: App>(app: A) throws(SceneConfigurationError) {
+    ///
+    /// `metrics` decides what one layout unit is (ADR 0017). The default
+    /// `.cell` makes a unit one cell, exactly as before metrics existed. A
+    /// host with other metrics pumps sizes in its own layout units, while
+    /// ``EnvironmentValues/surfaceSize`` stays in cells: the pump size
+    /// divided per axis by `metrics.units(1, axis)`.
+    public init<A: App>(app: A, metrics: LayoutMetrics = .cell) throws(SceneConfigurationError) {
         let graph = try compileSceneGraph(app)
         let surface = try graph.makePrimarySurface()
-        self.init(surface: surface)
+        self.init(surface: surface, metrics: metrics)
         app.connect(subscriptions)
     }
 
-    package init(surface: SceneSurface) {
+    package init(surface: SceneSurface, metrics: LayoutMetrics = .cell) {
+        self.metrics = metrics
         self.sceneID = surface.sceneID
         self.windowInstanceID = surface.instanceID
         self.renderScene = surface.render
@@ -187,7 +197,7 @@ public struct FrameHost: ~Copyable {
         var env = EnvironmentValues()
         env.focusedID = focusedID
         env.windowContext = windowContext
-        env.surfaceSize = size
+        env.surfaceSize = cellSize(of: size)
         var laid = buildFrame(size: size, environment: env)
 
         // Reconcile focus with the new tree.
@@ -209,6 +219,16 @@ public struct FrameHost: ~Copyable {
         return laid
     }
 
+    /// `size` in layout units converted to whole cells per axis, the unit
+    /// ``EnvironmentValues/surfaceSize`` is authored in. The divisor is at
+    /// least 1, so a degenerate metrics value cannot trap; with `.cell` this
+    /// is the identity.
+    private func cellSize(of size: Size) -> Size {
+        let perColumn = max(1, metrics.units(1, .horizontal))
+        let perRow = max(1, metrics.units(1, .vertical))
+        return Size(width: size.width / perColumn, height: size.height / perRow)
+    }
+
     /// Rebuilds the tree and its interaction tables with one consistent
     /// context. State eviction belongs to `pump`, after its final build.
     private mutating func buildFrame(size: Size, environment: EnvironmentValues) -> LaidOutNode {
@@ -225,7 +245,8 @@ public struct FrameHost: ~Copyable {
             registerNativeRegion: { id, region in actionStore.registerRegion(id, region) }
         )
         context.stateStore = stateStore
-        let frame = LayoutEngine.layout(renderScene(context), in: Rect(origin: .zero, size: size))
+        let frame = LayoutEngine.layout(
+            renderScene(context), in: Rect(origin: .zero, size: size), metrics: metrics)
         interactive.removeAll(keepingCapacity: true)
         frame.collectInteractive(into: &interactive)
         validateIdentities()
