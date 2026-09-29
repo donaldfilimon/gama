@@ -56,9 +56,21 @@
 # identical to the feat/native-presenters measurement, whose base already
 # carried the cursor, controller, and visible-row commits.
 #
+# Re-measured 2026-09-29 at the same compiler revision on
+# feat/native-presentation for native-presentation plan Task 3 (ADR 0017),
+# after Task 2 (FrameHost stores a LayoutMetrics value, +1700, inside the
+# band). New: Sources/GamaCore/ControlDescriptor.swift (a public enum with a
+# closure-carrying case), BuildContext.registerControl, the host's per-build
+# control table, FrameHost.controls and HostPump.controls,
+# LayoutMetrics.descriptorSize, and the per-frame controlSize wrapper
+# FrameHost builds around it. The linked artifact is 800796 bytes, 18832
+# above the 781964 pin, just outside the 2% band. Intended growth for a new
+# side table; no RenderNode case, MLIR op, or DrawList wire changed, and the
+# libm and global-state gates still pass.
+#
 # Grammar is deliberately tiny: blank lines, `#` comments, and key = "value".
 # Anything else fails the read, for the same reason scripts/lib/manifest.sh is
 # strict — this is a pin, not a configuration language.
 revision = "95c5142e84b82c1"
-bytes = "781964"
+bytes = "800796"
 tolerance_percent = "2"

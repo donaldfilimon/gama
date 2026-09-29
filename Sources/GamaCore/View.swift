@@ -34,6 +34,11 @@ public struct BuildContext {
     /// default is a no-op, so a host-less build renders the fallback and
     /// reports no regions.
     public var registerNativeRegion: (NodeID, NativeRegionID) -> Void
+    /// Registers a control's ``ControlDescriptor`` (ADR 0017) with the owning
+    /// host, for a native presentation host to present the node as a
+    /// platform control. The default is a no-op; the cell path never reads
+    /// the table. A repeated registration for one node keeps the last.
+    public var registerControl: (NodeID, ControlDescriptor) -> Void
     /// The owning host's `@Reactive` storage; `nil` for host-less rendering,
     /// which keeps every slot on instance-local storage.
     package var stateStore: HostStateStore? = nil
@@ -50,7 +55,8 @@ public struct BuildContext {
             NodeID, @escaping (Key) -> Bool
         ) -> Void = { _, _ in },
         registerNamedAction: @escaping (ActionID, Key?, @escaping () -> Void) -> Void = { _, _, _ in },
-        registerNativeRegion: @escaping (NodeID, NativeRegionID) -> Void = { _, _ in }
+        registerNativeRegion: @escaping (NodeID, NativeRegionID) -> Void = { _, _ in },
+        registerControl: @escaping (NodeID, ControlDescriptor) -> Void = { _, _ in }
     ) {
         self.id = id
         self.inheritedStyle = inheritedStyle
@@ -59,6 +65,7 @@ public struct BuildContext {
         self.registerKeyHandler = registerKeyHandler
         self.registerNamedAction = registerNamedAction
         self.registerNativeRegion = registerNativeRegion
+        self.registerControl = registerControl
     }
 
     /// The context for the child at `index`: identity descends one step;

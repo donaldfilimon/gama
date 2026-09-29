@@ -23,23 +23,32 @@ public struct LayoutMetrics {
     /// Intrinsic size of the control registered at `id` under
     /// `proposal`, or `nil` to measure its child instead.
     public var controlSize: (_ id: NodeID, _ proposal: ProposedSize) -> Size?
+    /// Intrinsic size of a control from its registered
+    /// ``ControlDescriptor`` under `proposal`, or `nil` to fall back to
+    /// ``controlSize``. `FrameHost` consults it for every node that
+    /// registered a descriptor in the current build.
+    public var descriptorSize: (_ descriptor: ControlDescriptor, _ proposal: ProposedSize) -> Size?
 
-    /// Creates a metrics value from its four measurements.
+    /// Creates a metrics value from its measurements. `descriptorSize`
+    /// defaults to reporting no size, so every control falls back to
+    /// `controlSize`.
     public init(
         textSize: @escaping (_ text: String, _ style: TextStyle, _ width: Int?) -> Size,
         units: @escaping (_ cells: Int, _ axis: Axis) -> Int,
         dividerThickness: Int,
-        controlSize: @escaping (_ id: NodeID, _ proposal: ProposedSize) -> Size?
+        controlSize: @escaping (_ id: NodeID, _ proposal: ProposedSize) -> Size?,
+        descriptorSize: @escaping (_ descriptor: ControlDescriptor, _ proposal: ProposedSize) -> Size? = { _, _ in nil }
     ) {
         self.textSize = textSize
         self.units = units
         self.dividerThickness = dividerThickness
         self.controlSize = controlSize
+        self.descriptorSize = descriptorSize
     }
 
     /// Today's cell measurements: `TextLayout.size`, an identity unit
-    /// conversion, a one-cell divider, and no registered controls (every
-    /// interactive node measures its child). Every layout produced with
+    /// conversion, a one-cell divider, and no control sizes from either an
+    /// identity or a descriptor (every interactive node measures its child). Every layout produced with
     /// `.cell` is byte-identical to layout before `LayoutMetrics` existed
     /// — the parity oracle for that claim is the existing layout, P1
     /// layout, FrameHost, DrawList, WASM, and MLIR test suites.

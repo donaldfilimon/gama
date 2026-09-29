@@ -42,6 +42,7 @@ private final class HostActionStore {
     var named: [ActionID: () -> Void] = [:]
     var shortcuts: [Key: ActionID] = [:]
     var regions: [NodeID: NativeRegionID] = [:]
+    var controls: [NodeID: ControlDescriptor] = [:]
 
     func beginBuildPass() {
         actions.removeAll(keepingCapacity: true)
@@ -49,6 +50,7 @@ private final class HostActionStore {
         named.removeAll(keepingCapacity: true)
         shortcuts.removeAll(keepingCapacity: true)
         regions.removeAll(keepingCapacity: true)
+        controls.removeAll(keepingCapacity: true)
     }
     func register(_ id: NodeID, action: @escaping () -> Void) { actions[id] = action }
     func registerKey(_ id: NodeID, handler: @escaping (Key) -> Bool) {
@@ -69,6 +71,7 @@ private final class HostActionStore {
     }
     func registerRegion(_ id: NodeID, _ region: NativeRegionID) { regions[id] = region }
     func region(for id: NodeID) -> NativeRegionID? { regions[id] }
+    func registerControl(_ id: NodeID, _ descriptor: ControlDescriptor) { controls[id] = descriptor }
 }
 
 /// The backend-independent heart of a running app. Each host owns focus,
@@ -122,6 +125,12 @@ public struct FrameHost: ~Copyable {
     /// Native region identities registered more than once in the most
     /// recent frame. The last registration wins in ``nativeRegions``.
     public private(set) var duplicateNativeRegionIDs: [NativeRegionID] = []
+
+    /// Control descriptors (ADR 0017) the most recent build registered,
+    /// keyed by the control's node. A node registered more than once keeps
+    /// its last descriptor. A native presentation host reads this; every
+    /// other backend ignores it.
+    public var controls: [NodeID: ControlDescriptor] { actions.controls }
 
     private let dirty: Signal<Bool>
     private let stateStore: HostStateStore
@@ -242,11 +251,24 @@ public struct FrameHost: ~Copyable {
             registerNamedAction: { id, shortcut, action in
                 actionStore.registerNamed(id, shortcut: shortcut, action: action)
             },
-            registerNativeRegion: { id, region in actionStore.registerRegion(id, region) }
+            registerNativeRegion: { id, region in actionStore.registerRegion(id, region) },
+            registerControl: { id, descriptor in actionStore.registerControl(id, descriptor) }
         )
         context.stateStore = stateStore
-        let frame = LayoutEngine.layout(
-            renderScene(context), in: Rect(origin: .zero, size: size), metrics: metrics)
+        let root = renderScene(context)
+        // After the build, so the lookup sees this build's control table: a
+        // registered control measures through `descriptorSize` first and
+        // falls back to the base `controlSize`.
+        var frameMetrics = metrics
+        let baseControlSize = metrics.controlSize
+        let descriptorSize = metrics.descriptorSize
+        frameMetrics.controlSize = { id, proposal in
+            if let descriptor = actionStore.controls[id], let size = descriptorSize(descriptor, proposal) {
+                return size
+            }
+            return baseControlSize(id, proposal)
+        }
+        let frame = LayoutEngine.layout(root, in: Rect(origin: .zero, size: size), metrics: frameMetrics)
         interactive.removeAll(keepingCapacity: true)
         frame.collectInteractive(into: &interactive)
         validateIdentities()

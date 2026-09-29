@@ -82,6 +82,8 @@ public struct HostPump: ~Copyable {
     public var nativeRegions: [NativeRegionFrame] { host.nativeRegions }
     /// Native region identities the most recent frame registered more than once.
     public var duplicateNativeRegionIDs: [NativeRegionID] { host.duplicateNativeRegionIDs }
+    /// The host's control descriptors for the most recent frame (ADR 0017).
+    public var controls: [NodeID: ControlDescriptor] { host.controls }
 
     /// Routes one event through the shared policy.
     ///
