@@ -481,13 +481,18 @@ Target layering (all under `Sources/`, single test target `GamaTests` at
   app declared `CompletionStatus`; `gama-demo` still drives `TUIRenderer`
   itself because of its plugin loop — use the `run-gama` skill, not a
   redirected `swift run`),
-  GamaAppleUI (`@MainActor` NSView/UIView via CoreGraphics), GamaAppleShell
+  GamaAppleUI (`@MainActor` NSView/UIView via CoreGraphics; text size is
+  `GamaHostView.fontPointSize`, and a new size refits the grid through an
+  ordinary cell resize), GamaAppleShell
   (NSApplication/NSWindow ownership, multi-window and per-shell command
-  routing; compiles to an inert target without AppKit — it is the one
+  routing; its View menu's Bigger/Smaller/Actual Size items have no target
+  and reach the key window's `GamaShellWindowController` through the
+  responder chain; compiles to an inert target without AppKit — it is the one
   backend that renders auxiliary scenes), GamaWASM
   (browser reactor, inert stubs off wasm32, experimental `Extern` feature
   scoped to this target only; `WebHost/` holds the page and JS glue the web
-  demo is served from. It publishes **two export tiers, not one**:
+  demo is served from, and `setFontSize(px)` in its `gama.js` changes the
+  `--gama-font-size` property so the module sees only a cell resize. It publishes **two export tiers, not one**:
   `gama_web_v1_*` and the argument-compatible status-reporting
   `gama_web_v2_*`, which fails closed with `-1` before `GamaWeb.install` and
   returns `-2` from `gama_web_v2_key` for an invalid key code — a change to
