@@ -23,7 +23,8 @@
     /// Buttons and checkboxes call `FrameHost.activate(_:)`, text edits write
     /// the field's binding, and first-responder changes report back through
     /// `FrameHost.focus(_:)`; `FrameHost` stays the source of focus order,
-    /// which the host mirrors into `nextKeyView`.
+    /// which the host mirrors into `nextKeyView`. Native regions (ADR 0016)
+    /// work as they do in ``GamaHostView``, with frames in points.
     ///
     /// Unlike ``GamaHostView`` it paints no cells and publishes no
     /// `DrawList`: accessibility comes from the native controls themselves.
@@ -43,6 +44,12 @@
         /// The Gama focus most recently mirrored into first responder.
         private var syncedFocus: NodeID?
         private var isPumping = false
+
+        // MARK: Native regions (ADR 0016)
+        /// Application-owned views attached to native regions, by identity.
+        private var attachedNativeViews: [NativeRegionID: NSView] = [:]
+        private var lastNativeRegions: [NativeRegionFrame] = []
+        private var focusedNativeRegions: Set<NativeRegionID> = []
 
         // MARK: Init
 
@@ -119,6 +126,10 @@
         /// The Gama node that holds focus. Package-only, for tests.
         package var focusedNode: NodeID? { session?.pump.focusedNode }
 
+        /// The most recently published native regions, in points.
+        /// Package-only, for tests.
+        package var nativeRegions: [NativeRegionFrame] { lastNativeRegions }
+
         // MARK: Frame pump
 
         private func pumpSize() -> Size {
@@ -137,6 +148,7 @@
                 let size = pumpSize()
                 if size != session.pump.size { session.pump.handle(.resize(size)) }
                 guard session.advance(into: self, metrics: layoutMetrics).produced else { break }
+                placeNativeRegions(session.pump.nativeRegions)
                 syncFirstResponder()
                 if !session.pump.needsFrame { break }
             }
@@ -189,14 +201,95 @@
             guard let window = unsafe window else { return }
             syncedFocus = focused
             guard let focused, let view = session.view(for: .node(focused)) else { return }
+            // A focused native region hands first responder to its attached
+            // view in `placeNativeRegions`.
+            if view is NativeRegionContainer { return }
             isApplyingFocus = true
             defer { isApplyingFocus = false }
             _ = window.makeFirstResponder(view)
         }
 
+        // MARK: Native regions (ADR 0016)
+
+        /// Attaches an application-owned view to the native region `id`, with
+        /// the same contract as ``GamaHostView/attach(_:to:)``: the host adds
+        /// it as a subview on the region's point frame, hides the region's
+        /// fallback while it shows, hides it while the region is absent, and
+        /// hands it first responder when Gama focus lands on the region.
+        public func attach(_ view: NSView, to id: NativeRegionID) {
+            if let previous = attachedNativeViews[id], previous !== view {
+                previous.removeFromSuperview()
+            }
+            for (other, attached) in attachedNativeViews where other != id && attached === view {
+                attachedNativeViews[other] = nil
+                focusedNativeRegions.remove(other)
+            }
+            attachedNativeViews[id] = view
+            if unsafe view.superview !== self { addSubview(view) }
+            view.isHidden = true
+            placeNativeRegions(lastNativeRegions)
+        }
+
+        /// Removes the view attached to `id` and shows the region's fallback
+        /// again. First responder returns to the host only if it was inside
+        /// the detached view while Gama focus was on the region.
+        public func detach(_ id: NativeRegionID) {
+            guard let view = attachedNativeViews.removeValue(forKey: id) else { return }
+            let wasFocused = focusedNativeRegions.remove(id) != nil
+            let shouldReclaim = wasFocused && firstResponderIsInside(view)
+            view.removeFromSuperview()
+            if shouldReclaim { _ = unsafe window?.makeFirstResponder(self) }
+            placeNativeRegions(lastNativeRegions)
+        }
+
         /// Whether `view` is an application view attached to a region.
-        /// No region attachment exists yet, so nothing is.
-        func isAttachedNativeView(_ view: NSView) -> Bool { false }
+        func isAttachedNativeView(_ view: NSView) -> Bool {
+            attachedNativeViews.values.contains { $0 === view }
+        }
+
+        private func placeNativeRegions(_ regions: [NativeRegionFrame]) {
+            lastNativeRegions = regions
+            var byID: [NativeRegionID: NativeRegionFrame] = [:]
+            for region in regions { byID[region.id] = region }
+            var focused: Set<NativeRegionID> = []
+            var newlyFocusedView: NSView?
+            var showing: Set<NodeID> = []
+            for (id, view) in attachedNativeViews {
+                guard let region = byID[id], region.frame.size.width > 0, region.frame.size.height > 0 else {
+                    view.isHidden = true
+                    continue
+                }
+                view.frame = NativeHostSession.rect(region.frame)
+                view.isHidden = false
+                showing.insert(region.node)
+                if region.isFocused {
+                    focused.insert(id)
+                    if !focusedNativeRegions.contains(id) { newlyFocusedView = view }
+                }
+            }
+            // The fallback of a region showing an attached view is hidden.
+            for region in regions {
+                session?.view(for: .node(region.node))?.isHidden = showing.contains(region.node)
+            }
+            let lost = focusedNativeRegions.subtracting(focused)
+            focusedNativeRegions = focused
+            if let newlyFocusedView {
+                isApplyingFocus = true
+                _ = unsafe window?.makeFirstResponder(newlyFocusedView)
+                isApplyingFocus = false
+            } else if !lost.isEmpty,
+                lost.contains(where: { attachedNativeViews[$0].map(firstResponderIsInside) ?? false })
+            {
+                isApplyingFocus = true
+                _ = unsafe window?.makeFirstResponder(self)
+                isApplyingFocus = false
+            }
+        }
+
+        private func firstResponderIsInside(_ view: NSView) -> Bool {
+            guard let responder = unsafe window?.firstResponder as? NSView else { return false }
+            return responder.isDescendant(of: view)
+        }
 
         // MARK: AppKit
 
@@ -220,6 +313,8 @@
         public override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             syncedFocus = nil
+            focusedNativeRegions.removeAll()
+            placeNativeRegions(lastNativeRegions)
             syncFirstResponder()
         }
 

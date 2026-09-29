@@ -360,4 +360,107 @@
             #expect(heading.frame.size.height >= Int(host.layoutMetrics.cellSize.height) - 4)
         }
     }
+    @Suite("AppKit native host regions")
+    @MainActor
+    struct AppleNativeHostRegionTests {
+        private struct ViewportApp: App {
+            let show = Signal(true)
+            var scenes: some Scene {
+                Window("Studio", id: "main", role: .primary) {
+                    VStack {
+                        Button("Panel") {}
+                        NativeRegion(NativeRegionID("viewport")) { Text("3D viewport") }
+                            .frame(width: show.get() ? 20 : 0, height: show.get() ? 5 : 0)
+                    }
+                }
+            }
+        }
+
+        private final class FocusableView: NSView {
+            override var acceptsFirstResponder: Bool { true }
+        }
+
+        private func installed(_ app: ViewportApp) throws -> GamaNativeHostView {
+            _ = NSApplication.shared
+            let view = GamaNativeHostView(frame: NSRect(x: 0, y: 0, width: 480, height: 360))
+            try view.install(app: app)
+            view.layoutSubtreeIfNeeded()
+            view.invalidate()
+            return view
+        }
+
+        private func region(in host: GamaNativeHostView) throws -> NativeRegionFrame {
+            try #require(host.nativeRegions.first { $0.id == NativeRegionID("viewport") })
+        }
+
+        private func fallbackLabel(in host: GamaNativeHostView) -> PresentedNode? {
+            func flatten(_ nodes: [PresentedNode]) -> [PresentedNode] {
+                nodes.flatMap { [$0] + flatten($0.children) }
+            }
+            return flatten(host.presentedTree).first {
+                if case .label("3D viewport") = $0.kind { return true }
+                return false
+            }
+        }
+
+        @Test("an attached view is placed on the region's point frame and hides the fallback")
+        func placed() throws {
+            let host = try installed(ViewportApp())
+            let native = NSView()
+            host.attach(native, to: NativeRegionID("viewport"))
+            let region = try region(in: host)
+            #expect(native.superview === host)
+            #expect(native.isHidden == false)
+            #expect(
+                native.frame
+                    == CGRect(
+                        x: region.frame.minX, y: region.frame.minY,
+                        width: region.frame.size.width, height: region.frame.size.height))
+            // Points, not cells: twenty cells are wider than twenty points.
+            #expect(native.frame.width > 20)
+            let fallback = try #require(host.presentedView(for: .node(region.node)))
+            #expect(fallback.isHidden)
+        }
+
+        @Test("detaching removes the view and shows the fallback presented natively")
+        func detach() throws {
+            let host = try installed(ViewportApp())
+            let native = NSView()
+            host.attach(native, to: NativeRegionID("viewport"))
+            host.detach(NativeRegionID("viewport"))
+            #expect(native.superview == nil)
+            let region = try region(in: host)
+            let fallback = try #require(host.presentedView(for: .node(region.node)))
+            #expect(!fallback.isHidden)
+            let label = try #require(fallbackLabel(in: host))
+            let labelView = try #require(host.presentedView(for: label.id) as? NSTextField)
+            #expect(labelView.isDescendant(of: fallback))
+            #expect(labelView.stringValue == "3D viewport")
+        }
+
+        @Test("the view hides when its region goes away and stays attached")
+        func hidesWhenAbsent() throws {
+            let app = ViewportApp()
+            let host = try installed(app)
+            let native = NSView()
+            host.attach(native, to: NativeRegionID("viewport"))
+            app.show.set(false)
+            host.invalidate()
+            #expect(native.isHidden)
+            #expect(native.superview === host)
+        }
+
+        @Test("Gama focus on the region hands first responder to the attached view")
+        func focusHandoff() throws {
+            let host = try installed(ViewportApp())
+            let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: true)
+            window.contentView = host
+            let native = FocusableView()
+            host.attach(native, to: NativeRegionID("viewport"))
+            host.send(.key(.tab))  // button → region
+            #expect(window.firstResponder === native)
+            host.send(.key(.tab))  // region → button: the attached view gives it up
+            #expect(window.firstResponder !== native)
+        }
+    }
 #endif
