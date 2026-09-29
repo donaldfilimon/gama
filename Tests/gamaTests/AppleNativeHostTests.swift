@@ -101,4 +101,263 @@
             #expect(empty.height == cells.height * Int(measurer.cellSize.height))
         }
     }
+    @Suite("AppKit native host")
+    @MainActor
+    struct AppleNativeHostTests {
+        private struct FormApp: App {
+            let title = Signal("Push")
+            let name = Signal("")
+            let flag = Signal(false)
+            let clicks = Signal(0)
+            var scenes: some Scene {
+                Window("Form", id: "main", role: .primary) {
+                    VStack(spacing: 1) {
+                        Text("Heading")
+                        TextField("Name", text: name.binding())
+                        Button(title.get()) { clicks.update { $0 += 1 } }
+                        Toggle("Flag", isOn: flag.binding())
+                        ProgressView(value: 0.5)
+                        Divider()
+                        Text("Styled").foregroundColor(.red)
+                    }
+                }
+            }
+        }
+
+        private func installed<A: App>(_ app: A) throws -> GamaNativeHostView {
+            _ = NSApplication.shared
+            let view = GamaNativeHostView(frame: NSRect(x: 0, y: 0, width: 480, height: 360))
+            try view.install(app: app)
+            view.layoutSubtreeIfNeeded()
+            view.invalidate()
+            return view
+        }
+
+        /// Every presented node, depth first.
+        private func flatten(_ nodes: [PresentedNode]) -> [PresentedNode] {
+            nodes.flatMap { [$0] + flatten($0.children) }
+        }
+
+        private func node(
+            in host: GamaNativeHostView, where match: (PresentedKind) -> Bool
+        ) throws -> PresentedNode {
+            try #require(flatten(host.presentedTree).first { match($0.kind) })
+        }
+
+        private func view<T: NSView>(
+            _ type: T.Type, in host: GamaNativeHostView, where match: (PresentedKind) -> Bool
+        ) throws -> T {
+            let found = try node(in: host, where: match)
+            return try #require(host.presentedView(for: found.id) as? T)
+        }
+
+        private func frame(_ rect: Rect) -> CGRect {
+            CGRect(x: rect.minX, y: rect.minY, width: rect.size.width, height: rect.size.height)
+        }
+
+        private static func isButton(_ kind: PresentedKind) -> Bool {
+            if case .control(.button) = kind { return true }
+            return false
+        }
+        private static func isToggle(_ kind: PresentedKind) -> Bool {
+            if case .control(.toggle) = kind { return true }
+            return false
+        }
+        private static func isField(_ kind: PresentedKind) -> Bool {
+            if case .control(.textField) = kind { return true }
+            return false
+        }
+        private static func isProgress(_ kind: PresentedKind) -> Bool {
+            if case .control(.progress) = kind { return true }
+            return false
+        }
+        private static func isLabel(_ text: String) -> (PresentedKind) -> Bool {
+            { kind in
+                if case .label(let value) = kind { return value == text }
+                return false
+            }
+        }
+
+        @Test("each control kind is the mapped AppKit class at its computed frame")
+        func mapping() throws {
+            let host = try installed(FormApp())
+            #expect(host.isFlipped)
+            let pairs: [((PresentedKind) -> Bool, NSView.Type)] = [
+                (Self.isButton, NSButton.self),
+                (Self.isToggle, NSButton.self),
+                (Self.isField, NSTextField.self),
+                (Self.isProgress, NSProgressIndicator.self),
+                (Self.isLabel("Heading"), NSTextField.self),
+                ({ if case .separator = $0 { return true } else { return false } }, NSBox.self),
+            ]
+            for (match, expected) in pairs {
+                let found = try node(in: host, where: match)
+                let view = try #require(host.presentedView(for: found.id))
+                #expect(view.isKind(of: expected))
+                #expect(view.frame == frame(found.frame))
+                #expect(view.frame.width > 0 && view.frame.height > 0)
+            }
+            let button = try view(NSButton.self, in: host, where: Self.isButton)
+            #expect(button.title == "Push")
+            let toggle = try view(NSButton.self, in: host, where: Self.isToggle)
+            #expect(toggle.title == "Flag")
+            let field = try view(NSTextField.self, in: host, where: Self.isField)
+            #expect(field.isEditable)
+            #expect(field.placeholderString == "Name")
+            let label = try view(NSTextField.self, in: host, where: Self.isLabel("Heading"))
+            #expect(!label.isEditable)
+            #expect(!label.isBezeled)
+        }
+
+        @Test("performClick on a button runs the node's action")
+        func click() throws {
+            let app = FormApp()
+            let host = try installed(app)
+            let button = try view(NSButton.self, in: host, where: Self.isButton)
+            button.performClick(nil)
+            #expect(app.clicks.get() == 1)
+        }
+
+        @Test("editing a field writes its binding")
+        func typing() throws {
+            let app = FormApp()
+            let host = try installed(app)
+            let field = try view(NSTextField.self, in: host, where: Self.isField)
+            field.stringValue = "Ada"
+            field.delegate?.controlTextDidChange?(
+                Notification(name: NSControl.textDidChangeNotification, object: field))
+            #expect(app.name.get() == "Ada")
+            #expect(field.stringValue == "Ada")
+        }
+
+        @Test("a checkbox flips its binding")
+        func toggle() throws {
+            let app = FormApp()
+            let host = try installed(app)
+            let checkbox = try view(NSButton.self, in: host, where: Self.isToggle)
+            #expect(checkbox.state == .off)
+            checkbox.performClick(nil)
+            #expect(app.flag.get() == true)
+            let after = try view(NSButton.self, in: host, where: Self.isToggle)
+            #expect(after === checkbox)
+            #expect(after.state == .on)
+        }
+
+        @Test("nextKeyView follows Gama focus order")
+        func tabOrder() throws {
+            let host = try installed(FormApp())
+            let field = try view(NSTextField.self, in: host, where: Self.isField)
+            let button = try view(NSButton.self, in: host, where: Self.isButton)
+            let checkbox = try view(NSButton.self, in: host, where: Self.isToggle)
+            #expect(field.nextKeyView === button)
+            #expect(button.nextKeyView === checkbox)
+            #expect(checkbox.nextKeyView === field)
+        }
+
+        private struct TwoFieldApp: App {
+            let first = Signal("")
+            let second = Signal("")
+            var scenes: some Scene {
+                Window("Fields", id: "main", role: .primary) {
+                    VStack {
+                        TextField("First", text: first.binding())
+                        TextField("Second", text: second.binding())
+                    }
+                }
+            }
+        }
+
+        private static func isField(_ placeholder: String) -> (PresentedKind) -> Bool {
+            { kind in
+                if case .control(.textField(let value, _, _, _)) = kind { return value == placeholder }
+                return false
+            }
+        }
+
+        /// Whether `field` or its field editor is the window's first responder.
+        private func isEditing(_ field: NSTextField, in window: NSWindow) -> Bool {
+            window.firstResponder === field || field.currentEditor() != nil
+                && window.firstResponder === field.currentEditor()
+        }
+
+        @Test("Gama focus changes move first responder and native focus reports back")
+        func focus() throws {
+            let host = try installed(TwoFieldApp())
+            let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: true)
+            window.contentView = host
+            let first = try view(NSTextField.self, in: host, where: Self.isField("First"))
+            let second = try view(NSTextField.self, in: host, where: Self.isField("Second"))
+            let firstNode = try node(in: host, where: Self.isField("First"))
+            let secondNode = try node(in: host, where: Self.isField("Second"))
+
+            // Gama focuses the first focusable node; the host mirrors it.
+            #expect(host.focusedNode.map(PresentationID.node) == firstNode.id)
+            #expect(isEditing(first, in: window))
+
+            // Gama moves focus: first responder follows.
+            host.send(.key(.tab))
+            #expect(host.focusedNode.map(PresentationID.node) == secondNode.id)
+            #expect(isEditing(second, in: window))
+
+            // A native focus change is reported back to FrameHost.
+            #expect(window.makeFirstResponder(first))
+            #expect(host.focusedNode.map(PresentationID.node) == firstNode.id)
+            #expect(isEditing(first, in: window))
+        }
+
+        @Test("accessibility roles are button, checkbox, text field and static text")
+        func accessibility() throws {
+            let host = try installed(FormApp())
+            let button = try view(NSButton.self, in: host, where: Self.isButton)
+            let checkbox = try view(NSButton.self, in: host, where: Self.isToggle)
+            let field = try view(NSTextField.self, in: host, where: Self.isField)
+            let label = try view(NSTextField.self, in: host, where: Self.isLabel("Heading"))
+            // An AppKit control exposes itself to accessibility through its
+            // cell; the control view reports an unknown role.
+            #expect(button.cell?.accessibilityRole() == .button)
+            #expect(checkbox.cell?.accessibilityRole() == .checkBox)
+            #expect(field.cell?.accessibilityRole() == .textField)
+            #expect(label.cell?.accessibilityRole() == .staticText)
+        }
+
+        @Test("labels use labelColor by default and resolve under aqua and darkAqua")
+        func appearance() throws {
+            let host = try installed(FormApp())
+            let label = try view(NSTextField.self, in: host, where: Self.isLabel("Heading"))
+            #expect(label.textColor == NSColor.labelColor)
+            func resolved(_ name: NSAppearance.Name) -> NSColor? {
+                var color: NSColor?
+                NSAppearance(named: name)?.performAsCurrentDrawingAppearance {
+                    color = label.textColor?.usingColorSpace(.sRGB)
+                }
+                return color
+            }
+            let light = try #require(resolved(.aqua))
+            let dark = try #require(resolved(.darkAqua))
+            #expect(light != dark)
+            let styled = try view(NSTextField.self, in: host, where: Self.isLabel("Styled"))
+            #expect(styled.textColor != NSColor.labelColor)
+        }
+
+        @Test("a changed title updates the control in place")
+        func updateInPlace() throws {
+            let app = FormApp()
+            let host = try installed(app)
+            let button = try view(NSButton.self, in: host, where: Self.isButton)
+            app.title.set("Pushed")
+            host.invalidate()
+            let after = try view(NSButton.self, in: host, where: Self.isButton)
+            #expect(after === button)
+            #expect(after.title == "Pushed")
+        }
+
+        @Test("the surface is laid out in points, not cells")
+        func points() throws {
+            let host = try installed(FormApp())
+            let heading = try node(in: host, where: Self.isLabel("Heading"))
+            // A point-measured label is far wider than its seven-cell count.
+            #expect(heading.frame.size.width > 7)
+            #expect(heading.frame.size.height >= Int(host.layoutMetrics.cellSize.height) - 4)
+        }
+    }
 #endif
