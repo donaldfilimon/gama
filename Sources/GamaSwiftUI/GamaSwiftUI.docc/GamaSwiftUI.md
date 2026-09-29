@@ -13,9 +13,14 @@ owning the frame pump, event routing, resizing, and painting.
 
 Every time SwiftUI materializes the view it gets an independent host: its own
 frame host, focus and action state, `@Reactive` state, subscriptions, and
-draw list. Parent body updates never reinstall the app, and removing the view
-cancels the host's subscriptions. Only the primary scene renders; auxiliary
-scenes, window commands, and lifecycle events belong to `GamaAppleShell`.
+draw list. A `Signal` stored on the app is shared only between
+materializations of the same ``GamaView`` value; separate initializer calls
+create separate app instances. Parent body updates never reinstall the app,
+and a replacement ``GamaView`` value is ignored once the view is
+materialized, so create the value once and hold it rather than building it
+in a frequently re-evaluated `body`. Removing the view cancels the host's
+subscriptions. Only the primary scene renders; auxiliary scenes, window
+commands, and lifecycle events belong to `GamaAppleShell`.
 
 Where SwiftUI or a platform view toolkit is unavailable, the module is empty.
 The usage walkthrough and verification boundary live in

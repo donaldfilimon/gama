@@ -33,8 +33,10 @@ branch; this plan is a record of the order of work, not a capability claim.
   `scripts/check-boundaries.sh` and to the independent `TARGETS` tuple in
   `scripts/test-boundary-paths.py`.
 - Add the `GamaSwiftUI` scheme to `scripts/check-apple-platforms.sh`. That
-  script hardcodes shared derived-data paths, so a parallel branch compiles
-  the scheme by hand with its own paths and leaves the script to integration.
+  script hardcodes shared derived-data paths, so it was edited but not run on
+  this branch, and no hand compile of the scheme for iOS, tvOS, or visionOS
+  was run either. The UIKit branch is uncompiled until integration runs the
+  gate.
 - No change to `scripts/package-graph.py`: its checks are derived.
 
 ## Task 5: documentation
@@ -48,7 +50,17 @@ branch; this plan is a record of the order of work, not a capability claim.
   no longer exists. The row is added after merge, at the layer the merged
   gates support.
 
-## Task 6: gates
+## Task 6: review follow-up
+
+- Strengthen the independence test: two hosts from one value, a `@Reactive`
+  counter activated in one, the other still at zero.
+- Make the `NSHostingView` case observe teardown through SwiftUI: replace the
+  root, then check a model change no longer reaches the draw list.
+- Document that a `GamaView` is created once and held, that a replacement
+  value is ignored, and when an app `Signal` is shared.
+- Restore the boundary gate's closing verdict line, dropped by accident.
+
+## Task 7: gates
 
 `check-apple.sh`, `check-boundaries.sh`, `check-docs.sh`,
 `check-doc-coverage.sh`, `check-package-graph.sh`,

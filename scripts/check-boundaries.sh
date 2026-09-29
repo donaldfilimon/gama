@@ -328,3 +328,4 @@ echo "OK — Swift Testing only, no XCTest import (ADR 0003)"
 
 grep -q 'swift-tools-version: 6.4' "$ROOT/Package.swift"
 "$ROOT/scripts/check-toolchain-pins.sh"
+echo "OK — portable-core and explicit-ownership boundaries"

@@ -27,11 +27,38 @@ public import SwiftUI
 /// Gama `LifecycleEvent` delivery belong to `GamaAppleShell`, not to an
 /// embedded surface.
 ///
+/// Create a `GamaView` once and hold it; do not build it inside a `body`
+/// that SwiftUI re-evaluates. Each initializer call creates or takes the app
+/// value and compiles its scene graph, and ``init(_:)`` runs the app's
+/// no-argument initializer every time. Once SwiftUI has materialized the
+/// view, a replacement `GamaView` value passed by a parent is ignored: the
+/// host keeps the surface it installed first.
+///
+/// A `Signal` stored on the app is shared only between materializations of
+/// the same `GamaView` value (one value shown twice, or re-materialized).
+/// Two views built by separate ``init(_:)`` calls hold separate app
+/// instances and share nothing.
+///
+/// A file that imports both SwiftUI and GamaCore sees two `App`, `View`,
+/// `Scene`, `Text`, and `Window` types, so qualify each use:
+///
 /// ```swift
-/// struct Panel: View {
-///     var body: some View {
-///         if let gama = try? GamaView(CounterApp.self) {
-///             gama.frame(minWidth: 320, minHeight: 180)
+/// import GamaCore
+/// import GamaSwiftUI
+/// import SwiftUI
+///
+/// @main
+/// struct HostApp: SwiftUI.App {
+///     // Created once for the process; body re-evaluation reuses it.
+///     private let gama = try? GamaView(CounterApp.self)
+///
+///     var body: some SwiftUI.Scene {
+///         SwiftUI.WindowGroup {
+///             if let gama {
+///                 gama.frame(minWidth: 320, minHeight: 180)
+///             } else {
+///                 SwiftUI.Text("Invalid Gama app")
+///             }
 ///         }
 ///     }
 /// }

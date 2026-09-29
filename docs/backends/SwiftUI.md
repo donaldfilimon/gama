@@ -25,14 +25,27 @@ struct CounterApp: GamaCore.App {
     }
 }
 
-struct ContentView: SwiftUI.View {
-    var body: some SwiftUI.View {
-        if let gama = try? GamaView(CounterApp.self) {
-            gama.frame(minWidth: 320, minHeight: 180)
+@main
+struct HostApp: SwiftUI.App {
+    // Created once for the process; body re-evaluation reuses it.
+    private let gama = try? GamaView(CounterApp.self)
+
+    var body: some SwiftUI.Scene {
+        SwiftUI.WindowGroup {
+            if let gama {
+                gama.frame(minWidth: 320, minHeight: 180)
+            } else {
+                SwiftUI.Text("Invalid Gama app")
+            }
         }
     }
 }
 ```
+
+Create a `GamaView` once and hold it, as above; do not build it inside a
+`body` that SwiftUI re-evaluates. Each initializer call compiles the scene
+graph, and `GamaView(_:)` runs the app's no-argument initializer every time,
+so any side effect in that initializer repeats.
 
 A file that imports both SwiftUI and GamaCore sees two `App`, `View`,
 `Scene`, `Text`, and `Window` types; qualify them as above, or keep the Gama
@@ -47,9 +60,13 @@ app declaration in a file that does not import SwiftUI.
   `GamaAppleShell`; an embedded surface ignores them.
 - **One host per materialization.** Each time SwiftUI creates the underlying
   platform view, a new `GamaHostView` gets its own frame host, `@Reactive`
-  state, subscriptions, and draw list. A `Signal` stored on the app is shared.
+  state, subscriptions, and draw list. A `Signal` stored on the app is shared
+  only between materializations of the same `GamaView` value (one value shown
+  twice, or re-materialized). Separate `GamaView(_:)` calls create separate
+  app instances, which share nothing.
 - **Parent updates do not reinstall.** SwiftUI body re-evaluation leaves the
-  host alone. To re-render after a change the host cannot observe, write to a
+  host alone, and a replacement `GamaView` value passed by a parent after the
+  first materialization is ignored. To re-render after a change the host cannot observe, write to a
   `Signal` or bound `@Reactive` state.
 - **Removal tears down.** When SwiftUI removes the view, the host's
   subscriptions are cancelled and its frame pump detached.
@@ -61,6 +78,16 @@ app declaration in a file that does not import SwiftUI.
 ## Verification
 
 `SwiftUIEmbeddingTests` in `Tests/gamaTests/SwiftUIEmbeddingTests.swift` runs
-under `scripts/check-apple.sh` on macOS, including an `NSHostingView` case in
-an offscreen window. The UIKit branch is only compiled, by
-`scripts/check-apple-platforms.sh`; nothing runs it on a simulator or device.
+under `scripts/check-apple.sh` on macOS. It covers validation, primary-only
+rendering, independent `@Reactive` state and draw lists across two
+materializations of one value, teardown through the package dismantle hook,
+and an `NSHostingView` case in an offscreen window whose root is replaced, so
+SwiftUI itself dismantles the host and a later model change no longer reaches
+its draw list. Focus and subscription independence across hosts hold by
+construction (each host installs its own session) and are not separately
+tested.
+
+The `GamaSwiftUI` scheme is registered in `scripts/check-apple-platforms.sh`
+beside `GamaAppleUI`, but that gate was not run on the branch that added it,
+so the UIKit branch has no compile evidence until it does. Nothing runs the
+UIKit branch on a simulator or device.

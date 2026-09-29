@@ -1,7 +1,7 @@
 # SwiftUI embedding: `GamaView`
 
-**Status: implemented on a feature branch, awaiting owner review
-(2026-09-29).** Track 4 of the
+**Status: built on a feature branch, awaiting owner review (2026-09-29); no
+evidence-ledger row.** Track 4 of the
 [native UI roadmap](2026-09-29-native-ui-roadmap-design.md), first half. The
 SwiftData half is a separate draft:
 [SwiftData-backed reactive persistence](drafts/2026-09-29-swiftdata-reactive-persistence-draft.md).
@@ -12,16 +12,31 @@ Plan: [SwiftUI embedding plan](../plans/2026-09-29-swiftui-embedding.md).
 A SwiftUI application shows a Gama surface by writing one view:
 
 ```swift
+import GamaCore
 import GamaSwiftUI
+import SwiftUI
 
-struct Panel: View {
-    var body: some View {
-        if let gama = try? GamaView(CounterApp.self) {
-            gama.frame(minWidth: 320, minHeight: 180)
+@main
+struct HostApp: SwiftUI.App {
+    // Created once for the process; body re-evaluation reuses it.
+    private let gama = try? GamaView(CounterApp.self)
+
+    var body: some SwiftUI.Scene {
+        SwiftUI.WindowGroup {
+            if let gama {
+                gama.frame(minWidth: 320, minHeight: 180)
+            } else {
+                SwiftUI.Text("Invalid Gama app")
+            }
         }
     }
 }
 ```
+
+The value is created once and held: each initializer call compiles the scene
+graph, and `GamaView(_:)` also runs the app's no-argument initializer, so
+building it inside a frequently re-evaluated `body` repeats both (see open
+question 2).
 
 Before this, `docs/AppleIntegration.md` told applications to write their own
 representable around `GamaHostView`. Every application would have repeated the
@@ -76,7 +91,10 @@ Each materialization creates its own host, so two `GamaView`s built from one
 value, or one view shown twice, get independent frame hosts, `@Reactive`
 state, and draw lists. That is ADR 0011's per-surface rule applied to SwiftUI
 identity. A `Signal` stored on the app value is shared between them, exactly
-as between two windows of one `WindowGroup`.
+as between two windows of one `WindowGroup`; that sharing needs one value,
+because separate `GamaView(_:)` calls create separate app instances. After the
+first materialization a replacement `GamaView` value from the parent is
+ignored, since the update hook does nothing.
 
 ### 3. A minimal public surface
 
@@ -101,16 +119,21 @@ do the same in files that import both.
   initializers;
 - the factory installs the primary surface and the draw list contains the
   primary scene's text and none of the auxiliary scene's;
-- two materializations produce distinct hosts;
+- two materializations of one value keep independent `@Reactive` state and
+  draw lists: activating the counter in one host leaves the other at zero;
 - dismantling tears the session down: a model change followed by
   `invalidate()` no longer reaches the draw list (checked by mutation: with
   teardown removed, this test fails);
 - an `NSHostingView` in an offscreen window materializes a live
-  `GamaHostView` through the representable.
+  `GamaHostView` through the representable; replacing the hosting view's root
+  makes SwiftUI dismantle it, after which a model change no longer reaches the
+  host's draw list.
 
-The UIKit branch is compiled, not run: `scripts/check-apple-platforms.sh`
-builds the `GamaSwiftUI` scheme for the iOS, tvOS, and visionOS simulators
-alongside `GamaAppleUI`. No simulator runtime test exists for either.
+The `GamaSwiftUI` scheme is registered in `scripts/check-apple-platforms.sh`
+for the iOS, tvOS, and visionOS simulators alongside `GamaAppleUI`, but that
+gate was not run on this branch (it hardcodes shared derived-data paths), so
+the UIKit branch has no compile evidence until integration runs it. No
+simulator runtime test exists for either.
 
 ## Open questions for the owner
 
