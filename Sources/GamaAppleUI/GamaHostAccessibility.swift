@@ -61,11 +61,26 @@
         /// Line elements and shown attached native views, in top-to-bottom
         /// order, so VoiceOver reaches a native view between the rows around it.
         func accessibilityChildrenInReadingOrder() -> [Any] {
-            let lines: [(row: Int, element: Any)] = accessibilityLineElements().map { ($0.line.frame.minY, $0) }
-            let views: [(row: Int, element: Any)] = attachedNativeViews.values
-                .filter { !$0.isHidden }
-                .map { (Int($0.frame.minY / max(accessibilityCellSize.height, 1)), $0) }
-            return (lines + views).sorted { $0.row < $1.row }.map(\.element)
+            // Ordered by (row, column), with lines before views on a tie and
+            // views by region identity, so the order never depends on
+            // Dictionary iteration.
+            let cell = accessibilityCellSize
+            let lines: [(row: Int, column: Int, rank: Int, key: String, element: Any)] =
+                accessibilityLineElements().map {
+                    ($0.line.frame.minY, $0.line.frame.minX, 0, "", $0)
+                }
+            let views: [(row: Int, column: Int, rank: Int, key: String, element: Any)] =
+                attachedNativeViews
+                .filter { !$0.value.isHidden }
+                .map { id, view in
+                    (
+                        Int(view.frame.minY / max(cell.height, 1)),
+                        Int(view.frame.minX / max(cell.width, 1)), 1, id.rawValue, view
+                    )
+                }
+            return (lines + views).sorted {
+                ($0.row, $0.column, $0.rank, $0.key) < ($1.row, $1.column, $1.rank, $1.key)
+            }.map(\.element)
         }
 
         /// Called after each frame. Recomputing the snapshot on every frame

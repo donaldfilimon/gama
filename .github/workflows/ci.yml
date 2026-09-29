@@ -45,12 +45,23 @@ jobs:
           GAMA_MACOS_TOOLCHAIN_SHA256: 0a2437602704f1ceb6024452b5fa17be7c82bae3cd1d4a3569affd7706e27cbc
         run: |
           unset TOOLCHAINS
-          pkg="$RUNNER_TEMP/swift-snapshot.pkg"
-          curl --fail --location --retry 3 "$GAMA_MACOS_TOOLCHAIN_URL" --output "$pkg"
-          echo "$GAMA_MACOS_TOOLCHAIN_SHA256  $pkg" | shasum -a 256 --check --strict
-          # Per-user install into ~/Library/Developer/Toolchains: the runner
-          # account needs no sudo.
-          installer -pkg "$pkg" -target CurrentUserHomeDirectory
+          # The self-hosted runner shares the developer's account and its
+          # ~/Library/Developer/Toolchains. When the pinned snapshot is
+          # already there with the exact swiftc from Toolchains.toml, reuse
+          # it: no download, and never reinstall over the local copy.
+          source scripts/lib/toolchain.sh
+          swiftc="$(gama_snapshot_swiftc)"
+          want="$(gama_toml_get snapshot swiftc_sha256)"
+          if [[ -x "$swiftc" && "$(shasum -a 256 "$swiftc" | awk '{print $1}')" == "$want" ]]; then
+            echo "pinned snapshot already installed: $swiftc"
+          else
+            pkg="$RUNNER_TEMP/swift-snapshot.pkg"
+            curl --fail --location --retry 3 "$GAMA_MACOS_TOOLCHAIN_URL" --output "$pkg"
+            echo "$GAMA_MACOS_TOOLCHAIN_SHA256  $pkg" | shasum -a 256 --check --strict
+            # Per-user install into ~/Library/Developer/Toolchains: the
+            # runner account needs no sudo.
+            installer -pkg "$pkg" -target CurrentUserHomeDirectory
+          fi
           /usr/bin/xcrun --toolchain org.swift.65202608211a swift --version | tee swift-version.txt
           grep -q 'Swift version 6.5' swift-version.txt
           grep -q 'Swift 95c5142e84b82c1' swift-version.txt
@@ -111,10 +122,23 @@ jobs:
           GAMA_MACOS_TOOLCHAIN_SHA256: 0a2437602704f1ceb6024452b5fa17be7c82bae3cd1d4a3569affd7706e27cbc
         run: |
           unset TOOLCHAINS
-          pkg="$RUNNER_TEMP/swift-snapshot.pkg"
-          curl --fail --location --retry 3 "$GAMA_MACOS_TOOLCHAIN_URL" --output "$pkg"
-          echo "$GAMA_MACOS_TOOLCHAIN_SHA256  $pkg" | shasum -a 256 --check --strict
-          installer -pkg "$pkg" -target CurrentUserHomeDirectory
+          # The self-hosted runner shares the developer's account and its
+          # ~/Library/Developer/Toolchains. When the pinned snapshot is
+          # already there with the exact swiftc from Toolchains.toml, reuse
+          # it: no download, and never reinstall over the local copy.
+          source scripts/lib/toolchain.sh
+          swiftc="$(gama_snapshot_swiftc)"
+          want="$(gama_toml_get snapshot swiftc_sha256)"
+          if [[ -x "$swiftc" && "$(shasum -a 256 "$swiftc" | awk '{print $1}')" == "$want" ]]; then
+            echo "pinned snapshot already installed: $swiftc"
+          else
+            pkg="$RUNNER_TEMP/swift-snapshot.pkg"
+            curl --fail --location --retry 3 "$GAMA_MACOS_TOOLCHAIN_URL" --output "$pkg"
+            echo "$GAMA_MACOS_TOOLCHAIN_SHA256  $pkg" | shasum -a 256 --check --strict
+            # Per-user install into ~/Library/Developer/Toolchains: the
+            # runner account needs no sudo.
+            installer -pkg "$pkg" -target CurrentUserHomeDirectory
+          fi
       - name: Embedded compile, relocatable link, and size baseline
         run: ./scripts/check-embedded.sh
       - uses: actions/upload-artifact@v4

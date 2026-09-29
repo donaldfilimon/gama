@@ -66,9 +66,9 @@ public enum LayoutEngine {
                 height: proposal.height.map { max(0, $0 - 2 * topBottom) }
             )
             let c = measure(child, proposal: inner, metrics: metrics)
-            // BorderTitleLayout's minimum width is expressed in cells —
-            // it is not converted here (see the task report).
-            let titleWidth = BorderTitleLayout.minimumWidth(for: title)
+            // BorderTitleLayout's minimum width is in cells; convert it so
+            // it compares with the unit-converted content width.
+            let titleWidth = metrics.units(BorderTitleLayout.minimumWidth(for: title), .horizontal)
             return Size(
                 width: max(c.width + 2 * leftRight, titleWidth), height: c.height + 2 * topBottom)
 
@@ -140,7 +140,8 @@ public enum LayoutEngine {
             }
             if case .flexible(let w) = child.flexPriority(along: axis) {
                 flexWeight += w
-                mainUsed += flexMinimum(of: child, axis: axis, metrics: metrics)
+                mainUsed += flexMinimum(
+                    of: child, axis: axis, proposal: openProposal(proposal, along: axis), metrics: metrics)
                 // Only the main axis is deferred to `layout`; the child
                 // still has a natural cross extent the stack must report.
                 // A spacer is the exception: `minLength` is a main-axis
@@ -173,7 +174,9 @@ public enum LayoutEngine {
     }
 
     /// Main-axis floor a flexible child may never shrink below.
-    private static func flexMinimum(of node: RenderNode, axis: Axis, metrics: LayoutMetrics) -> Int {
+    private static func flexMinimum(
+        of node: RenderNode, axis: Axis, proposal: ProposedSize, metrics: LayoutMetrics
+    ) -> Int {
         switch node {
         case .spacer(let minLength):
             return metrics.units(minLength, axis)
@@ -185,16 +188,17 @@ public enum LayoutEngine {
                 axis == .horizontal
                 ? metrics.units(e.leading, .horizontal) + metrics.units(e.trailing, .horizontal)
                 : metrics.units(e.top, .vertical) + metrics.units(e.bottom, .vertical)
-            return flexMinimum(of: c, axis: axis, metrics: metrics) + edgeSum
+            return flexMinimum(of: c, axis: axis, proposal: proposal, metrics: metrics) + edgeSum
         case .border(_, _, _, let c):
-            return flexMinimum(of: c, axis: axis, metrics: metrics) + 2 * metrics.units(1, axis)
+            return flexMinimum(of: c, axis: axis, proposal: proposal, metrics: metrics)
+                + 2 * metrics.units(1, axis)
         case .background(_, let c), .styled(_, let c):
-            return flexMinimum(of: c, axis: axis, metrics: metrics)
+            return flexMinimum(of: c, axis: axis, proposal: proposal, metrics: metrics)
         case .interactive(let id, _, let c):
-            if let size = metrics.controlSize(id, .unspecified) {
+            if let size = metrics.controlSize(id, proposal) {
                 return axis == .horizontal ? size.width : size.height
             }
-            return flexMinimum(of: c, axis: axis, metrics: metrics)
+            return flexMinimum(of: c, axis: axis, proposal: proposal, metrics: metrics)
         // Exhaustive on purpose: a new case must choose its minimum here
         // instead of silently contributing zero.
         case .empty, .text, .stack, .overlay, .group, .divider, .frame:
@@ -346,7 +350,7 @@ public enum LayoutEngine {
             }
             if case .flexible(let w) = child.flexPriority(along: axis) {
                 flexTotal += w
-                mins[i] = flexMinimum(of: child, axis: axis, metrics: metrics)
+                mins[i] = flexMinimum(of: child, axis: axis, proposal: crossProposal, metrics: metrics)
                 fixedMain += mins[i]
             } else {
                 let m = measure(child, proposal: crossProposal, metrics: metrics)

@@ -307,6 +307,13 @@ public final class GamaHostView: GamaPlatformView {
         if let previous = attachedNativeViews[id], previous !== view {
             previous.removeFromSuperview()
         }
+        // One view shows in one region: drop any other identity holding it,
+        // so placement and a later detach of that identity cannot fight
+        // over the same view.
+        for (other, attached) in attachedNativeViews where other != id && attached === view {
+            attachedNativeViews[other] = nil
+            focusedNativeRegions.remove(other)
+        }
         attachedNativeViews[id] = view
         #if canImport(AppKit)
             let alreadyAttached = unsafe view.superview === self
