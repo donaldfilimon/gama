@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-29-ui-scaling-design.md` (track 1 of the native UI roadmap). Four phases, one PR each.
 
+**Status (2026-09-29): historical record.** All four phases were committed on branch `feat/ui-scaling`. The checkboxes below were left as written, not ticked, so they record the plan rather than which gates each step ran; the commits and their review carry that. Where the build departed from the plan, the spec's "As built" notes are the authority.
+
 ## Global Constraints
 
 - **Toolchain:** `unset TOOLCHAINS`; `swiftly run swift ...` from the repo root. The manifest stays `swift-tools-version: 6.4`.
@@ -88,7 +90,7 @@ Gate for the phase: `scripts/check-apple.sh`, `scripts/check-boundaries.sh`, `sc
 
 Touches only GamaCore; it can run in parallel with phases 1-3.
 
-**Files:** `Sources/GamaCore/View.swift` (`EnvironmentValues`), a new `Sources/GamaCore/ViewThatFits.swift`, `Tests/gamaTests/ResponsiveLayoutTests.swift`, `docs/Testing.md`.
+**Files:** a new `Sources/GamaCore/ViewThatFits.swift` (holding both `ViewThatFits` and the `EnvironmentValues.widthClass` extension; `View.swift` was not touched), `Tests/gamaTests/ResponsiveLayoutTests.swift`, `docs/Testing.md`.
 
 - [ ] **Step 1: Failing tests** in `ResponsiveLayoutTests`: `widthClass` at 59, 60, 119 and 120 columns and with no `surfaceSize`; `ViewThatFits` picks the first candidate that fits, falls back to the last, and yields `CellSerializer` goldens at 120x40, 80x24 and 40x20.
 - [ ] **Step 2: Implement** `EnvironmentValues.widthClass` (`compact` below 60 columns, `wide` from 120, `regular` between; the thresholds are public constants) and `ViewThatFits`, a primitive (`Body = Never_`) that measures each candidate with `LayoutEngine.measure` against the proposed size and adds no `RenderNode` case. Its documentation states the limit: it fits the surface or the size it is proposed, not a frame solved later.

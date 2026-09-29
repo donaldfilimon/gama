@@ -126,7 +126,7 @@ cell.
 6...72, sets the property, re-measures the cell and calls `notifyResize()`,
 the path `document.fonts.ready` already uses, so the module sees an ordinary
 resize to a grid of larger or smaller cells. The page's A-, A and A+ buttons
-step it by 2 px or restore 14 px. Browser zoom keeps working as before.
+step it by 2 px or restore 14 px.
 `Sources/GamaWASM` and both export tiers are unchanged. The browser smoke
 calls `setFontSize(28)` after its state readings and requires a resize to a
 grid smaller on both axes.

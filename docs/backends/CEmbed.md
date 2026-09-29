@@ -32,8 +32,9 @@ unit, and it will not gain one: the embedder owns pixels. To make text
 bigger or smaller, the host picks a new font size, measures its cell, works
 out how many whole cells fit its view, and calls the resize entry point with
 that grid, exactly as it does when the view itself changes size. The Android
-example does this with a 14 sp font, so it follows density and the system
-font scale.
+example is designed to do this with a 14 sp font, so that it follows density
+and the system font scale; only its build is checked, not that runtime
+behavior.
 
 ## Walkthrough
 

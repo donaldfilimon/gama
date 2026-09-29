@@ -30,12 +30,13 @@ belongs to the `gama_embed_v1_*` family (`destroy` releases it).
 - `DrawListDecoder.kt` — a Kotlin reader of the DrawList wire format that
   renders frames to Android views.
 - `MainActivity.kt` — drives resize/key/pointer into the context. The grid
-  font is 14 sp (`TypedValue.COMPLEX_UNIT_SP`), so it follows screen density
-  and the system font scale. The view measures its cell from that font and
-  resizes the grid to the whole cells that fit on layout and on a
-  configuration change; the manifest declares `fontScale` and `density` in
-  `configChanges` so the change reaches the view instead of recreating the
-  activity. The acceptance probe still runs against a fixed 40x12 grid
+  font is 14 sp (`TypedValue.COMPLEX_UNIT_SP`), designed so it follows
+  screen density and the system font scale. The view measures its cell from
+  that font and resizes the grid to the whole cells that fit on layout and on
+  a configuration change; the manifest declares `fontScale` and `density` in
+  `configChanges` so that the change is meant to reach the view instead of
+  recreating the activity. `check-android.sh` checks only that this builds;
+  no runtime test exercises a density or font-scale change. The acceptance probe still runs against a fixed 40x12 grid
   before the first layout.
 
 ## Building
