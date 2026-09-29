@@ -732,15 +732,21 @@ public struct FrameHost: ~Copyable {
     /// Recomputes ``hoveredID`` at `location` without delivering a hover
     /// gesture.
     private mutating func refreshHoveredID(at location: Point) {
-        let hit = interactive.last(where: { $0.frame.contains(location) })?.id
+        let hit = hoverTarget(at: location)?.id
         if hit != hoveredID {
             hoveredID = hit
             dirty.set(true)
         }
     }
 
+    /// The topmost interactive node under `location` for hover, looking
+    /// through display-only nodes exactly as a press does.
+    private func hoverTarget(at location: Point) -> InteractiveRegion? {
+        interactive.last(where: { $0.frame.contains(location) && !actions.isDisplayOnly($0.id) })
+    }
+
     private mutating func updateHover(_ event: PointerEvent) {
-        let hit = interactive.last(where: { $0.frame.contains(event.location) })
+        let hit = hoverTarget(at: event.location)
         if hit?.id != hoveredID {
             hoveredID = hit?.id
             dirty.set(true)

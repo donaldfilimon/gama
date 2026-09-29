@@ -327,6 +327,21 @@ struct ControlRegistrationTests {
         host.handle(.pointer(bar.frame.origin, pressed: true))
         #expect(app.taps.get() == 1)
     }
+
+    @Test("hovering a progress bar inside a button hovers the button")
+    func progressInsideButtonPassesHoverThrough() throws {
+        let app = NestedProgressApp()
+        var host = try FrameHost(app: app)
+        let laid = host.pump(size: Size(width: 40, height: 4))
+        var regions: [InteractiveRegion] = []
+        laid.collectInteractive(into: &regions)
+        guard let button = regions.first, let bar = regions.last, !bar.isFocusable, button.id != bar.id else {
+            Issue.record("no nested progress region"); return
+        }
+        host.handle(.pointerEvent(PointerEvent(phase: .hover, location: bar.frame.origin)))
+        let hovered = host.hoveredID
+        #expect(hovered == button.id)
+    }
 }
 
 private struct NestedProgressApp: App {
