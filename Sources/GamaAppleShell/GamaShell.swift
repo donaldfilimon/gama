@@ -379,8 +379,9 @@ package final class GamaShellWindowController: NSWindowController, NSWindowDeleg
     /// Points one Bigger or Smaller command moves the host's text size. The
     /// host clamps the result, so a step past either end stays at the end.
     package static let textSizeStep: CGFloat = 1
-    /// The size Actual Size restores; the host's own default.
-    package static let actualTextSize: CGFloat = 14
+    /// The size Actual Size restores: the host's own default, read from the
+    /// host rather than repeated here.
+    package static let actualTextSize: CGFloat = GamaHostView.defaultFontPointSize
 
     /// View > Bigger: one step larger on this window's host.
     @objc package func makeTextBigger(_ sender: Any?) {

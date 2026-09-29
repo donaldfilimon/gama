@@ -127,8 +127,9 @@ public final class GamaHostView: GamaPlatformView {
 
     /// The smallest and largest text sizes a host accepts, in points.
     private static let fontPointSizeRange: ClosedRange<CGFloat> = 6...72
-    /// The text size a new host starts at, in points.
-    private static let defaultFontPointSize: CGFloat = 14
+    /// The text size a new host starts at, in points. Package-only so the
+    /// shell's Actual Size command restores this value rather than a copy.
+    package static let defaultFontPointSize: CGFloat = 14
 
     private var font: PlatformFont = GamaHostView.baseFont(
         ofSize: GamaHostView.defaultFontPointSize)
@@ -623,6 +624,13 @@ public final class GamaHostView: GamaPlatformView {
         /// applies `UIFontMetrics.default` scaling of it for this view's
         /// content size category, re-applied whenever that category changes.
         /// Turning it off restores the base size.
+        ///
+        /// While it is on, a direct ``fontPointSize`` write takes effect but
+        /// does not change the base: the next content size category change
+        /// re-applies scaling to the base and replaces the written size, and
+        /// turning following off restores the base, not the last written
+        /// size. No gate compiles the UIKit tests, so this contract is
+        /// unverified at every evidence layer.
         public var followsDynamicType: Bool = false {
             didSet {
                 guard followsDynamicType != oldValue else { return }
@@ -644,7 +652,7 @@ public final class GamaHostView: GamaPlatformView {
             }
         }
         /// The unscaled size Dynamic Type scales from while it is followed.
-        private var dynamicTypeBasePointSize: CGFloat = 14
+        private var dynamicTypeBasePointSize: CGFloat = GamaHostView.defaultFontPointSize
         /// The content-size-category observation, held only while following.
         private var dynamicTypeRegistration: (any UITraitChangeRegistration)?
 

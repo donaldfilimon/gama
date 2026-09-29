@@ -65,11 +65,14 @@ emits `willTerminate`.
 ## Text size
 
 The main menu has a View menu with Bigger (Command-+), Smaller (Command--)
-and Actual Size (Command-0). Each item has no target, so AppKit routes it
-through the responder chain to the key window's `GamaShellWindowController`,
-which steps that window's `GamaHostView.fontPointSize` by 1 pt or restores
-14 pt. Other windows keep their size. The step and the actual size are shell
-constants; the host clamps to 6...72, so a step past either end stays there.
+and Actual Size (Command-0). Each item has no target, so by AppKit's
+contract for target-less items the responder chain delivers it to the key
+window's `GamaShellWindowController`; the tests pin the items' shape and the
+controller's behavior, not that delivery. The controller steps that window's
+`GamaHostView.fontPointSize` by 1 pt or restores the host's default size
+(14 pt), which it reads from the host rather than repeating. Other windows
+keep their size. The step is a shell constant; the bounds belong to the
+host, which clamps to 6...72, so a step past either end stays there.
 The larger cell refits the grid through an ordinary resize; layout stays in
 cells.
 

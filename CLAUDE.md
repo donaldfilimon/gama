@@ -485,9 +485,9 @@ Target layering (all under `Sources/`, single test target `GamaTests` at
   `GamaHostView.fontPointSize`, and a new size refits the grid through an
   ordinary cell resize), GamaAppleShell
   (NSApplication/NSWindow ownership, multi-window and per-shell command
-  routing; its View menu's Bigger/Smaller/Actual Size items have no target
-  and reach the key window's `GamaShellWindowController` through the
-  responder chain; compiles to an inert target without AppKit — it is the one
+  routing; its View menu's Bigger/Smaller/Actual Size items have no target,
+  so by AppKit's contract (not a test here) they reach the key window's
+  `GamaShellWindowController` through the responder chain; compiles to an inert target without AppKit — it is the one
   backend that renders auxiliary scenes), GamaWASM
   (browser reactor, inert stubs off wasm32, experimental `Extern` feature
   scoped to this target only; `WebHost/` holds the page and JS glue the web

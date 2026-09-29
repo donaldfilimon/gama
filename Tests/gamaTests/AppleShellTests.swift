@@ -183,16 +183,25 @@ struct AppleShellTests {
         let instance = try #require(coordinator.liveInstanceIDs.first)
         let controller = try #require(coordinator.controllers[instance])
         let host = controller.hostView
-        #expect(host.fontPointSize == 14)
+        // Open the second window before any command, so the check at the
+        // end shows the commands left it alone rather than that a new host
+        // starts at the default.
+        let other = try #require(coordinator.openWindow("inspector"))
+        let otherHost = try #require(coordinator.controllers[other]).hostView
+        #expect(host.fontPointSize == GamaHostView.defaultFontPointSize)
+        #expect(otherHost.fontPointSize == GamaHostView.defaultFontPointSize)
 
         controller.makeTextBigger(nil)
         #expect(host.fontPointSize == 15)
         controller.makeTextSmaller(nil)
         controller.makeTextSmaller(nil)
         #expect(host.fontPointSize == 13)
+        #expect(otherHost.fontPointSize == GamaHostView.defaultFontPointSize)
         controller.makeTextActualSize(nil)
         #expect(host.fontPointSize == GamaShellWindowController.actualTextSize)
-        #expect(host.fontPointSize == 14)
+        // Actual Size is the size a fresh host starts at, not a second copy
+        // of it.
+        #expect(host.fontPointSize == GamaHostView(frame: .zero).fontPointSize)
 
         host.fontPointSize = 72
         controller.makeTextBigger(nil)
@@ -201,15 +210,15 @@ struct AppleShellTests {
         controller.makeTextSmaller(nil)
         #expect(host.fontPointSize == 6)
 
-        // Another window's host is untouched: the command acts on the
-        // controller that received it, which the responder chain makes the
-        // key window's.
-        let other = try #require(coordinator.openWindow("inspector"))
-        let otherHost = try #require(coordinator.controllers[other]).hostView
-        #expect(otherHost.fontPointSize == 14)
+        // Another window's host is untouched: each command acts only on the
+        // controller that received it.
+        #expect(otherHost.fontPointSize == GamaHostView.defaultFontPointSize)
     }
 
-    @Test("the View menu routes text size commands through the responder chain")
+    // Routing itself is AppKit's contract for a target-less item (the key
+    // window's responder chain reaches its controller); a headless test
+    // process has no key window, so this pins only the items' shape.
+    @Test("the View menu's text size items are target-less with the expected selectors and keys")
     func viewMenuCommands() throws {
         let menu = GamaShell.makeMainMenu()
         let view = try #require(menu.items.first { $0.submenu?.title == "View" }?.submenu)
