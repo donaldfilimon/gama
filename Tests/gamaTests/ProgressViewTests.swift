@@ -5,7 +5,7 @@ import Testing
 /// test (rather than crashing) if the primitive ever compiles to anything
 /// else.
 private func renderedText(_ view: ProgressView) -> String {
-    guard case .text(let text, _) = view.render(in: BuildContext()) else {
+    guard case .interactive(_, _, .text(let text, _)) = view.render(in: BuildContext()) else {
         Issue.record("ProgressView did not render text")
         return ""
     }

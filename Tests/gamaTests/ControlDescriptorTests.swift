@@ -175,3 +175,155 @@ struct ControlDescriptorSizingTests {
         #expect(size == nil)
     }
 }
+
+/// Renders `view` with a registering context and returns the node plus the
+/// descriptors it registered, keyed by node.
+private func renderRegistering<V: View>(
+    _ view: V, environment: EnvironmentValues = EnvironmentValues()
+) -> (node: RenderNode, controls: [NodeID: ControlDescriptor], log: ControlLog) {
+    let log = ControlLog()
+    let context = BuildContext(
+        environment: environment,
+        registerControl: { id, descriptor in log.entries.append((id, descriptor)) })
+    let node = view.render(in: context)
+    var table: [NodeID: ControlDescriptor] = [:]
+    for (id, descriptor) in log.entries { table[id] = descriptor }
+    return (node, table, log)
+}
+
+/// Paints `node` laid out in a `size` grid.
+private func paintCells(_ node: RenderNode, size: Size = Size(width: 40, height: 3)) -> CellBuffer {
+    var buffer = CellBuffer(size: size)
+    CellPainter.paint(LayoutEngine.layout(node, in: Rect(origin: .zero, size: size)), into: &buffer)
+    return buffer
+}
+
+@Suite("Control registration")
+struct ControlRegistrationTests {
+    @Test("a titled button registers its trimmed title, enabled")
+    func titledButton() {
+        let (node, controls, _) = renderRegistering(Button("Save", action: {}))
+        guard case .button(let title, let isEnabled)? = controls[.root] else {
+            Issue.record("no button descriptor"); return
+        }
+        #expect(title == "Save")
+        #expect(isEnabled)
+        #expect(paintCells(node) == paintCells(Button("Save", action: {}).render(in: BuildContext())))
+    }
+
+    @Test("a composite label registers a nil title")
+    func compositeButton() {
+        let (_, controls, _) = renderRegistering(
+            Button(action: {}) {
+                HStack {
+                    Text("A")
+                    Text("B")
+                }
+            })
+        guard case .button(let title, _)? = controls[.root] else {
+            Issue.record("no button descriptor"); return
+        }
+        #expect(title == nil)
+    }
+
+    @Test("a styled single-run label still has a title")
+    func styledLabelHasTitle() {
+        let (_, controls, _) = renderRegistering(Button(action: {}) { Text("Go").bold() })
+        #expect(buttonTitle(controls[.root]) == .some("Go"))
+    }
+
+    @Test("a disabled button registers isEnabled false and no action")
+    func disabledButton() {
+        var env = EnvironmentValues()
+        env.isEnabled = false
+        var actions = 0
+        let log = ControlLog()
+        let context = BuildContext(
+            environment: env,
+            registerAction: { _, _ in actions += 1 },
+            registerControl: { id, descriptor in log.entries.append((id, descriptor)) })
+        _ = Button("Off", action: {}).render(in: context)
+        #expect(actions == 0)
+        guard case .button(let title, let isEnabled)? = log.entries.last?.1 else {
+            Issue.record("no button descriptor"); return
+        }
+        #expect(title == "Off")
+        #expect(!isEnabled)
+    }
+
+    @Test("a toggle's descriptor replaces its button's")
+    func toggleReplacesButton() {
+        let flag = Signal(true)
+        let (node, controls, log) = renderRegistering(Toggle("Wifi", isOn: flag.binding()))
+        #expect(log.entries.count == 2)
+        guard case .toggle(let title, let isOn, let isEnabled)? = controls[.root] else {
+            Issue.record("no toggle descriptor"); return
+        }
+        #expect(title == "Wifi")
+        #expect(isOn)
+        #expect(isEnabled)
+        #expect(paintCells(node) == paintCells(Toggle("Wifi", isOn: flag.binding()).render(in: BuildContext())))
+    }
+
+    @Test("a text field registers its state and setText writes the binding")
+    func textField() {
+        let text = Signal("")
+        let (node, controls, _) = renderRegistering(TextField("Name", text: text.binding()))
+        guard case .textField(let placeholder, let value, let isEnabled, let setText)? = controls[.root] else {
+            Issue.record("no text field descriptor"); return
+        }
+        #expect(placeholder == "Name")
+        #expect(value == "")
+        #expect(isEnabled)
+        setText("Ada")
+        #expect(text.get() == "Ada")
+        #expect(paintCells(node) == paintCells(TextField("Name", text: Signal("").binding()).render(in: BuildContext())))
+    }
+
+    @Test("progress registers its clamped fraction and label")
+    func progress() {
+        let (node, controls, _) = renderRegistering(ProgressView(value: 3, total: 2, label: "Load"))
+        guard case .progress(let fraction, let label)? = controls[.root] else {
+            Issue.record("no progress descriptor"); return
+        }
+        #expect(fraction == 1)
+        #expect(label == "Load")
+        guard case .interactive(let id, let focusable, let child) = node else {
+            Issue.record("progress is not interactive"); return
+        }
+        #expect(id == .root)
+        #expect(!focusable)
+        // Cells are identical to the bare text the view compiled to before.
+        #expect(paintCells(node) == paintCells(child))
+    }
+
+    @Test("a pointer press on a progress bar runs nothing and moves no focus")
+    func progressPointerIsNoop() throws {
+        let app = ProgressPointerApp()
+        var host = try FrameHost(app: app)
+        let before = host.pump(size: Size(width: 40, height: 4))
+        var regions: [InteractiveRegion] = []
+        before.collectInteractive(into: &regions)
+        guard let bar = regions.first(where: { !$0.isFocusable }) else {
+            Issue.record("no progress region"); return
+        }
+        host.handle(.pointer(bar.frame.origin, pressed: true))
+        let after = host.pump(size: Size(width: 40, height: 4))
+        #expect(app.taps.get() == 0)
+        // Same tree, including the focus highlight: focus did not move.
+        #expect(after == before)
+    }
+}
+
+private struct ProgressPointerApp: App {
+    let taps = Signal(0)
+    init() {}
+    var scenes: some Scene {
+        Window("Progress", id: "main", role: .primary) {
+            VStack {
+                Button("Tap") { taps.update { $0 += 1 } }
+                ProgressView(value: 0.5, label: "Load")
+            }
+        }
+    }
+}

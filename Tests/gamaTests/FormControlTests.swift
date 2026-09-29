@@ -25,7 +25,7 @@ struct FormControlTests {
         let rendered = ProgressView(value: 1, total: 8, label: "Load")
             .render(in: BuildContext())
 
-        guard case .text(let text, _) = rendered else {
+        guard case .interactive(_, _, .text(let text, _)) = rendered else {
             Issue.record("ProgressView did not render text")
             return
         }

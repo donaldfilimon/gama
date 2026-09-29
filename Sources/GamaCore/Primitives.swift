@@ -241,17 +241,22 @@ public struct Button<Label: View>: View {
 
     /// Registers `action` with the host and compiles to a focusable
     /// `.interactive` node; when the environment is disabled it skips
-    /// registration and renders dimmed and non-focusable.
+    /// registration and renders dimmed and non-focusable. Either way it
+    /// registers a ``ControlDescriptor/button(title:isEnabled:)`` whose title
+    /// is the label's text when the label is a single text run.
     public func render(in context: BuildContext) -> RenderNode {
         let id = context.id
-        guard context.environment.isEnabled else {
+        let labelNode = label.render(in: context.child(0))
+        let enabled = context.environment.isEnabled
+        context.registerControl(id, .button(title: plainText(of: labelNode), isEnabled: enabled))
+        guard enabled else {
             // Disabled: no action registered, not focusable, dimmed.
             return .interactive(
                 id: id,
                 focusable: false,
                 child: .styled(
                     TextStyle(foreground: .gray, attributes: [.dim]),
-                    child: label.render(in: context.child(0))
+                    child: labelNode
                 )
             )
         }
@@ -269,8 +274,26 @@ public struct Button<Label: View>: View {
         return .interactive(
             id: id,
             focusable: true,
-            child: .styled(style, child: label.render(in: context.child(0)))
+            child: .styled(style, child: labelNode)
         )
+    }
+}
+
+/// The string of a label that compiles to a single text run, looking
+/// through `styled` and `padding` wrappers, with one leading and one
+/// trailing space trimmed (the padding `Button(_:action:)` adds); `nil` for
+/// any other shape. A native host uses it as a push button's title.
+func plainText(of node: RenderNode) -> String? {
+    switch node {
+    case .text(let string, _):
+        var trimmed = Substring(string)
+        if trimmed.hasPrefix(" ") { trimmed = trimmed.dropFirst() }
+        if trimmed.hasSuffix(" ") { trimmed = trimmed.dropLast() }
+        return String(trimmed)
+    case .styled(_, let child), .padding(_, let child):
+        return plainText(of: child)
+    default:
+        return nil
     }
 }
 
@@ -372,6 +395,12 @@ public struct TextField: View {
             }
         }
         let value = text.wrappedValue
+        let writeBack = text
+        context.registerControl(
+            id,
+            .textField(
+                placeholder: placeholder, text: value, isEnabled: enabled,
+                setText: { writeBack.wrappedValue = $0 }))
         let visible = value.isEmpty ? placeholder : value
         var style = TextStyle()
         if value.isEmpty { style.attributes.insert(.dim) }
@@ -404,12 +433,18 @@ public struct Toggle: View {
     }
 
     /// Delegates to `Button` under the same identity, so a toggle focuses
-    /// and activates exactly like a button.
+    /// and activates exactly like a button, then registers a
+    /// ``ControlDescriptor/toggle(title:isOn:isEnabled:)`` that replaces the
+    /// button's descriptor for this node.
     public func render(in context: BuildContext) -> RenderNode {
         let binding = isOn
-        return Button(action: { binding.wrappedValue.toggle() }) {
+        let node = Button(action: { binding.wrappedValue.toggle() }) {
             Text("[\(binding.wrappedValue ? "x" : " ")] \(title)")
         }.render(in: context)
+        context.registerControl(
+            context.id,
+            .toggle(title: title, isOn: binding.wrappedValue, isEnabled: context.environment.isEnabled))
+        return node
     }
 }
 
@@ -451,8 +486,14 @@ public struct ProgressView: View {
         self.width = width
     }
 
-    /// Compiles to a single `.text` node — bar, glyphs, and percentage are
-    /// all plain characters in the inherited style.
+    /// Compiles to a non-focusable `.interactive` node around a single
+    /// `.text` node — bar, glyphs, and percentage are all plain characters
+    /// in the inherited style — and registers a
+    /// ``ControlDescriptor/progress(fraction:label:)`` with the clamped
+    /// fraction. The wrapper gives a native host an identity to key on; it
+    /// registers no action, so activating or clicking it does nothing, and
+    /// cell output is identical to the bare text. This view has no
+    /// indeterminate mode, so the fraction is never `nil`.
     public func render(in context: BuildContext) -> RenderNode {
         let fraction = Self.clampedFraction(value: value, total: total)
         let bar = Self.bar(fraction: fraction, width: width)
@@ -460,7 +501,11 @@ public struct ProgressView: View {
         // percentage: a fraction that isn't exactly 1 must never print
         // 100%, or the two halves of the rendered string would disagree.
         let percent = fraction >= 1 ? 100 : min(99, Int(fraction * 100 + 0.5))
-        return .text("\(label.map { "\($0) " } ?? "")[\(bar)] \(percent)%", style: context.inheritedStyle)
+        context.registerControl(context.id, .progress(fraction: fraction, label: label))
+        return .interactive(
+            id: context.id,
+            focusable: false,
+            child: .text("\(label.map { "\($0) " } ?? "")[\(bar)] \(percent)%", style: context.inheritedStyle))
     }
 
     /// Reduces `value`/`total` to a finite 0...1 fraction. Non-positive

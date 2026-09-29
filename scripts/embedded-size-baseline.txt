@@ -68,9 +68,20 @@
 # side table; no RenderNode case, MLIR op, or DrawList wire changed, and the
 # libm and global-state gates still pass.
 #
+# Re-measured 2026-09-29 at the same compiler revision for plan Task 4:
+# Button, Toggle, TextField, and ProgressView now register descriptors
+# (the text field's with a closure writing its binding), Button hoists its
+# label render and extracts a plain-text title (plainText(of:)), and
+# ProgressView wraps its text in a non-focusable interactive node. The
+# linked artifact is 846504 bytes, 45708 above the 800796 pin. Replacing
+# the title trim's hasPrefix/hasSuffix with unicode-scalar comparisons was
+# measured and did not shrink it (846884), so the growth is the
+# registrations themselves, not string comparison. Intended; RenderNode,
+# the MLIR op set, and the DrawList wire are unchanged.
+#
 # Grammar is deliberately tiny: blank lines, `#` comments, and key = "value".
 # Anything else fails the read, for the same reason scripts/lib/manifest.sh is
 # strict — this is a pin, not a configuration language.
 revision = "95c5142e84b82c1"
-bytes = "800796"
+bytes = "846504"
 tolerance_percent = "2"
