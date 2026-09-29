@@ -597,7 +597,7 @@ public final class GamaHostView: GamaPlatformView {
         }
     }
 
-    private func pixelRect(_ r: Rect) -> CGRect {
+    func pixelRect(_ r: Rect) -> CGRect {
         CGRect(
             x: CGFloat(r.minX) * cellSize.width,
             y: CGFloat(r.minY) * cellSize.height,
