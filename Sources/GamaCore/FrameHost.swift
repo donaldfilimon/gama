@@ -63,6 +63,7 @@ private final class HostActionStore {
         }
     }
     func invoke(_ id: NodeID) { actions[id]?() }
+    func hasAction(_ id: NodeID) -> Bool { actions[id] != nil }
     func invokeKey(_ key: Key, for id: NodeID) -> Bool { keyHandlers[id]?(key) ?? false }
     func effect(for id: ActionID) -> (() -> Void)? { named[id] }
     func shortcutEffect(for key: Key) -> (() -> Void)? {
@@ -327,6 +328,38 @@ public struct FrameHost: ~Copyable {
         guard let effect = actions.effect(for: id) else { return }
         stateStore.activate()
         effect()
+        dirty.set(true)
+    }
+
+    /// The node that holds keyboard focus after the most recent frame or
+    /// focus change, or `nil` when nothing is focusable.
+    public var focusedNode: NodeID? { focusedID }
+
+    /// Activates the interactive node `id` directly, the way a pointer
+    /// press on it does but without hit-testing: a native presentation host
+    /// (ADR 0017) calls it when a platform control fires.
+    ///
+    /// A focusable target takes focus; then per-surface state is rebound,
+    /// the node's action runs, and the host is marked dirty. A node the
+    /// latest build registered no action for (disabled, not in the tree,
+    /// or never actionable) is a no-op that does not mark the host dirty.
+    public mutating func activate(_ id: NodeID) {
+        guard actions.hasAction(id) else { return }
+        if focusables.contains(where: { $0.id == id }) { focusedID = id }
+        stateStore.activate()
+        actions.invoke(id)
+        dirty.set(true)
+    }
+
+    /// Moves keyboard focus to the focusable node `id` and marks the host
+    /// dirty, for a native host whose platform focus changed.
+    ///
+    /// A node that already has focus, is not focusable, or is not in the
+    /// latest frame changes nothing and does not mark the host dirty, so a
+    /// host that echoes Gama's own focus change back cannot loop.
+    public mutating func focus(_ id: NodeID) {
+        guard id != focusedID, focusables.contains(where: { $0.id == id }) else { return }
+        focusedID = id
         dirty.set(true)
     }
 

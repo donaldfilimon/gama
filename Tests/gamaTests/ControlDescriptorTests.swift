@@ -327,3 +327,112 @@ private struct ProgressPointerApp: App {
         }
     }
 }
+
+private struct ActivationApp: App {
+    let taps = Signal(0)
+    let text = Signal("")
+    init() {}
+    var scenes: some Scene {
+        Window("Activation", id: "main", role: .primary) {
+            VStack {
+                Button("Tap") { taps.update { $0 += 1 } }
+                TextField("Name", text: text.binding())
+                ProgressView(value: 0.25)
+            }
+        }
+    }
+}
+
+/// The ids of a frame's interactive nodes in visual order.
+private func interactiveIDs(_ laid: LaidOutNode) -> [NodeID] {
+    var regions: [InteractiveRegion] = []
+    laid.collectInteractive(into: &regions)
+    return regions.map(\.id)
+}
+
+@Suite("Host activation and focus")
+struct HostActivationTests {
+    @Test("activate runs the node's action and marks the host dirty")
+    func activateRunsAction() throws {
+        let app = ActivationApp()
+        var host = try FrameHost(app: app)
+        let ids = interactiveIDs(host.pump(size: Size(width: 40, height: 5)))
+        host.activate(ids[0])
+        let dirty = host.needsFrame
+        #expect(app.taps.get() == 1)
+        #expect(dirty)
+    }
+
+    @Test("activate on a node with no action changes nothing")
+    func activateWithoutActionIsNoop() throws {
+        let app = ActivationApp()
+        var host = try FrameHost(app: app)
+        _ = host.pump(size: Size(width: 40, height: 5))
+        // A second pump settles any focus-reconciliation follow-up.
+        let ids = interactiveIDs(host.pump(size: Size(width: 40, height: 5)))
+        let focusedBefore = host.focusedNode
+        host.activate(ids[2])
+        host.activate(NodeID(raw: 42))
+        let dirty = host.needsFrame
+        let focusedAfter = host.focusedNode
+        #expect(app.taps.get() == 0)
+        #expect(!dirty)
+        #expect(focusedAfter == focusedBefore)
+    }
+
+    @Test("activate focuses a focusable target like a pointer press")
+    func activateFocuses() throws {
+        let app = ActivationApp()
+        var host = try FrameHost(app: app)
+        let ids = interactiveIDs(host.pump(size: Size(width: 40, height: 5)))
+        host.focus(ids[1])
+        _ = host.pump(size: Size(width: 40, height: 5))
+        host.activate(ids[0])
+        let focused = host.focusedNode
+        #expect(focused == ids[0])
+    }
+
+    @Test("focus moves to a focusable node and marks dirty")
+    func focusMoves() throws {
+        var host = try FrameHost(app: ActivationApp())
+        let ids = interactiveIDs(host.pump(size: Size(width: 40, height: 5)))
+        let initial = host.focusedNode
+        #expect(initial == ids[0])
+        host.focus(ids[1])
+        let focused = host.focusedNode
+        let dirty = host.needsFrame
+        #expect(focused == ids[1])
+        #expect(dirty)
+    }
+
+    @Test("focus on the focused, a non-focusable, or an unknown node changes nothing")
+    func focusNoops() throws {
+        var host = try FrameHost(app: ActivationApp())
+        _ = host.pump(size: Size(width: 40, height: 5))
+        let ids = interactiveIDs(host.pump(size: Size(width: 40, height: 5)))
+        host.focus(ids[0])
+        host.focus(ids[2])
+        host.focus(NodeID(raw: 42))
+        let focused = host.focusedNode
+        let dirty = host.needsFrame
+        #expect(focused == ids[0])
+        #expect(!dirty)
+    }
+
+    @Test("HostPump passes activate, focus, and focusedNode through")
+    func pumpPassThrough() throws {
+        let app = ActivationApp()
+        var pump = HostPump(host: try FrameHost(app: app), size: Size(width: 40, height: 5))
+        guard let frame = pump.advance()?.frame else {
+            Issue.record("no frame"); return
+        }
+        let ids = interactiveIDs(frame)
+        pump.focus(ids[1])
+        let focused = pump.focusedNode
+        #expect(focused == ids[1])
+        pump.activate(ids[0])
+        #expect(app.taps.get() == 1)
+        let dirty = pump.needsFrame
+        #expect(dirty)
+    }
+}

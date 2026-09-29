@@ -100,6 +100,15 @@ public struct HostPump: ~Copyable {
         host.handle(event)
     }
 
+    /// The host's focused node; see ``FrameHost/focusedNode``.
+    public var focusedNode: NodeID? { host.focusedNode }
+
+    /// Activates `id` on the host; see ``FrameHost/activate(_:)``.
+    public mutating func activate(_ id: NodeID) { host.activate(id) }
+
+    /// Moves host focus to `id`; see ``FrameHost/focus(_:)``.
+    public mutating func focus(_ id: NodeID) { host.focus(id) }
+
     /// Marks the host dirty without an input event, for out-of-band model
     /// changes that did not arrive through ``handle(_:)``.
     public mutating func invalidate() { host.invalidate() }
