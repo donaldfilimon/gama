@@ -49,6 +49,10 @@ process-global invalidation.
 - ``AppRuntime``
 - ``Renderer``
 - ``InputEvent``
+- ``PointerEvent``
+- ``PointerGesture``
+- ``InteractionIdiom``
+- ``PointerPolicy``
 - ``InteractiveRegion``
 - ``NodeID``
 - ``BuildContext``

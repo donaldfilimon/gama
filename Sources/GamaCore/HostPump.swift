@@ -82,6 +82,10 @@ public struct HostPump: ~Copyable {
     public var nativeRegions: [NativeRegionFrame] { host.nativeRegions }
     /// Native region identities the most recent frame registered more than once.
     public var duplicateNativeRegionIDs: [NativeRegionID] { host.duplicateNativeRegionIDs }
+    /// The host's pending long-press deadline (ADR 0018), in the pointer
+    /// samples' monotonic milliseconds; a host with a clock delivers a
+    /// ``PointerEvent/Phase/stationary`` sample at this time.
+    public var pointerDeadlineMillis: UInt64? { host.pointerDeadlineMillis }
 
     /// Routes one event through the shared policy.
     ///

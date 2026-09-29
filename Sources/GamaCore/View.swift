@@ -34,6 +34,25 @@ public struct BuildContext {
     /// default is a no-op, so a host-less build renders the fallback and
     /// reports no regions.
     public var registerNativeRegion: (NodeID, NativeRegionID) -> Void
+    /// Registers a pointer-gesture handler (ADR 0018) for an interactive
+    /// node with the owning host. A press on that node captures the pointer
+    /// and the host delivers every recognized ``PointerGesture`` to the
+    /// handler; returning `true` marks the host dirty. A declined
+    /// ``PointerGesture/Phase/tap`` falls back to the node's registered
+    /// action. Nodes without a handler keep activate-on-press. The default
+    /// is a no-op.
+    public var registerPointerHandler: (NodeID, @escaping (PointerGesture) -> Bool) -> Void
+    /// Marks an interactive node as a drop target: drag phases report the
+    /// topmost one under the pointer in ``PointerGesture/dropTarget``. The
+    /// default is a no-op.
+    public var registerDropTarget: (NodeID) -> Void
+    /// Asks the owning host to focus a node. The host honors the latest
+    /// request when its next `pump` reconciles focus, if the node is
+    /// focusable in that frame, and drops it otherwise. A request made while
+    /// building is honored by that same pump or dropped; one made from an
+    /// event handler also requests a frame. Calling it on every build pins
+    /// focus. The default is a no-op.
+    public var requestFocus: (NodeID) -> Void
     /// The owning host's `@Reactive` storage; `nil` for host-less rendering,
     /// which keeps every slot on instance-local storage.
     package var stateStore: HostStateStore? = nil
@@ -50,7 +69,10 @@ public struct BuildContext {
             NodeID, @escaping (Key) -> Bool
         ) -> Void = { _, _ in },
         registerNamedAction: @escaping (ActionID, Key?, @escaping () -> Void) -> Void = { _, _, _ in },
-        registerNativeRegion: @escaping (NodeID, NativeRegionID) -> Void = { _, _ in }
+        registerNativeRegion: @escaping (NodeID, NativeRegionID) -> Void = { _, _ in },
+        registerPointerHandler: @escaping (NodeID, @escaping (PointerGesture) -> Bool) -> Void = { _, _ in },
+        registerDropTarget: @escaping (NodeID) -> Void = { _ in },
+        requestFocus: @escaping (NodeID) -> Void = { _ in }
     ) {
         self.id = id
         self.inheritedStyle = inheritedStyle
@@ -59,6 +81,9 @@ public struct BuildContext {
         self.registerKeyHandler = registerKeyHandler
         self.registerNamedAction = registerNamedAction
         self.registerNativeRegion = registerNativeRegion
+        self.registerPointerHandler = registerPointerHandler
+        self.registerDropTarget = registerDropTarget
+        self.requestFocus = requestFocus
     }
 
     /// The context for the child at `index`: identity descends one step;
@@ -89,6 +114,11 @@ public struct EnvironmentValues: Sendable {
     /// Identity of the currently focused node, set by the owning
     /// `FrameHost` before each build; `nil` when nothing has focus.
     public var focusedID: NodeID? = nil
+    /// Identity of the topmost interactive node under a hovering pointer, set
+    /// by the owning `FrameHost` before each build; `nil` when nothing is
+    /// hovered or the host has no hover input. The host requests a frame
+    /// only when it changes.
+    public var hoveredID: NodeID? = nil
     /// The drawable extent of the surface being built, set by the owning
     /// `FrameHost` before each build; `nil` for host-less rendering, where
     /// no surface exists.

@@ -118,10 +118,16 @@ public enum InputEvent: Hashable, Sendable {
     /// The drawable area changed; the host marks itself dirty so the next
     /// pump lays out at the new size.
     case resize(Size)
-    /// Pointer (mouse or touch) state at a cell position. Only presses
-    /// (`pressed: true`) hit-test and activate; releases are accepted but
-    /// trigger nothing in the host today.
+    /// Pointer (mouse or touch) state at a cell position: a primary mouse
+    /// down or up. A press on a region without a pointer handler hit-tests
+    /// and activates it, as it always has; on a region with one, the pair is
+    /// a press and a tap.
     case pointer(Point, pressed: Bool)
+    /// A rich pointer sample (ADR 0018). The host recognizes gestures from
+    /// it: capture, drag thresholds per ``InteractionIdiom``, long press,
+    /// hover, scroll, and cancellation. ``pointer(_:pressed:)`` is the same
+    /// as a primary mouse ``PointerEvent/Phase/down`` or ``PointerEvent/Phase/up``.
+    case pointerEvent(PointerEvent)
     /// A timer pulse a backend may emit to wake its loop; the host itself
     /// takes no action on it.
     case tick

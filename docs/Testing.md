@@ -63,6 +63,7 @@ All suites live in `Tests/gamaTests/`:
 | `ModernTests.swift` | DrawList codec; overflow-safe geometry; CellPainter ↔ DrawList |
 | `NativeRegionTests.swift` | Native region build, host table — filter `NativeRegionBuildTests`, `NativeRegionHostTests` |
 | `P1LayoutTests.swift` | Border title, divider axis, TextField C0, emoji presentation, button focus |
+| `PointerGestureTests.swift` | Pointer event and idiom policy; host-owned gesture recognition (ADR 0018) — filter `PointerPolicyTests`, `PointerGestureTests` |
 | `PluginCommandTests.swift` | Plugin commands |
 | `PluginRuntimeTests.swift` | Plugin runtime: manifest, grants, lifecycle |
 | `PluginSceneTests.swift` | Plugin scene contributions |
