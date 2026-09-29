@@ -99,20 +99,47 @@
             #expect(view.redrawRequestCount == redraws)
         }
 
-        @Test("a size change always requests a redraw, even when the grid is unchanged")
-        func sizeChangeRedrawsEvenWithoutAGridChange() throws {
+        @Test("a size change requests a redraw on its own, with no frame to do it")
+        func sizeChangeRedrawsWithoutAFrame() {
+            // Not installed: no surface answers the resize and no frame is
+            // pumped, so the only redraw request is the setter's own. An
+            // installed host would also request one per produced frame and
+            // hide a missing unconditional request, so keep this view
+            // uninstalled: the host's other redraw requests (per frame and
+            // on a backing-scale change) cannot reach it here.
+            let view = GamaHostView(frame: Self.frame)
+            let redraws = view.redrawRequestCount
+            let frames = view.producedFrameCount
+
+            view.fontPointSize = 30
+
+            #expect(view.redrawRequestCount == redraws + 1)
+            #expect(view.producedFrameCount == frames)
+        }
+
+        @Test("a size change with an unchanged grid still announces a layout change")
+        func sizeChangeAnnouncesLayoutWithoutAGridChange() throws {
             // A one-point view is a 1x1 grid at every text size, so the
-            // resize leaves the grid as it was; the glyphs still changed size
-            // and must be redrawn whatever the pump decides.
+            // frame the resize pumps paints the same snapshot and the
+            // per-frame refresh stays silent. The cell size still changed,
+            // so the host must announce the new geometry itself.
             let view = GamaHostView(frame: NSRect(x: 0, y: 0, width: 1, height: 1))
             try view.install(app: LabelledApp())
+            view.invalidate()
+            // Query to arm the notification, then pump once so the first
+            // frame's announcement is behind the baseline.
+            _ = view.accessibilityChildren()
+            view.invalidate()
             let grid = view.currentDrawList.size
-            let redraws = view.redrawRequestCount
+            let snapshot = view.accessibilitySnapshot
+            #expect(!snapshot.lines.isEmpty)
+            let posts = view.accessibilityLayoutChangePostCount
 
             view.fontPointSize = 30
 
             #expect(view.currentDrawList.size == grid)
-            #expect(view.redrawRequestCount > redraws)
+            #expect(view.accessibilitySnapshot == snapshot)
+            #expect(view.accessibilityLayoutChangePostCount == posts + 1)
         }
 
         @Test("hosts at one size share a font; different sizes do not")
@@ -212,8 +239,9 @@
 #endif
 
 // The UIKit half. No gate builds `GamaTests` for iOS, tvOS or visionOS, so
-// this block is compiled by nothing today; it records the intended contract
-// for `followsDynamicType` and type-checks the moment a UIKit test build runs.
+// this block is compiled by nothing today and `followsDynamicType` is
+// unverified at every evidence layer; it records the intended contract and
+// type-checks the moment a UIKit test build runs.
 #if canImport(UIKit) && !canImport(AppKit)
     import UIKit
     import GamaAppleUI

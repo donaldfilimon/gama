@@ -96,6 +96,10 @@ public final class GamaHostView: GamaPlatformView {
     package var accessibilityAnnouncedSnapshot: AccessibilitySnapshot? {
         lastAnnouncedAccessibilitySnapshot
     }
+    /// How many layout-change notifications this host has posted to
+    /// assistive technologies. Package-only, for the same reason as
+    /// ``accessibilityIsObserved``: the post itself is invisible to a test.
+    package internal(set) var accessibilityLayoutChangePostCount = 0
 
     // Font construction is not reliably inert under CoreText pressure: the
     // same failure described below for per-command styled fonts was observed

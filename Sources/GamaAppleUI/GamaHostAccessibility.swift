@@ -94,6 +94,7 @@
             accessibilityCacheIsStale = true
             cachedAccessibilityElements = nil
             guard accessibilityHasBeenQueried else { return }
+            accessibilityLayoutChangePostCount += 1
             #if canImport(AppKit)
                 unsafe NSAccessibility.post(element: self, notification: .layoutChanged)
             #else
@@ -110,6 +111,7 @@
             let snapshot = accessibilitySnapshot
             guard snapshot != lastAnnouncedAccessibilitySnapshot else { return }
             lastAnnouncedAccessibilitySnapshot = snapshot
+            accessibilityLayoutChangePostCount += 1
             #if canImport(AppKit)
                 unsafe NSAccessibility.post(element: self, notification: .layoutChanged)
             #else
