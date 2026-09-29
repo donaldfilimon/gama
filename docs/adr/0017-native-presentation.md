@@ -1,6 +1,6 @@
 # 0017 — Native presentation: a GUI host may present Gama views as platform controls
 
-Status: Proposed (awaiting owner review). Supersedes the widget clause of
+Status: Accepted (owner, 2026-09-29). Supersedes the widget clause of
 [0001](0001-own-the-rendering.md) and the "What 0001 still forbids" section of
 [0016](0016-native-regions-narrow-own-the-rendering.md). 0001's shared IR and
 shared layout stand; 0016's regions stand.

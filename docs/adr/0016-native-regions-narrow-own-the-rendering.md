@@ -68,7 +68,9 @@ owns.** The following rules bind any implementation:
    host ([0011](0011-reactive-state-is-per-surface.md), `SurfaceMode`,
    `surfaceSize`) and "slot" means `PluginSlot`.
 
-**What 0001 still forbids.** Gama doesn't wrap platform widgets as framework
+**What 0001 still forbids.** *(Superseded by
+[0017](0017-native-presentation.md), accepted 2026-09-29: a GUI host may now
+present Gama views as platform controls. Kept for the record.)* Gama doesn't wrap platform widgets as framework
 controls. `Button`, `TextField`, `Toggle`, and every other Gama view stay
 built from the shared IR on every backend. A native region is a hole the
 application fills, not a way for the framework to borrow a platform control.
