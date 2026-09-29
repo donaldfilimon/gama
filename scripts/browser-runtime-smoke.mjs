@@ -166,8 +166,11 @@ try {
         if (surface) {
           const init = { bubbles: true, cancelable: true };
           surface.dispatchEvent(new KeyboardEvent("keydown", { ...init, key: "Enter" }));
-          surface.dispatchEvent(new MouseEvent("mousedown", init));
-          surface.dispatchEvent(new MouseEvent("mouseup", init));
+          // The host listens for Pointer Events (ADR 0018), so the pre-boot
+          // press must be one too, or it would test a listener that is gone.
+          const pointer = { ...init, pointerId: 1, pointerType: "mouse", isPrimary: true };
+          surface.dispatchEvent(new PointerEvent("pointerdown", { ...pointer, button: 0, buttons: 1 }));
+          surface.dispatchEvent(new PointerEvent("pointerup", { ...pointer, button: 0, buttons: 0 }));
           surface.dataset.gamaPreBootInput = "sent";
         }
         return instantiate.apply(this, args);

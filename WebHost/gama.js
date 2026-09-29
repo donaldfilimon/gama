@@ -1,14 +1,18 @@
 // gama.js — browser host for a Gama WASM reactor module.
 // Instantiates gama-web-demo.wasm with WASI stubs + the "gama" import module,
-// then forwards DOM events into the exported gama_web_v2_* entry points.
+// then forwards DOM events into the exported gama_web_v2_* entry points, and
+// Pointer Events into the v3 pointer tier (ADR 0018).
 //
-// Uses the v2 export tier only. It is argument-compatible with v1 but returns
+// Uses the v2 export tier for frames, keys and resizes, and
+// gama_web_v3_pointer_event for every pointer sample; never v1. v2 is
+// argument-compatible with v1 but returns
 // a status: 0 accepted, -1 no host installed, -2 invalid input
 // (docs/backends/WASM.md). The status matters here because the demo installs
 // with `try?`: a failed install is silent inside the module, v1 calls then
 // no-op forever, and the page would sit on its boot overlay. v2 reports -1 on
 // the very first call, which is what turns that into a named failure.
-// scripts/check-wasm.sh requires all four v2 calls and rejects any v1 call.
+// v3 keeps the same statuses. scripts/check-wasm.sh requires the three v2
+// calls and the v3 pointer call, and rejects any v1 call.
 
 const root = document.getElementById("gama");
 const boot = document.getElementById("boot");
@@ -249,7 +253,17 @@ root.addEventListener("keydown", (e) => {
   smoke.keys += 1;
 });
 
-// ── Pointer ────────────────────────────────────────────────────────────
+// ── Pointer: Pointer Events → v3 samples (ADR 0018) ────────────────────
+// The page only translates; Gama recognizes taps, drags, long presses, hover
+// and scroll. Codes are the wire tables GamaEmbed.h names GAMA_EMBED_POINTER_*.
+const PHASE = { down: 0, move: 1, up: 2, cancel: 3, hover: 4, scroll: 5, stationary: 6 };
+const KIND = { mouse: 0, touch: 1, pen: 2 };
+// DOM numbers the middle button 1 and the right button 2; Gama numbers the
+// secondary (right) button 1 and the middle button 2.
+const BUTTON = { 0: 0, 1: 2, 2: 1 };
+function modifierBits(e) {
+  return (e.shiftKey ? 1 : 0) | (e.ctrlKey ? 2 : 0) | (e.altKey ? 4 : 0) | (e.metaKey ? 8 : 0);
+}
 function gridPos(e) {
   const r = root.getBoundingClientRect();
   const pad = surfacePadding();
@@ -258,20 +272,98 @@ function gridPos(e) {
     row: Math.floor((e.clientY - r.top - pad.top) / cell.h),
   };
 }
-root.addEventListener("mousedown", (e) => {
+// The captured pointer and where it was last seen, so the long-press timer
+// can deliver a stationary sample for that same pointer.
+let captured = null;
+let deadlineTimer = 0;
+function sendPointer(phase, kind, button, modifiers, p, scroll, pointerId) {
+  return guarded(() => checked(exports.gama_web_v3_pointer_event(
+    phase, kind, button, modifiers, p.col, p.row, scroll.cols, scroll.rows,
+    pointerId | 0, performance.now(),
+  ), "gama_web_v3_pointer_event"));
+}
+// After every sample, re-arm (or clear) the one-shot long-press timer from
+// the deadline Gama publishes; -3 means no press is waiting on one.
+function armDeadline() {
+  clearTimeout(deadlineTimer);
+  deadlineTimer = 0;
+  const deadline = exports.gama_web_v3_pointer_deadline();
+  if (deadline < 0 || captured === null) return;
+  deadlineTimer = setTimeout(() => {
+    deadlineTimer = 0;
+    if (dead || captured === null) return;
+    const { kind, pointerId, p } = captured;
+    guarded(() => checked(exports.gama_web_v3_pointer_event(
+      PHASE.stationary, kind, 0, 0, p.col, p.row, 0, 0, pointerId | 0,
+      Math.max(performance.now(), deadline),
+    ), "gama_web_v3_pointer_event"));
+    armDeadline();
+  }, Math.max(0, deadline - performance.now()));
+}
+function onPointer(phase, e) {
+  const kind = KIND[e.pointerType] ?? KIND.mouse;
+  const p = gridPos(e);
+  const status = sendPointer(
+    phase, kind, e.button >= 0 ? (BUTTON[e.button] ?? e.button) : 0, modifierBits(e), p,
+    { cols: 0, rows: 0 }, e.pointerId,
+  );
+  if (status !== 0) return;
+  if (phase === PHASE.down) captured = { kind, pointerId: e.pointerId, p };
+  else if (captured !== null && e.pointerId === captured.pointerId) {
+    captured.p = p;
+    if (phase === PHASE.up || phase === PHASE.cancel) captured = null;
+  }
+  armDeadline();
+  smoke.pointers += 1;
+}
+root.addEventListener("pointerdown", (e) => {
   // Focus even while loading, so the first key after boot lands here.
   root.focus();
   if (dead || !ready) return;
-  const p = gridPos(e);
-  guarded(() => checked(exports.gama_web_v2_pointer(p.col, p.row, 1), "gama_web_v2_pointer"));
-  smoke.pointers += 1;
+  // Keep the drag's samples coming when the pointer leaves the surface. A
+  // synthetic event has no active pointer to capture, which throws.
+  try { root.setPointerCapture(e.pointerId); } catch {}
+  onPointer(PHASE.down, e);
 });
-root.addEventListener("mouseup", (e) => {
+root.addEventListener("pointermove", (e) => {
   if (dead || !ready) return;
-  const p = gridPos(e);
-  guarded(() => checked(exports.gama_web_v2_pointer(p.col, p.row, 0), "gama_web_v2_pointer"));
-  smoke.pointers += 1;
+  onPointer(e.buttons !== 0 ? PHASE.move : PHASE.hover, e);
 });
+root.addEventListener("pointerup", (e) => {
+  if (dead || !ready) return;
+  onPointer(PHASE.up, e);
+});
+root.addEventListener("pointercancel", (e) => {
+  if (dead || !ready) return;
+  onPointer(PHASE.cancel, e);
+});
+// Leaving the surface without a press is a hover outside the grid, which
+// clears hover; a captured drag keeps its samples through the capture.
+root.addEventListener("pointerleave", (e) => {
+  if (dead || !ready || captured !== null) return;
+  sendPointer(PHASE.hover, KIND[e.pointerType] ?? KIND.mouse, 0, modifierBits(e),
+    { col: -1, row: -1 }, { cols: 0, rows: 0 }, e.pointerId);
+});
+// Wheel deltas accumulate into whole cells: pixels by the cell size, lines
+// one per row, pages by the grid. Positive rows reveal the lines below,
+// which is the DOM's deltaY sign already.
+const wheelRemainder = { cols: 0, rows: 0 };
+root.addEventListener("wheel", (e) => {
+  if (dead || !ready) return;
+  e.preventDefault();
+  const scale = e.deltaMode === 1 ? { x: 1, y: 1 }
+    : e.deltaMode === 2 ? { x: grid.cols, y: grid.rows }
+    : { x: 1 / cell.w, y: 1 / cell.h };
+  wheelRemainder.cols += e.deltaX * scale.x;
+  wheelRemainder.rows += e.deltaY * scale.y;
+  const cols = Math.trunc(wheelRemainder.cols);
+  const rows = Math.trunc(wheelRemainder.rows);
+  if (cols === 0 && rows === 0) return;
+  wheelRemainder.cols -= cols;
+  wheelRemainder.rows -= rows;
+  sendPointer(PHASE.scroll, KIND.mouse, 0, modifierBits(e), gridPos(e), { cols, rows }, 0);
+  smoke.pointers += 1;
+}, { passive: false });
 
 // ── Boot ───────────────────────────────────────────────────────────────
 // Instantiate from a fully materialized response so MIME/proxy behavior cannot
@@ -289,10 +381,13 @@ try {
   );
   exports = instance.exports;
   memory = exports.memory;
-  const tier = ["frame", "key", "pointer", "resize"].map((event) => `gama_web_v2_${event}`);
+  const tier = [
+    ...["frame", "key", "resize"].map((event) => `gama_web_v2_${event}`),
+    "gama_web_v3_pointer_event", "gama_web_v3_pointer_deadline",
+  ];
   const missing = tier.filter((name) => typeof exports[name] !== "function");
   if (missing.length > 0) {
-    throw new Error(`module does not export the v2 tier: ${missing.join(", ")}`);
+    throw new Error(`module does not export the v2/v3 tier: ${missing.join(", ")}`);
   }
 
   stage = "initialize";
@@ -336,12 +431,12 @@ if (new URLSearchParams(location.search).get("gama-smoke") === "1") {
   const state = [renderedCount()];
   root.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true }));
   const bounds = root.getBoundingClientRect();
-  root.dispatchEvent(new MouseEvent("mousedown", {
-    clientX: bounds.left + 12, clientY: bounds.top + 28, bubbles: true,
-  }));
-  root.dispatchEvent(new MouseEvent("mouseup", {
-    clientX: bounds.left + 12, clientY: bounds.top + 28, bubbles: true,
-  }));
+  const at = { clientX: bounds.left + 12, clientY: bounds.top + 28, bubbles: true };
+  const pointer = { ...at, pointerId: 1, pointerType: "mouse", isPrimary: true };
+  root.dispatchEvent(new PointerEvent("pointermove", { ...pointer, buttons: 0 }));
+  root.dispatchEvent(new PointerEvent("pointerdown", { ...pointer, button: 0, buttons: 1 }));
+  root.dispatchEvent(new PointerEvent("pointerup", { ...pointer, button: 0, buttons: 0 }));
+  root.dispatchEvent(new WheelEvent("wheel", { ...at, deltaY: 3, deltaMode: 1, cancelable: true }));
   // The grid is already fitted, and notifyResize now returns early when the
   // dimensions are unchanged, so force the resize the marker counts.
   grid = { cols: 0, rows: 0 };

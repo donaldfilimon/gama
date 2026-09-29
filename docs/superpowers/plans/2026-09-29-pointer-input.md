@@ -130,7 +130,7 @@ test app whose primitive registers a pointer handler and logs every gesture:
 
 Pure event mapping; no backend decides anything. Each step is test-first.
 
-- [ ] **Apple host** (`Sources/GamaAppleUI/GamaHostView.swift`). AppKit:
+- [x] **Apple host** (`Sources/GamaAppleUI/GamaHostView.swift`). AppKit:
   `mouseDragged`, `mouseMoved` through a tracking area installed in
   `commonInit` and `updateTrackingAreas`, `mouseExited` (a hover outside the
   grid), right and other buttons, `scrollWheel` with precise deltas
@@ -141,7 +141,7 @@ Pure event mapping; no backend decides anything. Each step is test-first.
   `pointerDeadlineMillis`. The host is created with its idiom (`desktop` on
   macOS, `pad` or `phone` from the trait collection, `vision` on visionOS).
   Test: an AppKit host drag test in `AppleHostTests`.
-- [ ] **Terminal**: `Sources/GamaDraw/TerminalCapabilities.swift` enables and
+- [x] **Terminal**: `Sources/GamaDraw/TerminalCapabilities.swift` enables and
   disables `?1002h` (button-held motion) beside the existing mouse modes.
   `Sources/GamaTUI/Terminal.swift` decodes SGR button bits (button, +4
   shift, +8 alt, +16 ctrl, +32 motion, 64-67 wheel) into `PointerEvent`; the
@@ -149,20 +149,41 @@ Pure event mapping; no backend decides anything. Each step is test-first.
   reads control-key state for modifiers. The TUI host uses the `terminal`
   idiom. Tests: SGR decode table, `WindowsTerminalTests`, `?1002h` in
   `TerminalCapabilityTests`.
-- [ ] **WASM** (`Sources/GamaWASM/WASMHost.swift`, `WebHost/gama.js`): a new
+- [x] **WASM** (`Sources/GamaWASM/WASMHost.swift`, `WebHost/gama.js`): a new
   `gama_web_v3_pointer_event(...)` export (v1 and v2 unchanged), Pointer
   Events with `setPointerCapture`, and `wheel`. Gate: `scripts/check-wasm.sh`
   including the browser smoke; if node or the toolchain is missing, report
   NOT RUN.
-- [ ] **C embed** (`Sources/GamaEmbed/CInterface.swift`,
+- [x] **C embed** (`Sources/GamaEmbed/CInterface.swift`,
   `Sources/GamaEmbedABI/include/GamaEmbed.h`, `Examples/CEmbed/main.c`):
   additive `gama_embed_v1_pointer_event` and `gama_embed_v1_pointer_deadline`
   plus `GAMA_EMBED_POINTER_*` constants; `abi_version` stays 1 and `main.c`
   exercises both. Gate: `scripts/check-c-abi.sh` (`-Werror`).
-- [ ] Gates: the phase 1 list plus `check-c-abi.sh`, `check-wasm.sh` and
+- [x] Gates: the phase 1 list plus `check-c-abi.sh`, `check-wasm.sh` and
   `GamaStudio/tools/check.sh` (the Apple host changes). Integration runs
   `scripts/check.sh`, `check-mlir.sh` and `check-apple-platforms.sh`; hosted
   runs are billing-locked and count as unmeasured.
+
+### As built (chunk 2)
+
+- One integer decoder, `PointerWire` in GamaDraw (`package`), serves both
+  flat ABIs, so the C and WASM code tables cannot drift. GamaCore gained only
+  a doc comment (the scroll sign) and `Renderer.interactionIdiom` (default
+  desktop; `TUIRenderer` answers terminal), which `AppRuntime` passes to its
+  host; the Embedded artifact stayed inside the pinned band.
+- `gama_embed_v1_pointer_deadline(ctx, int64_t *out)` returns a status and
+  writes the deadline or `GAMA_EMBED_POINTER_NO_TIME`, so "no deadline"
+  never collides with the NULL-context code. `GAMA_EMBED_ERR_INVALID_POINTER`
+  is -4. `GamaEmbed.makeContext` and `GamaWeb.install` take an `idiom:`.
+- The WASM tier is `gama_web_v3_pointer_event` plus
+  `gama_web_v3_pointer_deadline` (`-3` when no press waits, `-1` with no
+  host); the clock is an `f64` that is range-checked before conversion.
+- The Windows mouse translator keeps button state (records report state,
+  not transitions) and treats the double-click record as the second press,
+  which the old translator dropped. Both terminal translators live outside
+  every platform `#if` and are tested on macOS.
+- SGR wheel reports were presses before this change and activated the
+  region under the pointer; they are scroll samples now.
 
 ## Deliberately not in this plan
 

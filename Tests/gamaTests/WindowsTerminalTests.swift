@@ -1,4 +1,7 @@
-#if os(Windows)
+//  WindowsTerminalTests.swift — Windows console key translation. The
+//  translator is pure integer logic outside every platform `#if`, so this
+//  runs on every host; the mouse translator's cases are in
+//  `PointerBackendTests.swift` (`WindowsMouseTranslatorTests`).
 
 import Testing
 import GamaCore
@@ -14,13 +17,4 @@ struct WindowsTerminalTests {
         #expect(WindowsInputTranslator.key(virtualKey: 0, scalar: 0x03BB, controlState: 0) == .key(.character("λ")))
         #expect(WindowsInputTranslator.key(virtualKey: 0, scalar: 0x03, controlState: 0) == .key(.ctrl("c")))
     }
-
-    @Test("maps pointer transitions and ignores motion records")
-    func pointer() {
-        #expect(WindowsInputTranslator.pointer(x: 7, y: 4, buttonState: 1, eventFlags: 0) == .pointer(Point(x: 7, y: 4), pressed: true))
-        #expect(WindowsInputTranslator.pointer(x: 7, y: 4, buttonState: 0, eventFlags: 0) == .pointer(Point(x: 7, y: 4), pressed: false))
-        #expect(WindowsInputTranslator.pointer(x: 7, y: 4, buttonState: 1, eventFlags: 1) == nil)
-    }
 }
-
-#endif

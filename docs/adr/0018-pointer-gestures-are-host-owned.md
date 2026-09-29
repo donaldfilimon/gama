@@ -1,11 +1,17 @@
 # 0018 — Pointer gestures are host-owned
 
 Status: Accepted. Implemented in GamaCore and unit-tested
-(`PointerGestureTests`) on macOS only; no backend emits the new event yet,
-so nothing is claimed in [the capability ledger](../Capabilities.md). Backend
-translation is phase 2 of the
+(`PointerGestureTests`) on macOS. Phase 2 of the
 [dock system design](../superpowers/specs/2026-09-23-dock-system-design.md)
-and of the [pointer input plan](../superpowers/plans/2026-09-29-pointer-input.md).
+and of the [pointer input plan](../superpowers/plans/2026-09-29-pointer-input.md)
+added the backend translations: AppKit and UIKit (`AppleHostPointerTests`
+drives AppKit; UIKit is compiled for iOS, tvOS and visionOS but not run),
+terminal SGR and the Windows console translator (`PointerBackendTests`, run
+on macOS; no Windows console run), the WASM v3 pointer exports (Node and
+browser smokes) and the C embed pointer entry points (`EmbedPointerABITests`
+and the C consumer). Nothing is claimed in
+[the capability ledger](../Capabilities.md); rows arrive with backend
+evidence at the layer it supports.
 
 ## Context
 

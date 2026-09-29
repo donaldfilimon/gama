@@ -166,6 +166,11 @@ public protocol Renderer {
     /// unaffected.
     mutating func emit(_ lines: [String]) throws(Failure)
 
+    /// The interaction family this backend's input comes from. It selects
+    /// the pointer recognition policy of the host ``AppRuntime`` creates
+    /// (ADR 0018); defaults to ``InteractionIdiom/desktop``.
+    var interactionIdiom: InteractionIdiom { get }
+
     /// Whether this backend has an input source worth waiting on.
     ///
     /// Terminals, GUI hosts, and browsers do, so the default is `true`. A
@@ -177,6 +182,9 @@ public protocol Renderer {
 }
 
 extension Renderer {
+    /// Backends are desktop-class unless they say otherwise.
+    public var interactionIdiom: InteractionIdiom { .desktop }
+
     /// Backends have an input source unless they say otherwise.
     public var waitsForInput: Bool { true }
 
@@ -250,7 +258,8 @@ public struct AppRuntime<A: App, R: Renderer>: ~Copyable {
         renderer: R,
         frameTimeoutMillis: Int = 250
     ) throws(SceneConfigurationError) {
-        self.pump = HostPump(host: try FrameHost(app: app), size: renderer.size)
+        self.pump = HostPump(
+            host: try FrameHost(app: app, idiom: renderer.interactionIdiom), size: renderer.size)
         self.renderer = renderer
         self.frameTimeoutMillis = frameTimeoutMillis
     }

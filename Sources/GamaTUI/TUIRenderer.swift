@@ -44,6 +44,10 @@ public final class TUIRenderer: Renderer {
         self.buffer = b
     }
 
+    /// A character terminal: one-cell drag threshold and no long press,
+    /// since SGR and console mouse reports carry no clock (ADR 0018).
+    public var interactionIdiom: InteractionIdiom { .terminal }
+
     /// The live terminal size in character cells, or the 80×24 default
     /// before `begin()`.
     public var size: Size {

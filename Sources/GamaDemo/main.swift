@@ -169,7 +169,7 @@ if wantsMLIR {
 // instead of using the plugin-free App.main(renderer:) convenience.
 func runDemoWithPlugins() throws {
     let box = PluginRuntimeBox()
-    var host = try FrameHost(app: DemoApp(pluginBox: box))
+    var host = try FrameHost(app: DemoApp(pluginBox: box), idiom: .terminal)
     let plugins = PluginRuntime(
         grants: CapabilityGrants(table: ["dev.gama.demo.status": [.log, .clock]]),
         services: .standard,

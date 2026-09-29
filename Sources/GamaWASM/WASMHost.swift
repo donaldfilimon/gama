@@ -42,6 +42,7 @@ func gama_js_requestFrame()
 private protocol AnyWASMHost: AnyObject {
     func frame()
     func handle(_ event: InputEvent)
+    var pointerDeadlineMillis: UInt64? { get }
 }
 
 private final class WASMHostBox<A: App>: AnyWASMHost {
@@ -51,12 +52,14 @@ private final class WASMHostBox<A: App>: AnyWASMHost {
     /// it, so it holds a `CellSerializer`, not a `CellPresenter`.
     let serializer = HTMLSerializer()
 
-    init(app: A, size: Size) throws(SceneConfigurationError) {
-        self.pump = HostPump(host: try FrameHost(app: app), size: size)
+    init(app: A, size: Size, idiom: InteractionIdiom) throws(SceneConfigurationError) {
+        self.pump = HostPump(host: try FrameHost(app: app, idiom: idiom), size: size)
         self.buffer = CellBuffer(size: size)
     }
 
     var size: Size { pump.size }
+
+    var pointerDeadlineMillis: UInt64? { pump.pointerDeadlineMillis }
 
     func handle(_ event: InputEvent) {
         // Eager resize and the buffer resize are the shared pump's job now.
@@ -92,13 +95,17 @@ public enum GamaWeb {
     /// top-level code once at `_initialize`). A successful second call replaces
     /// the previous host wholesale (its subscriptions and state are dropped);
     /// construction failure leaves the previous host installed. Ownership of
-    /// the app region transfers into the installed reactor host.
+    /// the app region transfers into the installed reactor host. `idiom`
+    /// selects the pointer recognition policy for `gama_web_v3_pointer_event`
+    /// samples (ADR 0018).
     public static func install<A: App>(
         app: sending A,
         columns: Int = 100,
-        rows: Int = 30
+        rows: Int = 30,
+        idiom: InteractionIdiom = .desktop
     ) throws(SceneConfigurationError) {
-        unsafe installed = try WASMHostBox(app: app, size: Size(width: columns, height: rows))
+        unsafe installed = try WASMHostBox(
+            app: app, size: Size(width: columns, height: rows), idiom: idiom)
         let title = Array("Gama".utf8)
         title.withUnsafeBufferPointer { unsafe gama_js_setTitle($0.baseAddress, Int32($0.count)) }
         gama_js_requestFrame()
@@ -207,6 +214,48 @@ nonisolated func gama_web_v2_pointer(
     guard let host = GamaWeb.current else { return -1 }
     host.handle(.pointer(Point(x: Int(col), y: Int(row)), pressed: pressed != 0))
     return 0
+}
+
+// The v3 tier adds rich pointer samples (ADR 0018) beside the unchanged v1
+// and v2 families. Codes are the shared wire tables in GamaDraw's
+// `PointerWire` (the same ones `GamaEmbed.h` names): -1 no host installed,
+// checked first, then -2 for a code outside the tables. The clock is a
+// JavaScript `performance.now()` reading; a negative or non-finite value
+// means no clock.
+
+@_cdecl("gama_web_v3_pointer_event")
+nonisolated func gama_web_v3_pointer_event(
+    _ phase: Int32,
+    _ kind: Int32,
+    _ button: Int32,
+    _ modifiers: Int32,
+    _ col: Int32,
+    _ row: Int32,
+    _ scrollCols: Int32,
+    _ scrollRows: Int32,
+    _ pointerID: Int32,
+    _ timestampMillis: Double
+) -> Int32 {
+    guard let host = GamaWeb.current else { return -1 }
+    guard
+        let event = PointerWire.event(
+            phase: phase, kind: kind, button: button, modifiers: modifiers,
+            column: col, row: row, scrollColumns: scrollCols, scrollRows: scrollRows,
+            pointerID: pointerID,
+            timestampMillis: PointerWire.timestampMillis(fromJavaScript: timestampMillis))
+    else { return -2 }
+    host.handle(.pointerEvent(event))
+    return 0
+}
+
+/// The pending long-press deadline on the `performance.now()` clock, `-3`
+/// when no press is waiting on one, or `-1` when no host is installed. The
+/// page delivers a stationary sample for the captured pointer at that time.
+@_cdecl("gama_web_v3_pointer_deadline")
+nonisolated func gama_web_v3_pointer_deadline() -> Double {
+    guard let host = GamaWeb.current else { return -1 }
+    guard let deadline = host.pointerDeadlineMillis else { return -3 }
+    return Double(deadline)
 }
 
 @_cdecl("gama_web_v1_resize")

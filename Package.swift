@@ -46,6 +46,8 @@ let wasmReactorLinkerSettings: [LinkerSetting] = [
         "-Xlinker", "--export=gama_web_v2_key",
         "-Xlinker", "--export=gama_web_v2_pointer",
         "-Xlinker", "--export=gama_web_v2_resize",
+        "-Xlinker", "--export=gama_web_v3_pointer_event",
+        "-Xlinker", "--export=gama_web_v3_pointer_deadline",
     ], .when(platforms: [.wasi])),
 ]
 

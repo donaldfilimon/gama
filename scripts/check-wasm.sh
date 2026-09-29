@@ -34,13 +34,15 @@ for target in GamaCore GamaDraw GamaWASM; do
     "$ROOT/scripts/check-portable-symbols.sh" "$target (WASM)" "${objects[@]}"
 done
 "$SWIFT" build --package-path "$ROOT" --scratch-path "$SCRATCH" --swift-sdk "$SDK" --product gama-web-demo
-# The browser host is v2-only: every event reaches the module through a
+# The browser host never calls v1: every event reaches the module through a
 # status-returning export, which is what lets the page name a failed install.
-# All four calls are required individually — an alternation would pass with
-# one — and any remaining v1 call fails closed, so a half-migration cannot.
-for event in frame key pointer resize; do
-  grep -q "exports\.gama_web_v2_${event}(" "$ROOT/WebHost/gama.js" || {
-    echo "error: WebHost/gama.js does not call gama_web_v2_${event}" >&2
+# Frames, keys and resizes use v2; pointers use the v3 rich-sample tier
+# (ADR 0018). Each call is required individually — an alternation would pass
+# with one — and any remaining v1 call fails closed, so a half-migration
+# cannot.
+for export in v2_frame v2_key v2_resize v3_pointer_event v3_pointer_deadline; do
+  grep -q "exports\.gama_web_${export}(" "$ROOT/WebHost/gama.js" || {
+    echo "error: WebHost/gama.js does not call gama_web_${export}" >&2
     exit 1
   }
 done

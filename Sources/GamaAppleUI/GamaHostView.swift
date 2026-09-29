@@ -1,7 +1,10 @@
 //  GamaHostView.swift — GamaAppleUI
 //  Native Apple GUI backend: an NSView/UIView that hosts a Gama app,
 //  drawing the shared DrawList through CoreGraphics with a monospaced
-//  system font. Keyboard + mouse on macOS; taps on iOS/tvOS/visionOS.
+//  system font. Keyboard, mouse, trackpad and pen on macOS; touch, pencil,
+//  pointer hover and scroll on iOS/visionOS; taps on tvOS. Pointer input is
+//  translated into raw `PointerEvent` samples; FrameHost recognizes the
+//  gestures (ADR 0018).
 //  Entire target is @MainActor — UIKit/AppKit isolation is enforced by
 //  the compiler, not convention.
 //
@@ -174,6 +177,26 @@ public final class GamaHostView: GamaPlatformView {
     /// Regions whose attached view was given first responder last frame.
     private var focusedNativeRegions: Set<NativeRegionID> = []
 
+    // MARK: Pointer (ADR 0018)
+    /// Reads the installed host's pending long-press deadline.
+    private var pointerDeadline: (@MainActor () -> UInt64?)?
+    /// The one-shot timer delivering the stationary sample at the deadline.
+    private var pointerDeadlineTimer: Timer?
+    /// The deadline the timer is armed for. Package-only so a test can check
+    /// the timer follows the host without spinning the run loop.
+    package private(set) var armedPointerDeadlineMillis: UInt64?
+    /// The pressed pointer and where it was last seen, so the deadline sample
+    /// is for that same pointer at that same cell.
+    private var pressedPointer: (location: Point, kind: PointerEvent.Kind, pointerID: Int)?
+    /// Sub-cell scroll travel carried to the next scroll event.
+    private var scrollRemainder = CGSize.zero
+    #if canImport(UIKit)
+        /// The one touch being translated, tracked by identity.
+        private var trackedTouch: UITouch?
+        /// Pointer identity handed to FrameHost; a new one per tracked touch.
+        private var nextTouchID = 0
+    #endif
+
     // MARK: Init
 
     /// Creates a zero-frame view with `app` installed — one-step shorthand
@@ -211,11 +234,44 @@ public final class GamaHostView: GamaPlatformView {
         let probe = NSAttributedString(string: "M", attributes: [.font: font])
         let s = probe.size()
         cellSize = CGSize(width: ceil(s.width), height: ceil(s.height))
-        #if canImport(UIKit)
+        #if canImport(AppKit)
+            // `.inVisibleRect` keeps the area matched to the visible bounds,
+            // so `updateTrackingAreas` has nothing to recompute.
+            addTrackingArea(
+                NSTrackingArea(
+                    rect: .zero,
+                    options: [.mouseMoved, .mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+                    owner: self, userInfo: nil))
+        #else
             #if !os(tvOS)
                 isMultipleTouchEnabled = false
+                let hover = UIHoverGestureRecognizer(target: self, action: #selector(hovered(_:)))
+                addGestureRecognizer(hover)
+                let scroll = UIPanGestureRecognizer(target: self, action: #selector(scrolled(_:)))
+                // Indirect scrolling only (trackpad, mouse wheel): touches
+                // stay with `touchesBegan` and friends.
+                scroll.allowedScrollTypesMask = .all
+                scroll.allowedTouchTypes = []
+                addGestureRecognizer(scroll)
             #endif
             backgroundColor = defaultBackground
+        #endif
+    }
+
+    /// The interaction idiom this host's `FrameHost` recognizes gestures
+    /// with: desktop on macOS, and on UIKit the device idiom (a Mac Catalyst
+    /// or "designed for iPad" app on a Mac counts as desktop).
+    package var interactionIdiom: InteractionIdiom {
+        #if canImport(AppKit)
+            return .desktop
+        #elseif os(visionOS)
+            return .vision
+        #else
+            switch traitCollection.userInterfaceIdiom {
+            case .phone: return .phone
+            case .mac: return .desktop
+            default: return .pad
+            }
         #endif
     }
 
@@ -243,9 +299,14 @@ public final class GamaHostView: GamaPlatformView {
         // its model subscriptions instead of silently orphaning them.
         tearDownSession?()
 
-        let session = Session(surface: surface, size: gridSize())
+        let session = Session(surface: surface, size: gridSize(), idiom: interactionIdiom)
         tearDownSession = {
             session.pump.cancelSubscriptions()
+        }
+        cancelPointerDeadline()
+        pressedPointer = nil
+        pointerDeadline = {
+            session.pump.pointerDeadlineMillis
         }
 
         driver = { [weak self] in
@@ -269,6 +330,10 @@ public final class GamaHostView: GamaPlatformView {
         handleEvent = { [weak self] event in
             session.pump.handle(event)
             self?.pumpIfNeeded(session.pump.needsFrame)
+            // Any event can move the long-press deadline: a pointer sample,
+            // Escape, a lifecycle cancel, or a pump that dropped the pressed
+            // node.
+            self?.armPointerDeadline()
             self?.afterEventDispatch?()
         }
         driver?()
@@ -288,6 +353,9 @@ public final class GamaHostView: GamaPlatformView {
         invalidateHost = nil
         handleEvent = nil
         afterEventDispatch = nil
+        pointerDeadline = nil
+        cancelPointerDeadline()
+        pressedPointer = nil
     }
 
     /// Requests a frame after application state changes outside a Gama event.
@@ -461,10 +529,106 @@ public final class GamaHostView: GamaPlatformView {
     private final class Session {
         var pump: HostPump
         var buffer: CellBuffer
-        init(surface: SceneSurface, size: Size) {
-            pump = HostPump(host: FrameHost(surface: surface), size: size)
+        init(surface: SceneSurface, size: Size, idiom: InteractionIdiom) {
+            pump = HostPump(host: FrameHost(surface: surface, idiom: idiom), size: size)
             buffer = CellBuffer(size: size)
         }
+    }
+
+    // MARK: Pointer samples (ADR 0018)
+
+    /// Routes one raw pointer sample to the host and remembers the pressed
+    /// pointer; the event route re-arms the long-press timer afterwards.
+    private func sendPointer(_ sample: PointerEvent) {
+        switch sample.phase {
+        case .down:
+            pressedPointer = (sample.location, sample.kind, sample.pointerID)
+        case .move:
+            if pressedPointer?.pointerID == sample.pointerID {
+                pressedPointer?.location = sample.location
+            }
+        case .up, .cancel:
+            if pressedPointer?.pointerID == sample.pointerID { pressedPointer = nil }
+        case .hover, .scroll, .stationary:
+            break
+        }
+        handleEvent?(.pointerEvent(sample))
+    }
+
+    /// Arms the one-shot timer for the host's pending deadline, or cancels
+    /// it when there is none. The timer runs on the main run loop, so its
+    /// callback is already on the main actor.
+    private func armPointerDeadline() {
+        let deadline = pointerDeadline?()
+        guard deadline != armedPointerDeadlineMillis else { return }
+        cancelPointerDeadline()
+        guard let deadline else { return }
+        armedPointerDeadlineMillis = deadline
+        let now = Self.uptimeMillis()
+        let delay = deadline > now ? Double(deadline - now) / 1000 : 0
+        pointerDeadlineTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) {
+            [weak self] _ in
+            MainActor.assumeIsolated { self?.deliverPointerDeadline() }
+        }
+    }
+
+    private func cancelPointerDeadline() {
+        pointerDeadlineTimer?.invalidate()
+        pointerDeadlineTimer = nil
+        armedPointerDeadlineMillis = nil
+    }
+
+    /// Delivers the stationary sample the armed deadline is waiting for, for
+    /// the pressed pointer at its last cell. The timer calls this; it is
+    /// package-visible so a test can fire it without waiting.
+    package func deliverPointerDeadline() {
+        guard let deadline = armedPointerDeadlineMillis else { return }
+        cancelPointerDeadline()
+        guard let pressed = pressedPointer else { return }
+        sendPointer(
+            PointerEvent(
+                phase: .stationary, location: pressed.location, kind: pressed.kind,
+                pointerID: pressed.pointerID, timestampMillis: max(Self.uptimeMillis(), deadline)))
+    }
+
+    /// Milliseconds since boot: the clock `NSEvent.timestamp` and
+    /// `UITouch.timestamp` count in, so timer samples and platform samples
+    /// compare.
+    private static func uptimeMillis() -> UInt64 {
+        millis(ProcessInfo.processInfo.systemUptime)
+    }
+
+    private static func millis(_ seconds: TimeInterval) -> UInt64 {
+        seconds > 0 ? UInt64(seconds * 1000) : 0
+    }
+
+    /// Converts a scroll delta into whole cells, carrying the fraction in
+    /// `remainder`. `precise` deltas are points (trackpad, Magic Mouse) and
+    /// are divided by the cell size; line deltas are one cell per line. The
+    /// platform's positive delta reveals content above or to the left, so it
+    /// is negated into Gama's sign (positive reveals the lines below).
+    package static func scrollCells(
+        deltaX: CGFloat, deltaY: CGFloat, precise: Bool, cellSize: CGSize,
+        remainder: inout CGSize
+    ) -> Point {
+        let width = precise ? max(cellSize.width, 1) : 1
+        let height = precise ? max(cellSize.height, 1) : 1
+        remainder.width -= deltaX / width
+        remainder.height -= deltaY / height
+        let columns = remainder.width.rounded(.towardZero)
+        let rows = remainder.height.rounded(.towardZero)
+        remainder.width -= columns
+        remainder.height -= rows
+        return Point(x: Int(columns), y: Int(rows))
+    }
+
+    /// Grid cell under a view-local point; floors, so a drag past the top or
+    /// left edge reports a negative cell rather than cell zero.
+    private func cell(atLocal local: CGPoint) -> Point {
+        guard cellSize.width > 0, cellSize.height > 0 else { return Point(x: 0, y: 0) }
+        return Point(
+            x: Int((local.x / cellSize.width).rounded(.down)),
+            y: Int((local.y / cellSize.height).rounded(.down)))
     }
 
     private func pumpIfNeeded(_ needed: Bool) {
@@ -715,23 +879,87 @@ public final class GamaHostView: GamaPlatformView {
             handleEvent?(.key(key))
         }
 
-        /// Routes a left-button press to the host as a pressed pointer
-        /// event at the clicked cell.
-        public override func mouseDown(with event: NSEvent) {
-            handleEvent?(.pointer(gridPoint(event.locationInWindow), pressed: true))
+        /// Routes a primary-button press to the host as a down sample.
+        public override func mouseDown(with event: NSEvent) { sendMouse(.down, event) }
+        /// Routes a primary-button drag to the host as a move sample.
+        public override func mouseDragged(with event: NSEvent) { sendMouse(.move, event) }
+        /// Routes a primary-button release to the host as an up sample.
+        public override func mouseUp(with event: NSEvent) { sendMouse(.up, event) }
+        /// Routes a secondary-button press to the host as a down sample,
+        /// instead of AppKit's default context menu.
+        public override func rightMouseDown(with event: NSEvent) { sendMouse(.down, event) }
+        /// Routes a secondary-button drag to the host as a move sample.
+        public override func rightMouseDragged(with event: NSEvent) { sendMouse(.move, event) }
+        /// Routes a secondary-button release to the host as an up sample.
+        public override func rightMouseUp(with event: NSEvent) { sendMouse(.up, event) }
+        /// Routes a middle or other button press to the host as a down sample.
+        public override func otherMouseDown(with event: NSEvent) { sendMouse(.down, event) }
+        /// Routes a middle or other button drag to the host as a move sample.
+        public override func otherMouseDragged(with event: NSEvent) { sendMouse(.move, event) }
+        /// Routes a middle or other button release to the host as an up sample.
+        public override func otherMouseUp(with event: NSEvent) { sendMouse(.up, event) }
+        /// Routes pointer motion with no button held (from the tracking
+        /// area) to the host as a hover sample.
+        public override func mouseMoved(with event: NSEvent) { sendMouse(.hover, event) }
+
+        /// Reports the pointer leaving the view as a hover outside the grid,
+        /// which clears hover. It is not a cancel: a drag captured outside
+        /// the view keeps arriving through `mouseDragged`.
+        public override func mouseExited(with event: NSEvent) {
+            sendPointer(
+                PointerEvent(
+                    phase: .hover, location: Point(x: -1, y: -1),
+                    modifiers: Self.modifiers(event.modifierFlags),
+                    timestampMillis: Self.millis(event.timestamp)))
         }
 
-        /// Routes a left-button release to the host as a released pointer
-        /// event at the clicked cell.
-        public override func mouseUp(with event: NSEvent) {
-            handleEvent?(.pointer(gridPoint(event.locationInWindow), pressed: false))
+        /// Accumulates wheel and trackpad scrolling into whole cells and
+        /// routes each whole-cell step to the host as a scroll sample.
+        public override func scrollWheel(with event: NSEvent) {
+            let cells = Self.scrollCells(
+                deltaX: event.scrollingDeltaX, deltaY: event.scrollingDeltaY,
+                precise: event.hasPreciseScrollingDeltas, cellSize: cellSize,
+                remainder: &scrollRemainder)
+            guard cells != Point(x: 0, y: 0) else { return }
+            sendPointer(
+                PointerEvent(
+                    phase: .scroll, location: gridPoint(event.locationInWindow),
+                    modifiers: Self.modifiers(event.modifierFlags), scroll: cells,
+                    timestampMillis: Self.millis(event.timestamp)))
+        }
+
+        private func sendMouse(_ phase: PointerEvent.Phase, _ event: NSEvent) {
+            sendPointer(
+                PointerEvent(
+                    phase: phase, location: gridPoint(event.locationInWindow),
+                    kind: event.subtype == .tabletPoint ? .pen : .mouse,
+                    button: phase == .hover ? 0 : Self.button(event),
+                    modifiers: Self.modifiers(event.modifierFlags),
+                    timestampMillis: Self.millis(event.timestamp)))
         }
 
         private func gridPoint(_ windowPoint: NSPoint) -> Point {
-            let local = convert(windowPoint, from: nil)
-            return Point(
-                x: Int(local.x / cellSize.width),
-                y: Int(local.y / cellSize.height))
+            cell(atLocal: convert(windowPoint, from: nil))
+        }
+
+        /// The button from the event type, which is authoritative for the
+        /// left and right families; `buttonNumber` only distinguishes the
+        /// other buttons (2 is middle).
+        private static func button(_ event: NSEvent) -> Int {
+            switch event.type {
+            case .leftMouseDown, .leftMouseDragged, .leftMouseUp: return 0
+            case .rightMouseDown, .rightMouseDragged, .rightMouseUp: return 1
+            default: return max(2, event.buttonNumber)
+            }
+        }
+
+        private static func modifiers(_ flags: NSEvent.ModifierFlags) -> PointerEvent.Modifiers {
+            var modifiers: PointerEvent.Modifiers = []
+            if flags.contains(.shift) { modifiers.insert(.shift) }
+            if flags.contains(.control) { modifiers.insert(.control) }
+            if flags.contains(.option) { modifiers.insert(.option) }
+            if flags.contains(.command) { modifiers.insert(.command) }
+            return modifiers
         }
 
         private static func key(from event: NSEvent) -> Key? {
@@ -762,26 +990,102 @@ public final class GamaHostView: GamaPlatformView {
 
         // MARK: Events — iOS/tvOS/visionOS
 
-        /// Routes the first touch's landing to the host as a pressed
-        /// pointer event at the touched cell.
+        /// Starts tracking the first touch that lands, by identity, and
+        /// routes it to the host as a down sample. Later touches are ignored
+        /// until it lifts: one pointer is captured at a time.
         public override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-            guard let t = touches.first else { return }
-            handleEvent?(.pointer(gridPoint(t.location(in: self)), pressed: true))
+            guard trackedTouch == nil, let t = touches.first else { return }
+            trackedTouch = t
+            nextTouchID &+= 1
+            sendTouch(.down, t, event)
         }
 
-        /// Routes the first touch's lift to the host as a released pointer
-        /// event at the touched cell.
+        /// Routes the tracked touch's movement to the host as a move sample.
+        public override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+            guard let t = trackedTouch, touches.contains(t) else { return }
+            sendTouch(.move, t, event)
+        }
+
+        /// Routes the tracked touch's lift to the host as an up sample.
         public override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-            guard let t = touches.first else { return }
-            handleEvent?(.pointer(gridPoint(t.location(in: self)), pressed: false))
+            guard let t = trackedTouch, touches.contains(t) else { return }
+            sendTouch(.up, t, event)
+            trackedTouch = nil
         }
 
-        /// Treats a cancelled touch like a release, so a pressed pointer
-        /// never sticks.
+        /// Routes a cancelled tracked touch to the host as a cancel sample,
+        /// so a captured gesture ends with `cancelled` and never sticks.
         public override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
-            guard let t = touches.first else { return }
-            handleEvent?(.pointer(gridPoint(t.location(in: self)), pressed: false))
+            guard let t = trackedTouch, touches.contains(t) else { return }
+            sendTouch(.cancel, t, event)
+            trackedTouch = nil
         }
+
+        private func sendTouch(_ phase: PointerEvent.Phase, _ touch: UITouch, _ event: UIEvent?) {
+            sendPointer(
+                PointerEvent(
+                    phase: phase, location: gridPoint(touch.location(in: self)),
+                    kind: Self.kind(touch.type),
+                    modifiers: Self.modifiers(event?.modifierFlags ?? []),
+                    pointerID: nextTouchID, timestampMillis: Self.millis(touch.timestamp)))
+        }
+
+        /// `.direct` is a finger, `.pencil` a stylus, and an indirect pointer
+        /// (trackpad or mouse on iPad) a cursor.
+        private static func kind(_ type: UITouch.TouchType) -> PointerEvent.Kind {
+            switch type {
+            case .pencil: return .pen
+            case .indirectPointer: return .mouse
+            default: return .touch
+            }
+        }
+
+        private static func modifiers(_ flags: UIKeyModifierFlags) -> PointerEvent.Modifiers {
+            var modifiers: PointerEvent.Modifiers = []
+            if flags.contains(.shift) { modifiers.insert(.shift) }
+            if flags.contains(.control) { modifiers.insert(.control) }
+            if flags.contains(.alternate) { modifiers.insert(.option) }
+            if flags.contains(.command) { modifiers.insert(.command) }
+            return modifiers
+        }
+
+        #if !os(tvOS)
+            /// Pointer hover (iPad trackpad or mouse, visionOS gaze) as hover
+            /// samples; the end of a hover is a hover outside the grid.
+            @objc private func hovered(_ recognizer: UIHoverGestureRecognizer) {
+                let location: Point
+                switch recognizer.state {
+                case .began, .changed: location = gridPoint(recognizer.location(in: self))
+                default: location = Point(x: -1, y: -1)
+                }
+                sendPointer(
+                    PointerEvent(
+                        phase: .hover, location: location,
+                        modifiers: Self.modifiers(recognizer.modifierFlags),
+                        timestampMillis: Self.uptimeMillis()))
+            }
+
+            /// Indirect scrolling (trackpad, wheel) as scroll samples; the
+            /// pan translation is consumed each callback and accumulated
+            /// into whole cells.
+            @objc private func scrolled(_ recognizer: UIPanGestureRecognizer) {
+                guard recognizer.state == .began || recognizer.state == .changed else {
+                    scrollRemainder = .zero
+                    return
+                }
+                let translation = recognizer.translation(in: self)
+                recognizer.setTranslation(.zero, in: self)
+                let cells = Self.scrollCells(
+                    deltaX: translation.x, deltaY: translation.y, precise: true,
+                    cellSize: cellSize, remainder: &scrollRemainder)
+                guard cells != Point(x: 0, y: 0) else { return }
+                sendPointer(
+                    PointerEvent(
+                        phase: .scroll, location: gridPoint(recognizer.location(in: self)),
+                        modifiers: Self.modifiers(recognizer.modifierFlags), scroll: cells,
+                        timestampMillis: Self.uptimeMillis()))
+            }
+        #endif
 
         /// Translates hardware key presses (`UIPress.key`) into Gama keys
         /// and routes them to the host, forwarding any press it cannot
@@ -797,9 +1101,7 @@ public final class GamaHostView: GamaPlatformView {
         }
 
         private func gridPoint(_ local: CGPoint) -> Point {
-            Point(
-                x: Int(local.x / cellSize.width),
-                y: Int(local.y / cellSize.height))
+            cell(atLocal: local)
         }
 
         // Hardware keyboard (iPad etc.)

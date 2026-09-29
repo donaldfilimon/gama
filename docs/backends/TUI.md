@@ -77,7 +77,27 @@ A clean close also returns all five managed signal dispositions to the host:
 
 POSIX input is decoded byte-wise from termios (escape sequences, UTF-8,
 mouse); Windows uses `ReadConsoleInputW`, so no ANSI input parsing exists on
-that path. Ctrl-C arrives as a key event (`ISIG` is disabled) and
+that path.
+
+Mouse reports become raw `PointerEvent` samples (ADR 0018), and `TUIRenderer`
+reports the `terminal` idiom, so `FrameHost` recognizes gestures with a
+one-cell drag threshold and no long press (neither report format carries a
+clock). When the capability report marks the mouse supported, raw mode
+enables press and release (`?1000h`), button-held motion (`?1002h`) and SGR
+encoding (`?1006h`), and the disable sequence, including the rescue copy,
+turns all three off. The SGR decoder reads the button bits (0 left, 1 middle,
+2 right, mapped to Gama's 0 primary, 2 middle, 1 secondary), +4 shift, +8 alt,
++16 ctrl, +32 motion (a held button moves; button 3 hovers) and 64-67 the
+wheel (up, down, left, right). A wheel is a scroll sample, no longer a press
+that activated the region under the pointer. The Windows translator keeps
+the last button state, since a console record reports the current state
+rather than the change: press and release records (and the double-click
+record, the second press) become down and up for the changed button,
+`MOUSE_MOVED` moves while a button is held and hovers otherwise,
+`MOUSE_WHEELED` and `MOUSE_HWHEELED` scroll by notch, and the control-key
+state supplies shift, ctrl and alt. Both translators are plain integer logic
+outside every platform `#if`, so `PointerBackendTests` runs them on every
+host; the Windows console itself is not exercised on macOS. Ctrl-C arrives as a key event (`ISIG` is disabled) and
 `FrameHost` maps Ctrl-C/Ctrl-Q to `wantsQuit`. Resize arrives via
 `SIGWINCH`: the handler sets a flag, `nextEvent` drains it ahead of
 buffered input, and the shared `HostPump` applies it eagerly — the same

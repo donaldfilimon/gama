@@ -69,7 +69,10 @@ public struct PointerEvent: Hashable, Sendable {
     public var button: Int
     /// Modifiers held during the sample.
     public var modifiers: Modifiers
-    /// Scroll delta in cells (columns, lines) for ``Phase/scroll``; zero otherwise.
+    /// Scroll delta in cells (columns, lines) for ``Phase/scroll``; zero
+    /// otherwise. Every backend uses one sign: positive `y` reveals the
+    /// lines below (wheel toward the user, two-finger swipe up on a natural
+    /// trackpad), positive `x` the columns to the right.
     public var scroll: Point
     /// Identity of the pointer or contact. One pointer is captured at a
     /// time; samples from any other identity are ignored while it is.
