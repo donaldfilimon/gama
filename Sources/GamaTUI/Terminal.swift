@@ -252,12 +252,7 @@ public struct Terminal: ~Copyable {
             return .resize(size())
         }
         if let event = decodeOne() { return event }
-        let hasLoneEscape = pendingBytes.count == 1 && pendingBytes[0] == 0x1B
-        if hasLoneEscape && loneEscapeGraceExpired() {
-            pendingBytes.removeAll(keepingCapacity: true)
-            loneEscapeStartedAt = nil
-            return .key(.escape)
-        }
+        if let e = takeExpiredLoneEscape() { return e }
         let hasPartialSequence = !pendingBytes.isEmpty
         do {
             var fds = pollfd(fd: inputFD, events: Int16(POLLIN), revents: 0)
@@ -284,12 +279,7 @@ public struct Terminal: ~Copyable {
                 return .resize(size())
             }
             if r == 0 {
-                if pendingBytes.count == 1 && pendingBytes[0] == 0x1B
-                    && loneEscapeGraceExpired() {
-                    pendingBytes.removeAll(keepingCapacity: true)
-                    loneEscapeStartedAt = nil
-                    return .key(.escape)
-                }
+                if let e = takeExpiredLoneEscape() { return e }
                 return nil
             }
             guard fds.revents & Int16(POLLIN) != 0 else {
@@ -375,6 +365,18 @@ public struct Terminal: ~Copyable {
         }
         guard let ch = decoded.first else { return nil }
         return .key(.character(ch))
+    }
+
+    /// Emits a buffered lone ESC as `.escape` once its grace period has
+    /// expired. The condition order matters: `loneEscapeGraceExpired()`
+    /// starts the grace timer on its first call, so it must only run when
+    /// exactly one ESC byte is pending.
+    private mutating func takeExpiredLoneEscape() -> InputEvent? {
+        guard pendingBytes.count == 1 && pendingBytes[0] == 0x1B
+            && loneEscapeGraceExpired() else { return nil }
+        pendingBytes.removeAll(keepingCapacity: true)
+        loneEscapeStartedAt = nil
+        return .key(.escape)
     }
 
     /// A zero-timeout fairness poll must not turn a freshly buffered ESC into
