@@ -32,6 +32,11 @@ in the evidence ledger; Developer ID signing and notarization remain
 credential-gated. Placement restoration, close veto, UIKit scene delegates,
 and a Windows GUI are not shipped.
 
+``GamaShell/run(_:presentation:)`` chooses how every window presents its
+surface: ``GamaShellPresentation/cells`` (the default) paints the cell grid,
+and ``GamaShellPresentation/native`` presents AppKit controls laid out in
+points (ADR 0017).
+
 Embedding a Gama surface in an application you own is the separate
 `GamaAppleUI` product; the launch walkthrough, lifecycle detail, and manual
 smoke checklist live in `docs/backends/AppleShell.md`.
@@ -41,3 +46,4 @@ smoke checklist live in `docs/backends/AppleShell.md`.
 ### Application ownership
 
 - ``GamaShell``
+- ``GamaShellPresentation``

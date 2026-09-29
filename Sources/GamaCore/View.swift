@@ -34,6 +34,11 @@ public struct BuildContext {
     /// default is a no-op, so a host-less build renders the fallback and
     /// reports no regions.
     public var registerNativeRegion: (NodeID, NativeRegionID) -> Void
+    /// Registers a control's ``ControlDescriptor`` (ADR 0017) with the owning
+    /// host, for a native presentation host to present the node as a
+    /// platform control. The default is a no-op; the cell path never reads
+    /// the table. A repeated registration for one node keeps the last.
+    public var registerControl: (NodeID, ControlDescriptor) -> Void
     /// Registers a pointer-gesture handler (ADR 0018) for an interactive
     /// node with the owning host. A press on that node captures the pointer
     /// and the host delivers every recognized ``PointerGesture`` to the
@@ -70,6 +75,7 @@ public struct BuildContext {
         ) -> Void = { _, _ in },
         registerNamedAction: @escaping (ActionID, Key?, @escaping () -> Void) -> Void = { _, _, _ in },
         registerNativeRegion: @escaping (NodeID, NativeRegionID) -> Void = { _, _ in },
+        registerControl: @escaping (NodeID, ControlDescriptor) -> Void = { _, _ in },
         registerPointerHandler: @escaping (NodeID, @escaping (PointerGesture) -> Bool) -> Void = { _, _ in },
         registerDropTarget: @escaping (NodeID) -> Void = { _ in },
         requestFocus: @escaping (NodeID) -> Void = { _ in }
@@ -81,6 +87,7 @@ public struct BuildContext {
         self.registerKeyHandler = registerKeyHandler
         self.registerNamedAction = registerNamedAction
         self.registerNativeRegion = registerNativeRegion
+        self.registerControl = registerControl
         self.registerPointerHandler = registerPointerHandler
         self.registerDropTarget = registerDropTarget
         self.requestFocus = requestFocus

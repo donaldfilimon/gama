@@ -891,7 +891,7 @@ public final class GamaHostView: GamaPlatformView {
         /// Translates an AppKit key event into a Gama `Key` and routes it
         /// to the host; keys with no mapping are ignored.
         public override func keyDown(with event: NSEvent) {
-            guard let key = Self.key(from: event) else { return }
+            guard let key = AppKitKeyTranslation.key(from: event) else { return }
             handleEvent?(.key(key))
         }
 
@@ -978,30 +978,6 @@ public final class GamaHostView: GamaPlatformView {
             return modifiers
         }
 
-        private static func key(from event: NSEvent) -> Key? {
-            switch event.keyCode {
-            case 126: return .up
-            case 125: return .down
-            case 123: return .left
-            case 124: return .right
-            case 36, 76: return .enter
-            case 53: return .escape
-            case 48: return event.modifierFlags.contains(.shift) ? .backTab : .tab
-            case 51: return .backspace
-            case 117: return .delete
-            case 115: return .home
-            case 119: return .end
-            case 116: return .pageUp
-            case 121: return .pageDown
-            default: break
-            }
-            guard let chars = event.charactersIgnoringModifiers, let ch = chars.first
-            else { return nil }
-            if event.modifierFlags.contains(.control), ch.isLetter {
-                return .ctrl(Character(ch.lowercased()))
-            }
-            return .character(ch)
-        }
     #else
 
         // MARK: Events — iOS/tvOS/visionOS

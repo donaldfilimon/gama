@@ -4,8 +4,14 @@ Implements [ADR 0017](../../adr/0017-native-presentation.md), which supersedes
 the widget clause of ADR 0001 and the "What 0001 still forbids" section of
 ADR 0016.
 
-**Status: ADR 0017 accepted 2026-09-29. Only plan Task 1 (`LayoutMetrics`)
-is built; Tasks 2 onward are not started.** Originally drafted on branch
+**Status: ADR 0017 accepted 2026-09-29. Plan Tasks 1-6 (the portable
+half: `LayoutMetrics`, host metrics, control descriptors, host activation
+and focus, and the presentation tree and diff) and Tasks 7-10 (the AppKit
+half: `AppKitLayoutMetrics`, `GamaNativeHostView` with native regions, the
+shell's `.native` presentation, and `gama-apple-demo --native` /
+`--native-smoke`) are built and covered by local tests. The full
+`scripts/check.sh` matrix has not been run on them, no capability row
+exists, and the layout-cost measurement under Risks has not been taken.** Originally drafted on branch
 `feat/native-presenters`, stacked on `docs/native-surface-draft` (PR #107,
 which carries native regions and ADR 0016). No row is added to
 `docs/Capabilities.md` until an implementation has evidence at the layer it
@@ -224,9 +230,18 @@ A new `GamaNativeHostView` in `GamaAppleUI`, in its own files so
 
 ## Error handling
 
-- A duplicate control or region `NodeID` in one frame follows the existing
-  `validateIdentities` and `duplicateNativeRegionIDs` behavior: it is
-  reported, and the last registration wins.
+- A duplicate interactive or region `NodeID` in one frame follows the
+  existing `validateIdentities` and `duplicateNativeRegionIDs` behavior: it
+  is reported, and the last registration wins. A duplicate *control*
+  registration is silent last-wins with no separate report: `Toggle`
+  deliberately registers twice (first as the `Button` it is built on, then
+  as `.toggle`), so a report would fire on every correct toggle. The
+  interactive identity itself is still reported through `duplicateIDs`.
+- `PresentedNode.tree` presents each identity once. When an interactive
+  identity occurs more than once, only its last occurrence in pre-order is
+  presented; earlier occurrences are dropped with their subtrees.
+  `PresentationDiff.between` applies the same reduction to any input that
+  repeats an identity.
 - A text measurement AppKit cannot produce (empty or invalid attributed
   string) falls back to `LayoutMetrics.cell` scaled by the cell size, so layout
   never stalls.

@@ -86,6 +86,8 @@ public struct HostPump: ~Copyable {
     /// samples' monotonic milliseconds; a host with a clock delivers a
     /// ``PointerEvent/Phase/stationary`` sample at this time.
     public var pointerDeadlineMillis: UInt64? { host.pointerDeadlineMillis }
+    /// The host's control descriptors for the most recent frame (ADR 0017).
+    public var controls: [NodeID: ControlDescriptor] { host.controls }
 
     /// Routes one event through the shared policy.
     ///
@@ -101,6 +103,18 @@ public struct HostPump: ~Copyable {
         }
         host.handle(event)
     }
+
+    /// The host's focused node; see ``FrameHost/focusedID``.
+    public var focusedID: NodeID? { host.focusedID }
+
+    /// Activates `id` on the host; see ``FrameHost/activate(_:)``.
+    public mutating func activate(_ id: NodeID) { host.activate(id) }
+
+    /// Writes a text field's binding; see ``FrameHost/setText(_:_:)``.
+    public mutating func setText(_ id: NodeID, _ text: String) { host.setText(id, text) }
+
+    /// Moves host focus to `id`; see ``FrameHost/focus(_:)``.
+    public mutating func focus(_ id: NodeID) { host.focus(id) }
 
     /// Marks the host dirty without an input event, for out-of-band model
     /// changes that did not arrive through ``handle(_:)``.

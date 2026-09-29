@@ -50,6 +50,7 @@ private final class HostActionStore {
     /// True while a build pass runs, so a build-time focus request does not
     /// also request another frame.
     var isBuilding = false
+    var controls: [NodeID: ControlDescriptor] = [:]
 
     func beginBuildPass() {
         actions.removeAll(keepingCapacity: true)
@@ -59,6 +60,7 @@ private final class HostActionStore {
         regions.removeAll(keepingCapacity: true)
         pointerHandlers.removeAll(keepingCapacity: true)
         dropTargets.removeAll(keepingCapacity: true)
+        controls.removeAll(keepingCapacity: true)
     }
     func register(_ id: NodeID, action: @escaping () -> Void) { actions[id] = action }
     func registerKey(_ id: NodeID, handler: @escaping (Key) -> Bool) {
@@ -71,6 +73,15 @@ private final class HostActionStore {
         }
     }
     func invoke(_ id: NodeID) { actions[id]?() }
+    func hasAction(_ id: NodeID) -> Bool { actions[id] != nil }
+    /// Whether `id` only displays state: a progress indicator with no
+    /// action. Pointer hit-testing looks through it, so a press lands on
+    /// the interactive node beneath (a progress bar inside a button label
+    /// still presses the button).
+    func isDisplayOnly(_ id: NodeID) -> Bool {
+        guard actions[id] == nil, case .progress? = controls[id] else { return false }
+        return true
+    }
     func invokeKey(_ key: Key, for id: NodeID) -> Bool { keyHandlers[id]?(key) ?? false }
     func effect(for id: ActionID) -> (() -> Void)? { named[id] }
     func shortcutEffect(for key: Key) -> (() -> Void)? {
@@ -79,6 +90,7 @@ private final class HostActionStore {
     }
     func registerRegion(_ id: NodeID, _ region: NativeRegionID) { regions[id] = region }
     func region(for id: NodeID) -> NativeRegionID? { regions[id] }
+    func registerControl(_ id: NodeID, _ descriptor: ControlDescriptor) { controls[id] = descriptor }
     func pointerHandler(for id: NodeID) -> ((PointerGesture) -> Bool)? { pointerHandlers[id] }
     func isDropTarget(_ id: NodeID) -> Bool { dropTargets.contains(id) }
 }
@@ -132,6 +144,9 @@ public struct FrameHost: ~Copyable {
     private let renderScene: (BuildContext) -> RenderNode
     private let deliverLifecycle: (LifecycleEvent) -> Void
     private let windowContext: WindowContext
+    /// Measurements this host lays out with; `.cell` unless a presentation
+    /// host supplies its own (ADR 0017).
+    private let metrics: LayoutMetrics
 
     /// Every interactive node — the pointer hit-test set.
     private var interactive: [InteractiveRegion] = []
@@ -139,7 +154,7 @@ public struct FrameHost: ~Copyable {
     private var focusables: [(id: NodeID, rect: Rect)] = []
     /// Focus is tracked by identity, not index, so it survives rebuilds
     /// that insert or remove unrelated nodes.
-    private var focusedID: NodeID? = nil
+    private var currentFocus: NodeID? = nil
     private let actions = HostActionStore()
 
     /// The interaction family the host was created for; it selects the
@@ -175,6 +190,12 @@ public struct FrameHost: ~Copyable {
     /// recent frame. The last registration wins in ``nativeRegions``.
     public private(set) var duplicateNativeRegionIDs: [NativeRegionID] = []
 
+    /// Control descriptors (ADR 0017) the most recent build registered,
+    /// keyed by the control's node. A node registered more than once keeps
+    /// its last descriptor. A native presentation host reads this; every
+    /// other backend ignores it.
+    public var controls: [NodeID: ControlDescriptor] { actions.controls }
+
     private let dirty: Signal<Bool>
     private let stateStore: HostStateStore
     /// Explicit model observation lifetime owned by this host.
@@ -192,15 +213,24 @@ public struct FrameHost: ~Copyable {
     /// whose `SubscriptionContext` funnels every observed signal change
     /// into that same dirty flag. `idiom` selects the pointer recognition
     /// policy; it defaults to ``InteractionIdiom/desktop``.
-    public init<A: App>(app: A, idiom: InteractionIdiom = .desktop) throws(SceneConfigurationError) {
+    ///
+    /// `metrics` decides what one layout unit is (ADR 0017). The default
+    /// `.cell` makes a unit one cell, exactly as before metrics existed. A
+    /// host with other metrics pumps sizes in its own layout units, while
+    /// ``EnvironmentValues/surfaceSize`` stays in cells: the pump size
+    /// divided per axis by `metrics.units(1, axis)`.
+    public init<A: App>(
+        app: A, idiom: InteractionIdiom = .desktop, metrics: LayoutMetrics = .cell
+    ) throws(SceneConfigurationError) {
         let graph = try compileSceneGraph(app)
         let surface = try graph.makePrimarySurface()
-        self.init(surface: surface, idiom: idiom)
+        self.init(surface: surface, idiom: idiom, metrics: metrics)
         app.connect(subscriptions)
     }
 
-    package init(surface: SceneSurface, idiom: InteractionIdiom = .desktop) {
+    package init(surface: SceneSurface, idiom: InteractionIdiom = .desktop, metrics: LayoutMetrics = .cell) {
         self.idiom = idiom
+        self.metrics = metrics
         self.sceneID = surface.sceneID
         self.windowInstanceID = surface.instanceID
         self.renderScene = surface.render
@@ -242,25 +272,25 @@ public struct FrameHost: ~Copyable {
         dirty.set(false)
 
         var env = EnvironmentValues()
-        env.focusedID = focusedID
+        env.focusedID = currentFocus
         env.windowContext = windowContext
-        env.surfaceSize = size
+        env.surfaceSize = cellSize(of: size)
         env.hoveredID = hoveredID
         var laid = buildFrame(size: size, environment: env)
 
         // Honor the latest focus request if its node is focusable now.
         if let requested = actions.focusRequest, focusables.contains(where: { $0.id == requested }) {
-            focusedID = requested
+            currentFocus = requested
         }
         // Reconcile focus with the new tree.
-        if let id = focusedID, !focusables.contains(where: { $0.id == id }) {
-            focusedID = focusables.first?.id
+        if let id = currentFocus, !focusables.contains(where: { $0.id == id }) {
+            currentFocus = focusables.first?.id
         }
-        if focusedID == nil { focusedID = focusables.first?.id }
-        if env.focusedID != focusedID {
+        if currentFocus == nil { currentFocus = focusables.first?.id }
+        if env.focusedID != currentFocus {
             // Rebuild once so the frame returned by this pump already
             // contains the reconciled focus highlight.
-            env.focusedID = focusedID
+            env.focusedID = currentFocus
             laid = buildFrame(size: size, environment: env)
         }
         // A request is honored by this pump or dropped, including one the
@@ -273,6 +303,16 @@ public struct FrameHost: ~Copyable {
         transientStateIDs = stateStore.transientIDs
         publishNativeRegions()
         return laid
+    }
+
+    /// `size` in layout units converted to whole cells per axis, the unit
+    /// ``EnvironmentValues/surfaceSize`` is authored in. The divisor is at
+    /// least 1, so a degenerate metrics value cannot trap; with `.cell` this
+    /// is the identity.
+    private func cellSize(of size: Size) -> Size {
+        let perColumn = max(1, metrics.units(1, .horizontal))
+        let perRow = max(1, metrics.units(1, .vertical))
+        return Size(width: size.width / perColumn, height: size.height / perRow)
     }
 
     /// Rebuilds the tree and its interaction tables with one consistent
@@ -290,6 +330,7 @@ public struct FrameHost: ~Copyable {
                 actionStore.registerNamed(id, shortcut: shortcut, action: action)
             },
             registerNativeRegion: { id, region in actionStore.registerRegion(id, region) },
+            registerControl: { id, descriptor in actionStore.registerControl(id, descriptor) },
             registerPointerHandler: { id, handler in actionStore.pointerHandlers[id] = handler },
             registerDropTarget: { id in actionStore.dropTargets.insert(id) },
             requestFocus: { id in
@@ -300,9 +341,21 @@ public struct FrameHost: ~Copyable {
         )
         context.stateStore = stateStore
         actionStore.isBuilding = true
-        let tree = renderScene(context)
+        let root = renderScene(context)
         actionStore.isBuilding = false
-        let frame = LayoutEngine.layout(tree, in: Rect(origin: .zero, size: size))
+        // After the build, so the lookup sees this build's control table: a
+        // registered control measures through `descriptorSize` first and
+        // falls back to the base `controlSize`.
+        var frameMetrics = metrics
+        let baseControlSize = metrics.controlSize
+        let descriptorSize = metrics.descriptorSize
+        frameMetrics.controlSize = { id, proposal in
+            if let descriptor = actionStore.controls[id], let size = descriptorSize(descriptor, proposal) {
+                return size
+            }
+            return baseControlSize(id, proposal)
+        }
+        let frame = LayoutEngine.layout(root, in: Rect(origin: .zero, size: size), metrics: frameMetrics)
         interactive.removeAll(keepingCapacity: true)
         frame.collectInteractive(into: &interactive)
         validateIdentities()
@@ -316,7 +369,7 @@ public struct FrameHost: ~Copyable {
     private mutating func publishNativeRegions() {
         let all: [NativeRegionFrame] = interactive.compactMap { item in
             actions.region(for: item.id).map {
-                NativeRegionFrame(id: $0, node: item.id, frame: item.frame, isFocused: item.id == focusedID)
+                NativeRegionFrame(id: $0, node: item.id, frame: item.frame, isFocused: item.id == currentFocus)
             }
         }
         var seen: Set<NativeRegionID> = []
@@ -334,7 +387,7 @@ public struct FrameHost: ~Copyable {
     }
 
     private var focusedIndex: Int? {
-        guard let id = focusedID else { return nil }
+        guard let id = currentFocus else { return nil }
         return focusables.firstIndex { $0.id == id }
     }
 
@@ -364,6 +417,56 @@ public struct FrameHost: ~Copyable {
         dirty.set(true)
     }
 
+    /// The node that holds keyboard focus after the most recent frame or
+    /// focus change, or `nil` when nothing is focusable.
+    public var focusedID: NodeID? { currentFocus }
+
+    /// Activates the interactive node `id` directly, the way a pointer
+    /// press on it does but without hit-testing: a native presentation host
+    /// (ADR 0017) calls it when a platform control fires.
+    ///
+    /// A focusable target takes focus; then per-surface state is rebound,
+    /// the node's action runs, and the host is marked dirty. Unlike a
+    /// pointer press, which marks the host dirty whenever it hits an
+    /// interactive node, a node the latest build registered no action for
+    /// (disabled, not in the tree, or never actionable) is a no-op that
+    /// does not mark the host dirty.
+    public mutating func activate(_ id: NodeID) {
+        guard actions.hasAction(id) else { return }
+        if focusables.contains(where: { $0.id == id }) { currentFocus = id }
+        stateStore.activate()
+        actions.invoke(id)
+        dirty.set(true)
+    }
+
+    /// Writes `text` through the binding of the text field `id`, for a
+    /// native host whose platform editor changed (ADR 0017).
+    ///
+    /// Per-surface state is rebound first, exactly as before an action
+    /// runs, so a component instance rendered by more than one host writes
+    /// this host's `@Reactive` storage. Then the host is marked dirty. A
+    /// node the latest build registered no
+    /// ``ControlDescriptor/textField(placeholder:text:isEnabled:setText:)``
+    /// for is a no-op that does not mark the host dirty.
+    public mutating func setText(_ id: NodeID, _ text: String) {
+        guard case .textField(_, _, _, let write)? = actions.controls[id] else { return }
+        stateStore.activate()
+        write(text)
+        dirty.set(true)
+    }
+
+    /// Moves keyboard focus to the focusable node `id` and marks the host
+    /// dirty, for a native host whose platform focus changed.
+    ///
+    /// A node that already has focus, is not focusable, or is not in the
+    /// latest frame changes nothing and does not mark the host dirty, so a
+    /// host that echoes Gama's own focus change back cannot loop.
+    public mutating func focus(_ id: NodeID) {
+        guard id != currentFocus, focusables.contains(where: { $0.id == id }) else { return }
+        currentFocus = id
+        dirty.set(true)
+    }
+
     /// Routes one input event through the shared interaction policy:
     /// Ctrl-C/Ctrl-Q set `wantsQuit`; Tab and Shift-Tab cycle focus in tab
     /// order; arrow keys move focus spatially; Enter and Space are offered
@@ -372,12 +475,13 @@ public struct FrameHost: ~Copyable {
     /// first, and a declared action shortcut runs only when that handler
     /// declines, so a text field keeps the characters it consumes. Enter
     /// and Space are not shortcuts. A pointer press hit-tests the topmost
-    /// interactive node (focusing it only when focusable): a node with a
+    /// interactive node that is not display-only (a progress indicator is
+    /// looked through), focusing it only when focusable: a node with a
     /// pointer handler captures the pointer and receives recognized
-    /// ``PointerGesture``s (ADR 0018); any other node's action is invoked,
+    /// PointerGestures (ADR 0018); any other node's action is invoked,
     /// as before. Escape, a resign-key, background, close, or terminate
     /// lifecycle event, and an explicit pointer cancel end a captured
-    /// gesture with ``PointerGesture/Phase/cancelled``; Escape is consumed
+    /// gesture with PointerGesture/Phase/cancelled; Escape is consumed
     /// when it does. A resize just marks the host dirty. Whenever an event
     /// changes state, the dirty flag is set so the next `pump` re-renders.
     public mutating func handle(_ event: InputEvent) {
@@ -410,7 +514,7 @@ public struct FrameHost: ~Copyable {
 
         case .key(let key) where key == .up || key == .down || key == .left || key == .right:
             var handled = false
-            if let id = focusedID {
+            if let id = currentFocus {
                 stateStore.activate()
                 if actions.invokeKey(key, for: id) {
                     dirty.set(true)
@@ -428,7 +532,7 @@ public struct FrameHost: ~Copyable {
             }
 
         case .key(let key) where key == .enter || key == .character(" "):
-            if let id = focusedID {
+            if let id = currentFocus {
                 stateStore.activate()
                 // First refusal to the focused node's key handler: an editor
                 // has to be able to type a space, and Enter has to be able to
@@ -460,7 +564,7 @@ public struct FrameHost: ~Copyable {
 
         case .key(let key):
             stateStore.activate()
-            if let id = focusedID, actions.invokeKey(key, for: id) {
+            if let id = currentFocus, actions.invokeKey(key, for: id) {
                 dirty.set(true)
             } else if let effect = actions.shortcutEffect(for: key) {
                 effect()
@@ -513,6 +617,8 @@ public struct FrameHost: ~Copyable {
 
     /// Hit-tests the full interactive set (topmost wins), not just the
     /// focusable subset, so non-focusable targets stay clickable.
+    /// Display-only nodes (progress) are looked through, so the press
+    /// reaches the node beneath them.
     private mutating func pointerDown(_ event: PointerEvent) {
         if let captured = capture {
             // One pointer and one button at a time: another pointer, or a
@@ -522,18 +628,22 @@ public struct FrameHost: ~Copyable {
             guard captured.pointerID == event.pointerID, captured.button == event.button else { return }
             cancelCapture()
         }
-        guard let hit = interactive.last(where: { $0.frame.contains(event.location) }) else { return }
+        guard
+            let hit = interactive.last(where: {
+                $0.frame.contains(event.location) && !actions.isDisplayOnly($0.id)
+            })
+        else { return }
         guard let handler = actions.pointerHandler(for: hit.id) else {
             // No handler: today's activate-on-press, for the primary button.
             guard event.button == 0 else { return }
-            if hit.isFocusable { focusedID = hit.id }
+            if hit.isFocusable { currentFocus = hit.id }
             stateStore.activate()
             actions.invoke(hit.id)
             dirty.set(true)
             return
         }
-        if hit.isFocusable && focusedID != hit.id {
-            focusedID = hit.id
+        if hit.isFocusable && currentFocus != hit.id {
+            currentFocus = hit.id
             dirty.set(true)
         }
         var deadline: UInt64? = nil
@@ -699,7 +809,7 @@ public struct FrameHost: ~Copyable {
         let n = focusables.count
         let current = focusedIndex ?? (delta > 0 ? -1 : 0)
         let next = ((current + delta) % n + n) % n
-        focusedID = focusables[next].id
+        currentFocus = focusables[next].id
         dirty.set(true)
     }
 
@@ -724,7 +834,7 @@ public struct FrameHost: ~Copyable {
             best = (j, score)
         }
         if let best {
-            focusedID = focusables[best.index].id
+            currentFocus = focusables[best.index].id
             dirty.set(true)
         } else {
             moveFocus(by: (dx + dy) >= 0 ? 1 : -1)

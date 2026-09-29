@@ -68,10 +68,62 @@
 # Dictionary specialization, and the synthesized equality of the new value
 # types; the rest is metadata and relocations. A deliberate feature cost, not
 # an accidental dependency; the libm and global-state gates still pass.
+# Re-measured 2026-09-29 at the same compiler revision on
+# feat/native-presentation for native-presentation plan Task 3 (ADR 0017),
+# after Task 2 (FrameHost stores a LayoutMetrics value, +1700, inside the
+# band). New: Sources/GamaCore/ControlDescriptor.swift (a public enum with a
+# closure-carrying case), BuildContext.registerControl, the host's per-build
+# control table, FrameHost.controls and HostPump.controls,
+# LayoutMetrics.descriptorSize, and the per-frame controlSize wrapper
+# FrameHost builds around it. The linked artifact is 800796 bytes, 18832
+# above the 781964 pin, just outside the 2% band. Intended growth for a new
+# side table; no RenderNode case, MLIR op, or DrawList wire changed, and the
+# libm and global-state gates still pass.
+#
+# Re-measured 2026-09-29 at the same compiler revision for plan Task 4:
+# Button, Toggle, TextField, and ProgressView now register descriptors
+# (the text field's with a closure writing its binding), Button hoists its
+# label render and extracts a plain-text title (plainText(of:)), and
+# ProgressView wraps its text in a non-focusable interactive node. The
+# linked artifact is 846504 bytes, 45708 above the 800796 pin. Replacing
+# the title trim's hasPrefix/hasSuffix with unicode-scalar comparisons was
+# measured and did not shrink it (846884), so the growth is the
+# registrations themselves, not string comparison. Intended; RenderNode,
+# the MLIR op set, and the DrawList wire are unchanged.
+#
+# Re-measured 2026-09-29 at the same compiler revision for plan Task 6,
+# after Task 5 (FrameHost.activate/focus/focusedNode, 848780, inside the
+# band). New: Sources/GamaCore/NativePresentation.swift, the portable
+# presentation tree (PresentationID, PresentedKind with a closure-ignoring
+# equality, PresentedNode.tree) and PresentationDiff with its op enum,
+# built on dictionaries and sets keyed by the new identity type. The
+# linked artifact is 926448 bytes, 79944 above the 846504 pin. Intended:
+# the tree and diff are portable by ADR 0017's design so every future
+# native host shares them; no RenderNode case, MLIR op, or DrawList wire
+# changed.
+#
+# Re-measured 2026-09-29 at the same compiler revision for the review
+# fixes on feat/native-presentation: FrameHost.setText (a per-surface
+# rebinding text write) and the display-only pointer hit-test rule, a
+# composite-button view class, last-occurrence deduplication of
+# presentation identities, and skipping Button's cell focus wrapper when
+# presenting a composite label. The linked artifact is 945124 bytes, 18676
+# above the 926448 pin, 148 bytes past the 2% band. Intended; no
+# RenderNode case, MLIR op, or DrawList wire changed.
+#
+# Re-measured 2026-09-29 at the same compiler revision on
+# integrate/native-ui, where feat/pointer-input (ADR 0018, +54048 on its own)
+# and feat/native-presentation (ADR 0017, pinned at 945124 on its own) met.
+# The merge only unions the two feature sets: FrameHost carries both the
+# pointer recognizer and the control table, BuildContext both sets of
+# hooks, and the pointer press hit-test looks through display-only nodes.
+# The linked artifact is 1000428 bytes, 55304 above the 945124 pin, which
+# is the pointer-input delta plus 1256 bytes of combined code. Intended; no
+# RenderNode case, MLIR op, or DrawList wire changed.
 #
 # Grammar is deliberately tiny: blank lines, `#` comments, and key = "value".
 # Anything else fails the read, for the same reason scripts/lib/manifest.sh is
 # strict — this is a pin, not a configuration language.
 revision = "95c5142e84b82c1"
-bytes = "836304"
+bytes = "1000428"
 tolerance_percent = "2"
