@@ -57,12 +57,7 @@ public struct AccessibilitySnapshot: Hashable, Sendable {
     /// string, for hosts that expose a single text value instead of
     /// per-line elements.
     public var text: String {
-        var out = ""
-        for (index, line) in lines.enumerated() {
-            if index > 0 { out.append("\n") }
-            out += line.text
-        }
-        return out
+        lines.map(\.text).joined(separator: "\n")
     }
 
     /// Derives the reading-order snapshot of `list`.
