@@ -86,15 +86,24 @@ public struct DrawList: Hashable, Sendable {
     //               u32 byteLen · UTF-8 bytes
     // Hosts on any language decode with a 40-line reader; see README.
 
+    /// Wire-format magic, the bytes `GAMA` read as a little-endian `u32`.
+    private static let wireMagic: UInt32 = 0x414D_4147
+    /// The only wire-format version this encoder writes and decoder reads.
+    private static let wireVersion: UInt32 = 1
+    /// Header bytes: magic, version, grid width, grid height, command count.
+    private static let headerSize = 20
+    /// The smallest possible command, a 17-byte fill.
+    private static let minimumCommandSize = 17
+
     /// Encodes the list into the versioned little-endian wire format
     /// (magic `GAMA`, version 1) documented above and in
     /// `GamaCore.docc/EmbeddingAndDrawList.md`.
     public func encode() -> [UInt8] {
         var out: [UInt8] = []
-        // Header is 20 bytes; a text command averages well under 40.
-        out.reserveCapacity(20 + commands.count * 40)
-        Self.appendU32(&out, 0x414D_4147)
-        Self.appendU32(&out, 1)
+        // A text command averages well under 40 bytes.
+        out.reserveCapacity(Self.headerSize + commands.count * 40)
+        Self.appendU32(&out, Self.wireMagic)
+        Self.appendU32(&out, Self.wireVersion)
         Self.appendI32(&out, Self.clampedI32(size.width))
         Self.appendI32(&out, Self.clampedI32(size.height))
         Self.appendU32(&out, UInt32(commands.count))
@@ -151,11 +160,10 @@ public struct DrawList: Hashable, Sendable {
     /// input is safe: counts are bounded before allocation and text is
     /// strictly UTF-8 validated.
     public static func decode(_ bytes: [UInt8]) throws(DecodeError) -> DrawList {
-        // The smallest possible command is a 17-byte fill. Bounding command
-        // count by the payload prevents hostile headers from forcing a huge
-        // reserve before any command bytes have been validated.
-        let headerSize = 20
-        let minimumCommandSize = 17
+        // Bounding command count by the payload (at least
+        // `minimumCommandSize` bytes per command) prevents hostile headers
+        // from forcing a huge reserve before any command bytes have been
+        // validated.
         var i = 0
         func u8() -> UInt8? {
             guard i < bytes.count else { return nil }
@@ -177,9 +185,9 @@ public struct DrawList: Hashable, Sendable {
         }
 
         guard let magic = u32() else { throw DecodeError.truncated }
-        guard magic == 0x414D_4147 else { throw DecodeError.badMagic }
+        guard magic == wireMagic else { throw DecodeError.badMagic }
         guard let version = u32() else { throw DecodeError.truncated }
-        guard version == 1 else { throw DecodeError.unsupportedVersion(version) }
+        guard version == wireVersion else { throw DecodeError.unsupportedVersion(version) }
         guard let w = i32(), let h = i32(), let count = u32() else {
             throw DecodeError.truncated
         }
