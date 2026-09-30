@@ -279,11 +279,11 @@ public struct FrameHost: ~Copyable {
         var laid = buildFrame(size: size, environment: env)
 
         // Honor the latest focus request if its node is focusable now.
-        if let requested = actions.focusRequest, focusables.contains(where: { $0.id == requested }) {
+        if let requested = actions.focusRequest, isFocusableInLatestFrame(requested) {
             currentFocus = requested
         }
         // Reconcile focus with the new tree.
-        if let id = currentFocus, !focusables.contains(where: { $0.id == id }) {
+        if let id = currentFocus, !isFocusableInLatestFrame(id) {
             currentFocus = focusables.first?.id
         }
         if currentFocus == nil { currentFocus = focusables.first?.id }
@@ -386,6 +386,11 @@ public struct FrameHost: ~Copyable {
         }
     }
 
+    /// Whether `id` is focusable in the latest built frame.
+    private func isFocusableInLatestFrame(_ id: NodeID) -> Bool {
+        focusables.contains { $0.id == id }
+    }
+
     private var focusedIndex: Int? {
         guard let id = currentFocus else { return nil }
         return focusables.firstIndex { $0.id == id }
@@ -433,7 +438,7 @@ public struct FrameHost: ~Copyable {
     /// does not mark the host dirty.
     public mutating func activate(_ id: NodeID) {
         guard actions.hasAction(id) else { return }
-        if focusables.contains(where: { $0.id == id }) { currentFocus = id }
+        if isFocusableInLatestFrame(id) { currentFocus = id }
         stateStore.activate()
         actions.invoke(id)
         dirty.set(true)
@@ -462,7 +467,7 @@ public struct FrameHost: ~Copyable {
     /// latest frame changes nothing and does not mark the host dirty, so a
     /// host that echoes Gama's own focus change back cannot loop.
     public mutating func focus(_ id: NodeID) {
-        guard id != currentFocus, focusables.contains(where: { $0.id == id }) else { return }
+        guard id != currentFocus, isFocusableInLatestFrame(id) else { return }
         currentFocus = id
         dirty.set(true)
     }
