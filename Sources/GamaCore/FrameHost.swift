@@ -628,11 +628,7 @@ public struct FrameHost: ~Copyable {
             guard captured.pointerID == event.pointerID, captured.button == event.button else { return }
             cancelCapture()
         }
-        guard
-            let hit = interactive.last(where: {
-                $0.frame.contains(event.location) && !actions.isDisplayOnly($0.id)
-            })
-        else { return }
+        guard let hit = pointerTarget(at: event.location) else { return }
         guard let handler = actions.pointerHandler(for: hit.id) else {
             // No handler: today's activate-on-press, for the primary button.
             guard event.button == 0 else { return }
@@ -732,21 +728,22 @@ public struct FrameHost: ~Copyable {
     /// Recomputes ``hoveredID`` at `location` without delivering a hover
     /// gesture.
     private mutating func refreshHoveredID(at location: Point) {
-        let hit = hoverTarget(at: location)?.id
+        let hit = pointerTarget(at: location)?.id
         if hit != hoveredID {
             hoveredID = hit
             dirty.set(true)
         }
     }
 
-    /// The topmost interactive node under `location` for hover, looking
-    /// through display-only nodes exactly as a press does.
-    private func hoverTarget(at location: Point) -> InteractiveRegion? {
+    /// The topmost interactive node under `location`, looking through
+    /// display-only nodes. Press and hover share this one hit test so the
+    /// two cannot disagree about which node the pointer is over.
+    private func pointerTarget(at location: Point) -> InteractiveRegion? {
         interactive.last(where: { $0.frame.contains(location) && !actions.isDisplayOnly($0.id) })
     }
 
     private mutating func updateHover(_ event: PointerEvent) {
-        let hit = hoverTarget(at: event.location)
+        let hit = pointerTarget(at: event.location)
         if hit?.id != hoveredID {
             hoveredID = hit?.id
             dirty.set(true)
