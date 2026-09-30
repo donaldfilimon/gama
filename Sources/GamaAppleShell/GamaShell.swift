@@ -210,10 +210,8 @@ package final class GamaShellCoordinator: NSObject, NSApplicationDelegate {
             case .openWindow(let id):
                 _ = openWindow(id)
             case .openGroup(let id, let payload):
-                guard let scene = graph.scene(id: id),
-                    scene.payloadType == payload.typeID
-                else { continue }
-                _ = open(scene: scene, payload: payload)
+                // `open` rejects a payload whose type the group does not take.
+                if let scene = graph.scene(id: id) { _ = open(scene: scene, payload: payload) }
             case .dismiss(let instance):
                 guard let instance else { continue }
                 requestClose(instance)
@@ -272,10 +270,7 @@ package final class GamaShellCoordinator: NSObject, NSApplicationDelegate {
         if let existing = instancesByLogicalKey[logicalKey],
             let controller = controllers[existing]
         {
-            if presentsWindows {
-                controller.showWindow(nil)
-                controller.window?.makeKeyAndOrderFront(nil)
-            }
+            present(controller)
             return existing
         }
 
@@ -303,11 +298,16 @@ package final class GamaShellCoordinator: NSObject, NSApplicationDelegate {
         controllers[instance] = controller
         instancesByLogicalKey[logicalKey] = instance
         controller.deliver(.windowDidOpen(scene: scene.id, instance: instance))
-        if presentsWindows {
-            controller.showWindow(nil)
-            controller.window?.makeKeyAndOrderFront(nil)
-        }
+        present(controller)
         return instance
+    }
+
+    /// Shows `controller`'s window and makes it key, unless this
+    /// coordinator was created not to present windows.
+    private func present(_ controller: GamaShellWindowController) {
+        guard presentsWindows else { return }
+        controller.showWindow(nil)
+        controller.window?.makeKeyAndOrderFront(nil)
     }
 
     private func allocateInstanceID() -> WindowInstanceID {
