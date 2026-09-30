@@ -54,20 +54,18 @@ public struct CellBuffer: Hashable, Sendable {
 
     /// Creates a buffer of `size` (normalized to the defensive ceiling).
     public init(size: Size) {
-        let normalized = Self.normalized(size)
-        self.size = normalized.size
-        let n = normalized.count
-        self.front = Array(repeating: .blank, count: n)
-        self.back = Array(repeating: .blank, count: n)
+        let planes = Self.blankPlanes(for: size)
+        self.size = planes.size
+        self.front = planes.plane
+        self.back = planes.plane
     }
 
     /// Resizes both planes, clearing content and forcing a full present.
     public mutating func resize(_ newSize: Size) {
-        let normalized = Self.normalized(newSize)
-        size = normalized.size
-        let n = normalized.count
-        front = Array(repeating: .blank, count: n)
-        back = Array(repeating: .blank, count: n)
+        let planes = Self.blankPlanes(for: newSize)
+        size = planes.size
+        front = planes.plane
+        back = planes.plane
         forceFull = true
     }
 
@@ -336,6 +334,14 @@ public struct CellBuffer: Hashable, Sendable {
             back[index + 1] = .blank
         }
         back[index] = .blank
+    }
+
+    /// The normalized extent of `requested` and one blank plane of that
+    /// many cells. Both planes start from the same array; copy-on-write
+    /// separates them at the first write to either.
+    private static func blankPlanes(for requested: Size) -> (size: Size, plane: [Cell]) {
+        let normalized = normalized(requested)
+        return (normalized.size, Array(repeating: .blank, count: normalized.count))
     }
 
     private static func normalized(_ requested: Size) -> (size: Size, count: Int) {
