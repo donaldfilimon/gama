@@ -260,16 +260,19 @@ public struct CellBuffer: Hashable, Sendable {
         }
     }
 
+    /// The xterm default ANSI-16 palette, indexed by SGR color number.
+    /// Hoisted so the per-frame `.ansi16` path does not rebuild it.
+    private static let ansi16Palette: [(Int, Int, Int)] = [
+        (0, 0, 0), (205, 0, 0), (0, 205, 0), (205, 205, 0),
+        (0, 0, 238), (205, 0, 205), (0, 205, 205), (229, 229, 229),
+        (127, 127, 127), (255, 0, 0), (0, 255, 0), (255, 255, 0),
+        (92, 92, 255), (255, 0, 255), (0, 255, 255), (255, 255, 255),
+    ]
+
     private static func nearestAnsi16(_ color: Color) -> Int {
-        let palette: [(Int, Int, Int)] = [
-            (0, 0, 0), (205, 0, 0), (0, 205, 0), (205, 205, 0),
-            (0, 0, 238), (205, 0, 205), (0, 205, 205), (229, 229, 229),
-            (127, 127, 127), (255, 0, 0), (0, 255, 0), (255, 255, 0),
-            (92, 92, 255), (255, 0, 255), (0, 255, 255), (255, 255, 255),
-        ]
         var best = 0
         var bestDistance = Int.max
-        for (index, entry) in palette.enumerated() {
+        for (index, entry) in ansi16Palette.enumerated() {
             let dr = Int(color.r) - entry.0
             let dg = Int(color.g) - entry.1
             let db = Int(color.b) - entry.2
