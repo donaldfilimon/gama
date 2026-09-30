@@ -168,8 +168,7 @@ public final class GamaHostView: GamaPlatformView {
         // Every glyph changed size even when the integer grid did not, so
         // the redraw is requested unconditionally, not left to a frame.
         setNeedsDisplayCompat()
-        handleEvent?(.resize(gridSize()))
-        driver?()
+        resyncGridAndPump()
     }
 
     // MARK: Styled-font cache
@@ -748,6 +747,25 @@ public final class GamaHostView: GamaPlatformView {
         #endif
     }
 
+    /// Sends the host a `.resize` at the current grid size and pumps a
+    /// frame, after a layout pass or a text-size change.
+    private func resyncGridAndPump() {
+        handleEvent?(.resize(gridSize()))
+        driver?()
+    }
+
+    /// Clears and re-places native-region focus once the view has a
+    /// window. A region already focused before this host had a window
+    /// recorded that focus in `focusedNativeRegions` even though the
+    /// handoff to its attached view was a no-op (no `window` to make it
+    /// first responder in). Clearing the set makes the region look "newly
+    /// focused" again to the placement that follows, so the deferred
+    /// handoff to its attached view is retried now that a window exists.
+    private func retryNativeRegionFocusHandoff() {
+        focusedNativeRegions.removeAll()
+        placeNativeRegions(lastNativeRegions)
+    }
+
     // MARK: Layout / resize
 
     #if canImport(AppKit)
@@ -755,8 +773,7 @@ public final class GamaHostView: GamaPlatformView {
         /// event and pumps a frame at the new grid size.
         public override func layout() {
             super.layout()
-            handleEvent?(.resize(gridSize()))
-            driver?()
+            resyncGridAndPump()
         }
         /// Accepts first-responder status so keyboard events reach the
         /// view directly.
@@ -771,27 +788,20 @@ public final class GamaHostView: GamaPlatformView {
             setNeedsDisplayCompat()
         }
         /// Claims first-responder status as soon as the view lands in a
-        /// window, so keys flow without an extra click. Also clears and
-        /// re-places native-region focus: a region already focused
-        /// before this host had a window recorded that focus in
-        /// `focusedNativeRegions` even though the handoff to its attached
-        /// view was a no-op (no `window` to call `makeFirstResponder` on).
-        /// Clearing the set here makes the region look "newly focused"
-        /// again to the placement that follows, so the deferred handoff to
-        /// its attached view is retried now that a window exists.
+        /// window, so keys flow without an extra click, then retries the
+        /// native-region focus handoff (see
+        /// `retryNativeRegionFocusHandoff()`).
         public override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             _ = unsafe window?.makeFirstResponder(self)
-            focusedNativeRegions.removeAll()
-            placeNativeRegions(lastNativeRegions)
+            retryNativeRegionFocusHandoff()
         }
     #else
         /// Forwards each UIKit layout pass to the host as a `.resize`
         /// event and pumps a frame at the new grid size.
         public override func layoutSubviews() {
             super.layoutSubviews()
-            handleEvent?(.resize(gridSize()))
-            driver?()
+            resyncGridAndPump()
         }
         /// Accepts first-responder status so hardware key presses reach
         /// the view.
@@ -842,15 +852,14 @@ public final class GamaHostView: GamaPlatformView {
         }
 
         /// Becomes first responder as soon as the view lands in a window,
-        /// so hardware keys flow immediately. Also clears and re-places
-        /// native-region focus — see the AppKit `viewDidMoveToWindow`
-        /// doc comment for the deferred-handoff rationale.
+        /// so hardware keys flow immediately, then retries the
+        /// native-region focus handoff (see
+        /// `retryNativeRegionFocusHandoff()`).
         public override func didMoveToWindow() {
             super.didMoveToWindow()
             if window != nil {
                 becomeFirstResponder()
-                focusedNativeRegions.removeAll()
-                placeNativeRegions(lastNativeRegions)
+                retryNativeRegionFocusHandoff()
             }
         }
     #endif
