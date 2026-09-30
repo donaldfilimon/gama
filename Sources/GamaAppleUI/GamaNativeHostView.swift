@@ -205,12 +205,20 @@
             guard let session else { return }
             let focused = session.pump.focusedID
             guard focused != syncedFocus else { return }
-            guard let window = unsafe window else { return }
+            guard unsafe window != nil else { return }
             syncedFocus = focused
             guard let focused, let view = session.view(for: .node(focused)) else { return }
             // A focused native region hands first responder to its attached
             // view in `placeNativeRegions`.
             if view is NativeRegionContainer { return }
+            makeFirstResponderWithoutEcho(view)
+        }
+
+        /// Makes `view` first responder with ``controlDidTakeFocus(_:)``
+        /// suppressed, so a focus change Gama itself asked for is not
+        /// echoed back into `FrameHost`. Without a window this does nothing.
+        private func makeFirstResponderWithoutEcho(_ view: NSView) {
+            guard let window = unsafe window else { return }
             isApplyingFocus = true
             defer { isApplyingFocus = false }
             _ = window.makeFirstResponder(view)
@@ -281,15 +289,11 @@
             let lost = focusedNativeRegions.subtracting(focused)
             focusedNativeRegions = focused
             if let newlyFocusedView {
-                isApplyingFocus = true
-                _ = unsafe window?.makeFirstResponder(newlyFocusedView)
-                isApplyingFocus = false
+                makeFirstResponderWithoutEcho(newlyFocusedView)
             } else if !lost.isEmpty,
                 lost.contains(where: { attachedNativeViews[$0].map(firstResponderIsInside) ?? false })
             {
-                isApplyingFocus = true
-                _ = unsafe window?.makeFirstResponder(self)
-                isApplyingFocus = false
+                makeFirstResponderWithoutEcho(self)
             }
         }
 
