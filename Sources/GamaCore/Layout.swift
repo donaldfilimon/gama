@@ -59,18 +59,17 @@ public enum LayoutEngine {
             return Size(width: c.width + converted.horizontal, height: c.height + converted.vertical)
 
         case .border(_, _, let title, let child):
-            let leftRight = metrics.units(1, .horizontal)
-            let topBottom = metrics.units(1, .vertical)
+            let insets = borderInsets(using: metrics)
             let inner = ProposedSize(
-                width: proposal.width.map { max(0, $0 - 2 * leftRight) },
-                height: proposal.height.map { max(0, $0 - 2 * topBottom) }
+                width: proposal.width.map { max(0, $0 - insets.horizontal) },
+                height: proposal.height.map { max(0, $0 - insets.vertical) }
             )
             let c = measure(child, proposal: inner, metrics: metrics)
             // BorderTitleLayout's minimum width is in cells; convert it so
             // it compares with the unit-converted content width.
             let titleWidth = metrics.units(BorderTitleLayout.minimumWidth(for: title), .horizontal)
             return Size(
-                width: max(c.width + 2 * leftRight, titleWidth), height: c.height + 2 * topBottom)
+                width: max(c.width + insets.horizontal, titleWidth), height: c.height + insets.vertical)
 
         case .background(_, let child), .styled(_, let child):
             return measure(child, proposal: proposal, metrics: metrics)
@@ -217,6 +216,19 @@ public enum LayoutEngine {
     /// `.vertical`, leading/trailing on `.horizontal`) rather than
     /// converting the pre-summed `horizontal`/`vertical` totals, so a
     /// non-linear `units` closure is honored per edge.
+    /// One cell of border on every edge, in layout units. Measure and
+    /// layout both read it so content is measured at the size it is placed.
+    private static func borderInsets(using metrics: LayoutMetrics) -> EdgeInsets {
+        let leftRight = metrics.units(1, .horizontal)
+        let topBottom = metrics.units(1, .vertical)
+        return EdgeInsets(top: topBottom, leading: leftRight, bottom: topBottom, trailing: leftRight)
+    }
+
+    /// A proposal that offers exactly `size` on both axes.
+    private static func proposal(filling size: Size) -> ProposedSize {
+        ProposedSize(width: size.width, height: size.height)
+    }
+
     private static func convert(_ insets: EdgeInsets, using metrics: LayoutMetrics) -> EdgeInsets {
         EdgeInsets(
             top: metrics.units(insets.top, .vertical),
@@ -254,11 +266,7 @@ public enum LayoutEngine {
             return LaidOutNode(node: node, frame: bounds, children: [inner])
 
         case .border(_, _, _, let child):
-            let leftRight = metrics.units(1, .horizontal)
-            let topBottom = metrics.units(1, .vertical)
-            let insets = EdgeInsets(
-                top: topBottom, leading: leftRight, bottom: topBottom, trailing: leftRight)
-            let inner = layout(child, in: bounds.inset(by: insets), metrics: metrics)
+            let inner = layout(child, in: bounds.inset(by: borderInsets(using: metrics)), metrics: metrics)
             return LaidOutNode(node: node, frame: bounds, children: [inner])
 
         case .background(_, let child), .styled(_, let child),
@@ -269,13 +277,13 @@ public enum LayoutEngine {
         case .frame(_, _, let alignment, let child):
             let ownSize = measure(
                 node,
-                proposal: ProposedSize(width: bounds.size.width, height: bounds.size.height),
+                proposal: proposal(filling: bounds.size),
                 metrics: metrics
             ).clamped(to: bounds.size)
             let ownBounds = align(size: ownSize, in: bounds, alignment: alignment)
             let m = measure(
                 child,
-                proposal: ProposedSize(width: ownBounds.size.width, height: ownBounds.size.height),
+                proposal: proposal(filling: ownBounds.size),
                 metrics: metrics
             ).clamped(to: ownBounds.size)
             let rect = align(size: m, in: ownBounds, alignment: alignment)
@@ -285,7 +293,7 @@ public enum LayoutEngine {
         case .flexFrame(_, _, _, _, let alignment, let child):
             let m = measure(
                 child,
-                proposal: ProposedSize(width: bounds.size.width, height: bounds.size.height),
+                proposal: proposal(filling: bounds.size),
                 metrics: metrics
             ).clamped(to: bounds.size)
             let rect = align(size: m, in: bounds, alignment: alignment)
@@ -296,7 +304,7 @@ public enum LayoutEngine {
             let laid = children.map { c -> LaidOutNode in
                 let m = measure(
                     c,
-                    proposal: ProposedSize(width: bounds.size.width, height: bounds.size.height),
+                    proposal: proposal(filling: bounds.size),
                     metrics: metrics
                 ).clamped(to: bounds.size)
                 return layout(c, in: align(size: m, in: bounds, alignment: alignment), metrics: metrics)
