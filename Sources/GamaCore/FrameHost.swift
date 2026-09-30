@@ -42,8 +42,8 @@ private final class HostActionStore {
     var named: [ActionID: () -> Void] = [:]
     var shortcuts: [Key: ActionID] = [:]
     var regions: [NodeID: NativeRegionID] = [:]
-    var pointerHandlers: [NodeID: (PointerGesture) -> Bool] = [:]
-    var dropTargets: Set<NodeID> = []
+    private(set) var pointerHandlers: [NodeID: (PointerGesture) -> Bool] = [:]
+    private(set) var dropTargets: Set<NodeID> = []
     /// Latest focus request. Survives `beginBuildPass`: a handler may set it
     /// between frames, and `pump` consumes it.
     var focusRequest: NodeID? = nil
@@ -91,6 +91,10 @@ private final class HostActionStore {
     func registerRegion(_ id: NodeID, _ region: NativeRegionID) { regions[id] = region }
     func region(for id: NodeID) -> NativeRegionID? { regions[id] }
     func registerControl(_ id: NodeID, _ descriptor: ControlDescriptor) { controls[id] = descriptor }
+    func registerPointerHandler(_ id: NodeID, _ handler: @escaping (PointerGesture) -> Bool) {
+        pointerHandlers[id] = handler
+    }
+    func registerDropTarget(_ id: NodeID) { dropTargets.insert(id) }
     func pointerHandler(for id: NodeID) -> ((PointerGesture) -> Bool)? { pointerHandlers[id] }
     func isDropTarget(_ id: NodeID) -> Bool { dropTargets.contains(id) }
 }
@@ -331,8 +335,8 @@ public struct FrameHost: ~Copyable {
             },
             registerNativeRegion: { id, region in actionStore.registerRegion(id, region) },
             registerControl: { id, descriptor in actionStore.registerControl(id, descriptor) },
-            registerPointerHandler: { id, handler in actionStore.pointerHandlers[id] = handler },
-            registerDropTarget: { id in actionStore.dropTargets.insert(id) },
+            registerPointerHandler: { id, handler in actionStore.registerPointerHandler(id, handler) },
+            registerDropTarget: { id in actionStore.registerDropTarget(id) },
             requestFocus: { id in
                 actionStore.focusRequest = id
                 // Outside a build the request needs a frame to be honored.
