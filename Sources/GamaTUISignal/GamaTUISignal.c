@@ -345,6 +345,23 @@ size_t gama_tui_signal_copy_restore_sequence(char *out, size_t capacity) {
     return length;
 }
 
+/* Undoes a failed arm: forgets the restore sequence, disarms, puts the
+ * saved dispositions back, and returns the install state and saved fds to
+ * idle. Runs only from ordinary execution inside gama_tui_signal_arm, never
+ * from a handler. */
+static void gama_tui_rollback_arm(void) {
+    gama_tui_restore_sequence_length = 0;
+    __atomic_store_n(&gama_tui_armed, (sig_atomic_t)0, __ATOMIC_SEQ_CST);
+    (void)gama_tui_restore_saved_actions();
+    __atomic_store_n(
+        &gama_tui_install_state,
+        (sig_atomic_t)GAMA_TUI_INSTALL_IDLE,
+        __ATOMIC_SEQ_CST
+    );
+    gama_tui_saved_input_fd = -1;
+    gama_tui_saved_output_fd = -1;
+}
+
 int gama_tui_signal_arm(
     int input_fd,
     int output_fd,
@@ -408,30 +425,12 @@ int gama_tui_signal_arm(
     }
 
     if (result != 0) {
-        gama_tui_restore_sequence_length = 0;
-        __atomic_store_n(&gama_tui_armed, (sig_atomic_t)0, __ATOMIC_SEQ_CST);
-        (void)gama_tui_restore_saved_actions();
-        __atomic_store_n(
-            &gama_tui_install_state,
-            (sig_atomic_t)GAMA_TUI_INSTALL_IDLE,
-            __ATOMIC_SEQ_CST
-        );
-        gama_tui_saved_input_fd = -1;
-        gama_tui_saved_output_fd = -1;
+        gama_tui_rollback_arm();
     }
 
     if (sigprocmask(SIG_SETMASK, &previous_mask, NULL) != 0 && result == 0) {
         result = errno;
-        gama_tui_restore_sequence_length = 0;
-        __atomic_store_n(&gama_tui_armed, (sig_atomic_t)0, __ATOMIC_SEQ_CST);
-        (void)gama_tui_restore_saved_actions();
-        __atomic_store_n(
-            &gama_tui_install_state,
-            (sig_atomic_t)GAMA_TUI_INSTALL_IDLE,
-            __ATOMIC_SEQ_CST
-        );
-        gama_tui_saved_input_fd = -1;
-        gama_tui_saved_output_fd = -1;
+        gama_tui_rollback_arm();
     }
     int pending_signal = (int)__atomic_exchange_n(
         &gama_tui_pending_termination,
