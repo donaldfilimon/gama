@@ -61,11 +61,6 @@ Name:
 name [aXb]
 Tab: focus | Enter: activate | Ctrl-C: quit
 
-=== receipt.txt ===
-binary=/Users/donaldfilimon/Documents/Codex/2026-10-08/mak/work/build/gama-master-cache/o/a66cc31a71061ea28e9464c4dbaaf509/demo
-zig=/Users/donaldfilimon/.local/share/zig/toolchains/0.18.0-dev.120+9fe22a29b/zig
-version=0.18.0-dev.120+9fe22a29b
-
 === retained.txt ===
 Gama counter | count 2 | focus name
  -1

@@ -34,8 +34,8 @@
       "sha256": "681f627d703595e7325b8525bc2da5bddcae0d41e8d39eab7e8d0b4468965a99"
     },
     ".zig-version": {
-      "bytes": 25,
-      "sha256": "8f79b2a57773c8f7593af87c07b4bf40777b6bc6ed51d049695568b327d411c6"
+      "bytes": 26,
+      "sha256": "7f471241eed67352a3308e9be925629b98e4b979c3d9f07fd1eaf08d52226c21"
     },
     "AGENTS.md": {
       "bytes": 3971,
@@ -62,16 +62,16 @@
       "sha256": "577522da80f2ec8de6eafe4b172b53e9feaac2826e40215516797dc1c83b8639"
     },
     "ZigToolchain.zon": {
-      "bytes": 309,
-      "sha256": "8d6296152be3a4c2d8cf32a0ef786ad01341abf17d47b86cbcfaab5c5744022b"
+      "bytes": 311,
+      "sha256": "24388ce01ac7b1f4f249bde333ac2ba08fc944b089fa204324094e6bb1e24ddc"
     },
     "build.zig": {
-      "bytes": 24258,
-      "sha256": "ad71a195d4f7f3064027141b4158ec9390d72fbcd8c508fe3ceb23ea5d527792"
+      "bytes": 24110,
+      "sha256": "4e593fe228e50c8764d751eafa856b16664d81626c0ac4fb0389ae1fb31cae29"
     },
     "build.zig.zon": {
-      "bytes": 430,
-      "sha256": "ea43a228019ac730329c71c9ea3204c11c8b2bc44e4987059463f36d5ffab2f1"
+      "bytes": 431,
+      "sha256": "97a2547636cdf5219c0199ec31d342b31c14d757eafa113a86b6ef004824009f"
     },
     "docs/API.tsv": {
       "bytes": 77341,
@@ -82,8 +82,8 @@
       "sha256": "cb30830034a86499f8ac6223e9322b0cb0c4f5502bd35a42ab4ac482affa9d9f"
     },
     "docs/Capabilities.md": {
-      "bytes": 6330,
-      "sha256": "135272358fcfdf3112eac0408b5546dce06655d5806a3be32149d13f1234a262"
+      "bytes": 5379,
+      "sha256": "2358efa69a12b0b6324bca636131d6efa2a77dc628fe87599713e6915c30649d"
     },
     "docs/Examples.md": {
       "bytes": 844,
@@ -126,8 +126,8 @@
       "sha256": "b9ae0cff752715a589d461a5cccca664957cb41c1474585dbe5576170412f417"
     },
     "docs/Toolchain.md": {
-      "bytes": 1223,
-      "sha256": "a4b4aa1dc1d66d5e9eb3b2397f2ad3b472b0e0233a23aed42331896f28eee9cf"
+      "bytes": 658,
+      "sha256": "b1d7345abbadb3d59be660d6f12c2aa5f223c29ce5445c4a2120cf7ff573df66"
     },
     "docs/Troubleshooting.md": {
       "bytes": 1178,
@@ -506,8 +506,8 @@
       "sha256": "2d0f6a3d30bd4101e18306c696c724ff0df586618fe3ae96182a0695f23b6697"
     },
     "tests/compile_fail/wrong_compiler.zig": {
-      "bytes": 123,
-      "sha256": "35aa83b20abb57e79653c332f9db71a39ad5bceeb20e7b336ec7b58b02053993"
+      "bytes": 124,
+      "sha256": "cbb2de925626b91de0e389ab2e39a36ae9bc839072324f986db273f15dc196cb"
     },
     "tests/compile_fail/zero_tests.zig": {
       "bytes": 67,
@@ -790,8 +790,8 @@
       "sha256": "d55934a396da22a4b0149998a7bc6fb868ca956779f59b0bad83151895998a8c"
     },
     "tools/check_evidence.py": {
-      "bytes": 5858,
-      "sha256": "7d84908dc6a1a3381212ed966ab9cd80a54000ddaed894a40894e04dcf35ecf2"
+      "bytes": 5852,
+      "sha256": "6119eed60babe01f095f0a50f02d9ad1fdc752630ae83a2996ddd69ebd3a0404"
     },
     "tools/compile_fail.zig": {
       "bytes": 5735,
@@ -810,8 +810,8 @@
       "sha256": "073f8f6c869968f73cafb61efe0e28fe6851d0597a566bcbe10f54e78d257df4"
     },
     "tools/policy.zig": {
-      "bytes": 18697,
-      "sha256": "a3308dc9f3d3be301e03e5911195bd103cbc4414f22a03018c7a325359b47ac3"
+      "bytes": 18702,
+      "sha256": "da96a3d80be6513b2ab3bd79762b92fe5328aa8922b4c6ab9db90c4789dfaa5f"
     },
     "tools/portable_probe.zig": {
       "bytes": 8123,
@@ -826,8 +826,8 @@
       "sha256": "59174a906e99e597ddc80cb26a814b72e88035a20bc6466aa56e8d39a62933e4"
     },
     "tools/verify.zig": {
-      "bytes": 12744,
-      "sha256": "2725f57dfec63ebc908eed949405afd992406477fed27a9befbe608abbed94c1"
+      "bytes": 12245,
+      "sha256": "531374f3f3a18d8fec17696b2e6e675717cfb2f978814d40438da47ac58aadb0"
     },
     "tools/wasm_verify.zig": {
       "bytes": 23933,
@@ -841,38 +841,38 @@
       "layer": "native measurement",
       "log": "benchmark.log",
       "digest": {
-        "bytes": 564,
-        "sha256": "ec15d78e91e9df96bfb0c8fdf8bc7a20e05b5f5e3fa2fe54052fc97a2b5ef568"
+        "bytes": 561,
+        "sha256": "fbe9a1220e5ca7bc7efc80ff96732b1d9d44c1c089d1c8de6419817d4f75cd77"
       }
     },
     {
-      "command": "zig build qualify -j2 --summary all",
+      "command": "zig build check -j2 --summary all",
       "exit": 0,
       "layer": "native/static/cross/engine",
       "log": "acceptance.log",
       "digest": {
-        "bytes": 19733,
-        "sha256": "cca600bcd89542d430a0e4185c4b50c289062866f1822ebae55659d98f903636"
+        "bytes": 19938,
+        "sha256": "0a7d149f8865cc29abf3dc39682cb8ccfb0d7333959252c704b2b10668b5c9b8"
       }
     },
     {
-      "command": "zig build qualify -j2 --summary all",
+      "command": "zig build check -j2 --summary all",
       "exit": 0,
       "layer": "native/static/cross/engine",
       "log": "assertions.log",
       "digest": {
-        "bytes": 88684,
-        "sha256": "d97f14b38952cc2e71a312657560dcb77eb497c9ca5f32e21ce78ef63da11d81"
+        "bytes": 88796,
+        "sha256": "3be6874893f695325ff7c7365029cfb47857ccf5619b14ea231721c325f6f70d"
       }
     },
     {
-      "command": "zig build qualify -j2 --summary all",
+      "command": "zig build check -j2 --summary all",
       "exit": 0,
       "layer": "native tmux",
       "log": "terminal-frames.log",
       "digest": {
-        "bytes": 1693,
-        "sha256": "d0728d0a067767cb15f2314b885d935635d7c35ea733c29071d9bec883852b53"
+        "bytes": 1429,
+        "sha256": "bd3942781f5464b99546e74f081829c19be22fcb61d137fd9bd38f3d140426c5"
       }
     },
     {
@@ -882,7 +882,7 @@
       "log": "artifact-inspection.log",
       "digest": {
         "bytes": 1188,
-        "sha256": "40dceb6788902e7cd6fa4e635c5af28f26b9ee82e78cf6615f0940c738f87180"
+        "sha256": "f8c47aada3ff47991d09b9b8a3d864ff5b2d9ccf5e77c0d0631ff66b39f81b96"
       }
     }
   ],
@@ -891,9 +891,9 @@
     "release": "27.2.0",
     "machine": "arm64",
     "python": "3.14.8",
-    "node": "v26.11.0",
-    "tmux": "tmux 3.8",
-    "zig": "0.18.0-dev.120+9fe22a29b",
-    "mlir_opt": "Homebrew LLVM version 23.1.3\n  Optimized build."
+    "node": "v26.10.0",
+    "tmux": "tmux 3.7c",
+    "zig": "0.17.0-dev.2338+b46a7f3a2",
+    "mlir_opt": "Homebrew LLVM version 23.1.2\n  Optimized build."
   }
 }

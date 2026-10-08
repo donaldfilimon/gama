@@ -1,10 +1,10 @@
 {
-  "archive_url": "https://ziglang.org/builds/zig-aarch64-macos-0.17.0-dev.2338+b46a7f3a2.tar.xz",
-  "archive_sha256": "6823e45e4f4b9b7eab5230baa06d9e59ea9e1f19e88d3eb29946d02111bfedd4",
-  "archive_bytes": 53982588,
-  "archive_binary_member": "zig-aarch64-macos-0.17.0-dev.2338+b46a7f3a2/zig",
-  "archive_binary_sha256": "797ac1f94b20b8d32319a1602009ca142fd81638809084eab2c38fd969d8f696",
-  "installed_binary_sha256": "797ac1f94b20b8d32319a1602009ca142fd81638809084eab2c38fd969d8f696",
-  "version": "0.17.0-dev.2338+b46a7f3a2",
-  "proof": "downloaded archive checksum and installed executable byte equality; no extraction or compiler replacement"
+  "archive_url": "https://ziglang.org/builds/zig-aarch64-macos-0.18.0-dev.120+9fe22a29b.tar.xz",
+  "archive_sha256": "b6225af37ce3700dae0326af70d44414bb7b85aaf846243122d945016077c60c",
+  "archive_bytes": 55266160,
+  "archive_binary_member": "zig-aarch64-macos-0.18.0-dev.120+9fe22a29b/zig",
+  "archive_binary_sha256": "7a6a4ee02ae6277258a699503d2396fbfbc86704b6216cd4e52c7cc502334bfb",
+  "installed_binary_sha256": "7a6a4ee02ae6277258a699503d2396fbfbc86704b6216cd4e52c7cc502334bfb",
+  "version": "0.18.0-dev.120+9fe22a29b",
+  "proof": "official archive checksum verified; extracted and versioned installed executable bytes match"
 }

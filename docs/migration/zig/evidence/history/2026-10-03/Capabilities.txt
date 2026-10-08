@@ -2,7 +2,7 @@
 
 This ledger qualifies the Zig rewrite; historical Swift claims are archived. Current means implemented, native execution means actually run on this macOS host, cross-link means a foreign artifact was built, structural inspection is bounded parsing, and engine execution is separate. Hosted CI and embedded hardware remain unverified.
 
-The maintained evidence receipt is `docs/migration/zig/evidence/source-receipt.json`. Its source scope and log hashes bind observed commands to the exact maintained implementation bytes. It never requires ignored preservation archives. Final task-scoped and whole-change independent reviews are separate from implementation self-review.
+The maintained evidence receipt is `docs/migration/zig/evidence/source-receipt.json`. Its source scope and log hashes bind observed commands to deliberately uncommitted implementation bytes. It never requires ignored preservation archives. Final task-scoped and whole-change independent reviews are separate from implementation self-review.
 
 | Surface | Qualification and limit |
 | --- | --- |
@@ -16,7 +16,7 @@ The maintained evidence receipt is `docs/migration/zig/evidence/source-receipt.j
 | Hosted matrix | Linked macOS aarch64, Linux x86_64/aarch64 TUI and Windows x86_64 headless demo executables. Foreign OS execution remains unverified. |
 | Repository acceptance | Exact pin, empty dependencies, final source policy, formatting, corpus integrity, API/current-doc negatives, reference/skill parity, source-hash evidence and examples. CI configuration retains trusted same-repo guards and existing runner labels; no hosted run is claimed. |
 
-Historical 2026-10-03 toolchain archive provenance: the official aarch64 macOS archive was observed at 53,982,588 bytes with SHA256 6823e45e4f4b9b7eab5230baa06d9e59ea9e1f19e88d3eb29946d02111bfedd4. Archived and installed compiler bytes matched SHA256 797ac1f94b20b8d32319a1602009ca142fd81638809084eab2c38fd969d8f696 and version 0.17.0-dev.2338+b46a7f3a2. No compiler replacement occurred; see the bounded public toolchain receipt.
+Toolchain archive provenance: the official aarch64 macOS archive was observed at 53,982,588 bytes with SHA256 6823e45e4f4b9b7eab5230baa06d9e59ea9e1f19e88d3eb29946d02111bfedd4. Archived and installed compiler bytes matched SHA256 797ac1f94b20b8d32319a1602009ca142fd81638809084eab2c38fd969d8f696 and version 0.17.0-dev.2338+b46a7f3a2. No compiler replacement occurred; see the bounded public toolchain receipt.
 
 Benchmark conditions and actual phase measurements are recorded in `docs/migration/zig/evidence/benchmark.log`, using the fixed portable workload described in [Performance](Performance.md). The new content digest checks repeatability only. No Swift-relative speed or memory improvement is claimed.
 
@@ -24,8 +24,4 @@ Preservation: Package.resolved remains archival and byte-exact; GEMINI stays emp
 
 Native suite accounting: 245 tests per optimization mode, 735 total across debug/safe/fast. Separate process proof comprises 12 terminal scenarios per mode (36 executions), three linked native C consumers, six Node WASM executions (production/bounded in each mode), 27 independent MLIR parses and three Cortex-M4 linked artifact inspections. Compile-fail checks reject 29 fixtures. API coverage inventories 1,356 declarations/members, with 127 documentation/reference controls. These layers are separate; a test count does not imply a foreign host ran.
 
-Historical 2026-10-03 benchmark run on macOS arm64, Zig fast, defaults 5 runs / 2,000 frames / 200 warmup: median/p95 nanoseconds were paint 57,000/58,958; DrawList.from 50,125/53,625; ANSI diff 3,792/4,125; resize 195,000/225,042. Sample counts were 10,000 per fixed phase and 500 resize. Each run's added FNV-1a content digest was f69f0fa2b40349e5. These are local measurements, not comparative speed claims; the preserved historical environment/command receipt supplies those versions.
-
-## Master upgrade qualification: 2026-10-08
-
-Current target is `0.18.0-dev.120+9fe22a29b`, selected by Donald. The official macOS archive has SHA256 b6225af37ce3700dae0326af70d44414bb7b85aaf846243122d945016077c60c; its extracted and versioned installed executable bytes match SHA256 7a6a4ee02ae6277258a699503d2396fbfbc86704b6216cd4e52c7cc502334bfb. The old logs and source receipt are preserved under `docs/migration/zig/evidence/history/2026-10-03`. Fresh master qualification completed all 297 steps with exit 0, including the native suites and tmux ownership controls. The ZON policy parser uses the new arena-based API and retains strict schema rejection and allocator cleanup. Current source/log hashes bind the fresh qualification, benchmark and artifact observations. Full `scripts/check.sh` remains the required final acceptance gate; historical observations do not qualify the new compiler.
+Final benchmark run on macOS arm64, Zig fast, defaults 5 runs / 2,000 frames / 200 warmup: median/p95 nanoseconds were paint 57,000/58,958; DrawList.from 50,125/53,625; ANSI diff 3,792/4,125; resize 195,000/225,042. Sample counts were 10,000 per fixed phase and 500 resize. Each run's added FNV-1a content digest was f69f0fa2b40349e5. These are local measurements, not comparative speed claims; the maintained environment/command receipt supplies versions.

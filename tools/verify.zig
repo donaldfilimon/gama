@@ -37,10 +37,12 @@ fn read(gpa: std.mem.Allocator, io: std.Io, path: []const u8) ![:0]u8 {
 }
 
 fn checkPins(gpa: std.mem.Allocator, io: std.Io) !void {
+    var arena = std.heap.ArenaAllocator.init(gpa);
+    defer arena.deinit();
+    var diagnostics: std.zon.parse.Diagnostics = undefined;
     const pin_bytes = try read(gpa, io, "ZigToolchain.zon");
     defer gpa.free(pin_bytes);
-    const pin = try std.zon.parse.fromSliceAlloc(Pin, gpa, pin_bytes, null, .{});
-    defer std.zon.parse.free(gpa, pin);
+    const pin = try std.zon.parse.fromSlice(Pin, .{ .gpa = gpa, .arena = arena.allocator(), .source = pin_bytes, .diagnostics = &diagnostics });
     if (!policy.validVersion(pin.version) or
         !std.mem.eql(u8, pin.revision, policy.revision) or
         !std.mem.eql(u8, pin.aarch64_macos_url, policy.archive_url) or
@@ -50,8 +52,7 @@ fn checkPins(gpa: std.mem.Allocator, io: std.Io) !void {
     if (!std.mem.eql(u8, version_bytes, policy.version ++ "\n")) return error.VersionFileMismatch;
     const package_bytes = try read(gpa, io, "build.zig.zon");
     defer gpa.free(package_bytes);
-    const package = try std.zon.parse.fromSliceAlloc(Package, gpa, package_bytes, null, .{});
-    defer std.zon.parse.free(gpa, package);
+    const package = try std.zon.parse.fromSlice(Package, .{ .gpa = gpa, .arena = arena.allocator(), .source = package_bytes, .diagnostics = &diagnostics });
     if (!policy.validVersion(package.minimum_zig_version)) return error.PackagePinMismatch;
 }
 
@@ -152,11 +153,14 @@ fn checkLocalImports(gpa: std.mem.Allocator, source: [:0]const u8, path: []const
 }
 
 test "strict package schema rejects dependencies and unknown fields" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    var diagnostics: std.zon.parse.Diagnostics = undefined;
     const DependencyTable = struct { dependencies: struct {} };
-    const valid = try std.zon.parse.fromSliceAlloc(DependencyTable, std.testing.allocator, ".{ .dependencies = .{} }", null, .{});
-    defer std.zon.parse.free(std.testing.allocator, valid);
-    try std.testing.expectError(error.ParseZon, std.zon.parse.fromSliceAlloc(DependencyTable, std.testing.allocator, ".{ .dependencies = .{ .foreign = .{} } }", null, .{}));
-    try std.testing.expectError(error.ParseZon, std.zon.parse.fromSliceAlloc(DependencyTable, std.testing.allocator, ".{ .dependencies = .{}, .unapproved = true }", null, .{}));
+    const valid = try std.zon.parse.fromSliceNoAlloc(DependencyTable, .{ .gpa = std.testing.allocator, .arena = arena.allocator(), .source = ".{ .dependencies = .{} }", .diagnostics = &diagnostics });
+    _ = valid;
+    try std.testing.expectError(error.ParseZon, std.zon.parse.fromSliceNoAlloc(DependencyTable, .{ .gpa = std.testing.allocator, .arena = arena.allocator(), .source = ".{ .dependencies = .{ .foreign = .{} } }", .diagnostics = &diagnostics }));
+    try std.testing.expectError(error.ParseZon, std.zon.parse.fromSliceNoAlloc(DependencyTable, .{ .gpa = std.testing.allocator, .arena = arena.allocator(), .source = ".{ .dependencies = .{}, .unapproved = true }", .diagnostics = &diagnostics }));
 }
 
 test "relative portable imports cannot escape into hosted or foreign trees" {

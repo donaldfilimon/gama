@@ -1,9 +1,9 @@
 const std = @import("std");
 
-pub const version = "0.17.0-dev.2338+b46a7f3a2";
-pub const revision = "b46a7f3a25a61c68bbc25759087a01095dc8446e";
-pub const archive_url = "https://ziglang.org/builds/zig-aarch64-macos-0.17.0-dev.2338+b46a7f3a2.tar.xz";
-pub const archive_sha256 = "6823e45e4f4b9b7eab5230baa06d9e59ea9e1f19e88d3eb29946d02111bfedd4";
+pub const version = "0.18.0-dev.120+9fe22a29b";
+pub const revision = "9fe22a29b34e274af4f1d67a08c7757d2d0bc1fa";
+pub const archive_url = "https://ziglang.org/builds/zig-aarch64-macos-0.18.0-dev.120+9fe22a29b.tar.xz";
+pub const archive_sha256 = "b6225af37ce3700dae0326af70d44414bb7b85aaf846243122d945016077c60c";
 
 pub fn validVersion(actual: []const u8) bool {
     return std.mem.eql(u8, actual, version);
@@ -116,9 +116,9 @@ pub fn requirePortableSource(comptime source: [:0]const u8) void {
 }
 
 test "compiler version is an exact pin" {
-    try std.testing.expect(validVersion("0.17.0-dev.2338+b46a7f3a2"));
-    try std.testing.expect(!validVersion("0.17.0-dev.2339+b46a7f3a2"));
-    try std.testing.expect(!validVersion("0.17.0-dev.2338+b46a7f3a2-dirty"));
+    try std.testing.expect(validVersion("0.18.0-dev.120+9fe22a29b"));
+    try std.testing.expect(!validVersion("0.18.0-dev.121+9fe22a29b"));
+    try std.testing.expect(!validVersion("0.18.0-dev.120+9fe22a29b-dirty"));
 }
 
 test "package dependency policy rejects any dependency" {

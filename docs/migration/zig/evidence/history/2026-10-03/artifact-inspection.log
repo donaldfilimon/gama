@@ -1,10 +1,10 @@
+zig-out/embedded/gama-cortex-m4-debug.elf: ELF 32-bit LSB executable, ARM, EABI5 version 1 (SYSV), statically linked, with debug_info, not stripped
+zig-out/embedded/gama-cortex-m4-fast.elf:  ELF 32-bit LSB executable, ARM, EABI5 version 1 (SYSV), statically linked, with debug_info, not stripped
+zig-out/embedded/gama-cortex-m4-safe.elf:  ELF 32-bit LSB executable, ARM, EABI5 version 1 (SYSV), statically linked, with debug_info, not stripped
 zig-out/matrix/gama-linux-aarch64:         ELF 64-bit LSB executable, ARM aarch64, version 1 (SYSV), statically linked, with debug_info, not stripped
 zig-out/matrix/gama-linux-x86_64:          ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, with debug_info, not stripped
 zig-out/matrix/gama-macos-aarch64:         Mach-O 64-bit executable arm64
 zig-out/matrix/gama-windows-x86_64.exe:    PE32+ executable (console) x86-64, for MS Windows
-zig-out/embedded/gama-cortex-m4-debug.elf: ELF 32-bit LSB executable, ARM, EABI5 version 1 (SYSV), statically linked, with debug_info, not stripped
-zig-out/embedded/gama-cortex-m4-fast.elf:  ELF 32-bit LSB executable, ARM, EABI5 version 1 (SYSV), statically linked, with debug_info, not stripped
-zig-out/embedded/gama-cortex-m4-safe.elf:  ELF 32-bit LSB executable, ARM, EABI5 version 1 (SYSV), statically linked, with debug_info, not stripped
 zig-out/wasm/gama-debug.wasm:              WebAssembly (wasm) binary module version 0x1 (MVP)
 zig-out/wasm/gama-fast.wasm:               WebAssembly (wasm) binary module version 0x1 (MVP)
 zig-out/wasm/gama-safe.wasm:               WebAssembly (wasm) binary module version 0x1 (MVP)

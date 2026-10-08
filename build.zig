@@ -275,17 +275,19 @@ pub fn build(b: *std.Build) void {
     policies.has_side_effects = true;
     _ = policies.captureStdErr(.{ .basename = "source-policy.tests.log" });
     policies.stdio_limit = .limited(1024 * 1024);
-    const check = b.step("check", "Run pins, format, final retirement/import policy, native tests, negatives");
-    check.dependOn(&policies.step);
-    check.dependOn(&format.step);
-    check.dependOn(test_step);
-    check.dependOn(compile_fail);
-    check.dependOn(portable);
-    check.dependOn(wasm_check);
-    check.dependOn(wasm_runtime);
-    check.dependOn(embedded_check);
-    check.dependOn(mlir_check);
-    check.dependOn(matrix);
+    const qualify = b.step("qualify", "Run qualification to collect fresh evidence; excludes receipt consistency");
+    const check = b.step("check", "Run qualification and source receipt consistency");
+    check.dependOn(qualify);
+    qualify.dependOn(&policies.step);
+    qualify.dependOn(&format.step);
+    qualify.dependOn(test_step);
+    qualify.dependOn(compile_fail);
+    qualify.dependOn(portable);
+    qualify.dependOn(wasm_check);
+    qualify.dependOn(wasm_runtime);
+    qualify.dependOn(embedded_check);
+    qualify.dependOn(mlir_check);
+    qualify.dependOn(matrix);
 
     const api = hostTool(b, "gama-api-docs", "tools/api_docs.zig");
     const docs_run = b.addSystemCommand(&.{ "python3", "tools/check_docs.py" });
@@ -296,7 +298,7 @@ pub fn build(b: *std.Build) void {
     _ = docs_run.captureStdOut(.{ .basename = "docs.tests.log" });
     const docs_step = b.step("check-docs", "Validate current references, API documentation and category negative controls");
     docs_step.dependOn(&docs_run.step);
-    check.dependOn(docs_step);
+    qualify.dependOn(docs_step);
     const evidence = b.addSystemCommand(&.{ "python3", "tools/check_evidence.py" });
     evidence.addArg(b.graph.zig_exe);
     evidence.setCwd(b.path("."));
@@ -319,14 +321,14 @@ pub fn build(b: *std.Build) void {
             terminal_smoke.expectStdOutMatch("PASS: counter, focus, editing, retained form");
             terminal_smoke.has_side_effects = true;
             _ = terminal_smoke.captureStdOut(.{ .basename = "run-gama.tests.log" });
-            check.dependOn(&terminal_smoke.step);
+            qualify.dependOn(&terminal_smoke.step);
             const driver_controls = b.addSystemCommand(&.{ "python3", "tools/check_driver.py" });
             driver_controls.setCwd(b.path("."));
             driver_controls.addFileArg(exe.getEmittedBin());
             driver_controls.expectExitCode(0);
             driver_controls.has_side_effects = true;
             _ = driver_controls.captureStdOut(.{ .basename = "driver.tests.log" });
-            check.dependOn(&driver_controls.step);
+            qualify.dependOn(&driver_controls.step);
         }
         const run = b.addRunArtifact(exe);
         run.addPassthruArgs();
@@ -338,7 +340,7 @@ pub fn build(b: *std.Build) void {
         smoke.expectStdOutMatch(if (std.mem.eql(u8, name, "demo")) "count 0" else if (std.mem.eql(u8, name, "bench")) "BENCH" else "uninstall revoked");
         smoke.has_side_effects = true;
         _ = smoke.captureStdOut(.{ .basename = b.fmt("example-{s}.tests.log", .{name}) });
-        check.dependOn(&smoke.step);
+        qualify.dependOn(&smoke.step);
     }
 }
 

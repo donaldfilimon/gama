@@ -22,9 +22,9 @@ def digest(path):
     return {'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()}
 EXPECTED_RUNS={
     'benchmark.log':('zig build bench -Doptimize=fast','native measurement'),
-    'acceptance.log':('zig build check -j2 --summary all','native/static/cross/engine'),
-    'assertions.log':('zig build check -j2 --summary all','native/static/cross/engine'),
-    'terminal-frames.log':('zig build check -j2 --summary all','native tmux'),
+    'acceptance.log':('zig build qualify -j2 --summary all','native/static/cross/engine'),
+    'assertions.log':('zig build qualify -j2 --summary all','native/static/cross/engine'),
+    'terminal-frames.log':('zig build qualify -j2 --summary all','native tmux'),
     'artifact-inspection.log':('file zig-out/matrix/* zig-out/embedded/* zig-out/wasm/*','artifact inspection'),
 }
 def validate(receipt):

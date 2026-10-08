@@ -202,7 +202,7 @@ Gama corpus: 31 immutable fixtures verified (manifest, SHA256, sizes, totality, 
 All 4 tests passed.
 
 === docs.tests.log ===
-Docs: 33 current documents, 120 references, 1356 API entries, 127 controls passed
+Docs: 33 current documents, 115 references, 1356 API entries, 127 controls passed
 
 === drawing_tests-debug.tests.log ===
 1/23 drawing_tests.test.drawing owns graphemes and swaps only after preparation...OK
@@ -286,13 +286,13 @@ All 23 tests passed.
 Driver controls: existing-name conflict, token mismatch, owned cleanup and TERM cleanup passed
 
 === elf-debug.tests.log ===
-ELF structural verification passed: file=1993244, allocated sections=319416, LOAD file=319632, LOAD memory=319632, sections=18, symbols=1195; Cortex-M4 v7E-M/M/Thumb, defined entry, no imports; 59 tamper cases rejected
+ELF structural verification passed: file=1979904, allocated sections=319828, LOAD file=320044, LOAD memory=320044, sections=18, symbols=1195; Cortex-M4 v7E-M/M/Thumb, defined entry, no imports; 59 tamper cases rejected
 
 === elf-fast.tests.log ===
-ELF structural verification passed: file=1821620, allocated sections=95926, LOAD file=96142, LOAD memory=96142, sections=18, symbols=230; Cortex-M4 v7E-M/M/Thumb, defined entry, no imports; 59 tamper cases rejected
+ELF structural verification passed: file=1800732, allocated sections=96910, LOAD file=97126, LOAD memory=97126, sections=18, symbols=233; Cortex-M4 v7E-M/M/Thumb, defined entry, no imports; 59 tamper cases rejected
 
 === elf-safe.tests.log ===
-ELF structural verification passed: file=1751828, allocated sections=95466, LOAD file=95682, LOAD memory=95682, sections=18, symbols=272; Cortex-M4 v7E-M/M/Thumb, defined entry, no imports; 59 tamper cases rejected
+ELF structural verification passed: file=1732696, allocated sections=96326, LOAD file=96542, LOAD memory=96542, sections=18, symbols=275; Cortex-M4 v7E-M/M/Thumb, defined entry, no imports; 59 tamper cases rejected
 
 === elf_verify-debug.tests.log ===
 1/3 elf_verify.test.short headers and impossible ranges reject in every mode...OK
@@ -327,14 +327,17 @@ All 2 tests passed.
 2/2 embedded_app.test.embedded workload reports allocation failure from exhausted caller storage...OK
 All 2 tests passed.
 
+=== evidence.tests.log ===
+Evidence consistency: 208 source files, 5 command logs, 12 negative controls passed
+
 === example-bench.tests.log ===
 Portable benchmark runs=2 frames=40 warmup=8; 80x24 / 160x48; color depth unknown
 DIGEST	0	f8bf0cdf3aae26dd
 DIGEST	1	f8bf0cdf3aae26dd
-BENCH	paint (pump + clearBack + CellPainter)	80	4203583	5890458
-BENCH	forEachRun via DrawList.from (80x24)	80	1190875	2260208
-BENCH	presentDiff (ANSI diff, 80x24)	80	432416	720000
-BENCH	resize loop (80x24 <-> 160x48, painted)	4	13930625	15016209
+BENCH	paint (pump + clearBack + CellPainter)	80	3925167	4194125
+BENCH	forEachRun via DrawList.from (80x24)	80	1103584	1295083
+BENCH	presentDiff (ANSI diff, 80x24)	80	431208	451083
+BENCH	resize loop (80x24 <-> 160x48, painted)	4	11047292	11584209
 Memory: framework allocations inside phases; harness samples/digest outside; no process RSS comparison.
 
 === example-demo.tests.log ===
@@ -662,7 +665,7 @@ All 1 tests passed.
 All 1 tests passed.
 
 === run-gama.tests.log ===
-PASS: counter, focus, editing, retained form; artifacts=/var/folders/42/07tmt0n56jq4261xb9gz5jwm0000gn/T//gama-run-artifacts.2cxxYo
+PASS: counter, focus, editing, retained form; artifacts=/var/folders/42/07tmt0n56jq4261xb9gz5jwm0000gn/T//gama-run-artifacts.S12VMS
 
 === service_tests-debug.tests.log ===
 1/8 service_tests.test.injected hosted filesystem inclusive limits zero bound checked writes and real clock...OK
@@ -818,11 +821,11 @@ All 36 tests passed.
 All 36 tests passed.
 
 === terminal-process-debug.tests.log ===
-PTY signal TERM: signaled exit/restored before teardown in 6ms
-PTY signal HUP: signaled exit/restored before teardown in 7ms
+PTY signal TERM: signaled exit/restored before teardown in 7ms
+PTY signal HUP: signaled exit/restored before teardown in 5ms
 PTY signal INT: signaled exit/restored before teardown in 7ms
-PTY signal QUIT: signaled exit/restored before teardown in 19ms
-PTY blocked TERM: signaled exit/restored before teardown in 6ms
+PTY signal QUIT: signaled exit/restored before teardown in 20ms
+PTY blocked TERM: signaled exit/restored before teardown in 8ms
 PTY normal: exited/restored before teardown
 PTY close-full: exited/restored before teardown
 PTY error-full: exited/restored before teardown
@@ -833,11 +836,11 @@ PTY eof: bounded EOF/hangup error and release; master closed so no settings-rest
 All 12 PTY process scenarios passed
 
 === terminal-process-fast.tests.log ===
-PTY signal TERM: signaled exit/restored before teardown in 6ms
-PTY signal HUP: signaled exit/restored before teardown in 6ms
-PTY signal INT: signaled exit/restored before teardown in 6ms
-PTY signal QUIT: signaled exit/restored before teardown in 18ms
-PTY blocked TERM: signaled exit/restored before teardown in 6ms
+PTY signal TERM: signaled exit/restored before teardown in 7ms
+PTY signal HUP: signaled exit/restored before teardown in 7ms
+PTY signal INT: signaled exit/restored before teardown in 8ms
+PTY signal QUIT: signaled exit/restored before teardown in 15ms
+PTY blocked TERM: signaled exit/restored before teardown in 8ms
 PTY normal: exited/restored before teardown
 PTY close-full: exited/restored before teardown
 PTY error-full: exited/restored before teardown
@@ -848,11 +851,11 @@ PTY eof: bounded EOF/hangup error and release; master closed so no settings-rest
 All 12 PTY process scenarios passed
 
 === terminal-process-safe.tests.log ===
-PTY signal TERM: signaled exit/restored before teardown in 6ms
+PTY signal TERM: signaled exit/restored before teardown in 7ms
 PTY signal HUP: signaled exit/restored before teardown in 7ms
-PTY signal INT: signaled exit/restored before teardown in 6ms
-PTY signal QUIT: signaled exit/restored before teardown in 30ms
-PTY blocked TERM: signaled exit/restored before teardown in 6ms
+PTY signal INT: signaled exit/restored before teardown in 8ms
+PTY signal QUIT: signaled exit/restored before teardown in 15ms
+PTY blocked TERM: signaled exit/restored before teardown in 7ms
 PTY normal: exited/restored before teardown
 PTY close-full: exited/restored before teardown
 PTY error-full: exited/restored before teardown
@@ -1061,40 +1064,40 @@ All 15 tests passed.
 All 15 tests passed.
 
 === wasm-inspect-debug-bounded.tests.log ===
-WASM structural verification passed: 1418596 bytes, 9 function signatures, exported memory32, zero imports; 33 linked-artifact tamper cases rejected
+WASM structural verification passed: 1427631 bytes, 9 function signatures, exported memory32, zero imports; 33 linked-artifact tamper cases rejected
 
 === wasm-inspect-debug-production.tests.log ===
-WASM structural verification passed: 1418566 bytes, 9 function signatures, exported memory32, zero imports; 33 linked-artifact tamper cases rejected
+WASM structural verification passed: 1427601 bytes, 9 function signatures, exported memory32, zero imports; 33 linked-artifact tamper cases rejected
 
 === wasm-inspect-fast-bounded.tests.log ===
-WASM structural verification passed: 1331914 bytes, 9 function signatures, exported memory32, zero imports; 33 linked-artifact tamper cases rejected
+WASM structural verification passed: 1334590 bytes, 9 function signatures, exported memory32, zero imports; 33 linked-artifact tamper cases rejected
 
 === wasm-inspect-fast-production.tests.log ===
-WASM structural verification passed: 1331885 bytes, 9 function signatures, exported memory32, zero imports; 33 linked-artifact tamper cases rejected
+WASM structural verification passed: 1334561 bytes, 9 function signatures, exported memory32, zero imports; 33 linked-artifact tamper cases rejected
 
 === wasm-inspect-safe-bounded.tests.log ===
-WASM structural verification passed: 1193556 bytes, 9 function signatures, exported memory32, zero imports; 33 linked-artifact tamper cases rejected
+WASM structural verification passed: 1198367 bytes, 9 function signatures, exported memory32, zero imports; 33 linked-artifact tamper cases rejected
 
 === wasm-inspect-safe-production.tests.log ===
-WASM structural verification passed: 1193532 bytes, 9 function signatures, exported memory32, zero imports; 33 linked-artifact tamper cases rejected
+WASM structural verification passed: 1198343 bytes, 9 function signatures, exported memory32, zero imports; 33 linked-artifact tamper cases rejected
 
 === wasm-runtime-debug-bounded.tests.log ===
-All 90 WASM runtime assertions passed (v26.11.0; bounded-memory fixture executes wasm_allocator OOM)
+All 90 WASM runtime assertions passed (v26.10.0; bounded-memory fixture executes wasm_allocator OOM)
 
 === wasm-runtime-debug-production.tests.log ===
-All 76 WASM runtime assertions passed (v26.11.0; production artifact)
+All 76 WASM runtime assertions passed (v26.10.0; production artifact)
 
 === wasm-runtime-fast-bounded.tests.log ===
-All 90 WASM runtime assertions passed (v26.11.0; bounded-memory fixture executes wasm_allocator OOM)
+All 90 WASM runtime assertions passed (v26.10.0; bounded-memory fixture executes wasm_allocator OOM)
 
 === wasm-runtime-fast-production.tests.log ===
-All 76 WASM runtime assertions passed (v26.11.0; production artifact)
+All 76 WASM runtime assertions passed (v26.10.0; production artifact)
 
 === wasm-runtime-safe-bounded.tests.log ===
-All 90 WASM runtime assertions passed (v26.11.0; bounded-memory fixture executes wasm_allocator OOM)
+All 90 WASM runtime assertions passed (v26.10.0; bounded-memory fixture executes wasm_allocator OOM)
 
 === wasm-runtime-safe-production.tests.log ===
-All 76 WASM runtime assertions passed (v26.11.0; production artifact)
+All 76 WASM runtime assertions passed (v26.10.0; production artifact)
 
 === wasm_verify-debug.tests.log ===
 1/4 wasm_verify.test.u32 envelope permits legal padding rejects overflow and overlong encodings...OK

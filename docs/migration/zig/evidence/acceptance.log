@@ -1,342 +1,341 @@
-Build Summary: 298/298 steps succeeded
-check success
-+- run exe gama-verify success 15ms
-|  +- compile exe gama-verify safe native cached 47ms MaxRSS:31M
+Build Summary: 297/297 steps succeeded
+qualify success
++- run exe gama-verify success 75ms
+|  +- compile exe gama-verify safe native success 9s MaxRSS:490M
 +- zig fmt --check success
 +- test success
-|  +- run test root-debug success 81ms
-|  |  +- compile test root-debug debug native success 990ms MaxRSS:259M
-|  +- run test policy-debug success 7ms
-|  |  +- compile test policy-debug debug native cached 50ms MaxRSS:32M
-|  +- run test verify-debug success 10ms
-|  |  +- compile test verify-debug debug native cached 49ms MaxRSS:32M
-|  +- run test corpus-debug success 9ms
-|  |  +- compile test corpus-debug debug native cached 47ms MaxRSS:32M
-|  +- run test wasm_verify-debug success 44ms
-|  |  +- compile test wasm_verify-debug debug native cached 49ms MaxRSS:32M
-|  +- run test elf_verify-debug success 7ms
-|  |  +- compile test elf_verify-debug debug native cached 50ms MaxRSS:32M
-|  +- run test mlir_tests-debug success 85ms
-|  |  +- compile test mlir_tests-debug debug native success 1s MaxRSS:278M
-|  +- run test embedded_app-debug success 86ms
-|  |  +- compile test embedded_app-debug debug native success 1s MaxRSS:286M
-|  +- run test bench-debug success 81ms
-|  |  +- compile test bench-debug debug native success 977ms MaxRSS:266M
-|  +- run test abi_tests-debug success 243ms
-|  |  +- compile test abi_tests-debug debug native success 1s MaxRSS:327M
-|  +- run python3 success 124ms
-|  |  +- compile test terminal_tests-debug debug native success 1s MaxRSS:357M
-|  +- run test plugin_tests-debug success 139ms
-|  |  +- compile test plugin_tests-debug debug native success 1s MaxRSS:336M
-|  +- run test service_tests-debug success 105ms
-|  |  +- compile test service_tests-debug debug native success 1s MaxRSS:290M
-|  +- run test drawing_tests-debug success 411ms
-|  |  +- compile test drawing_tests-debug debug native success 1s MaxRSS:330M
-|  +- run test native_region_regression_tests-debug success 191ms
-|  |  +- compile test native_region_regression_tests-debug debug native success 1s MaxRSS:276M
-|  +- run test text_tests-debug success 793ms
-|  |  +- compile test text_tests-debug debug native success 1s MaxRSS:316M
-|  +- run test authoring_tests-debug success 89ms
-|  |  +- compile test authoring_tests-debug debug native success 1s MaxRSS:290M
-|  +- run test state_tests-debug success 249ms
-|  |  +- compile test state_tests-debug debug native success 1s MaxRSS:381M
-|  +- run test layout_tests-debug success 92ms
-|  |  +- compile test layout_tests-debug debug native success 1s MaxRSS:285M
-|  +- run test pump_tests-debug success 117ms
-|  |  +- compile test pump_tests-debug debug native success 1s MaxRSS:339M
-|  +- run test followup_regression_tests-debug success 107ms
-|  |  +- compile test followup_regression_tests-debug debug native success 1s MaxRSS:359M
-|  +- run test generate-debug success 9ms
-|  |  +- compile test generate-debug debug native cached 39ms MaxRSS:32M
-|  +- run test root-safe success 66ms
-|  |  +- compile test root-safe safe native success 4s MaxRSS:356M
-|  +- run test policy-safe success 3ms
-|  |  +- compile test policy-safe safe native cached 43ms MaxRSS:32M
-|  +- run test verify-safe success 4ms
-|  |  +- compile test verify-safe safe native cached 50ms MaxRSS:32M
-|  +- run test corpus-safe success 6ms
-|  |  +- compile test corpus-safe safe native cached 43ms MaxRSS:32M
-|  +- run test wasm_verify-safe success 5ms
-|  |  +- compile test wasm_verify-safe safe native cached 43ms MaxRSS:32M
-|  +- run test elf_verify-safe success 4ms
-|  |  +- compile test elf_verify-safe safe native cached 35ms MaxRSS:32M
-|  +- run test mlir_tests-safe success 73ms
-|  |  +- compile test mlir_tests-safe safe native success 5s MaxRSS:379M
-|  +- run test embedded_app-safe success 81ms
-|  |  +- compile test embedded_app-safe safe native success 5s MaxRSS:398M
-|  +- run test bench-safe success 168ms
-|  |  +- compile test bench-safe safe native success 4s MaxRSS:358M
-|  +- run test abi_tests-safe success 74ms
-|  |  +- compile test abi_tests-safe safe native success 7s MaxRSS:457M
-|  +- run python3 success 86ms
-|  |  +- compile test terminal_tests-safe safe native success 7s MaxRSS:475M
-|  +- run test plugin_tests-safe success 69ms
-|  |  +- compile test plugin_tests-safe safe native success 7s MaxRSS:468M
-|  +- run test service_tests-safe success 68ms
-|  |  +- compile test service_tests-safe safe native success 5s MaxRSS:412M
-|  +- run test drawing_tests-safe success 83ms
-|  |  +- compile test drawing_tests-safe safe native success 7s MaxRSS:487M
-|  +- run test native_region_regression_tests-safe success 61ms
-|  |  +- compile test native_region_regression_tests-safe safe native success 5s MaxRSS:377M
-|  +- run test text_tests-safe success 122ms
-|  |  +- compile test text_tests-safe safe native success 6s MaxRSS:446M
-|  +- run test authoring_tests-safe success 81ms
-|  |  +- compile test authoring_tests-safe safe native success 5s MaxRSS:405M
-|  +- run test state_tests-safe success 66ms
-|  |  +- compile test state_tests-safe safe native success 7s MaxRSS:500M
-|  +- run test layout_tests-safe success 63ms
-|  |  +- compile test layout_tests-safe safe native success 5s MaxRSS:407M
-|  +- run test pump_tests-safe success 69ms
-|  |  +- compile test pump_tests-safe safe native success 6s MaxRSS:465M
-|  +- run test followup_regression_tests-safe success 80ms
-|  |  +- compile test followup_regression_tests-safe safe native success 6s MaxRSS:482M
-|  +- run test generate-safe success 4ms
-|  |  +- compile test generate-safe safe native cached 48ms MaxRSS:32M
-|  +- run test root-fast success 56ms
-|  |  +- compile test root-fast fast native success 4s MaxRSS:336M
-|  +- run test policy-fast success 3ms
-|  |  +- compile test policy-fast fast native cached 41ms MaxRSS:32M
-|  +- run test verify-fast success 4ms
-|  |  +- compile test verify-fast fast native cached 43ms MaxRSS:32M
-|  +- run test corpus-fast success 7ms
-|  |  +- compile test corpus-fast fast native cached 46ms MaxRSS:32M
-|  +- run test wasm_verify-fast success 4ms
-|  |  +- compile test wasm_verify-fast fast native cached 47ms MaxRSS:32M
-|  +- run test elf_verify-fast success 4ms
-|  |  +- compile test elf_verify-fast fast native cached 49ms MaxRSS:32M
-|  +- run test mlir_tests-fast success 65ms
-|  |  +- compile test mlir_tests-fast fast native success 4s MaxRSS:363M
-|  +- run test embedded_app-fast success 63ms
-|  |  +- compile test embedded_app-fast fast native success 5s MaxRSS:397M
-|  +- run test bench-fast success 62ms
-|  |  +- compile test bench-fast fast native success 4s MaxRSS:353M
-|  +- run test abi_tests-fast success 72ms
-|  |  +- compile test abi_tests-fast fast native success 6s MaxRSS:455M
-|  +- run python3 success 94ms
-|  |  +- compile test terminal_tests-fast fast native success 7s MaxRSS:510M
-|  +- run test plugin_tests-fast success 73ms
-|  |  +- compile test plugin_tests-fast fast native success 6s MaxRSS:471M
-|  +- run test service_tests-fast success 69ms
-|  |  +- compile test service_tests-fast fast native success 6s MaxRSS:377M
-|  +- run test drawing_tests-fast success 75ms
-|  |  +- compile test drawing_tests-fast fast native success 6s MaxRSS:480M
-|  +- run test native_region_regression_tests-fast success 69ms
-|  |  +- compile test native_region_regression_tests-fast fast native success 4s MaxRSS:366M
-|  +- run test text_tests-fast success 117ms
-|  |  +- compile test text_tests-fast fast native success 6s MaxRSS:440M
-|  +- run test authoring_tests-fast success 72ms
-|  |  +- compile test authoring_tests-fast fast native success 5s MaxRSS:374M
-|  +- run test state_tests-fast success 72ms
-|  |  +- compile test state_tests-fast fast native success 7s MaxRSS:528M
-|  +- run test layout_tests-fast success 68ms
-|  |  +- compile test layout_tests-fast fast native success 5s MaxRSS:381M
-|  +- run test pump_tests-fast success 69ms
-|  |  +- compile test pump_tests-fast fast native success 6s MaxRSS:453M
-|  +- run test followup_regression_tests-fast success 68ms
-|  |  +- compile test followup_regression_tests-fast fast native success 6s MaxRSS:486M
-|  +- run test generate-fast success 4ms
-|  |  +- compile test generate-fast fast native cached 49ms MaxRSS:32M
+|  +- run test root-debug success 25ms
+|  |  +- compile test root-debug debug native cached 43ms MaxRSS:31M
+|  +- run test policy-debug success 26ms
+|  |  +- compile test policy-debug debug native cached 55ms MaxRSS:31M
+|  +- run test verify-debug success 259ms
+|  |  +- compile test verify-debug debug native success 2s MaxRSS:323M
+|  +- run test corpus-debug success 30ms
+|  |  +- compile test corpus-debug debug native cached 41ms MaxRSS:31M
+|  +- run test wasm_verify-debug success 77ms
+|  |  +- compile test wasm_verify-debug debug native cached 55ms MaxRSS:31M
+|  +- run test elf_verify-debug success 24ms
+|  |  +- compile test elf_verify-debug debug native cached 61ms MaxRSS:31M
+|  +- run test mlir_tests-debug success 30ms
+|  |  +- compile test mlir_tests-debug debug native cached 42ms MaxRSS:31M
+|  +- run test embedded_app-debug success 32ms
+|  |  +- compile test embedded_app-debug debug native cached 53ms MaxRSS:31M
+|  +- run test bench-debug success 26ms
+|  |  +- compile test bench-debug debug native cached 40ms MaxRSS:31M
+|  +- run test abi_tests-debug success 197ms
+|  |  +- compile test abi_tests-debug debug native cached 44ms MaxRSS:31M
+|  +- run python3 success 72ms
+|  |  +- compile test terminal_tests-debug debug native cached 47ms MaxRSS:31M
+|  +- run test plugin_tests-debug success 89ms
+|  |  +- compile test plugin_tests-debug debug native cached 51ms MaxRSS:31M
+|  +- run test service_tests-debug success 33ms
+|  |  +- compile test service_tests-debug debug native cached 40ms MaxRSS:31M
+|  +- run test drawing_tests-debug success 427ms
+|  |  +- compile test drawing_tests-debug debug native cached 45ms MaxRSS:31M
+|  +- run test native_region_regression_tests-debug success 27ms
+|  |  +- compile test native_region_regression_tests-debug debug native cached 46ms MaxRSS:31M
+|  +- run test text_tests-debug success 877ms
+|  |  +- compile test text_tests-debug debug native cached 43ms MaxRSS:31M
+|  +- run test authoring_tests-debug success 37ms
+|  |  +- compile test authoring_tests-debug debug native cached 55ms MaxRSS:31M
+|  +- run test state_tests-debug success 117ms
+|  |  +- compile test state_tests-debug debug native cached 43ms MaxRSS:31M
+|  +- run test layout_tests-debug success 34ms
+|  |  +- compile test layout_tests-debug debug native cached 37ms MaxRSS:31M
+|  +- run test pump_tests-debug success 60ms
+|  |  +- compile test pump_tests-debug debug native cached 38ms MaxRSS:31M
+|  +- run test followup_regression_tests-debug success 57ms
+|  |  +- compile test followup_regression_tests-debug debug native cached 44ms MaxRSS:31M
+|  +- run test generate-debug success 34ms
+|  |  +- compile test generate-debug debug native cached 43ms MaxRSS:31M
+|  +- run test root-safe success 9ms
+|  |  +- compile test root-safe safe native cached 55ms MaxRSS:31M
+|  +- run test policy-safe success 10ms
+|  |  +- compile test policy-safe safe native cached 50ms MaxRSS:31M
+|  +- run test verify-safe success 74ms
+|  |  +- compile test verify-safe safe native success 7s MaxRSS:479M
+|  +- run test corpus-safe success 12ms
+|  |  +- compile test corpus-safe safe native cached 53ms MaxRSS:31M
+|  +- run test wasm_verify-safe success 10ms
+|  |  +- compile test wasm_verify-safe safe native cached 47ms MaxRSS:31M
+|  +- run test elf_verify-safe success 8ms
+|  |  +- compile test elf_verify-safe safe native cached 35ms MaxRSS:31M
+|  +- run test mlir_tests-safe success 11ms
+|  |  +- compile test mlir_tests-safe safe native cached 38ms MaxRSS:31M
+|  +- run test embedded_app-safe success 12ms
+|  |  +- compile test embedded_app-safe safe native cached 42ms MaxRSS:31M
+|  +- run test bench-safe success 9ms
+|  |  +- compile test bench-safe safe native cached 55ms MaxRSS:31M
+|  +- run test abi_tests-safe success 15ms
+|  |  +- compile test abi_tests-safe safe native cached 46ms MaxRSS:31M
+|  +- run python3 success 37ms
+|  |  +- compile test terminal_tests-safe safe native cached 37ms MaxRSS:31M
+|  +- run test plugin_tests-safe success 12ms
+|  |  +- compile test plugin_tests-safe safe native cached 56ms MaxRSS:31M
+|  +- run test service_tests-safe success 13ms
+|  |  +- compile test service_tests-safe safe native cached 41ms MaxRSS:31M
+|  +- run test drawing_tests-safe success 22ms
+|  |  +- compile test drawing_tests-safe safe native cached 51ms MaxRSS:31M
+|  +- run test native_region_regression_tests-safe success 11ms
+|  |  +- compile test native_region_regression_tests-safe safe native cached 40ms MaxRSS:31M
+|  +- run test text_tests-safe success 94ms
+|  |  +- compile test text_tests-safe safe native cached 43ms MaxRSS:31M
+|  +- run test authoring_tests-safe success 10ms
+|  |  +- compile test authoring_tests-safe safe native cached 42ms MaxRSS:31M
+|  +- run test state_tests-safe success 13ms
+|  |  +- compile test state_tests-safe safe native cached 47ms MaxRSS:31M
+|  +- run test layout_tests-safe success 11ms
+|  |  +- compile test layout_tests-safe safe native cached 47ms MaxRSS:31M
+|  +- run test pump_tests-safe success 12ms
+|  |  +- compile test pump_tests-safe safe native cached 36ms MaxRSS:31M
+|  +- run test followup_regression_tests-safe success 10ms
+|  |  +- compile test followup_regression_tests-safe safe native cached 44ms MaxRSS:31M
+|  +- run test generate-safe success 9ms
+|  |  +- compile test generate-safe safe native cached 44ms MaxRSS:31M
+|  +- run test root-fast success 11ms
+|  |  +- compile test root-fast fast native cached 49ms MaxRSS:31M
+|  +- run test policy-fast success 13ms
+|  |  +- compile test policy-fast fast native cached 51ms MaxRSS:31M
+|  +- run test verify-fast success 66ms
+|  |  +- compile test verify-fast fast native success 6s MaxRSS:477M
+|  +- run test corpus-fast success 10ms
+|  |  +- compile test corpus-fast fast native cached 54ms MaxRSS:31M
+|  +- run test wasm_verify-fast success 9ms
+|  |  +- compile test wasm_verify-fast fast native cached 61ms MaxRSS:31M
+|  +- run test elf_verify-fast success 11ms
+|  |  +- compile test elf_verify-fast fast native cached 37ms MaxRSS:31M
+|  +- run test mlir_tests-fast success 11ms
+|  |  +- compile test mlir_tests-fast fast native cached 49ms MaxRSS:31M
+|  +- run test embedded_app-fast success 13ms
+|  |  +- compile test embedded_app-fast fast native cached 55ms MaxRSS:31M
+|  +- run test bench-fast success 11ms
+|  |  +- compile test bench-fast fast native cached 44ms MaxRSS:31M
+|  +- run test abi_tests-fast success 15ms
+|  |  +- compile test abi_tests-fast fast native cached 51ms MaxRSS:31M
+|  +- run python3 success 51ms
+|  |  +- compile test terminal_tests-fast fast native cached 40ms MaxRSS:31M
+|  +- run test plugin_tests-fast success 14ms
+|  |  +- compile test plugin_tests-fast fast native cached 47ms MaxRSS:31M
+|  +- run test service_tests-fast success 14ms
+|  |  +- compile test service_tests-fast fast native cached 51ms MaxRSS:31M
+|  +- run test drawing_tests-fast success 29ms
+|  |  +- compile test drawing_tests-fast fast native cached 39ms MaxRSS:31M
+|  +- run test native_region_regression_tests-fast success 9ms
+|  |  +- compile test native_region_regression_tests-fast fast native cached 52ms MaxRSS:31M
+|  +- run test text_tests-fast success 68ms
+|  |  +- compile test text_tests-fast fast native cached 44ms MaxRSS:31M
+|  +- run test authoring_tests-fast success 15ms
+|  |  +- compile test authoring_tests-fast fast native cached 45ms MaxRSS:31M
+|  +- run test state_tests-fast success 14ms
+|  |  +- compile test state_tests-fast fast native cached 51ms MaxRSS:31M
+|  +- run test layout_tests-fast success 7ms
+|  |  +- compile test layout_tests-fast fast native cached 42ms MaxRSS:31M
+|  +- run test pump_tests-fast success 11ms
+|  |  +- compile test pump_tests-fast fast native cached 37ms MaxRSS:30M
+|  +- run test followup_regression_tests-fast success 10ms
+|  |  +- compile test followup_regression_tests-fast fast native cached 51ms MaxRSS:31M
+|  +- run test generate-fast success 7ms
+|  |  +- compile test generate-fast fast native cached 44ms MaxRSS:31M
 |  +- check-abi success
-|  |  +- run exe embed-consumer-debug success 90ms
-|  |  |  +- compile exe embed-consumer-debug debug native success 65ms MaxRSS:61M
+|  |  +- run exe embed-consumer-debug success 31ms
+|  |  |  +- compile exe embed-consumer-debug debug native cached 51ms MaxRSS:30M
 |  |  |     +- WriteFile cached
-|  |  |     +- compile lib gama-embed-debug debug native success 1s MaxRSS:265M
+|  |  |     +- compile lib gama-embed-debug debug native cached 48ms MaxRSS:30M
 |  |  |     +- compile lib gama-embed-debug debug native (reused)
-|  |  +- run exe embed-consumer-safe success 64ms
-|  |  |  +- compile exe embed-consumer-safe safe native success 57ms MaxRSS:51M
+|  |  +- run exe embed-consumer-safe success 12ms
+|  |  |  +- compile exe embed-consumer-safe safe native cached 48ms MaxRSS:30M
 |  |  |     +- WriteFile cached
-|  |  |     +- compile lib gama-embed-safe safe native success 5s MaxRSS:394M
+|  |  |     +- compile lib gama-embed-safe safe native cached 39ms MaxRSS:30M
 |  |  |     +- compile lib gama-embed-safe safe native (reused)
-|  |  +- run exe embed-consumer-fast success 63ms
-|  |     +- compile exe embed-consumer-fast fast native success 45ms MaxRSS:49M
+|  |  +- run exe embed-consumer-fast success 7ms
+|  |     +- compile exe embed-consumer-fast fast native cached 50ms MaxRSS:30M
 |  |        +- WriteFile cached
-|  |        +- compile lib gama-embed-fast fast native success 1s MaxRSS:205M
+|  |        +- compile lib gama-embed-fast fast native cached 49ms MaxRSS:30M
 |  |        +- compile lib gama-embed-fast fast native (reused)
 |  +- check-terminal success
 |  |  +- run python3 success 1s
-|  |  |  +- compile exe terminal-parent-debug debug native cached 37ms MaxRSS:32M
-|  |  |  +- compile exe terminal-child-debug debug native success 1s MaxRSS:294M
+|  |  |  +- compile exe terminal-parent-debug debug native cached 54ms MaxRSS:31M
+|  |  |  +- compile exe terminal-child-debug debug native cached 48ms MaxRSS:31M
 |  |  +- run python3 success 1s
-|  |  |  +- compile exe terminal-parent-safe safe native cached 33ms MaxRSS:32M
-|  |  |  +- compile exe terminal-child-safe safe native success 5s MaxRSS:407M
+|  |  |  +- compile exe terminal-parent-safe safe native cached 54ms MaxRSS:31M
+|  |  |  +- compile exe terminal-child-safe safe native cached 54ms MaxRSS:31M
 |  |  +- run python3 success 1s
-|  |     +- compile exe terminal-parent-fast fast native cached 44ms MaxRSS:32M
-|  |     +- compile exe terminal-child-fast fast native success 5s MaxRSS:392M
-|  +- run exe gama-unicode-generator success 22ms
-|  |  +- compile exe gama-unicode-generator safe native cached 52ms MaxRSS:31M
-|  +- run exe gama-corpus success 7ms
-|     +- compile exe gama-corpus safe native cached 48ms MaxRSS:31M
+|  |     +- compile exe terminal-parent-fast fast native cached 43ms MaxRSS:30M
+|  |     +- compile exe terminal-child-fast fast native cached 43ms MaxRSS:31M
+|  +- run exe gama-unicode-generator success 33ms
+|  |  +- compile exe gama-unicode-generator safe native cached 57ms MaxRSS:30M
+|  +- run exe gama-corpus success 17ms
+|     +- compile exe gama-corpus safe native cached 55ms MaxRSS:30M
 +- compile-fail success
-|  +- run exe gama-compile-fail success 1m
-|     +- compile exe gama-compile-fail safe native cached 62ms MaxRSS:31M
+|  +- run exe gama-compile-fail success 10s
+|     +- compile exe gama-compile-fail safe native cached 43ms MaxRSS:31M
 +- check-portable success
-|  +- run exe gama-verify success 8ms
+|  +- run exe gama-verify success 72ms
 |  |  +- compile exe gama-verify safe native (reused)
-|  +- install generated to portable/gama-foundation-wasm32.o success
-|  |  +- compile obj gama-foundation-wasm32 safe wasm32-freestanding-none success 1s MaxRSS:210M
-|  +- install generated to portable/gama-foundation-thumb.o success
-|  |  +- compile obj gama-foundation-thumb safe thumb-freestanding-eabi success 1s MaxRSS:212M
-|  +- install generated to portable/gama-headless-windows.o success
-|  |  +- compile obj gama-headless-windows safe x86_64-windows-gnu success 4s MaxRSS:384M
-|  +- install generated to portable/gama-headless-linux.o success
-|     +- compile obj gama-headless-linux safe x86_64-linux-none success 6s MaxRSS:409M
+|  +- install generated to portable/gama-foundation-wasm32.o cached
+|  |  +- compile obj gama-foundation-wasm32 safe wasm32-freestanding-none cached 29ms MaxRSS:30M
+|  +- install generated to portable/gama-foundation-thumb.o cached
+|  |  +- compile obj gama-foundation-thumb safe thumb-freestanding-eabi cached 29ms MaxRSS:30M
+|  +- install generated to portable/gama-headless-windows.o cached
+|  |  +- compile obj gama-headless-windows safe x86_64-windows-gnu cached 35ms MaxRSS:30M
+|  +- install generated to portable/gama-headless-linux.o cached
+|     +- compile obj gama-headless-linux safe x86_64-linux-none cached 29ms MaxRSS:30M
 +- check-wasm success
-|  +- run exe wasm-verify-debug success 36ms
-|  |  +- compile exe wasm-verify-debug debug native cached 47ms MaxRSS:31M
-|  |  +- compile exe gama-wasm-debug debug wasm32-freestanding-none success 467ms MaxRSS:228M
-|  +- install generated to wasm/gama-debug.wasm success
+|  +- run exe wasm-verify-debug success 56ms
+|  |  +- compile exe wasm-verify-debug debug native cached 37ms MaxRSS:30M
+|  |  +- compile exe gama-wasm-debug debug wasm32-freestanding-none cached 44ms MaxRSS:30M
+|  +- install generated to wasm/gama-debug.wasm cached
 |  |  +- compile exe gama-wasm-debug debug wasm32-freestanding-none (reused)
-|  +- run exe wasm-verify-debug success 30ms
-|  |  +- compile exe wasm-verify-debug debug native cached 46ms MaxRSS:32M
-|  |  +- compile exe gama-wasm-debug-bounded-test debug wasm32-freestanding-none success 419ms MaxRSS:229M
-|  +- run exe wasm-verify-safe success 5ms
-|  |  +- compile exe wasm-verify-safe safe native cached 46ms MaxRSS:31M
-|  |  +- compile exe gama-wasm-safe safe wasm32-freestanding-none success 1s MaxRSS:211M
-|  +- install generated to wasm/gama-safe.wasm success
+|  +- run exe wasm-verify-debug success 35ms
+|  |  +- compile exe wasm-verify-debug debug native cached 36ms MaxRSS:30M
+|  |  +- compile exe gama-wasm-debug-bounded-test debug wasm32-freestanding-none cached 34ms MaxRSS:30M
+|  +- run exe wasm-verify-safe success 11ms
+|  |  +- compile exe wasm-verify-safe safe native cached 46ms MaxRSS:30M
+|  |  +- compile exe gama-wasm-safe safe wasm32-freestanding-none cached 41ms MaxRSS:30M
+|  +- install generated to wasm/gama-safe.wasm cached
 |  |  +- compile exe gama-wasm-safe safe wasm32-freestanding-none (reused)
-|  +- run exe wasm-verify-safe success 7ms
-|  |  +- compile exe wasm-verify-safe safe native cached 45ms MaxRSS:31M
-|  |  +- compile exe gama-wasm-safe-bounded-test safe wasm32-freestanding-none success 1s MaxRSS:209M
-|  +- run exe wasm-verify-fast success 5ms
-|  |  +- compile exe wasm-verify-fast fast native cached 57ms MaxRSS:31M
-|  |  +- compile exe gama-wasm-fast fast wasm32-freestanding-none success 1s MaxRSS:210M
-|  +- install generated to wasm/gama-fast.wasm success
-|  |  +- compile exe gama-wasm-fast fast wasm32-freestanding-none (reused)
+|  +- run exe wasm-verify-safe success 13ms
+|  |  +- compile exe wasm-verify-safe safe native cached 38ms MaxRSS:30M
+|  |  +- compile exe gama-wasm-safe-bounded-test safe wasm32-freestanding-none cached 44ms MaxRSS:30M
 |  +- run exe wasm-verify-fast success 4ms
-|     +- compile exe wasm-verify-fast fast native cached 45ms MaxRSS:31M
-|     +- compile exe gama-wasm-fast-bounded-test fast wasm32-freestanding-none success 1s MaxRSS:211M
-+- check-wasm-runtime success
-|  +- run node success 89ms
-|  |  +- compile exe gama-wasm-debug debug wasm32-freestanding-none (reused)
-|  +- run node success 83ms
-|  |  +- compile exe gama-wasm-debug-bounded-test debug wasm32-freestanding-none (reused)
-|  +- run node success 82ms
-|  |  +- compile exe gama-wasm-safe safe wasm32-freestanding-none (reused)
-|  +- run node success 82ms
-|  |  +- compile exe gama-wasm-safe-bounded-test safe wasm32-freestanding-none (reused)
-|  +- run node success 103ms
+|  |  +- compile exe wasm-verify-fast fast native cached 45ms MaxRSS:30M
+|  |  +- compile exe gama-wasm-fast fast wasm32-freestanding-none cached 32ms MaxRSS:30M
+|  +- install generated to wasm/gama-fast.wasm cached
 |  |  +- compile exe gama-wasm-fast fast wasm32-freestanding-none (reused)
-|  +- run node success 84ms
+|  +- run exe wasm-verify-fast success 9ms
+|     +- compile exe wasm-verify-fast fast native cached 36ms MaxRSS:30M
+|     +- compile exe gama-wasm-fast-bounded-test fast wasm32-freestanding-none cached 36ms MaxRSS:30M
++- check-wasm-runtime success
+|  +- run node success 101ms
+|  |  +- compile exe gama-wasm-debug debug wasm32-freestanding-none (reused)
+|  +- run node success 100ms
+|  |  +- compile exe gama-wasm-debug-bounded-test debug wasm32-freestanding-none (reused)
+|  +- run node success 113ms
+|  |  +- compile exe gama-wasm-safe safe wasm32-freestanding-none (reused)
+|  +- run node success 96ms
+|  |  +- compile exe gama-wasm-safe-bounded-test safe wasm32-freestanding-none (reused)
+|  +- run node success 93ms
+|  |  +- compile exe gama-wasm-fast fast wasm32-freestanding-none (reused)
+|  +- run node success 109ms
 |     +- compile exe gama-wasm-fast-bounded-test fast wasm32-freestanding-none (reused)
 +- check-embedded success
-|  +- install generated to embedded/gama-cortex-m4-debug.elf success
-|  |  +- compile exe gama-cortex-m4-debug debug thumb-freestanding-eabi success 572ms MaxRSS:149M
-|  +- run exe elf-verify-debug success 19ms
-|  |  +- compile exe elf-verify-debug debug native cached 42ms MaxRSS:32M
+|  +- install generated to embedded/gama-cortex-m4-debug.elf cached
+|  |  +- compile exe gama-cortex-m4-debug debug thumb-freestanding-eabi cached 43ms MaxRSS:31M
+|  +- run exe elf-verify-debug success 37ms
+|  |  +- compile exe elf-verify-debug debug native cached 54ms MaxRSS:30M
 |  |  +- compile exe gama-cortex-m4-debug debug thumb-freestanding-eabi (reused)
-|  +- install generated to embedded/gama-cortex-m4-safe.elf success
-|  |  +- compile exe gama-cortex-m4-safe safe thumb-freestanding-eabi success 1s MaxRSS:184M
-|  +- run exe elf-verify-safe success 6ms
-|  |  +- compile exe elf-verify-safe safe native cached 41ms MaxRSS:31M
+|  +- install generated to embedded/gama-cortex-m4-safe.elf cached
+|  |  +- compile exe gama-cortex-m4-safe safe thumb-freestanding-eabi cached 38ms MaxRSS:30M
+|  +- run exe elf-verify-safe success 12ms
+|  |  +- compile exe elf-verify-safe safe native cached 44ms MaxRSS:30M
 |  |  +- compile exe gama-cortex-m4-safe safe thumb-freestanding-eabi (reused)
-|  +- install generated to embedded/gama-cortex-m4-fast.elf success
-|  |  +- compile exe gama-cortex-m4-fast fast thumb-freestanding-eabi success 1s MaxRSS:193M
-|  +- run exe elf-verify-fast success 8ms
-|     +- compile exe elf-verify-fast fast native cached 41ms MaxRSS:31M
+|  +- install generated to embedded/gama-cortex-m4-fast.elf cached
+|  |  +- compile exe gama-cortex-m4-fast fast thumb-freestanding-eabi cached 37ms MaxRSS:30M
+|  +- run exe elf-verify-fast success 11ms
+|     +- compile exe elf-verify-fast fast native cached 49ms MaxRSS:30M
 |     +- compile exe gama-cortex-m4-fast fast thumb-freestanding-eabi (reused)
 +- check-mlir success
-|  +- run mlir-opt success 25ms
-|  |  +- run exe mlir-emit-debug (escaping-debug.mlir) success 10ms
-|  |     +- compile exe mlir-emit-debug debug native success 1s MaxRSS:269M
-|  +- run mlir-opt success 25ms
-|  |  +- run exe mlir-emit-debug (structural-debug.mlir) success 10ms
-|  |     +- compile exe mlir-emit-debug debug native (reused)
-|  +- run mlir-opt success 136ms
-|  |  +- run exe mlir-emit-debug (layout-16x8-debug.mlir) success 132ms
-|  |     +- compile exe mlir-emit-debug debug native (reused)
-|  +- run mlir-opt success 136ms
-|  |  +- run exe mlir-emit-debug (layout-9x5-debug.mlir) success 132ms
-|  |     +- compile exe mlir-emit-debug debug native (reused)
-|  +- run mlir-opt success 25ms
-|  |  +- run exe mlir-emit-debug (plugins-before-debug.mlir) success 11ms
-|  |     +- compile exe mlir-emit-debug debug native (reused)
-|  +- run mlir-opt success 25ms
-|  |  +- run exe mlir-emit-debug (plugins-after-debug.mlir) success 11ms
-|  |     +- compile exe mlir-emit-debug debug native (reused)
-|  +- run mlir-opt success 26ms
-|  |  +- run exe mlir-emit-debug (plugins-reinstall-debug.mlir) success 11ms
-|  |     +- compile exe mlir-emit-debug debug native (reused)
-|  +- run mlir-opt success 25ms
-|  |  +- run exe mlir-emit-debug (controls-debug.mlir) success 11ms
-|  |     +- compile exe mlir-emit-debug debug native (reused)
-|  +- run mlir-opt success 136ms
-|  |  +- run exe mlir-emit-debug (vocabulary-debug.mlir) success 132ms
-|  |     +- compile exe mlir-emit-debug debug native (reused)
 |  +- run mlir-opt success 30ms
-|  |  +- run exe mlir-emit-safe (escaping-safe.mlir) success 4ms
-|  |     +- compile exe mlir-emit-safe safe native success 5s MaxRSS:358M
-|  +- run mlir-opt success 33ms
-|  |  +- run exe mlir-emit-safe (structural-safe.mlir) success 3ms
+|  |  +- run exe mlir-emit-debug (escaping-debug.mlir) cached
+|  |     +- compile exe mlir-emit-debug debug native cached 39ms MaxRSS:31M
+|  +- run mlir-opt success 25ms
+|  |  +- run exe mlir-emit-debug (structural-debug.mlir) cached
+|  |     +- compile exe mlir-emit-debug debug native (reused)
+|  +- run mlir-opt success 28ms
+|  |  +- run exe mlir-emit-debug (layout-16x8-debug.mlir) cached
+|  |     +- compile exe mlir-emit-debug debug native (reused)
+|  +- run mlir-opt success 26ms
+|  |  +- run exe mlir-emit-debug (layout-9x5-debug.mlir) cached
+|  |     +- compile exe mlir-emit-debug debug native (reused)
+|  +- run mlir-opt success 27ms
+|  |  +- run exe mlir-emit-debug (plugins-before-debug.mlir) cached
+|  |     +- compile exe mlir-emit-debug debug native (reused)
+|  +- run mlir-opt success 26ms
+|  |  +- run exe mlir-emit-debug (plugins-after-debug.mlir) cached
+|  |     +- compile exe mlir-emit-debug debug native (reused)
+|  +- run mlir-opt success 25ms
+|  |  +- run exe mlir-emit-debug (plugins-reinstall-debug.mlir) cached
+|  |     +- compile exe mlir-emit-debug debug native (reused)
+|  +- run mlir-opt success 26ms
+|  |  +- run exe mlir-emit-debug (controls-debug.mlir) cached
+|  |     +- compile exe mlir-emit-debug debug native (reused)
+|  +- run mlir-opt success 26ms
+|  |  +- run exe mlir-emit-debug (vocabulary-debug.mlir) cached
+|  |     +- compile exe mlir-emit-debug debug native (reused)
+|  +- run mlir-opt success 26ms
+|  |  +- run exe mlir-emit-safe (escaping-safe.mlir) cached
+|  |     +- compile exe mlir-emit-safe safe native cached 37ms MaxRSS:30M
+|  +- run mlir-opt success 25ms
+|  |  +- run exe mlir-emit-safe (structural-safe.mlir) cached
 |  |     +- compile exe mlir-emit-safe safe native (reused)
 |  +- run mlir-opt success 26ms
-|  |  +- run exe mlir-emit-safe (layout-16x8-safe.mlir) success 2ms
+|  |  +- run exe mlir-emit-safe (layout-16x8-safe.mlir) cached
 |  |     +- compile exe mlir-emit-safe safe native (reused)
 |  +- run mlir-opt success 25ms
-|  |  +- run exe mlir-emit-safe (layout-9x5-safe.mlir) success 65ms
+|  |  +- run exe mlir-emit-safe (layout-9x5-safe.mlir) cached
+|  |     +- compile exe mlir-emit-safe safe native (reused)
+|  +- run mlir-opt success 26ms
+|  |  +- run exe mlir-emit-safe (plugins-before-safe.mlir) cached
 |  |     +- compile exe mlir-emit-safe safe native (reused)
 |  +- run mlir-opt success 25ms
-|  |  +- run exe mlir-emit-safe (plugins-before-safe.mlir) success 2ms
-|  |     +- compile exe mlir-emit-safe safe native (reused)
-|  +- run mlir-opt success 31ms
-|  |  +- run exe mlir-emit-safe (plugins-after-safe.mlir) success 3ms
+|  |  +- run exe mlir-emit-safe (plugins-after-safe.mlir) cached
 |  |     +- compile exe mlir-emit-safe safe native (reused)
 |  +- run mlir-opt success 25ms
-|  |  +- run exe mlir-emit-safe (plugins-reinstall-safe.mlir) success 66ms
+|  |  +- run exe mlir-emit-safe (plugins-reinstall-safe.mlir) cached
 |  |     +- compile exe mlir-emit-safe safe native (reused)
 |  +- run mlir-opt success 25ms
-|  |  +- run exe mlir-emit-safe (controls-safe.mlir) success 2ms
-|  |     +- compile exe mlir-emit-safe safe native (reused)
-|  +- run mlir-opt success 24ms
-|  |  +- run exe mlir-emit-safe (vocabulary-safe.mlir) success 3ms
+|  |  +- run exe mlir-emit-safe (controls-safe.mlir) cached
 |  |     +- compile exe mlir-emit-safe safe native (reused)
 |  +- run mlir-opt success 25ms
-|  |  +- run exe mlir-emit-fast (escaping-fast.mlir) success 2ms
-|  |     +- compile exe mlir-emit-fast fast native success 4s MaxRSS:332M
-|  +- run mlir-opt success 25ms
-|  |  +- run exe mlir-emit-fast (structural-fast.mlir) success 2ms
+|  |  +- run exe mlir-emit-safe (vocabulary-safe.mlir) cached
+|  |     +- compile exe mlir-emit-safe safe native (reused)
+|  +- run mlir-opt success 26ms
+|  |  +- run exe mlir-emit-fast (escaping-fast.mlir) cached
+|  |     +- compile exe mlir-emit-fast fast native cached 45ms MaxRSS:31M
+|  +- run mlir-opt success 27ms
+|  |  +- run exe mlir-emit-fast (structural-fast.mlir) cached
 |  |     +- compile exe mlir-emit-fast fast native (reused)
-|  +- run mlir-opt success 24ms
-|  |  +- run exe mlir-emit-fast (layout-16x8-fast.mlir) success 2ms
+|  +- run mlir-opt success 29ms
+|  |  +- run exe mlir-emit-fast (layout-16x8-fast.mlir) cached
 |  |     +- compile exe mlir-emit-fast fast native (reused)
-|  +- run mlir-opt success 25ms
-|  |  +- run exe mlir-emit-fast (layout-9x5-fast.mlir) success 2ms
+|  +- run mlir-opt success 26ms
+|  |  +- run exe mlir-emit-fast (layout-9x5-fast.mlir) cached
 |  |     +- compile exe mlir-emit-fast fast native (reused)
-|  +- run mlir-opt success 25ms
-|  |  +- run exe mlir-emit-fast (plugins-before-fast.mlir) success 2ms
+|  +- run mlir-opt success 26ms
+|  |  +- run exe mlir-emit-fast (plugins-before-fast.mlir) cached
 |  |     +- compile exe mlir-emit-fast fast native (reused)
-|  +- run mlir-opt success 25ms
-|  |  +- run exe mlir-emit-fast (plugins-after-fast.mlir) success 2ms
-|  |     +- compile exe mlir-emit-fast fast native (reused)
-|  +- run mlir-opt success 25ms
-|  |  +- run exe mlir-emit-fast (plugins-reinstall-fast.mlir) success 2ms
-|  |     +- compile exe mlir-emit-fast fast native (reused)
-|  +- run mlir-opt success 24ms
-|  |  +- run exe mlir-emit-fast (controls-fast.mlir) success 2ms
+|  +- run mlir-opt success 29ms
+|  |  +- run exe mlir-emit-fast (plugins-after-fast.mlir) cached
 |  |     +- compile exe mlir-emit-fast fast native (reused)
 |  +- run mlir-opt success 25ms
-|     +- run exe mlir-emit-fast (vocabulary-fast.mlir) success 66ms
+|  |  +- run exe mlir-emit-fast (plugins-reinstall-fast.mlir) cached
+|  |     +- compile exe mlir-emit-fast fast native (reused)
+|  +- run mlir-opt success 138ms
+|  |  +- run exe mlir-emit-fast (controls-fast.mlir) cached
+|  |     +- compile exe mlir-emit-fast fast native (reused)
+|  +- run mlir-opt success 28ms
+|     +- run exe mlir-emit-fast (vocabulary-fast.mlir) cached
 |        +- compile exe mlir-emit-fast fast native (reused)
 +- check-matrix success
-|  +- install generated to matrix/gama-macos-aarch64 success
-|  |  +- compile exe gama-macos-aarch64 safe aarch64-macos success 1m MaxRSS:315M
-|  +- install generated to matrix/gama-linux-x86_64 success
-|  |  +- compile exe gama-linux-x86_64 safe x86_64-linux-none success 7s MaxRSS:397M
-|  +- install generated to matrix/gama-linux-aarch64 success
-|  |  +- compile exe gama-linux-aarch64 safe aarch64-linux-none success 7s MaxRSS:468M
-|  +- install generated to matrix/gama-windows-x86_64.exe success
-|     +- compile exe gama-windows-x86_64 safe x86_64-windows-gnu success 5s MaxRSS:381M
+|  +- install generated to matrix/gama-macos-aarch64 cached
+|  |  +- compile exe gama-macos-aarch64 safe aarch64-macos cached 31ms MaxRSS:31M
+|  +- install generated to matrix/gama-linux-x86_64 cached
+|  |  +- compile exe gama-linux-x86_64 safe x86_64-linux-none cached 31ms MaxRSS:30M
+|  +- install generated to matrix/gama-linux-aarch64 cached
+|  |  +- compile exe gama-linux-aarch64 safe aarch64-linux-none cached 30ms MaxRSS:30M
+|  +- install generated to matrix/gama-windows-x86_64.exe cached
+|     +- compile exe gama-windows-x86_64 safe x86_64-windows-gnu cached 33ms MaxRSS:30M
 +- check-docs success
-|  +- run python3 success 360ms
-|     +- compile exe gama-api-docs safe native cached 40ms MaxRSS:31M
-+- run python3 success 247ms
-+- run bash success 594ms
-|  +- compile exe demo debug native success 1s MaxRSS:291M
-+- run python3 success 655ms
+|  +- run python3 success 505ms
+|     +- compile exe gama-api-docs safe native cached 55ms MaxRSS:30M
++- run bash success 544ms
+|  +- compile exe demo debug native cached 43ms MaxRSS:31M
++- run python3 success 719ms
 |  +- compile exe demo debug native (reused)
-+- run exe demo success 88ms
++- run exe demo success 17ms
 |  +- compile exe demo debug native (reused)
-+- run exe bench success 674ms
-|  +- compile exe bench debug native success 1s MaxRSS:287M
-+- run exe plugins success 85ms
-   +- compile exe plugins debug native success 987ms MaxRSS:255M
++- run exe bench success 755ms
+|  +- compile exe bench debug native cached 49ms MaxRSS:31M
++- run exe plugins success 35ms
+   +- compile exe plugins debug native cached 43ms MaxRSS:30M
 
