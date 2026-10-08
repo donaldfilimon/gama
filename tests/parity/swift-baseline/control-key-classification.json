@@ -1,0 +1,42 @@
+[
+  {
+    "input" : "A",
+    "isLetter" : true,
+    "lowercase" : "a"
+  },
+  {
+    "input" : "É",
+    "isLetter" : true,
+    "lowercase" : "é"
+  },
+  {
+    "input" : "İ",
+    "isLetter" : true,
+    "lowercase" : "i̇"
+  },
+  {
+    "input" : "Σ",
+    "isLetter" : true,
+    "lowercase" : "σ"
+  },
+  {
+    "input" : "中",
+    "isLetter" : true,
+    "lowercase" : "中"
+  },
+  {
+    "input" : "1",
+    "isLetter" : false,
+    "lowercase" : "1"
+  },
+  {
+    "input" : " ",
+    "isLetter" : false,
+    "lowercase" : " "
+  },
+  {
+    "input" : "ß",
+    "isLetter" : true,
+    "lowercase" : "ß"
+  }
+]

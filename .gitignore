@@ -21,3 +21,10 @@ Examples/Android/local.properties
 
 # Agent runtime state written into the checkout root; never source.
 .kungfu/
+
+# Zig build outputs.
+/.zig-cache/
+/zig-out/
+
+# Python validation bytecode is generated, not authored source.
+__pycache__/

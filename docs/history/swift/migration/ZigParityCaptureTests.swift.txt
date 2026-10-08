@@ -1,0 +1,184 @@
+// Runtime Swift oracle. Retained with the migration archive before Swift cutover.
+import Foundation
+import Testing
+import GamaMacros
+import GamaPlugin
+import GamaEmbed
+@testable import GamaWASM
+@testable import GamaCore
+@testable import GamaDraw
+import GamaMLIR
+
+private func oracleWrite(_ name: String, bytes: [UInt8]) throws {
+    guard let output = ProcessInfo.processInfo.environment["GAMA_PARITY_OUTPUT"] else { return }
+    let url = URL(fileURLWithPath: output).appendingPathComponent(name)
+    try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data(bytes).write(to: url, options: .atomic)
+}
+private func oracleJSON(_ name: String, _ value: Any) throws {
+    let data = try JSONSerialization.data(withJSONObject: value, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
+    try oracleWrite(name, bytes: Array(data) + [10])
+}
+private func quad(_ r: Rect) -> [Int] { [r.origin.x, r.origin.y, r.size.width, r.size.height] }
+private func selection(_ s: Selection) -> [Int] { [s.anchor, s.head] }
+private func cells(_ b: CellBuffer) -> [[String: Any]] {
+    (0..<b.size.height).flatMap { y in (0..<b.size.width).map { x in
+        let c = b.cell(atX: x, y: y)!
+        return ["x": x, "y": y, "text": String(c.character), "continuation": c.isContinuation, "sgr": Int(c.style.attributes.rawValue)]
+    } }
+}
+private func tree(_ n: LaidOutNode) -> [String: Any] {
+    var value: [String: Any] = ["frame": quad(n.frame), "children": n.children.map(tree)]
+    switch n.node {
+    case .text(let s, _): value["kind"] = "text"; value["text"] = s
+    case .interactive(let id, let focus, _): value["kind"] = "interactive"; value["id"] = String(id.raw); value["focusable"] = focus
+    default: value["kind"] = String(describing: n.node).split(separator: "(").first.map(String.init) ?? "unknown"
+    }
+    return value
+}
+private func grid(_ laid: LaidOutNode, _ size: Size) -> CellBuffer {
+    var b = CellBuffer(size: size); CellPainter.paint(laid, into: &b); return b
+}
+@Component private struct OracleCounter {
+    let label: String
+    @Reactive var count: Int = 0
+    var body: some View { Button("\(label) \(count)") { count += 1 } }
+}
+private final class OracleModel { var visible = true; var items = [7, 3] }
+private struct OracleStateApp: App {
+    let model: OracleModel; let identified: Bool
+    init() { model = OracleModel(); identified = false }
+    init(model: OracleModel, identified: Bool) { self.model = model; self.identified = identified }
+    var scenes: some Scene {
+        Window("State", id: "main", role: .primary) {
+            if model.visible {
+                VStack(spacing: 0) {
+                    if identified { IdentifiedForEach(model.items, id: { NodeID(raw: UInt64($0)) }) { OracleCounter(label: "i\($0)") } }
+                    else { ForEach(model.items) { OracleCounter(label: "i\($0)") } }
+                }
+            } else { Text("off") }
+        }
+    }
+}
+private struct OracleActionApp: App {
+    let text = Signal(""); let count = Signal(0); let enabled = Signal(true)
+    var scenes: some Scene {
+        Window("Actions", id: "main", role: .primary) {
+            VStack(spacing: 0) {
+                TextField("Name", text: text.binding())
+                Button("Add") { count.update { $0 += 1 } }.actionIdentity(ActionID("add"), shortcut: .ctrl("a")).disabled(!enabled.get())
+            }
+        }
+    }
+}
+private final class OracleEvents: @unchecked Sendable { var values: [String] = [] }
+private struct OraclePlugin: GamaPluginProtocol {
+    let manifest: PluginManifest; let events: OracleEvents
+    init(_ id: PluginID, _ events: OracleEvents, requires: [Capability] = []) {
+        manifest = PluginManifest(id: id, version: PluginVersion(major: 1, minor: 0, patch: 0), requires: requires); self.events = events
+    }
+    mutating func activate(in context: PluginContext) throws(PluginError) { events.values.append("activate:" + manifest.id.raw) }
+    mutating func deactivate() { events.values.append("deactivate:" + manifest.id.raw) }
+    func commands() -> [PluginCommand] {
+        let events = events
+        return [PluginCommand(id: "run", title: "Run") { context in events.values.append("run:" + context.plugin.raw) }]
+    }
+    func render(slot: SlotID, in context: BuildContext) -> RenderNode { .interactive(id: context.id, focusable: true, child: .text(manifest.id.raw, style: .plain)) }
+}
+@Suite("Zig parity runtime capture", .serialized)
+struct ZigParityCaptureTests {
+    @Test func geometryIdentity() throws {
+        let points: [(Point, Point)] = [(.zero, Point(x: 3, y: -2)), (Point(x: .max, y: .min), Point(x: 1, y: -1))]
+        let p = points.map { a, b -> [String: Any] in let plus = a + b; let minus = a - b; return ["a": [a.x,a.y],"b": [b.x,b.y],"add": [plus.x,plus.y],"subtract": [minus.x,minus.y]] }
+        let rects = [Rect(x: 0,y: 0,width: 10,height: 6), Rect(x: -2,y: 3,width: -1,height: 4), Rect(x: Int.max-2,y: 0,width: 8,height: 1)]
+        let rs = rects.map { r -> [String: Any] in ["input": quad(r),"edges": [r.minX,r.minY,r.maxX,r.maxY],"inset": quad(r.inset(by: EdgeInsets(all: 1))),"originContained":r.contains(r.origin),"intersection":quad(r.intersection(Rect(x: 1,y: 1,width: 5,height: 5)))] }
+        let paths = [[],[0],[1],[0,3],[1,3],[-1],[Int.max],[Int.min],[0,0,0]]
+        try oracleJSON("geometry-identity.json",["points":p,"rects":rs,"ids":paths.map { path -> [String:Any] in ["path":path,"raw":String(path.reduce(NodeID.root) { $0.child($1) }.raw)] },"clamped": [Size(width: -1,height: 9).clamped(to: Size(width: 5,height: 3)).width,Size(width: -1,height: 9).clamped(to: Size(width: 5,height: 3)).height]])
+        #expect(NodeID.root.raw == 0xCBF2_9CE4_8422_2325)
+    }
+    @Test func unicodeEditing() throws {
+        let inputs = ["","abc","e\u{301}bc","👩🏽‍💻X","🇺🇸🇨🇦","✈︎✈️","\r\n","a  b\nc","中a中","\u{301}","क्‍ष"]
+        var results: [[String:Any]] = []
+        for value in inputs {
+            var edits: [[String:Any]] = []
+            for s in [Selection(anchor:0,head:0),Selection(anchor:1,head:1),Selection(anchor:3,head:1),Selection(anchor:-2,head:99)] {
+                let inserted = TextEditing.insert("Z",into:value,at:s)
+                let back = TextEditing.deleteBackward(value,at:s); let forward = TextEditing.deleteForward(value,at:s)
+                edits.append(["selection":selection(s),"insert":["text":inserted.0,"selection":selection(inserted.1)],"backward":back.map { ["text":$0.0,"selection":selection($0.1)] } ?? NSNull(),"forward":forward.map { ["text":$0.0,"selection":selection($0.1)] } ?? NSNull(),"left":selection(TextEditing.moveLeft(value,from:s)),"right":selection(TextEditing.moveRight(value,from:s))])
+            }
+            results.append(["text":value,"clusters":value.map(String.init),"clusterWidths":value.map { TextLayout.cellWidth(of:$0) },"width":TextLayout.displayWidth(of:value),"wrap":[-1,0,1,2,4].map { ["width":$0,"lines":TextLayout.wrap(value,width:$0)] },"edits":edits])
+        }
+        try oracleJSON("unicode-editing.json",results)
+        try oracleJSON("control-key-classification.json",["A","É","İ","Σ","中","1"," ","ß"].map { value -> [String:Any] in let c = value.first!; return ["input":value,"isLetter":c.isLetter,"lowercase":c.lowercased()] })
+        #expect(TextEditing.deleteBackward("e\u{301}bc",at:Selection(anchor:1,head:1))?.0 == "bc")
+    }
+    @Test func layoutCellsSerializers() throws {
+        let node = RenderNode.border(.rounded,style:TextStyle(foreground:.red),title:"T",child:.padding(EdgeInsets(all:1),child:.stack(axis:.vertical,spacing:1,alignment:.topLeading,children:[.text("A<&中",style:TextStyle(attributes:[.bold])),.stack(axis:.horizontal,spacing:1,alignment:.topLeading,children:[.text("x",style:.plain),.spacer(minLength:1),.text("end",style:.plain)])])))
+        for size in [Size(width:16,height:8),Size(width:9,height:5)] {
+            let laid = LayoutEngine.layout(node,in:Rect(origin:.zero,size:size)); let b = grid(laid,size); let stem = "layout-\(size.width)x\(size.height)"
+            try oracleJSON(stem+".json",["tree":tree(laid),"cells":cells(b),"rows":(0..<b.size.height).map { b.rowText($0) }])
+            let list = DrawList.from(b); try oracleWrite(stem+".gama",bytes:list.encode()); #expect(try DrawList.decode(list.encode()) == list)
+            try oracleWrite(stem+".html",bytes:Array(HTMLSerializer().serialize(b).utf8))
+            var ansi = b; let first = ansi.presentDiff(); ansi.clearBack(); CellPainter.paint(laid,into:&ansi); let unchanged = ansi.presentDiff(); ansi.put("Z",at:.zero,style:.plain); let changed = ansi.presentDiff()
+            try oracleJSON(stem+"-ansi.json",["initial":first,"unchanged":unchanged,"changed":changed]);#expect(unchanged.isEmpty)
+            var plain = b; var stream = StreamPresenter(); let lines = stream.present(&plain); plain.clearBack(); CellPainter.paint(laid,into:&plain)
+            try oracleJSON(stem+"-plain.json",["initial":lines,"unchanged":stream.present(&plain)])
+            try oracleWrite(stem+".mlir",bytes:Array(GamaLowering.lower(laidOut:laid,name:"parity").utf8))
+        }
+        var wide = CellBuffer(size:Size(width:5,height:1));wide.putText("中e\u{301}✈️",at:.zero,style:.plain,maxWidth:5)
+        let initial = cells(wide);wide.put("x",at:Point(x:1,y:0),style:.plain)
+        try oracleJSON("wide-cell-overwrite.json",["initial":initial,"overwriteContinuation":cells(wide),"oversizeNormalized":[CellBuffer(size:Size(width:Int.max,height:2)).size.width,CellBuffer(size:Size(width:Int.max,height:2)).size.height]])
+        try oracleWrite("structural.mlir",bytes:Array(GamaLowering.lower(module:node,name:"parity").utf8))
+        try oracleWrite("escaping.mlir",bytes:Array(GamaLowering.lower(module:.text("q:\" b:\\ n:\n t:\t end",style:.plain),name:"parity").utf8))
+    }
+    @Test func stateLifetime() throws {
+        var traces: [[String:Any]] = []
+        for identified in [false,true] {
+            let model = OracleModel();let size = Size(width:12,height:2);var host = try FrameHost(app:OracleStateApp(model:model,identified:identified));var other = try FrameHost(app:OracleStateApp(model:model,identified:identified))
+            func capture(_ label:String,_ laid:LaidOutNode,_ count:Int) -> [String:Any] { ["step":label,"stateCount":count,"rows":(0..<size.height).map { grid(laid,size).rowText($0) }] }
+            var events = [capture("initial",host.pump(size:size),host.reactiveStateCount)]
+            _ = other.pump(size:size);host.handle(.key(.enter));events.append(capture("increment",host.pump(size:size),host.reactiveStateCount));events.append(capture("otherHost",other.pump(size:size),other.reactiveStateCount))
+            model.items.reverse();host.invalidate();events.append(capture("reverse",host.pump(size:size),host.reactiveStateCount))
+            model.visible = false;host.invalidate();events.append(capture("remove",host.pump(size:size),host.reactiveStateCount))
+            model.visible = true;host.invalidate();events.append(capture("return",host.pump(size:size),host.reactiveStateCount))
+            let count = host.reactiveStateCount;#expect(count == 2)
+            traces.append(["identified":identified,"events":events])
+        }
+        try oracleJSON("state-lifetime.json",traces)
+    }
+    @Test func focusActions() throws {
+        let app = OracleActionApp();var host = try FrameHost(app:app);let size = Size(width:16,height:4);var trace: [[String:Any]] = []
+        func snapshot(_ label:String,_ laid:LaidOutNode,_ dirty:Bool) -> [String:Any] { ["step":label,"text":app.text.get(),"count":app.count.get(),"dirty":dirty,"tree":tree(laid)] }
+        host.perform(ActionID("add"));trace.append(snapshot("beforePump",host.pump(size:size),host.needsFrame))
+        let events: [(String,Key)] = [("type-a",.character("a")),("type-combining",.character("e\u{301}")),("left",.left),("insert-Z",.character("Z")),("tab",.tab),("activate",.enter),("shortcut",.ctrl("a"))]
+        for (label,key) in events { host.handle(.key(key));let dirty = host.needsFrame;trace.append(snapshot(label,host.pump(size:size),dirty)) }
+        host.perform(ActionID("add"));trace.append(snapshot("named",host.pump(size:size),host.needsFrame))
+        app.enabled.set(false);host.invalidate();_ = host.pump(size:size);host.perform(ActionID("add"));host.handle(.key(.ctrl("a")));trace.append(snapshot("disabled",host.pump(size:size),host.needsFrame))
+        #expect(app.count.get() == 3);try oracleJSON("focus-actions.json",trace)
+    }
+    @Test func plugins() throws {
+        let events = OracleEvents();let subscription = SubscriptionContext { events.values.append("invalidate") };let runtime = PluginRuntime(grants:.denyAll,services:HostServices(),subscriptions:subscription)
+        var outcomes: [String] = []
+        do { try runtime.install(OraclePlugin("denied",events,requires:[.log])) } catch { outcomes.append(String(describing:error)) }
+        try runtime.install(OraclePlugin("a",events));try runtime.install(OraclePlugin("b",events));let cached = runtime.commands[0];cached.perform()
+        let before = GamaLowering.lower(module:runtime.render(slot:"main",in:BuildContext()),name:"plugins")
+        runtime.uninstall("a");cached.perform();runtime.commands[0].perform()
+        let after = GamaLowering.lower(module:runtime.render(slot:"main",in:BuildContext()),name:"plugins")
+        try runtime.install(OraclePlugin("a",events));let reinstall = GamaLowering.lower(module:runtime.render(slot:"main",in:BuildContext()),name:"plugins")
+        outcomes.append(contentsOf:runtime.installed.map { $0.raw });runtime.uninstall("a");runtime.uninstall("b")
+        let scope = FilesystemScope.readWrite(pathPrefix:"/a")
+        try oracleJSON("plugins.json",["events":events.values,"outcomes":outcomes,"paths":["/a","/a/b","/ab","/a/../b","/a//b","relative"].map { ["path":$0,"read":scope.permitsRead($0),"write":scope.permitsWrite($0)] },"exactSubscopeGranted":CapabilityGrants(table:["a":[.filesystem(.read(pathPrefix:"/a"))]]).permits("a",.filesystem(.read(pathPrefix:"/a/b")))])
+        try oracleWrite("plugins-before.mlir",bytes:Array(before.utf8));try oracleWrite("plugins-after.mlir",bytes:Array(after.utf8));try oracleWrite("plugins-reinstall.mlir",bytes:Array(reinstall.utf8))
+        #expect(events.values.filter { $0 == "run:a" }.count == 1)
+    }
+    @Test func embedDiagnostic() throws {
+        let context = try #require(gama_embed_v1_context_create(24,6));defer { gama_embed_v1_context_destroy(context) };var statuses: [String:Int32] = ["abi":gama_embed_v1_abi_version(),"initialDirty":gama_embed_v1_needs_frame(context),"nullKey":gama_embed_v1_key(nil,999,0,0,0),"invalidKey":gama_embed_v1_key(context,999,0,0,0)]
+        for phase in ["initial","increment"] {
+            if phase == "increment" { statuses["enter"] = gama_embed_v1_key(context,5,0,0,0) }
+            var length: Int32 = 0;let ptr = try #require(gama_embed_v1_frame(context,&length));let bytes = Array(UnsafeBufferPointer(start:ptr,count:Int(length)));let list = try DrawList.decode(bytes)
+            try oracleWrite("embed-"+phase+".gama",bytes:bytes);try oracleJSON("embed-"+phase+".json",["size":[list.size.width,list.size.height],"commands":list.commands.map { String(describing:$0) }]);statuses[phase+"Length"] = length
+            var cleanLength: Int32 = -99;let clean = gama_embed_v1_frame(context,&cleanLength);#expect(clean == nil);statuses[phase+"CleanLength"] = cleanLength;statuses[phase+"Dirty"] = gama_embed_v1_needs_frame(context)
+        }
+        try oracleJSON("embed-statuses.json",statuses)
+    }
+}

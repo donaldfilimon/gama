@@ -1,0 +1,80 @@
+{
+  "initial" : [
+    {
+      "continuation" : false,
+      "sgr" : 0,
+      "text" : "中",
+      "x" : 0,
+      "y" : 0
+    },
+    {
+      "continuation" : true,
+      "sgr" : 0,
+      "text" : " ",
+      "x" : 1,
+      "y" : 0
+    },
+    {
+      "continuation" : false,
+      "sgr" : 0,
+      "text" : "é",
+      "x" : 2,
+      "y" : 0
+    },
+    {
+      "continuation" : false,
+      "sgr" : 0,
+      "text" : "✈️",
+      "x" : 3,
+      "y" : 0
+    },
+    {
+      "continuation" : true,
+      "sgr" : 0,
+      "text" : " ",
+      "x" : 4,
+      "y" : 0
+    }
+  ],
+  "oversizeNormalized" : [
+    0,
+    0
+  ],
+  "overwriteContinuation" : [
+    {
+      "continuation" : false,
+      "sgr" : 0,
+      "text" : " ",
+      "x" : 0,
+      "y" : 0
+    },
+    {
+      "continuation" : false,
+      "sgr" : 0,
+      "text" : "x",
+      "x" : 1,
+      "y" : 0
+    },
+    {
+      "continuation" : false,
+      "sgr" : 0,
+      "text" : "é",
+      "x" : 2,
+      "y" : 0
+    },
+    {
+      "continuation" : false,
+      "sgr" : 0,
+      "text" : "✈️",
+      "x" : 3,
+      "y" : 0
+    },
+    {
+      "continuation" : true,
+      "sgr" : 0,
+      "text" : " ",
+      "x" : 4,
+      "y" : 0
+    }
+  ]
+}

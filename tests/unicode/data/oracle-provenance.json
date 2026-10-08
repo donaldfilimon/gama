@@ -1,0 +1,58 @@
+{
+  "captured_utc_date": "2026-10-03",
+  "baseline": "b8ce774285c79d83a4bf3ffff7b11975d4716af2",
+  "compiler": "Apple Swift 6.5-dev",
+  "compiler_revision": "95c5142e84b82c1",
+  "toolchain_id": "org.swift.65202608211a",
+  "target": "arm64-apple-macosx27.2.0",
+  "runtime": "macOS /usr/lib/swift/libswiftCore.dylib (width oracle otool -L)",
+  "scalar_count": 1112064,
+  "official_grapheme_vector_count": 766,
+  "intentional_grapheme_differences": 8,
+  "outputs": [
+    {
+      "file": "swift-control-oracle.json",
+      "bytes": 54222,
+      "sha256": "4f4621fdcbe7e5e7e23f925215f73dd31af564b2544b134f7092aa54a435efa2"
+    },
+    {
+      "file": "swift-grapheme-differences.json",
+      "bytes": 2448,
+      "sha256": "9c24d750db78100f7a73f8023aaeeb0cd2ad15d7637a0a53e2a736ab88105559"
+    },
+    {
+      "file": "swift-width-oracle.json",
+      "bytes": 784,
+      "sha256": "7a44a1dd8e127a1a80cfc2cc6e8ee7be03cc337d05e01322d2083f28e30a8b4c"
+    }
+  ],
+  "historical_source_evidence": ".superpowers/sdd/2026-10-03-zig-only-framework-rewrite/task-3-oracle",
+  "sources": [
+    {
+      "file": "Geometry.swift",
+      "sha256": "de380911d4697cf6ae895d38ae4915905a1b5964f25a7ca3d14e536aa4ce5d2d"
+    },
+    {
+      "file": "TextLayout.swift",
+      "sha256": "d3958343cf6e5e0dddea1022ac731f175bba58f5494f1fda71d97760e4c050c1"
+    },
+    {
+      "file": "capture-controls.swift",
+      "sha256": "6ca211a98fa1c88b87818ff1e18d99270e5201828f9a2649feee27f79480cc01"
+    },
+    {
+      "file": "capture-graphemes.swift",
+      "sha256": "53b2e19ed88b88263814378f3077715e6f63a9fe096c9ebc2e58e10a47cd7755"
+    },
+    {
+      "file": "capture-width.swift",
+      "sha256": "e0edf8b6ee390f50dfd8506c1a953b459af2f3a18e0a49b75b4097568ef1d348"
+    }
+  ],
+  "commands": [
+    "env -u TOOLCHAINS xcrun --toolchain org.swift.65202608211a swift HISTORICAL_SOURCE/capture-controls.swift Tests/unicode/data/swift-control-oracle.json",
+    "env -u TOOLCHAINS xcrun --toolchain org.swift.65202608211a swift HISTORICAL_SOURCE/capture-graphemes.swift Tests/unicode/data/GraphemeBreakTest.txt Tests/unicode/data/swift-grapheme-differences.json",
+    "env -u TOOLCHAINS xcrun --toolchain org.swift.65202608211a swiftc -O HISTORICAL_SOURCE/Geometry.swift HISTORICAL_SOURCE/TextLayout.swift HISTORICAL_SOURCE/capture-width.swift -o /private/tmp/gama-task3-width-oracle",
+    "/private/tmp/gama-task3-width-oracle Tests/unicode/data/swift-width-oracle.json"
+  ]
+}

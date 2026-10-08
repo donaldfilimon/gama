@@ -1,0 +1,6 @@
+.{
+    .version = "0.17.0-dev.2338+b46a7f3a2",
+    .revision = "b46a7f3a25a61c68bbc25759087a01095dc8446e",
+    .aarch64_macos_url = "https://ziglang.org/builds/zig-aarch64-macos-0.17.0-dev.2338+b46a7f3a2.tar.xz",
+    .aarch64_macos_sha256 = "6823e45e4f4b9b7eab5230baa06d9e59ea9e1f19e88d3eb29946d02111bfedd4",
+}

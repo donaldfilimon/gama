@@ -1,0 +1,1122 @@
+=== abi_tests-debug.tests.log ===
+1/12 abi_tests.test.C baseline oversized dimensions serialize a zero-size grid...OK
+2/12 abi_tests.test.diagnostic shared host direct Enter exact C goldens and clean borrow...OK
+3/12 abi_tests.test.C null precedence nullable length exact mapping dimensions and pointer behavior...OK
+4/12 abi_tests.test.decoder modifiers full Unicode controls code ranges and scalar-only validation...OK
+5/12 abi_tests.test.every allocation failure cleans context Signal Host raster and candidate...OK
+6/12 abi_tests.test.C OOM length leaves prior publication planes and dirty retry...OK
+7/12 abi_tests.test.installed pull failures preserve host publication clean state and accepted model...OK
+8/12 abi_tests.test.native executor and reentry reject mutation and destroy...OK
+9/12 abi_tests.test.every staged rendering OOM retains old frame and retries accepted model including normalized C grid...render OOM rollback sweep (normalized=false): 10 allocation failures
+render OOM rollback sweep (normalized=true): 3 allocation failures
+OK
+10/12 abi_tests.test.each failed replacement allocation preserves installed owner and C creation returns null...OK
+11/12 abi_tests.test.actual signal callback cannot reenter adapter frame input resize or destroy...OK
+12/12 abi_tests.test.frozen structured C statuses retain post-consumption dirty meaning...OK
+All 12 tests passed.
+
+=== abi_tests-fast.tests.log ===
+1/12 abi_tests.test.C baseline oversized dimensions serialize a zero-size grid...OK
+2/12 abi_tests.test.diagnostic shared host direct Enter exact C goldens and clean borrow...OK
+3/12 abi_tests.test.C null precedence nullable length exact mapping dimensions and pointer behavior...OK
+4/12 abi_tests.test.decoder modifiers full Unicode controls code ranges and scalar-only validation...OK
+5/12 abi_tests.test.every allocation failure cleans context Signal Host raster and candidate...OK
+6/12 abi_tests.test.C OOM length leaves prior publication planes and dirty retry...OK
+7/12 abi_tests.test.installed pull failures preserve host publication clean state and accepted model...OK
+8/12 abi_tests.test.native executor and reentry reject mutation and destroy...OK
+9/12 abi_tests.test.every staged rendering OOM retains old frame and retries accepted model including normalized C grid...render OOM rollback sweep (normalized=false): 10 allocation failures
+render OOM rollback sweep (normalized=true): 2 allocation failures
+OK
+10/12 abi_tests.test.each failed replacement allocation preserves installed owner and C creation returns null...OK
+11/12 abi_tests.test.actual signal callback cannot reenter adapter frame input resize or destroy...OK
+12/12 abi_tests.test.frozen structured C statuses retain post-consumption dirty meaning...OK
+All 12 tests passed.
+
+=== abi_tests-safe.tests.log ===
+1/12 abi_tests.test.C baseline oversized dimensions serialize a zero-size grid...OK
+2/12 abi_tests.test.diagnostic shared host direct Enter exact C goldens and clean borrow...OK
+3/12 abi_tests.test.C null precedence nullable length exact mapping dimensions and pointer behavior...OK
+4/12 abi_tests.test.decoder modifiers full Unicode controls code ranges and scalar-only validation...OK
+5/12 abi_tests.test.every allocation failure cleans context Signal Host raster and candidate...OK
+6/12 abi_tests.test.C OOM length leaves prior publication planes and dirty retry...OK
+7/12 abi_tests.test.installed pull failures preserve host publication clean state and accepted model...OK
+8/12 abi_tests.test.native executor and reentry reject mutation and destroy...OK
+9/12 abi_tests.test.every staged rendering OOM retains old frame and retries accepted model including normalized C grid...render OOM rollback sweep (normalized=false): 10 allocation failures
+render OOM rollback sweep (normalized=true): 2 allocation failures
+OK
+10/12 abi_tests.test.each failed replacement allocation preserves installed owner and C creation returns null...OK
+11/12 abi_tests.test.actual signal callback cannot reenter adapter frame input resize or destroy...OK
+12/12 abi_tests.test.frozen structured C statuses retain post-consumption dirty meaning...OK
+All 12 tests passed.
+
+=== authoring_tests-debug.tests.log ===
+1/21 authoring_tests.test.progress exact baseline IR...OK
+2/21 authoring_tests.test.scene requires primary...OK
+3/21 authoring_tests.test.palette rgb attributes style and border baseline...OK
+4/21 authoring_tests.test.tuple branches state scope and flatten identity trace...OK
+5/21 authoring_tests.test.collections use actual index explicit identity and enumerate views...OK
+6/21 authoring_tests.test.visual modifiers descend while environments preserve identity and nearest wins...OK
+7/21 authoring_tests.test.stack list overlay spacer divider defaults and style cascade IR...OK
+8/21 authoring_tests.test.button registrations captures labels disabled focus and named identity...OK
+9/21 authoring_tests.test.text field snapshot and toggle preserve synthetic IR and host requests...OK
+10/21 authoring_tests.test.progress special fractions exact strings and bounded width...OK
+11/21 authoring_tests.test.virtualized rows bind disabled state and do not flatten...OK
+12/21 authoring_tests.test.native fallback registers disabled and descends through greedy frame...OK
+13/21 authoring_tests.test.window reader uses fixed unavailable operations and child identity...OK
+14/21 authoring_tests.test.scene validation order primary selection and launch payload presence...OK
+15/21 authoring_tests.test.compiled scenes copy declarations and reevaluate content without identity descent...OK
+16/21 authoring_tests.test.frame owns borrowed text children titles and action captures...OK
+17/21 authoring_tests.test.every allocation failure releases candidate storage and graph...OK
+18/21 authoring_tests.test.copied contexts preserve whole-surface environment hooks and focused identity...OK
+19/21 authoring_tests.test.authored identity trace matches frozen Swift paths exactly...OK
+20/21 authoring_tests.test.host registration failure propagates and environment callback replaces enabled...OK
+21/21 authoring_tests.test.focused disabled field style focus overrides gray and toggle off glyph...OK
+All 21 tests passed.
+
+=== authoring_tests-fast.tests.log ===
+1/21 authoring_tests.test.progress exact baseline IR...OK
+2/21 authoring_tests.test.scene requires primary...OK
+3/21 authoring_tests.test.palette rgb attributes style and border baseline...OK
+4/21 authoring_tests.test.tuple branches state scope and flatten identity trace...OK
+5/21 authoring_tests.test.collections use actual index explicit identity and enumerate views...OK
+6/21 authoring_tests.test.visual modifiers descend while environments preserve identity and nearest wins...OK
+7/21 authoring_tests.test.stack list overlay spacer divider defaults and style cascade IR...OK
+8/21 authoring_tests.test.button registrations captures labels disabled focus and named identity...OK
+9/21 authoring_tests.test.text field snapshot and toggle preserve synthetic IR and host requests...OK
+10/21 authoring_tests.test.progress special fractions exact strings and bounded width...OK
+11/21 authoring_tests.test.virtualized rows bind disabled state and do not flatten...OK
+12/21 authoring_tests.test.native fallback registers disabled and descends through greedy frame...OK
+13/21 authoring_tests.test.window reader uses fixed unavailable operations and child identity...OK
+14/21 authoring_tests.test.scene validation order primary selection and launch payload presence...OK
+15/21 authoring_tests.test.compiled scenes copy declarations and reevaluate content without identity descent...OK
+16/21 authoring_tests.test.frame owns borrowed text children titles and action captures...OK
+17/21 authoring_tests.test.every allocation failure releases candidate storage and graph...OK
+18/21 authoring_tests.test.copied contexts preserve whole-surface environment hooks and focused identity...OK
+19/21 authoring_tests.test.authored identity trace matches frozen Swift paths exactly...OK
+20/21 authoring_tests.test.host registration failure propagates and environment callback replaces enabled...OK
+21/21 authoring_tests.test.focused disabled field style focus overrides gray and toggle off glyph...OK
+All 21 tests passed.
+
+=== authoring_tests-safe.tests.log ===
+1/21 authoring_tests.test.progress exact baseline IR...OK
+2/21 authoring_tests.test.scene requires primary...OK
+3/21 authoring_tests.test.palette rgb attributes style and border baseline...OK
+4/21 authoring_tests.test.tuple branches state scope and flatten identity trace...OK
+5/21 authoring_tests.test.collections use actual index explicit identity and enumerate views...OK
+6/21 authoring_tests.test.visual modifiers descend while environments preserve identity and nearest wins...OK
+7/21 authoring_tests.test.stack list overlay spacer divider defaults and style cascade IR...OK
+8/21 authoring_tests.test.button registrations captures labels disabled focus and named identity...OK
+9/21 authoring_tests.test.text field snapshot and toggle preserve synthetic IR and host requests...OK
+10/21 authoring_tests.test.progress special fractions exact strings and bounded width...OK
+11/21 authoring_tests.test.virtualized rows bind disabled state and do not flatten...OK
+12/21 authoring_tests.test.native fallback registers disabled and descends through greedy frame...OK
+13/21 authoring_tests.test.window reader uses fixed unavailable operations and child identity...OK
+14/21 authoring_tests.test.scene validation order primary selection and launch payload presence...OK
+15/21 authoring_tests.test.compiled scenes copy declarations and reevaluate content without identity descent...OK
+16/21 authoring_tests.test.frame owns borrowed text children titles and action captures...OK
+17/21 authoring_tests.test.every allocation failure releases candidate storage and graph...OK
+18/21 authoring_tests.test.copied contexts preserve whole-surface environment hooks and focused identity...OK
+19/21 authoring_tests.test.authored identity trace matches frozen Swift paths exactly...OK
+20/21 authoring_tests.test.host registration failure propagates and environment callback replaces enabled...OK
+21/21 authoring_tests.test.focused disabled field style focus overrides gray and toggle off glyph...OK
+All 21 tests passed.
+
+=== bench-debug.tests.log ===
+1/2 bench.test.benchmark uses upper-middle median and nearest-rank p95...OK
+2/2 bench.test.benchmark retains exact script and initial pointer semantics...OK
+All 2 tests passed.
+
+=== bench-fast.tests.log ===
+1/2 bench.test.benchmark uses upper-middle median and nearest-rank p95...OK
+2/2 bench.test.benchmark retains exact script and initial pointer semantics...OK
+All 2 tests passed.
+
+=== bench-safe.tests.log ===
+1/2 bench.test.benchmark uses upper-middle median and nearest-rank p95...OK
+2/2 bench.test.benchmark retains exact script and initial pointer semantics...OK
+All 2 tests passed.
+
+=== c-abi-debug.tests.log ===
+All 104 linked C ABI assertions passed
+
+=== c-abi-fast.tests.log ===
+All 104 linked C ABI assertions passed
+
+=== c-abi-safe.tests.log ===
+All 104 linked C ABI assertions passed
+
+=== compile-fail.tests.log ===
+compile-fail OK: tests/compile_fail/plugin_capture_spoof.zig (action.capture-must-be-owned-value)
+compile-fail OK: tests/compile_fail/plugin_capture_pointer.zig (action.capture-must-be-owned-value)
+compile-fail OK: tests/compile_fail/plugin_capture_slice.zig (action.capture-must-be-owned-value)
+compile-fail OK: tests/compile_fail/signal_optional_pointer_vector.zig (state.value-requires-clone-and-deinit)
+compile-fail OK: tests/compile_fail/signal_optional_pointer_vector_nested.zig (state.value-requires-clone-and-deinit)
+compile-fail OK: tests/compile_fail/signal_pointer_vector.zig (state.value-requires-clone-and-deinit)
+compile-fail OK: tests/compile_fail/signal_pointer_vector_nested.zig (state.value-requires-clone-and-deinit)
+compile-fail OK: tests/compile_fail/state_optional_pointer_vector.zig (state.value-requires-clone-and-deinit)
+compile-fail OK: tests/compile_fail/state_optional_pointer_vector_nested.zig (state.value-requires-clone-and-deinit)
+compile-fail OK: tests/compile_fail/state_pointer_vector.zig (state.value-requires-clone-and-deinit)
+compile-fail OK: tests/compile_fail/state_pointer_vector_nested.zig (state.value-requires-clone-and-deinit)
+compile-fail OK: tests/compile_fail/state_unmanaged_slice.zig (state.value-requires-clone-and-deinit)
+compile-fail OK: tests/compile_fail/capture_spoof.zig (action.capture-must-be-owned-value)
+compile-fail OK: tests/compile_fail/native_single_threaded.zig (host.native-requires-multithreaded-build)
+compile-fail OK: tests/compile_fail/action_capture_slice.zig (action.capture-must-be-owned-value)
+compile-fail OK: tests/compile_fail/action_capture_error_union.zig (action.capture-must-be-owned-value)
+compile-fail OK: tests/compile_fail/component_receiver.zig (component.render-signature)
+compile-fail OK: tests/compile_fail/component_result.zig (component.render-signature)
+compile-fail OK: tests/compile_fail/component_missing.zig (component.render-signature)
+compile-fail OK: tests/compile_fail/component_nonstruct.zig (component.render-signature)
+compile-fail OK: tests/compile_fail/rgb_length.zig (rgb.malformed)
+compile-fail OK: tests/compile_fail/rgb_digit.zig (rgb.malformed)
+compile-fail OK: tests/compile_fail/rgb_runtime.zig (unable to evaluate comptime expression)
+compile-fail OK: tests/compile_fail/action_capture_pointer.zig (action.capture-must-be-owned-value)
+compile-fail OK: tests/compile_fail/wrong_compiler.zig (Gama requires Zig)
+compile-fail OK: tests/compile_fail/dependencies.zig (Gama forbids package dependencies)
+compile-fail OK: tests/compile_fail/forbidden_import.zig (Gama forbids hosted or foreign portable imports)
+compile-fail OK: tests/compile_fail/forbidden_source.zig (Gama forbids legacy or foreign sources)
+runtime-guard OK: tests/compile_fail/zero_tests.zig (zero-test suite)
+All 29 negative fixtures rejected
+
+=== corpus-debug.tests.log ===
+1/4 corpus.test.manifest tampering and missing duplicate escaping entries fail explicitly...OK
+2/4 corpus.test.fixture bytes size UTF8 JSON and version tampering fail explicitly...OK
+3/4 corpus.test.filesystem missing extra same-size mutation and directory tampering fail closed...OK
+4/4 corpus.test.symlink fixture cannot substitute external data...OK
+All 4 tests passed.
+
+=== corpus-fast.tests.log ===
+1/4 corpus.test.manifest tampering and missing duplicate escaping entries fail explicitly...OK
+2/4 corpus.test.fixture bytes size UTF8 JSON and version tampering fail explicitly...OK
+3/4 corpus.test.filesystem missing extra same-size mutation and directory tampering fail closed...OK
+4/4 corpus.test.symlink fixture cannot substitute external data...OK
+All 4 tests passed.
+
+=== corpus-integrity.tests.log ===
+Gama corpus: 31 immutable fixtures verified (manifest, SHA256, sizes, totality, content)
+
+=== corpus-safe.tests.log ===
+1/4 corpus.test.manifest tampering and missing duplicate escaping entries fail explicitly...OK
+2/4 corpus.test.fixture bytes size UTF8 JSON and version tampering fail explicitly...OK
+3/4 corpus.test.filesystem missing extra same-size mutation and directory tampering fail closed...OK
+4/4 corpus.test.symlink fixture cannot substitute external data...OK
+All 4 tests passed.
+
+=== docs.tests.log ===
+Docs: 33 current documents, 115 references, 1356 API entries, 127 controls passed
+
+=== drawing_tests-debug.tests.log ===
+1/23 drawing_tests.test.drawing owns graphemes and swaps only after preparation...OK
+2/23 drawing_tests.test.all frozen drawing cells rows wire HTML ANSI and chronology bytes...OK
+3/23 drawing_tests.test.all six frozen GAMA files decode encode exact and every truncation fails...OK
+4/23 drawing_tests.test.frozen wide-cell overwrite complete plane...OK
+5/23 drawing_tests.test.normalization zero product shapes no-op resize and hostile bounded painting...OK
+6/23 drawing_tests.test.destructive zero-width final-column writes raw cells and split continuation runs...OK
+7/23 drawing_tests.test.source-derived painter style precedence backdrop overflow and zero-width text...OK
+8/23 drawing_tests.test.all border glyph families multiline titles and divider explicit and inferred orientation...OK
+9/23 drawing_tests.test.independent wire golden all fields saturate and decoder canonicalization...OK
+10/23 drawing_tests.test.decoder precedence payload bounds negative rect UTF8 and metadata-only dimensions...OK
+11/23 drawing_tests.test.deterministic malformed corpus mutations canonical valid roundtrips...OK
+12/23 drawing_tests.test.ANSI styles palettes sparse erase wide and continuation-only changes...OK
+13/23 drawing_tests.test.palette exact thresholds ties and plain style chronology...OK
+14/23 drawing_tests.test.HTML full CSS order inverse unknown attributes grapheme escape and serializers never swap...OK
+15/23 drawing_tests.test.drawing pump managed glyph lifetime abort replacement resize and clean publication...OK
+16/23 drawing_tests.test.every host build paint clone encode copy allocation failure preserves publication...OK
+17/23 drawing_tests.test.every resize glyph HTML plain wire allocation failure releases owned resources...OK
+18/23 drawing_tests.test.ANSI and plain output OOM leave both planes and force flag unchanged...OK
+19/23 drawing_tests.test.real downstream paint encode and output failures abort through PreparedFrame finish...OK
+20/23 drawing_tests.test.M1 latest registration per NodeID last visual region wins diagnostic first order...OK
+21/23 drawing_tests.test.all adapter formats publish borrowed output with serializer and presenter plane rules...OK
+22/23 drawing_tests.test.blank styled runs exact leading trim decorated space and full attribute bytes...OK
+23/23 drawing_tests.test.final host output-copy OOM after real paint and encoding preserves publication...OK
+All 23 tests passed.
+
+=== drawing_tests-fast.tests.log ===
+1/23 drawing_tests.test.drawing owns graphemes and swaps only after preparation...OK
+2/23 drawing_tests.test.all frozen drawing cells rows wire HTML ANSI and chronology bytes...OK
+3/23 drawing_tests.test.all six frozen GAMA files decode encode exact and every truncation fails...OK
+4/23 drawing_tests.test.frozen wide-cell overwrite complete plane...OK
+5/23 drawing_tests.test.normalization zero product shapes no-op resize and hostile bounded painting...OK
+6/23 drawing_tests.test.destructive zero-width final-column writes raw cells and split continuation runs...OK
+7/23 drawing_tests.test.source-derived painter style precedence backdrop overflow and zero-width text...OK
+8/23 drawing_tests.test.all border glyph families multiline titles and divider explicit and inferred orientation...OK
+9/23 drawing_tests.test.independent wire golden all fields saturate and decoder canonicalization...OK
+10/23 drawing_tests.test.decoder precedence payload bounds negative rect UTF8 and metadata-only dimensions...OK
+11/23 drawing_tests.test.deterministic malformed corpus mutations canonical valid roundtrips...OK
+12/23 drawing_tests.test.ANSI styles palettes sparse erase wide and continuation-only changes...OK
+13/23 drawing_tests.test.palette exact thresholds ties and plain style chronology...OK
+14/23 drawing_tests.test.HTML full CSS order inverse unknown attributes grapheme escape and serializers never swap...OK
+15/23 drawing_tests.test.drawing pump managed glyph lifetime abort replacement resize and clean publication...OK
+16/23 drawing_tests.test.every host build paint clone encode copy allocation failure preserves publication...OK
+17/23 drawing_tests.test.every resize glyph HTML plain wire allocation failure releases owned resources...OK
+18/23 drawing_tests.test.ANSI and plain output OOM leave both planes and force flag unchanged...OK
+19/23 drawing_tests.test.real downstream paint encode and output failures abort through PreparedFrame finish...OK
+20/23 drawing_tests.test.M1 latest registration per NodeID last visual region wins diagnostic first order...OK
+21/23 drawing_tests.test.all adapter formats publish borrowed output with serializer and presenter plane rules...OK
+22/23 drawing_tests.test.blank styled runs exact leading trim decorated space and full attribute bytes...OK
+23/23 drawing_tests.test.final host output-copy OOM after real paint and encoding preserves publication...OK
+All 23 tests passed.
+
+=== drawing_tests-safe.tests.log ===
+1/23 drawing_tests.test.drawing owns graphemes and swaps only after preparation...OK
+2/23 drawing_tests.test.all frozen drawing cells rows wire HTML ANSI and chronology bytes...OK
+3/23 drawing_tests.test.all six frozen GAMA files decode encode exact and every truncation fails...OK
+4/23 drawing_tests.test.frozen wide-cell overwrite complete plane...OK
+5/23 drawing_tests.test.normalization zero product shapes no-op resize and hostile bounded painting...OK
+6/23 drawing_tests.test.destructive zero-width final-column writes raw cells and split continuation runs...OK
+7/23 drawing_tests.test.source-derived painter style precedence backdrop overflow and zero-width text...OK
+8/23 drawing_tests.test.all border glyph families multiline titles and divider explicit and inferred orientation...OK
+9/23 drawing_tests.test.independent wire golden all fields saturate and decoder canonicalization...OK
+10/23 drawing_tests.test.decoder precedence payload bounds negative rect UTF8 and metadata-only dimensions...OK
+11/23 drawing_tests.test.deterministic malformed corpus mutations canonical valid roundtrips...OK
+12/23 drawing_tests.test.ANSI styles palettes sparse erase wide and continuation-only changes...OK
+13/23 drawing_tests.test.palette exact thresholds ties and plain style chronology...OK
+14/23 drawing_tests.test.HTML full CSS order inverse unknown attributes grapheme escape and serializers never swap...OK
+15/23 drawing_tests.test.drawing pump managed glyph lifetime abort replacement resize and clean publication...OK
+16/23 drawing_tests.test.every host build paint clone encode copy allocation failure preserves publication...OK
+17/23 drawing_tests.test.every resize glyph HTML plain wire allocation failure releases owned resources...OK
+18/23 drawing_tests.test.ANSI and plain output OOM leave both planes and force flag unchanged...OK
+19/23 drawing_tests.test.real downstream paint encode and output failures abort through PreparedFrame finish...OK
+20/23 drawing_tests.test.M1 latest registration per NodeID last visual region wins diagnostic first order...OK
+21/23 drawing_tests.test.all adapter formats publish borrowed output with serializer and presenter plane rules...OK
+22/23 drawing_tests.test.blank styled runs exact leading trim decorated space and full attribute bytes...OK
+23/23 drawing_tests.test.final host output-copy OOM after real paint and encoding preserves publication...OK
+All 23 tests passed.
+
+=== driver.tests.log ===
+Driver controls: existing-name conflict, token mismatch, owned cleanup and TERM cleanup passed
+
+=== elf-debug.tests.log ===
+ELF structural verification passed: file=1979904, allocated sections=319828, LOAD file=320044, LOAD memory=320044, sections=18, symbols=1195; Cortex-M4 v7E-M/M/Thumb, defined entry, no imports; 59 tamper cases rejected
+
+=== elf-fast.tests.log ===
+ELF structural verification passed: file=1800732, allocated sections=96910, LOAD file=97126, LOAD memory=97126, sections=18, symbols=233; Cortex-M4 v7E-M/M/Thumb, defined entry, no imports; 59 tamper cases rejected
+
+=== elf-safe.tests.log ===
+ELF structural verification passed: file=1732696, allocated sections=96326, LOAD file=96542, LOAD memory=96542, sections=18, symbols=275; Cortex-M4 v7E-M/M/Thumb, defined entry, no imports; 59 tamper cases rejected
+
+=== elf_verify-debug.tests.log ===
+1/3 elf_verify.test.short headers and impossible ranges reject in every mode...OK
+2/3 elf_verify.test.ARM parameters follow specification including special tags and conflicts...OK
+3/3 elf_verify.test.ARM duplicate conflicts unknown mandatory tags and malformed encodings fail closed...OK
+All 3 tests passed.
+
+=== elf_verify-fast.tests.log ===
+1/3 elf_verify.test.short headers and impossible ranges reject in every mode...OK
+2/3 elf_verify.test.ARM parameters follow specification including special tags and conflicts...OK
+3/3 elf_verify.test.ARM duplicate conflicts unknown mandatory tags and malformed encodings fail closed...OK
+All 3 tests passed.
+
+=== elf_verify-safe.tests.log ===
+1/3 elf_verify.test.short headers and impossible ranges reject in every mode...OK
+2/3 elf_verify.test.ARM parameters follow specification including special tags and conflicts...OK
+3/3 elf_verify.test.ARM duplicate conflicts unknown mandatory tags and malformed encodings fail closed...OK
+All 3 tests passed.
+
+=== embedded_app-debug.tests.log ===
+1/2 embedded_app.test.same embedded workload publishes two frames then settles within caller arena...OK
+2/2 embedded_app.test.embedded workload reports allocation failure from exhausted caller storage...OK
+All 2 tests passed.
+
+=== embedded_app-fast.tests.log ===
+1/2 embedded_app.test.same embedded workload publishes two frames then settles within caller arena...OK
+2/2 embedded_app.test.embedded workload reports allocation failure from exhausted caller storage...OK
+All 2 tests passed.
+
+=== embedded_app-safe.tests.log ===
+1/2 embedded_app.test.same embedded workload publishes two frames then settles within caller arena...OK
+2/2 embedded_app.test.embedded workload reports allocation failure from exhausted caller storage...OK
+All 2 tests passed.
+
+=== evidence.tests.log ===
+Evidence consistency: 208 source files, 5 command logs, 12 negative controls passed
+
+=== example-bench.tests.log ===
+Portable benchmark runs=2 frames=40 warmup=8; 80x24 / 160x48; color depth unknown
+DIGEST	0	f8bf0cdf3aae26dd
+DIGEST	1	f8bf0cdf3aae26dd
+BENCH	paint (pump + clearBack + CellPainter)	80	3925167	4194125
+BENCH	forEachRun via DrawList.from (80x24)	80	1103584	1295083
+BENCH	presentDiff (ANSI diff, 80x24)	80	431208	451083
+BENCH	resize loop (80x24 <-> 160x48, painted)	4	11047292	11584209
+Memory: framework allocations inside phases; harness samples/digest outside; no process RSS comparison.
+
+=== example-demo.tests.log ===
+Gama counter | count 0 | focus -1
+ -1
+ +1
+Name:
+ type here
+name []
+Tab: focus | Enter: activate | Ctrl-C: quit
+
+=== example-plugins.tests.log ===
+Plugin command executed; uninstall revoked its handle.
+
+=== followup_regression_tests-debug.tests.log ===
+1/16 followup_regression_tests.test.render-time accepted state write survives dirty reset...OK
+2/16 followup_regression_tests.test.normal action can declare application completion...OK
+3/16 followup_regression_tests.test.lifecycle can emit an application semantic line...OK
+4/16 followup_regression_tests.test.callback outcomes reach plain and interactive loop with owned message first result and final frame...OK
+5/16 followup_regression_tests.test.focused key callbacks submit outcomes and failing callback restores admission...OK
+6/16 followup_regression_tests.test.callback lines retain failed transport prefix and later lines until explicit delivery acknowledgement...OK
+7/16 followup_regression_tests.test.callback outcome OOM accepts no result or line at clone and queue allocation failures...OK
+8/16 followup_regression_tests.test.signal observer outcomes admitted idle and live callback but rejected during bridged store write...OK
+9/16 followup_regression_tests.test.native foreign-thread outcomes fail during an otherwise admitted live callback...OK
+10/16 followup_regression_tests.test.outcome allocator and owner teardown cannot reenter callback admission...OK
+11/16 followup_regression_tests.test.managed state and capture clone deinit callbacks reject outcomes through mutation publication and destruction...OK
+12/16 followup_regression_tests.test.lifecycle callback completion reaches adaptive explicit plain caller with message...adaptive callback message
+OK
+13/16 followup_regression_tests.test.plain runtime failed lifecycle line delivery retains queue and succeeds on retry...OK
+14/16 followup_regression_tests.test.outcome OOM preserves existing prefix and accepted completion without allocating again...OK
+15/16 followup_regression_tests.test.downstream staging and transport callbacks cannot submit outcomes...OK
+16/16 followup_regression_tests.test.observed signal clone and deinit cannot use enclosing application outcome admission...OK
+All 16 tests passed.
+
+=== followup_regression_tests-fast.tests.log ===
+1/16 followup_regression_tests.test.render-time accepted state write survives dirty reset...OK
+2/16 followup_regression_tests.test.normal action can declare application completion...OK
+3/16 followup_regression_tests.test.lifecycle can emit an application semantic line...OK
+4/16 followup_regression_tests.test.callback outcomes reach plain and interactive loop with owned message first result and final frame...OK
+5/16 followup_regression_tests.test.focused key callbacks submit outcomes and failing callback restores admission...OK
+6/16 followup_regression_tests.test.callback lines retain failed transport prefix and later lines until explicit delivery acknowledgement...OK
+7/16 followup_regression_tests.test.callback outcome OOM accepts no result or line at clone and queue allocation failures...OK
+8/16 followup_regression_tests.test.signal observer outcomes admitted idle and live callback but rejected during bridged store write...OK
+9/16 followup_regression_tests.test.native foreign-thread outcomes fail during an otherwise admitted live callback...OK
+10/16 followup_regression_tests.test.outcome allocator and owner teardown cannot reenter callback admission...OK
+11/16 followup_regression_tests.test.managed state and capture clone deinit callbacks reject outcomes through mutation publication and destruction...OK
+12/16 followup_regression_tests.test.lifecycle callback completion reaches adaptive explicit plain caller with message...adaptive callback message
+OK
+13/16 followup_regression_tests.test.plain runtime failed lifecycle line delivery retains queue and succeeds on retry...OK
+14/16 followup_regression_tests.test.outcome OOM preserves existing prefix and accepted completion without allocating again...OK
+15/16 followup_regression_tests.test.downstream staging and transport callbacks cannot submit outcomes...OK
+16/16 followup_regression_tests.test.observed signal clone and deinit cannot use enclosing application outcome admission...OK
+All 16 tests passed.
+
+=== followup_regression_tests-safe.tests.log ===
+1/16 followup_regression_tests.test.render-time accepted state write survives dirty reset...OK
+2/16 followup_regression_tests.test.normal action can declare application completion...OK
+3/16 followup_regression_tests.test.lifecycle can emit an application semantic line...OK
+4/16 followup_regression_tests.test.callback outcomes reach plain and interactive loop with owned message first result and final frame...OK
+5/16 followup_regression_tests.test.focused key callbacks submit outcomes and failing callback restores admission...OK
+6/16 followup_regression_tests.test.callback lines retain failed transport prefix and later lines until explicit delivery acknowledgement...OK
+7/16 followup_regression_tests.test.callback outcome OOM accepts no result or line at clone and queue allocation failures...OK
+8/16 followup_regression_tests.test.signal observer outcomes admitted idle and live callback but rejected during bridged store write...OK
+9/16 followup_regression_tests.test.native foreign-thread outcomes fail during an otherwise admitted live callback...OK
+10/16 followup_regression_tests.test.outcome allocator and owner teardown cannot reenter callback admission...OK
+11/16 followup_regression_tests.test.managed state and capture clone deinit callbacks reject outcomes through mutation publication and destruction...OK
+12/16 followup_regression_tests.test.lifecycle callback completion reaches adaptive explicit plain caller with message...adaptive callback message
+OK
+13/16 followup_regression_tests.test.plain runtime failed lifecycle line delivery retains queue and succeeds on retry...OK
+14/16 followup_regression_tests.test.outcome OOM preserves existing prefix and accepted completion without allocating again...OK
+15/16 followup_regression_tests.test.downstream staging and transport callbacks cannot submit outcomes...OK
+16/16 followup_regression_tests.test.observed signal clone and deinit cannot use enclosing application outcome admission...OK
+All 16 tests passed.
+
+=== generate-debug.tests.log ===
+1/3 generate.test.property parser handles defaults duplicate binary ranges and rejects conflicting overlaps...OK
+2/3 generate.test.lowercase parser preserves unconditional full mappings and ignores context...OK
+3/3 generate.test.generator parser and output every allocation failure cleans up...OK
+All 3 tests passed.
+
+=== generate-fast.tests.log ===
+1/3 generate.test.property parser handles defaults duplicate binary ranges and rejects conflicting overlaps...OK
+2/3 generate.test.lowercase parser preserves unconditional full mappings and ignores context...OK
+3/3 generate.test.generator parser and output every allocation failure cleans up...OK
+All 3 tests passed.
+
+=== generate-safe.tests.log ===
+1/3 generate.test.property parser handles defaults duplicate binary ranges and rejects conflicting overlaps...OK
+2/3 generate.test.lowercase parser preserves unconditional full mappings and ignores context...OK
+3/3 generate.test.generator parser and output every allocation failure cleans up...OK
+All 3 tests passed.
+
+=== layout_tests-debug.tests.log ===
+1/7 layout_tests.test.sequential ceiling remainder preserves 4 3 3 and 4 4 3...OK
+2/7 layout_tests.test.independent frozen Swift layout corpus exact kinds text and every rectangle...OK
+3/7 layout_tests.test.per-axis flex fixed mask floors divider direct shortcut and overflow remain exact...OK
+4/7 layout_tests.test.portable metrics convert edges independently and maximum sentinel bypasses units...OK
+5/7 layout_tests.test.fixed and flex frames align independently group becomes leading overlay...OK
+6/7 layout_tests.test.negative spacing inset and extreme arithmetic bounded without compressing ordinary geometry...OK
+7/7 layout_tests.test.measurement and placement OOM reclaims complete candidate arena...OK
+All 7 tests passed.
+
+=== layout_tests-fast.tests.log ===
+1/7 layout_tests.test.sequential ceiling remainder preserves 4 3 3 and 4 4 3...OK
+2/7 layout_tests.test.independent frozen Swift layout corpus exact kinds text and every rectangle...OK
+3/7 layout_tests.test.per-axis flex fixed mask floors divider direct shortcut and overflow remain exact...OK
+4/7 layout_tests.test.portable metrics convert edges independently and maximum sentinel bypasses units...OK
+5/7 layout_tests.test.fixed and flex frames align independently group becomes leading overlay...OK
+6/7 layout_tests.test.negative spacing inset and extreme arithmetic bounded without compressing ordinary geometry...OK
+7/7 layout_tests.test.measurement and placement OOM reclaims complete candidate arena...OK
+All 7 tests passed.
+
+=== layout_tests-safe.tests.log ===
+1/7 layout_tests.test.sequential ceiling remainder preserves 4 3 3 and 4 4 3...OK
+2/7 layout_tests.test.independent frozen Swift layout corpus exact kinds text and every rectangle...OK
+3/7 layout_tests.test.per-axis flex fixed mask floors divider direct shortcut and overflow remain exact...OK
+4/7 layout_tests.test.portable metrics convert edges independently and maximum sentinel bypasses units...OK
+5/7 layout_tests.test.fixed and flex frames align independently group becomes leading overlay...OK
+6/7 layout_tests.test.negative spacing inset and extreme arithmetic bounded without compressing ordinary geometry...OK
+7/7 layout_tests.test.measurement and placement OOM reclaims complete candidate arena...OK
+All 7 tests passed.
+
+=== mlir_tests-debug.tests.log ===
+1/6 mlir_tests.test.MLIR escaping matches immutable baseline...OK
+2/6 mlir_tests.test.all seven immutable MLIR goldens and repeat determinism...OK
+3/6 mlir_tests.test.control bytes and CRLF use valid byte escapes and preserve Unicode...OK
+4/6 mlir_tests.test.full vocabulary dimensions before alignment and signed 64-bit ID...OK
+5/6 mlir_tests.test.allocation failures release partial MLIR output...OK
+6/6 mlir_tests.test.i64 boundaries survive NodeID bit patterns and laid group frames...OK
+All 6 tests passed.
+
+=== mlir_tests-fast.tests.log ===
+1/6 mlir_tests.test.MLIR escaping matches immutable baseline...OK
+2/6 mlir_tests.test.all seven immutable MLIR goldens and repeat determinism...OK
+3/6 mlir_tests.test.control bytes and CRLF use valid byte escapes and preserve Unicode...OK
+4/6 mlir_tests.test.full vocabulary dimensions before alignment and signed 64-bit ID...OK
+5/6 mlir_tests.test.allocation failures release partial MLIR output...OK
+6/6 mlir_tests.test.i64 boundaries survive NodeID bit patterns and laid group frames...OK
+All 6 tests passed.
+
+=== mlir_tests-safe.tests.log ===
+1/6 mlir_tests.test.MLIR escaping matches immutable baseline...OK
+2/6 mlir_tests.test.all seven immutable MLIR goldens and repeat determinism...OK
+3/6 mlir_tests.test.control bytes and CRLF use valid byte escapes and preserve Unicode...OK
+4/6 mlir_tests.test.full vocabulary dimensions before alignment and signed 64-bit ID...OK
+5/6 mlir_tests.test.allocation failures release partial MLIR output...OK
+6/6 mlir_tests.test.i64 boundaries survive NodeID bit patterns and laid group frames...OK
+All 6 tests passed.
+
+=== native_region_regression_tests-debug.tests.log ===
+1/1 native_region_regression_tests.test.M1 latest NodeID registration and last visual region are the sole publication...OK
+All 1 tests passed.
+
+=== native_region_regression_tests-fast.tests.log ===
+1/1 native_region_regression_tests.test.M1 latest NodeID registration and last visual region are the sole publication...OK
+All 1 tests passed.
+
+=== native_region_regression_tests-safe.tests.log ===
+1/1 native_region_regression_tests.test.M1 latest NodeID registration and last visual region are the sole publication...OK
+All 1 tests passed.
+
+=== plugin_tests-debug.tests.log ===
+1/22 plugin_tests.test.saved installation context revokes and cannot resurrect on reinstall...OK
+2/22 plugin_tests.test.ABI duplicate and per-declaration grant/service precedence before callbacks...OK
+3/22 plugin_tests.test.optional absent filtering exact grants and unrequested grants...OK
+4/22 plugin_tests.test.all capabilities contexts commands and subscription controls revoke before provider calls...OK
+5/22 plugin_tests.test.filesystem first matching scope preserves required optional order and duplicates...OK
+6/22 plugin_tests.test.lexical baseline matrix and hostile prefixes...OK
+7/22 plugin_tests.test.frozen plugin event corpus and retained IR identity order across removal reinstall...OK
+8/22 plugin_tests.test.host contribution actions reject after removal before rebuild and reinstall...OK
+9/22 plugin_tests.test.failed activation revokes saved context cancels only candidate and never deactivates...OK
+10/22 plugin_tests.test.per-installation observations preserve peer cancellation and source-first detach...OK
+11/22 plugin_tests.test.uninstall reinstall in snapshot keeps old lease attached until safe destroy retry...OK
+12/22 plugin_tests.test.scene and command declarations precede activation primary rejected duplicate IDs downstream...OK
+13/22 plugin_tests.test.native executor rejects foreign-thread runtime context and queries before allocator use...OK
+14/22 plugin_tests.test.allocation failures unwind candidate observations declarations and payloads...OK
+15/22 plugin_tests.test.removed plugin toggle and text control reject retained host dispatch before rebuild...OK
+16/22 plugin_tests.test.activation and rendering reject recursive mutations but notification requests genuine host followup...OK
+17/22 plugin_tests.test.service callbacks reject lifecycle and same lease service reentry...OK
+18/22 plugin_tests.test.constructing a capability wrapper cannot bypass unrequested authority...OK
+19/22 plugin_tests.test.plugin frame registration authority OOM preserves safe host teardown...OK
+20/22 plugin_tests.test.failed activation external effects remain but all saved authority revokes...OK
+21/22 plugin_tests.test.runtime destruction deactivates current install order with no lifecycle invalidation...OK
+22/22 plugin_tests.test.typed command plugin borrow updates Signal and host frame while teardown stays protected...OK
+All 22 tests passed.
+
+=== plugin_tests-fast.tests.log ===
+1/22 plugin_tests.test.saved installation context revokes and cannot resurrect on reinstall...OK
+2/22 plugin_tests.test.ABI duplicate and per-declaration grant/service precedence before callbacks...OK
+3/22 plugin_tests.test.optional absent filtering exact grants and unrequested grants...OK
+4/22 plugin_tests.test.all capabilities contexts commands and subscription controls revoke before provider calls...OK
+5/22 plugin_tests.test.filesystem first matching scope preserves required optional order and duplicates...OK
+6/22 plugin_tests.test.lexical baseline matrix and hostile prefixes...OK
+7/22 plugin_tests.test.frozen plugin event corpus and retained IR identity order across removal reinstall...OK
+8/22 plugin_tests.test.host contribution actions reject after removal before rebuild and reinstall...OK
+9/22 plugin_tests.test.failed activation revokes saved context cancels only candidate and never deactivates...OK
+10/22 plugin_tests.test.per-installation observations preserve peer cancellation and source-first detach...OK
+11/22 plugin_tests.test.uninstall reinstall in snapshot keeps old lease attached until safe destroy retry...OK
+12/22 plugin_tests.test.scene and command declarations precede activation primary rejected duplicate IDs downstream...OK
+13/22 plugin_tests.test.native executor rejects foreign-thread runtime context and queries before allocator use...OK
+14/22 plugin_tests.test.allocation failures unwind candidate observations declarations and payloads...OK
+15/22 plugin_tests.test.removed plugin toggle and text control reject retained host dispatch before rebuild...OK
+16/22 plugin_tests.test.activation and rendering reject recursive mutations but notification requests genuine host followup...OK
+17/22 plugin_tests.test.service callbacks reject lifecycle and same lease service reentry...OK
+18/22 plugin_tests.test.constructing a capability wrapper cannot bypass unrequested authority...OK
+19/22 plugin_tests.test.plugin frame registration authority OOM preserves safe host teardown...OK
+20/22 plugin_tests.test.failed activation external effects remain but all saved authority revokes...OK
+21/22 plugin_tests.test.runtime destruction deactivates current install order with no lifecycle invalidation...OK
+22/22 plugin_tests.test.typed command plugin borrow updates Signal and host frame while teardown stays protected...OK
+All 22 tests passed.
+
+=== plugin_tests-safe.tests.log ===
+1/22 plugin_tests.test.saved installation context revokes and cannot resurrect on reinstall...OK
+2/22 plugin_tests.test.ABI duplicate and per-declaration grant/service precedence before callbacks...OK
+3/22 plugin_tests.test.optional absent filtering exact grants and unrequested grants...OK
+4/22 plugin_tests.test.all capabilities contexts commands and subscription controls revoke before provider calls...OK
+5/22 plugin_tests.test.filesystem first matching scope preserves required optional order and duplicates...OK
+6/22 plugin_tests.test.lexical baseline matrix and hostile prefixes...OK
+7/22 plugin_tests.test.frozen plugin event corpus and retained IR identity order across removal reinstall...OK
+8/22 plugin_tests.test.host contribution actions reject after removal before rebuild and reinstall...OK
+9/22 plugin_tests.test.failed activation revokes saved context cancels only candidate and never deactivates...OK
+10/22 plugin_tests.test.per-installation observations preserve peer cancellation and source-first detach...OK
+11/22 plugin_tests.test.uninstall reinstall in snapshot keeps old lease attached until safe destroy retry...OK
+12/22 plugin_tests.test.scene and command declarations precede activation primary rejected duplicate IDs downstream...OK
+13/22 plugin_tests.test.native executor rejects foreign-thread runtime context and queries before allocator use...OK
+14/22 plugin_tests.test.allocation failures unwind candidate observations declarations and payloads...OK
+15/22 plugin_tests.test.removed plugin toggle and text control reject retained host dispatch before rebuild...OK
+16/22 plugin_tests.test.activation and rendering reject recursive mutations but notification requests genuine host followup...OK
+17/22 plugin_tests.test.service callbacks reject lifecycle and same lease service reentry...OK
+18/22 plugin_tests.test.constructing a capability wrapper cannot bypass unrequested authority...OK
+19/22 plugin_tests.test.plugin frame registration authority OOM preserves safe host teardown...OK
+20/22 plugin_tests.test.failed activation external effects remain but all saved authority revokes...OK
+21/22 plugin_tests.test.runtime destruction deactivates current install order with no lifecycle invalidation...OK
+22/22 plugin_tests.test.typed command plugin borrow updates Signal and host frame while teardown stays protected...OK
+All 22 tests passed.
+
+=== policy-debug.tests.log ===
+1/10 policy.test.compiler version is an exact pin...OK
+2/10 policy.test.package dependency policy rejects any dependency...OK
+3/10 policy.test.retirement policy rejects legacy and native helper sources...OK
+4/10 policy.test.production rejects handwritten OS bindings while permitting ABI layout...OK
+5/10 policy.test.portable imports reject hosted and foreign access...OK
+6/10 policy.test.facade exception is exact target selected and cannot admit other hosted edges...OK
+7/10 policy.test.hosted service selector and adapter import edges are exact...OK
+8/10 policy.test.terminal exception admits only scoped std-backed adapter imports...OK
+9/10 policy.test.ABI import exception cannot introduce raw OS or hosted implementation detours...OK
+10/10 policy.test.embedded workload rejects linked hosted allocator and helper detours...OK
+All 10 tests passed.
+
+=== policy-fast.tests.log ===
+1/10 policy.test.compiler version is an exact pin...OK
+2/10 policy.test.package dependency policy rejects any dependency...OK
+3/10 policy.test.retirement policy rejects legacy and native helper sources...OK
+4/10 policy.test.production rejects handwritten OS bindings while permitting ABI layout...OK
+5/10 policy.test.portable imports reject hosted and foreign access...OK
+6/10 policy.test.facade exception is exact target selected and cannot admit other hosted edges...OK
+7/10 policy.test.hosted service selector and adapter import edges are exact...OK
+8/10 policy.test.terminal exception admits only scoped std-backed adapter imports...OK
+9/10 policy.test.ABI import exception cannot introduce raw OS or hosted implementation detours...OK
+10/10 policy.test.embedded workload rejects linked hosted allocator and helper detours...OK
+All 10 tests passed.
+
+=== policy-safe.tests.log ===
+1/10 policy.test.compiler version is an exact pin...OK
+2/10 policy.test.package dependency policy rejects any dependency...OK
+3/10 policy.test.retirement policy rejects legacy and native helper sources...OK
+4/10 policy.test.production rejects handwritten OS bindings while permitting ABI layout...OK
+5/10 policy.test.portable imports reject hosted and foreign access...OK
+6/10 policy.test.facade exception is exact target selected and cannot admit other hosted edges...OK
+7/10 policy.test.hosted service selector and adapter import edges are exact...OK
+8/10 policy.test.terminal exception admits only scoped std-backed adapter imports...OK
+9/10 policy.test.ABI import exception cannot introduce raw OS or hosted implementation detours...OK
+10/10 policy.test.embedded workload rejects linked hosted allocator and helper detours...OK
+All 10 tests passed.
+
+=== pump_tests-debug.tests.log ===
+1/10 pump_tests.test.created host dirty, one focus rebuild, final state sweep and clean pump skips work...OK
+2/10 pump_tests.test.actual invalidation during render and downstream returns follow-up with input between steps...OK
+3/10 pump_tests.test.downstream failure preserves published resources focus registrations handles and accepted edits...OK
+4/10 pump_tests.test.all layout pump downstream allocation failures leak-free and retry dirty...OK
+5/10 pump_tests.test.frozen focus-action corpus actual controls callbacks text and every rectangle...OK
+6/10 pump_tests.test.spatial focus raw last-hit pointer native rectangles and identity reconciliation...OK
+7/10 pump_tests.test.foreign thread and recursive downstream reject before altering candidate...OK
+8/10 pump_tests.test.subscription-owned bridge survives focus discovery passes failed downstream and removal sweep...OK
+9/10 pump_tests.test.zero area focus directional ties and single reconciliation even when second tree changes...OK
+10/10 pump_tests.test.duplicate diagnostics unique first visual order with interleaved repetitions...OK
+All 10 tests passed.
+
+=== pump_tests-fast.tests.log ===
+1/10 pump_tests.test.created host dirty, one focus rebuild, final state sweep and clean pump skips work...OK
+2/10 pump_tests.test.actual invalidation during render and downstream returns follow-up with input between steps...OK
+3/10 pump_tests.test.downstream failure preserves published resources focus registrations handles and accepted edits...OK
+4/10 pump_tests.test.all layout pump downstream allocation failures leak-free and retry dirty...OK
+5/10 pump_tests.test.frozen focus-action corpus actual controls callbacks text and every rectangle...OK
+6/10 pump_tests.test.spatial focus raw last-hit pointer native rectangles and identity reconciliation...OK
+7/10 pump_tests.test.foreign thread and recursive downstream reject before altering candidate...OK
+8/10 pump_tests.test.subscription-owned bridge survives focus discovery passes failed downstream and removal sweep...OK
+9/10 pump_tests.test.zero area focus directional ties and single reconciliation even when second tree changes...OK
+10/10 pump_tests.test.duplicate diagnostics unique first visual order with interleaved repetitions...OK
+All 10 tests passed.
+
+=== pump_tests-safe.tests.log ===
+1/10 pump_tests.test.created host dirty, one focus rebuild, final state sweep and clean pump skips work...OK
+2/10 pump_tests.test.actual invalidation during render and downstream returns follow-up with input between steps...OK
+3/10 pump_tests.test.downstream failure preserves published resources focus registrations handles and accepted edits...OK
+4/10 pump_tests.test.all layout pump downstream allocation failures leak-free and retry dirty...OK
+5/10 pump_tests.test.frozen focus-action corpus actual controls callbacks text and every rectangle...OK
+6/10 pump_tests.test.spatial focus raw last-hit pointer native rectangles and identity reconciliation...OK
+7/10 pump_tests.test.foreign thread and recursive downstream reject before altering candidate...OK
+8/10 pump_tests.test.subscription-owned bridge survives focus discovery passes failed downstream and removal sweep...OK
+9/10 pump_tests.test.zero area focus directional ties and single reconciliation even when second tree changes...OK
+10/10 pump_tests.test.duplicate diagnostics unique first visual order with interleaved repetitions...OK
+All 10 tests passed.
+
+=== root-debug.tests.log ===
+1/1 root.test.cell admission is bounded before allocation...OK
+All 1 tests passed.
+
+=== root-fast.tests.log ===
+1/1 root.test.cell admission is bounded before allocation...OK
+All 1 tests passed.
+
+=== root-safe.tests.log ===
+1/1 root.test.cell admission is bounded before allocation...OK
+All 1 tests passed.
+
+=== run-gama.tests.log ===
+PASS: counter, focus, editing, retained form; artifacts=/var/folders/42/07tmt0n56jq4261xb9gz5jwm0000gn/T//gama-run-artifacts.S12VMS
+
+=== service_tests-debug.tests.log ===
+1/8 service_tests.test.injected hosted filesystem inclusive limits zero bound checked writes and real clock...OK
+2/8 service_tests.test.hosted validation before failing backend and explicit unavailability...OK
+3/8 service_tests.test.real hosted services injected through runtime and revoked handles...OK
+4/8 service_tests.test.hosted read OOM sweep closes files and frees partially allocated bytes...OK
+5/8 service_tests.test.injected log byte format cancellation and bound checked before backend...OK
+6/8 service_tests.test.real open canceled read and direct write release file resources with explicit partial write limits...OK
+7/8 service_tests.test.hosted adapter rejects foreign thread before I/O...OK
+8/8 service_tests.test.lexically allowed symlink may escape prefix documented limitation...OK
+All 8 tests passed.
+
+=== service_tests-fast.tests.log ===
+1/8 service_tests.test.injected hosted filesystem inclusive limits zero bound checked writes and real clock...OK
+2/8 service_tests.test.hosted validation before failing backend and explicit unavailability...OK
+3/8 service_tests.test.real hosted services injected through runtime and revoked handles...OK
+4/8 service_tests.test.hosted read OOM sweep closes files and frees partially allocated bytes...OK
+5/8 service_tests.test.injected log byte format cancellation and bound checked before backend...OK
+6/8 service_tests.test.real open canceled read and direct write release file resources with explicit partial write limits...OK
+7/8 service_tests.test.hosted adapter rejects foreign thread before I/O...OK
+8/8 service_tests.test.lexically allowed symlink may escape prefix documented limitation...OK
+All 8 tests passed.
+
+=== service_tests-safe.tests.log ===
+1/8 service_tests.test.injected hosted filesystem inclusive limits zero bound checked writes and real clock...OK
+2/8 service_tests.test.hosted validation before failing backend and explicit unavailability...OK
+3/8 service_tests.test.real hosted services injected through runtime and revoked handles...OK
+4/8 service_tests.test.hosted read OOM sweep closes files and frees partially allocated bytes...OK
+5/8 service_tests.test.injected log byte format cancellation and bound checked before backend...OK
+6/8 service_tests.test.real open canceled read and direct write release file resources with explicit partial write limits...OK
+7/8 service_tests.test.hosted adapter rejects foreign thread before I/O...OK
+8/8 service_tests.test.lexically allowed symlink may escape prefix documented limitation...OK
+All 8 tests passed.
+
+=== source-policy.tests.log ===
+Gama all source/pin policies passed
+
+=== state_tests-debug.tests.log ===
+1/36 state_tests.test.host retains state and abort preserves generations...OK
+2/36 state_tests.test.replacement abort never resurrects handles and successful replacement diagnoses...OK
+3/36 state_tests.test.host isolation and transaction copies reject double close...OK
+4/36 state_tests.test.node named and shortcut registries remain independent and failed frame retains action...OK
+5/36 state_tests.test.quit and tab remain reserved and direct action survives quit...OK
+6/36 state_tests.test.render and action recursion reject and leave owner usable...OK
+7/36 state_tests.test.completion owns first message cancellation preserves lines and result...OK
+8/36 state_tests.test.shared signal subscriptions deduplicate cancel and detach on destroy...OK
+9/36 state_tests.test.public native Host and retained paths reject a joined foreign thread...OK
+10/36 state_tests.test.all allocation failures construction state managed writes subscription completion and abort leak-free...OK
+11/36 state_tests.test.signal snapshot cancellation holds capture lifetime nested writes coalesce additions defer foreign tokens ignore...OK
+12/36 state_tests.test.host teardown during signal snapshot rejects before detaching any owner...OK
+13/36 state_tests.test.generation exhaustion fails explicitly without removing published state...OK
+14/36 state_tests.test.field generation selection and toggle bindings dispatch grapheme edits space and focus...OK
+15/36 state_tests.test.accepted edits after prepare remain dirty after commit...OK
+16/36 state_tests.test.failed managed clone and completion preserve state generation publication and dirty...OK
+17/36 state_tests.test.owned teardown accounts every allocated byte and allocation...OK
+18/36 state_tests.test.connect construction failure detaches and addressed lifecycle matches both fields...OK
+19/36 state_tests.test.aborted reuse and repeated removal keep bounded cell indices with fresh generations...OK
+20/36 state_tests.test.managed action and observer captures clone destroy and abort with allocation sweep...OK
+21/36 state_tests.test.positional state follows positions identified state follows elements...OK
+22/36 state_tests.test.same-sized distinct state types validate generation and concrete type before cast...OK
+23/36 state_tests.test.cancelled managed snapshot capture runs before exactly one destruction...OK
+24/36 state_tests.test.virtual list captures offset generation and consumes boundary keys while disabled preserves storage...OK
+25/36 state_tests.test.text boundary movements and rejected control characters consume and dirty...OK
+26/36 state_tests.test.key-handler map is independent last-wins first-refusal and reserved tab bypasses it...OK
+27/36 state_tests.test.gamepad presses reuse keyboard actions and releases unmapped buttons stay clean...OK
+28/36 state_tests.test.managed signal equality compares owned string contents instead of borrowed addresses...OK
+29/36 state_tests.test.new host subscriptions outside active snapshot can tear down on construction failure...OK
+30/36 state_tests.test.explicitly observed signals bind shared controls with subscription lifetime and revocation...OK
+31/36 state_tests.test.subscription bridges sweep allocation failures and release all bytes without owning signals...OK
+32/36 state_tests.test.bridge managed write failure leaves source borrowed value and subscribed hosts clean...OK
+33/36 state_tests.test.notification cancellation revokes bridges immediately while snapshot retains host and signal detach stays safe...OK
+34/36 state_tests.test.cancel reobserve destroy retains old snapshot attachment and newer bridge...OK
+35/36 state_tests.test.snapshot reobservation allocation failures retain safe teardown and balance allocations...OK
+36/36 state_tests.test.numeric vector state and nested optional vector signals remain owned plain values...OK
+All 36 tests passed.
+
+=== state_tests-fast.tests.log ===
+1/36 state_tests.test.host retains state and abort preserves generations...OK
+2/36 state_tests.test.replacement abort never resurrects handles and successful replacement diagnoses...OK
+3/36 state_tests.test.host isolation and transaction copies reject double close...OK
+4/36 state_tests.test.node named and shortcut registries remain independent and failed frame retains action...OK
+5/36 state_tests.test.quit and tab remain reserved and direct action survives quit...OK
+6/36 state_tests.test.render and action recursion reject and leave owner usable...OK
+7/36 state_tests.test.completion owns first message cancellation preserves lines and result...OK
+8/36 state_tests.test.shared signal subscriptions deduplicate cancel and detach on destroy...OK
+9/36 state_tests.test.public native Host and retained paths reject a joined foreign thread...OK
+10/36 state_tests.test.all allocation failures construction state managed writes subscription completion and abort leak-free...OK
+11/36 state_tests.test.signal snapshot cancellation holds capture lifetime nested writes coalesce additions defer foreign tokens ignore...OK
+12/36 state_tests.test.host teardown during signal snapshot rejects before detaching any owner...OK
+13/36 state_tests.test.generation exhaustion fails explicitly without removing published state...OK
+14/36 state_tests.test.field generation selection and toggle bindings dispatch grapheme edits space and focus...OK
+15/36 state_tests.test.accepted edits after prepare remain dirty after commit...OK
+16/36 state_tests.test.failed managed clone and completion preserve state generation publication and dirty...OK
+17/36 state_tests.test.owned teardown accounts every allocated byte and allocation...OK
+18/36 state_tests.test.connect construction failure detaches and addressed lifecycle matches both fields...OK
+19/36 state_tests.test.aborted reuse and repeated removal keep bounded cell indices with fresh generations...OK
+20/36 state_tests.test.managed action and observer captures clone destroy and abort with allocation sweep...OK
+21/36 state_tests.test.positional state follows positions identified state follows elements...OK
+22/36 state_tests.test.same-sized distinct state types validate generation and concrete type before cast...OK
+23/36 state_tests.test.cancelled managed snapshot capture runs before exactly one destruction...OK
+24/36 state_tests.test.virtual list captures offset generation and consumes boundary keys while disabled preserves storage...OK
+25/36 state_tests.test.text boundary movements and rejected control characters consume and dirty...OK
+26/36 state_tests.test.key-handler map is independent last-wins first-refusal and reserved tab bypasses it...OK
+27/36 state_tests.test.gamepad presses reuse keyboard actions and releases unmapped buttons stay clean...OK
+28/36 state_tests.test.managed signal equality compares owned string contents instead of borrowed addresses...OK
+29/36 state_tests.test.new host subscriptions outside active snapshot can tear down on construction failure...OK
+30/36 state_tests.test.explicitly observed signals bind shared controls with subscription lifetime and revocation...OK
+31/36 state_tests.test.subscription bridges sweep allocation failures and release all bytes without owning signals...OK
+32/36 state_tests.test.bridge managed write failure leaves source borrowed value and subscribed hosts clean...OK
+33/36 state_tests.test.notification cancellation revokes bridges immediately while snapshot retains host and signal detach stays safe...OK
+34/36 state_tests.test.cancel reobserve destroy retains old snapshot attachment and newer bridge...OK
+35/36 state_tests.test.snapshot reobservation allocation failures retain safe teardown and balance allocations...OK
+36/36 state_tests.test.numeric vector state and nested optional vector signals remain owned plain values...OK
+All 36 tests passed.
+
+=== state_tests-safe.tests.log ===
+1/36 state_tests.test.host retains state and abort preserves generations...OK
+2/36 state_tests.test.replacement abort never resurrects handles and successful replacement diagnoses...OK
+3/36 state_tests.test.host isolation and transaction copies reject double close...OK
+4/36 state_tests.test.node named and shortcut registries remain independent and failed frame retains action...OK
+5/36 state_tests.test.quit and tab remain reserved and direct action survives quit...OK
+6/36 state_tests.test.render and action recursion reject and leave owner usable...OK
+7/36 state_tests.test.completion owns first message cancellation preserves lines and result...OK
+8/36 state_tests.test.shared signal subscriptions deduplicate cancel and detach on destroy...OK
+9/36 state_tests.test.public native Host and retained paths reject a joined foreign thread...OK
+10/36 state_tests.test.all allocation failures construction state managed writes subscription completion and abort leak-free...OK
+11/36 state_tests.test.signal snapshot cancellation holds capture lifetime nested writes coalesce additions defer foreign tokens ignore...OK
+12/36 state_tests.test.host teardown during signal snapshot rejects before detaching any owner...OK
+13/36 state_tests.test.generation exhaustion fails explicitly without removing published state...OK
+14/36 state_tests.test.field generation selection and toggle bindings dispatch grapheme edits space and focus...OK
+15/36 state_tests.test.accepted edits after prepare remain dirty after commit...OK
+16/36 state_tests.test.failed managed clone and completion preserve state generation publication and dirty...OK
+17/36 state_tests.test.owned teardown accounts every allocated byte and allocation...OK
+18/36 state_tests.test.connect construction failure detaches and addressed lifecycle matches both fields...OK
+19/36 state_tests.test.aborted reuse and repeated removal keep bounded cell indices with fresh generations...OK
+20/36 state_tests.test.managed action and observer captures clone destroy and abort with allocation sweep...OK
+21/36 state_tests.test.positional state follows positions identified state follows elements...OK
+22/36 state_tests.test.same-sized distinct state types validate generation and concrete type before cast...OK
+23/36 state_tests.test.cancelled managed snapshot capture runs before exactly one destruction...OK
+24/36 state_tests.test.virtual list captures offset generation and consumes boundary keys while disabled preserves storage...OK
+25/36 state_tests.test.text boundary movements and rejected control characters consume and dirty...OK
+26/36 state_tests.test.key-handler map is independent last-wins first-refusal and reserved tab bypasses it...OK
+27/36 state_tests.test.gamepad presses reuse keyboard actions and releases unmapped buttons stay clean...OK
+28/36 state_tests.test.managed signal equality compares owned string contents instead of borrowed addresses...OK
+29/36 state_tests.test.new host subscriptions outside active snapshot can tear down on construction failure...OK
+30/36 state_tests.test.explicitly observed signals bind shared controls with subscription lifetime and revocation...OK
+31/36 state_tests.test.subscription bridges sweep allocation failures and release all bytes without owning signals...OK
+32/36 state_tests.test.bridge managed write failure leaves source borrowed value and subscribed hosts clean...OK
+33/36 state_tests.test.notification cancellation revokes bridges immediately while snapshot retains host and signal detach stays safe...OK
+34/36 state_tests.test.cancel reobserve destroy retains old snapshot attachment and newer bridge...OK
+35/36 state_tests.test.snapshot reobservation allocation failures retain safe teardown and balance allocations...OK
+36/36 state_tests.test.numeric vector state and nested optional vector signals remain owned plain values...OK
+All 36 tests passed.
+
+=== terminal-process-debug.tests.log ===
+PTY signal TERM: signaled exit/restored before teardown in 7ms
+PTY signal HUP: signaled exit/restored before teardown in 5ms
+PTY signal INT: signaled exit/restored before teardown in 7ms
+PTY signal QUIT: signaled exit/restored before teardown in 20ms
+PTY blocked TERM: signaled exit/restored before teardown in 8ms
+PTY normal: exited/restored before teardown
+PTY close-full: exited/restored before teardown
+PTY error-full: exited/restored before teardown
+PTY resize: exited/restored before teardown
+PTY write-fail: exited/restored before teardown
+PTY plain: exited/restored before teardown
+PTY eof: bounded EOF/hangup error and release; master closed so no settings-restoration claim
+All 12 PTY process scenarios passed
+
+=== terminal-process-fast.tests.log ===
+PTY signal TERM: signaled exit/restored before teardown in 7ms
+PTY signal HUP: signaled exit/restored before teardown in 7ms
+PTY signal INT: signaled exit/restored before teardown in 8ms
+PTY signal QUIT: signaled exit/restored before teardown in 15ms
+PTY blocked TERM: signaled exit/restored before teardown in 8ms
+PTY normal: exited/restored before teardown
+PTY close-full: exited/restored before teardown
+PTY error-full: exited/restored before teardown
+PTY resize: exited/restored before teardown
+PTY write-fail: exited/restored before teardown
+PTY plain: exited/restored before teardown
+PTY eof: bounded EOF/hangup error and release; master closed so no settings-restoration claim
+All 12 PTY process scenarios passed
+
+=== terminal-process-safe.tests.log ===
+PTY signal TERM: signaled exit/restored before teardown in 7ms
+PTY signal HUP: signaled exit/restored before teardown in 7ms
+PTY signal INT: signaled exit/restored before teardown in 8ms
+PTY signal QUIT: signaled exit/restored before teardown in 15ms
+PTY blocked TERM: signaled exit/restored before teardown in 7ms
+PTY normal: exited/restored before teardown
+PTY close-full: exited/restored before teardown
+PTY error-full: exited/restored before teardown
+PTY resize: exited/restored before teardown
+PTY write-fail: exited/restored before teardown
+PTY plain: exited/restored before teardown
+PTY eof: bounded EOF/hangup error and release; master closed so no settings-restoration claim
+All 12 PTY process scenarios passed
+
+=== terminal_tests-debug.tests.log ===
+1/23 terminal_tests.test.adaptive selection uses stdout and last recognized flag...OK
+2/23 terminal_tests.test.fragmented keys scalar unicode lone escape and bounded recovery...OK
+3/23 terminal_tests.test.plain loop quiescence semantic replacement one drain completion and cleanup...OK
+4/23 terminal_tests.test.partial transport aborts host candidate and raster while preserving retry and lines...OK
+5/23 terminal_tests.test.terminal invalid descriptor unwinds ownership before reacquisition...OK
+6/23 terminal_tests.test.native PTY raw ownership keys resize restoration and reacquire...OK
+7/23 terminal_tests.test.displaced returning mask flags errno and retired callback during later lease...OK
+8/23 terminal_tests.test.one-shot displaced disposition remains reset after normal close...OK
+9/23 terminal_tests.test.all keyboard mappings bounded malformed input and mouse compatibility...OK
+10/23 terminal_tests.test.staged tokens reject repeats stale copies thread crossing and delivery reentry...OK
+11/23 terminal_tests.test.all host raster serialization final-copy OOM precedes first transport byte...OK
+12/23 terminal_tests.test.decoded scalar input keeps grapheme cursor deletion intact in shared host...OK
+13/23 terminal_tests.test.terminal lifecycle and IO reject foreign thread in native modes...OK
+14/23 terminal_tests.test.returning process-directed signal overlaps normal release and reacquisition...OK
+15/23 terminal_tests.test.Darwin custom dispositions fail closed unless exact caller records validate...OK
+16/23 terminal_tests.test.ignored disposition preserves entry errno and termios...OK
+17/23 terminal_tests.test.runtime reports transport failure and still ends surface without draining semantic lines...OK
+18/23 terminal_tests.test.final returned-byte copy failure never reaches transport and keeps old publication...OK
+19/23 terminal_tests.test.copied closed lease rejects descriptor reuse without affecting later owner...OK
+20/23 terminal_tests.test.capture-to-replacement one-shot consumption never resurrects on close...capture race partial=false: callback count=1, remains-default=true
+OK
+21/23 terminal_tests.test.partial-install rollback preserves independently consumed uninstalled one-shot...capture race partial=true: callback count=1, remains-default=true
+OK
+22/23 terminal_tests.test.installing callbacks wait for authoritative actions before success or rollback delivery...OK
+23/23 terminal_tests.test.immutable rescue slots exhaust before any terminal or disposition mutation...OK
+All 23 tests passed.
+
+=== terminal_tests-fast.tests.log ===
+1/23 terminal_tests.test.adaptive selection uses stdout and last recognized flag...OK
+2/23 terminal_tests.test.fragmented keys scalar unicode lone escape and bounded recovery...OK
+3/23 terminal_tests.test.plain loop quiescence semantic replacement one drain completion and cleanup...OK
+4/23 terminal_tests.test.partial transport aborts host candidate and raster while preserving retry and lines...OK
+5/23 terminal_tests.test.terminal invalid descriptor unwinds ownership before reacquisition...OK
+6/23 terminal_tests.test.native PTY raw ownership keys resize restoration and reacquire...OK
+7/23 terminal_tests.test.displaced returning mask flags errno and retired callback during later lease...OK
+8/23 terminal_tests.test.one-shot displaced disposition remains reset after normal close...OK
+9/23 terminal_tests.test.all keyboard mappings bounded malformed input and mouse compatibility...OK
+10/23 terminal_tests.test.staged tokens reject repeats stale copies thread crossing and delivery reentry...OK
+11/23 terminal_tests.test.all host raster serialization final-copy OOM precedes first transport byte...OK
+12/23 terminal_tests.test.decoded scalar input keeps grapheme cursor deletion intact in shared host...OK
+13/23 terminal_tests.test.terminal lifecycle and IO reject foreign thread in native modes...OK
+14/23 terminal_tests.test.returning process-directed signal overlaps normal release and reacquisition...OK
+15/23 terminal_tests.test.Darwin custom dispositions fail closed unless exact caller records validate...OK
+16/23 terminal_tests.test.ignored disposition preserves entry errno and termios...OK
+17/23 terminal_tests.test.runtime reports transport failure and still ends surface without draining semantic lines...OK
+18/23 terminal_tests.test.final returned-byte copy failure never reaches transport and keeps old publication...OK
+19/23 terminal_tests.test.copied closed lease rejects descriptor reuse without affecting later owner...OK
+20/23 terminal_tests.test.capture-to-replacement one-shot consumption never resurrects on close...capture race partial=false: callback count=1, remains-default=true
+OK
+21/23 terminal_tests.test.partial-install rollback preserves independently consumed uninstalled one-shot...capture race partial=true: callback count=1, remains-default=true
+OK
+22/23 terminal_tests.test.installing callbacks wait for authoritative actions before success or rollback delivery...OK
+23/23 terminal_tests.test.immutable rescue slots exhaust before any terminal or disposition mutation...OK
+All 23 tests passed.
+
+=== terminal_tests-safe.tests.log ===
+1/23 terminal_tests.test.adaptive selection uses stdout and last recognized flag...OK
+2/23 terminal_tests.test.fragmented keys scalar unicode lone escape and bounded recovery...OK
+3/23 terminal_tests.test.plain loop quiescence semantic replacement one drain completion and cleanup...OK
+4/23 terminal_tests.test.partial transport aborts host candidate and raster while preserving retry and lines...OK
+5/23 terminal_tests.test.terminal invalid descriptor unwinds ownership before reacquisition...OK
+6/23 terminal_tests.test.native PTY raw ownership keys resize restoration and reacquire...OK
+7/23 terminal_tests.test.displaced returning mask flags errno and retired callback during later lease...OK
+8/23 terminal_tests.test.one-shot displaced disposition remains reset after normal close...OK
+9/23 terminal_tests.test.all keyboard mappings bounded malformed input and mouse compatibility...OK
+10/23 terminal_tests.test.staged tokens reject repeats stale copies thread crossing and delivery reentry...OK
+11/23 terminal_tests.test.all host raster serialization final-copy OOM precedes first transport byte...OK
+12/23 terminal_tests.test.decoded scalar input keeps grapheme cursor deletion intact in shared host...OK
+13/23 terminal_tests.test.terminal lifecycle and IO reject foreign thread in native modes...OK
+14/23 terminal_tests.test.returning process-directed signal overlaps normal release and reacquisition...OK
+15/23 terminal_tests.test.Darwin custom dispositions fail closed unless exact caller records validate...OK
+16/23 terminal_tests.test.ignored disposition preserves entry errno and termios...OK
+17/23 terminal_tests.test.runtime reports transport failure and still ends surface without draining semantic lines...OK
+18/23 terminal_tests.test.final returned-byte copy failure never reaches transport and keeps old publication...OK
+19/23 terminal_tests.test.copied closed lease rejects descriptor reuse without affecting later owner...OK
+20/23 terminal_tests.test.capture-to-replacement one-shot consumption never resurrects on close...capture race partial=false: callback count=1, remains-default=true
+OK
+21/23 terminal_tests.test.partial-install rollback preserves independently consumed uninstalled one-shot...capture race partial=true: callback count=1, remains-default=true
+OK
+22/23 terminal_tests.test.installing callbacks wait for authoritative actions before success or rollback delivery...OK
+23/23 terminal_tests.test.immutable rescue slots exhaust before any terminal or disposition mutation...OK
+All 23 tests passed.
+
+=== text_tests-debug.tests.log ===
+1/16 unicode.text_tests.test.signed saturating geometry and exact stable identity...OK
+2/16 unicode.text_tests.test.grapheme segmentation rejects malformed UTF8 and respects Unicode17 Indic...OK
+3/16 unicode.text_tests.test.selection moves relative to head and edit resegmentation keeps arithmetic cursor...OK
+4/16 unicode.text_tests.test.frozen Swift geometry identity fixture parity...OK
+5/16 unicode.text_tests.test.frozen Swift cluster width wrapping and every edit fixture parity...OK
+6/16 unicode.text_tests.test.all official Unicode17 GraphemeBreakTest vectors...OK
+7/16 unicode.text_tests.test.frozen Swift control classification plus multi scalar lowercase...OK
+8/16 unicode.text_tests.test.every valid scalar agrees with captured pinned Swift runtime control oracle...OK
+9/16 unicode.text_tests.test.geometry extremes preserve saturation order and canonical empty intersections...OK
+10/16 unicode.text_tests.test.explicit malformed UTF8 rejection reaches every public text operation...OK
+11/16 unicode.text_tests.test.wrapping preserves baseline spaces newline equality zero width and oversized clusters...OK
+12/16 unicode.text_tests.test.edits resegment combining CRLF ZWJ flags and preserve delayed cursor clamp...OK
+13/16 unicode.text_tests.test.all allocation failure points clean up and leave borrowed text intact...OK
+14/16 unicode.text_tests.test.large single clusters and long RI runs remain intact and bounded...OK
+15/16 unicode.text_tests.test.every valid scalar preserves captured baseline terminal width independently of Unicode grapheme properties...OK
+16/16 unicode.text_tests.test.recorded intentional Swift Indic differences follow Unicode17 grouping...OK
+All 16 tests passed.
+
+=== text_tests-fast.tests.log ===
+1/16 unicode.text_tests.test.signed saturating geometry and exact stable identity...OK
+2/16 unicode.text_tests.test.grapheme segmentation rejects malformed UTF8 and respects Unicode17 Indic...OK
+3/16 unicode.text_tests.test.selection moves relative to head and edit resegmentation keeps arithmetic cursor...OK
+4/16 unicode.text_tests.test.frozen Swift geometry identity fixture parity...OK
+5/16 unicode.text_tests.test.frozen Swift cluster width wrapping and every edit fixture parity...OK
+6/16 unicode.text_tests.test.all official Unicode17 GraphemeBreakTest vectors...OK
+7/16 unicode.text_tests.test.frozen Swift control classification plus multi scalar lowercase...OK
+8/16 unicode.text_tests.test.every valid scalar agrees with captured pinned Swift runtime control oracle...OK
+9/16 unicode.text_tests.test.geometry extremes preserve saturation order and canonical empty intersections...OK
+10/16 unicode.text_tests.test.explicit malformed UTF8 rejection reaches every public text operation...OK
+11/16 unicode.text_tests.test.wrapping preserves baseline spaces newline equality zero width and oversized clusters...OK
+12/16 unicode.text_tests.test.edits resegment combining CRLF ZWJ flags and preserve delayed cursor clamp...OK
+13/16 unicode.text_tests.test.all allocation failure points clean up and leave borrowed text intact...OK
+14/16 unicode.text_tests.test.large single clusters and long RI runs remain intact and bounded...OK
+15/16 unicode.text_tests.test.every valid scalar preserves captured baseline terminal width independently of Unicode grapheme properties...OK
+16/16 unicode.text_tests.test.recorded intentional Swift Indic differences follow Unicode17 grouping...OK
+All 16 tests passed.
+
+=== text_tests-safe.tests.log ===
+1/16 unicode.text_tests.test.signed saturating geometry and exact stable identity...OK
+2/16 unicode.text_tests.test.grapheme segmentation rejects malformed UTF8 and respects Unicode17 Indic...OK
+3/16 unicode.text_tests.test.selection moves relative to head and edit resegmentation keeps arithmetic cursor...OK
+4/16 unicode.text_tests.test.frozen Swift geometry identity fixture parity...OK
+5/16 unicode.text_tests.test.frozen Swift cluster width wrapping and every edit fixture parity...OK
+6/16 unicode.text_tests.test.all official Unicode17 GraphemeBreakTest vectors...OK
+7/16 unicode.text_tests.test.frozen Swift control classification plus multi scalar lowercase...OK
+8/16 unicode.text_tests.test.every valid scalar agrees with captured pinned Swift runtime control oracle...OK
+9/16 unicode.text_tests.test.geometry extremes preserve saturation order and canonical empty intersections...OK
+10/16 unicode.text_tests.test.explicit malformed UTF8 rejection reaches every public text operation...OK
+11/16 unicode.text_tests.test.wrapping preserves baseline spaces newline equality zero width and oversized clusters...OK
+12/16 unicode.text_tests.test.edits resegment combining CRLF ZWJ flags and preserve delayed cursor clamp...OK
+13/16 unicode.text_tests.test.all allocation failure points clean up and leave borrowed text intact...OK
+14/16 unicode.text_tests.test.large single clusters and long RI runs remain intact and bounded...OK
+15/16 unicode.text_tests.test.every valid scalar preserves captured baseline terminal width independently of Unicode grapheme properties...OK
+16/16 unicode.text_tests.test.recorded intentional Swift Indic differences follow Unicode17 grouping...OK
+All 16 tests passed.
+
+=== unicode-integrity.tests.log ===
+Unicode17 tables check: 1386 GCB, 473 InCB, 156 EP, 766 alphabetic ranges, 1488 lowercase mappings
+
+=== verify-debug.tests.log ===
+1/15 verify.test.strict package schema rejects dependencies and unknown fields...OK
+2/15 verify.test.relative portable imports cannot escape into hosted or foreign trees...OK
+3/15 verify.test.service local import edges reject sibling and facade detours...OK
+4/15 verify.test.terminal resolved imports cannot grant portable callers hosted access...OK
+5/15 verify.test.ABI resolved edges do not grant core access to adapters...OK
+6/15 policy.test.compiler version is an exact pin...OK
+7/15 policy.test.package dependency policy rejects any dependency...OK
+8/15 policy.test.retirement policy rejects legacy and native helper sources...OK
+9/15 policy.test.production rejects handwritten OS bindings while permitting ABI layout...OK
+10/15 policy.test.portable imports reject hosted and foreign access...OK
+11/15 policy.test.facade exception is exact target selected and cannot admit other hosted edges...OK
+12/15 policy.test.hosted service selector and adapter import edges are exact...OK
+13/15 policy.test.terminal exception admits only scoped std-backed adapter imports...OK
+14/15 policy.test.ABI import exception cannot introduce raw OS or hosted implementation detours...OK
+15/15 policy.test.embedded workload rejects linked hosted allocator and helper detours...OK
+All 15 tests passed.
+
+=== verify-fast.tests.log ===
+1/15 verify.test.strict package schema rejects dependencies and unknown fields...OK
+2/15 verify.test.relative portable imports cannot escape into hosted or foreign trees...OK
+3/15 verify.test.service local import edges reject sibling and facade detours...OK
+4/15 verify.test.terminal resolved imports cannot grant portable callers hosted access...OK
+5/15 verify.test.ABI resolved edges do not grant core access to adapters...OK
+6/15 policy.test.compiler version is an exact pin...OK
+7/15 policy.test.package dependency policy rejects any dependency...OK
+8/15 policy.test.retirement policy rejects legacy and native helper sources...OK
+9/15 policy.test.production rejects handwritten OS bindings while permitting ABI layout...OK
+10/15 policy.test.portable imports reject hosted and foreign access...OK
+11/15 policy.test.facade exception is exact target selected and cannot admit other hosted edges...OK
+12/15 policy.test.hosted service selector and adapter import edges are exact...OK
+13/15 policy.test.terminal exception admits only scoped std-backed adapter imports...OK
+14/15 policy.test.ABI import exception cannot introduce raw OS or hosted implementation detours...OK
+15/15 policy.test.embedded workload rejects linked hosted allocator and helper detours...OK
+All 15 tests passed.
+
+=== verify-safe.tests.log ===
+1/15 verify.test.strict package schema rejects dependencies and unknown fields...OK
+2/15 verify.test.relative portable imports cannot escape into hosted or foreign trees...OK
+3/15 verify.test.service local import edges reject sibling and facade detours...OK
+4/15 verify.test.terminal resolved imports cannot grant portable callers hosted access...OK
+5/15 verify.test.ABI resolved edges do not grant core access to adapters...OK
+6/15 policy.test.compiler version is an exact pin...OK
+7/15 policy.test.package dependency policy rejects any dependency...OK
+8/15 policy.test.retirement policy rejects legacy and native helper sources...OK
+9/15 policy.test.production rejects handwritten OS bindings while permitting ABI layout...OK
+10/15 policy.test.portable imports reject hosted and foreign access...OK
+11/15 policy.test.facade exception is exact target selected and cannot admit other hosted edges...OK
+12/15 policy.test.hosted service selector and adapter import edges are exact...OK
+13/15 policy.test.terminal exception admits only scoped std-backed adapter imports...OK
+14/15 policy.test.ABI import exception cannot introduce raw OS or hosted implementation detours...OK
+15/15 policy.test.embedded workload rejects linked hosted allocator and helper detours...OK
+All 15 tests passed.
+
+=== wasm-inspect-debug-bounded.tests.log ===
+WASM structural verification passed: 1427631 bytes, 9 function signatures, exported memory32, zero imports; 33 linked-artifact tamper cases rejected
+
+=== wasm-inspect-debug-production.tests.log ===
+WASM structural verification passed: 1427601 bytes, 9 function signatures, exported memory32, zero imports; 33 linked-artifact tamper cases rejected
+
+=== wasm-inspect-fast-bounded.tests.log ===
+WASM structural verification passed: 1334590 bytes, 9 function signatures, exported memory32, zero imports; 33 linked-artifact tamper cases rejected
+
+=== wasm-inspect-fast-production.tests.log ===
+WASM structural verification passed: 1334561 bytes, 9 function signatures, exported memory32, zero imports; 33 linked-artifact tamper cases rejected
+
+=== wasm-inspect-safe-bounded.tests.log ===
+WASM structural verification passed: 1198367 bytes, 9 function signatures, exported memory32, zero imports; 33 linked-artifact tamper cases rejected
+
+=== wasm-inspect-safe-production.tests.log ===
+WASM structural verification passed: 1198343 bytes, 9 function signatures, exported memory32, zero imports; 33 linked-artifact tamper cases rejected
+
+=== wasm-runtime-debug-bounded.tests.log ===
+All 90 WASM runtime assertions passed (v26.10.0; bounded-memory fixture executes wasm_allocator OOM)
+
+=== wasm-runtime-debug-production.tests.log ===
+All 76 WASM runtime assertions passed (v26.10.0; production artifact)
+
+=== wasm-runtime-fast-bounded.tests.log ===
+All 90 WASM runtime assertions passed (v26.10.0; bounded-memory fixture executes wasm_allocator OOM)
+
+=== wasm-runtime-fast-production.tests.log ===
+All 76 WASM runtime assertions passed (v26.10.0; production artifact)
+
+=== wasm-runtime-safe-bounded.tests.log ===
+All 90 WASM runtime assertions passed (v26.10.0; bounded-memory fixture executes wasm_allocator OOM)
+
+=== wasm-runtime-safe-production.tests.log ===
+All 76 WASM runtime assertions passed (v26.10.0; production artifact)
+
+=== wasm_verify-debug.tests.log ===
+1/4 wasm_verify.test.u32 envelope permits legal padding rejects overflow and overlong encodings...OK
+2/4 wasm_verify.test.wrong architecture and truncated headers never inspect successfully...OK
+3/4 wasm_verify.test.independent valid module and all structural tamper cases...OK
+4/4 wasm_verify.test.verifier allocation failures release bounded type and function storage...OK
+All 4 tests passed.
+
+=== wasm_verify-fast.tests.log ===
+1/4 wasm_verify.test.u32 envelope permits legal padding rejects overflow and overlong encodings...OK
+2/4 wasm_verify.test.wrong architecture and truncated headers never inspect successfully...OK
+3/4 wasm_verify.test.independent valid module and all structural tamper cases...OK
+4/4 wasm_verify.test.verifier allocation failures release bounded type and function storage...OK
+All 4 tests passed.
+
+=== wasm_verify-safe.tests.log ===
+1/4 wasm_verify.test.u32 envelope permits legal padding rejects overflow and overlong encodings...OK
+2/4 wasm_verify.test.wrong architecture and truncated headers never inspect successfully...OK
+3/4 wasm_verify.test.independent valid module and all structural tamper cases...OK
+4/4 wasm_verify.test.verifier allocation failures release bounded type and function storage...OK
+All 4 tests passed.
+

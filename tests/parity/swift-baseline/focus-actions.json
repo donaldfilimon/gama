@@ -1,0 +1,912 @@
+[
+  {
+    "count" : 0,
+    "dirty" : false,
+    "step" : "beforePump",
+    "text" : "",
+    "tree" : {
+      "children" : [
+        {
+          "children" : [
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "frame" : [
+                    0,
+                    0,
+                    6,
+                    1
+                  ],
+                  "kind" : "text",
+                  "text" : " Name "
+                }
+              ],
+              "frame" : [
+                0,
+                0,
+                6,
+                1
+              ],
+              "kind" : "styled"
+            }
+          ],
+          "focusable" : true,
+          "frame" : [
+            0,
+            0,
+            6,
+            1
+          ],
+          "id" : "11956973032611051941",
+          "kind" : "interactive"
+        },
+        {
+          "children" : [
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "frame" : [
+                    0,
+                    1,
+                    5,
+                    1
+                  ],
+                  "kind" : "text",
+                  "text" : " Add "
+                }
+              ],
+              "frame" : [
+                0,
+                1,
+                5,
+                1
+              ],
+              "kind" : "styled"
+            }
+          ],
+          "focusable" : true,
+          "frame" : [
+            0,
+            1,
+            5,
+            1
+          ],
+          "id" : "11956973032611051942",
+          "kind" : "interactive"
+        }
+      ],
+      "frame" : [
+        0,
+        0,
+        16,
+        4
+      ],
+      "kind" : "stack"
+    }
+  },
+  {
+    "count" : 0,
+    "dirty" : true,
+    "step" : "type-a",
+    "text" : "a",
+    "tree" : {
+      "children" : [
+        {
+          "children" : [
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "frame" : [
+                    0,
+                    0,
+                    3,
+                    1
+                  ],
+                  "kind" : "text",
+                  "text" : " a "
+                }
+              ],
+              "frame" : [
+                0,
+                0,
+                3,
+                1
+              ],
+              "kind" : "styled"
+            }
+          ],
+          "focusable" : true,
+          "frame" : [
+            0,
+            0,
+            3,
+            1
+          ],
+          "id" : "11956973032611051941",
+          "kind" : "interactive"
+        },
+        {
+          "children" : [
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "frame" : [
+                    0,
+                    1,
+                    5,
+                    1
+                  ],
+                  "kind" : "text",
+                  "text" : " Add "
+                }
+              ],
+              "frame" : [
+                0,
+                1,
+                5,
+                1
+              ],
+              "kind" : "styled"
+            }
+          ],
+          "focusable" : true,
+          "frame" : [
+            0,
+            1,
+            5,
+            1
+          ],
+          "id" : "11956973032611051942",
+          "kind" : "interactive"
+        }
+      ],
+      "frame" : [
+        0,
+        0,
+        16,
+        4
+      ],
+      "kind" : "stack"
+    }
+  },
+  {
+    "count" : 0,
+    "dirty" : true,
+    "step" : "type-combining",
+    "text" : "aé",
+    "tree" : {
+      "children" : [
+        {
+          "children" : [
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "frame" : [
+                    0,
+                    0,
+                    4,
+                    1
+                  ],
+                  "kind" : "text",
+                  "text" : " aé "
+                }
+              ],
+              "frame" : [
+                0,
+                0,
+                4,
+                1
+              ],
+              "kind" : "styled"
+            }
+          ],
+          "focusable" : true,
+          "frame" : [
+            0,
+            0,
+            4,
+            1
+          ],
+          "id" : "11956973032611051941",
+          "kind" : "interactive"
+        },
+        {
+          "children" : [
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "frame" : [
+                    0,
+                    1,
+                    5,
+                    1
+                  ],
+                  "kind" : "text",
+                  "text" : " Add "
+                }
+              ],
+              "frame" : [
+                0,
+                1,
+                5,
+                1
+              ],
+              "kind" : "styled"
+            }
+          ],
+          "focusable" : true,
+          "frame" : [
+            0,
+            1,
+            5,
+            1
+          ],
+          "id" : "11956973032611051942",
+          "kind" : "interactive"
+        }
+      ],
+      "frame" : [
+        0,
+        0,
+        16,
+        4
+      ],
+      "kind" : "stack"
+    }
+  },
+  {
+    "count" : 0,
+    "dirty" : true,
+    "step" : "left",
+    "text" : "aé",
+    "tree" : {
+      "children" : [
+        {
+          "children" : [
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "frame" : [
+                    0,
+                    0,
+                    4,
+                    1
+                  ],
+                  "kind" : "text",
+                  "text" : " aé "
+                }
+              ],
+              "frame" : [
+                0,
+                0,
+                4,
+                1
+              ],
+              "kind" : "styled"
+            }
+          ],
+          "focusable" : true,
+          "frame" : [
+            0,
+            0,
+            4,
+            1
+          ],
+          "id" : "11956973032611051941",
+          "kind" : "interactive"
+        },
+        {
+          "children" : [
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "frame" : [
+                    0,
+                    1,
+                    5,
+                    1
+                  ],
+                  "kind" : "text",
+                  "text" : " Add "
+                }
+              ],
+              "frame" : [
+                0,
+                1,
+                5,
+                1
+              ],
+              "kind" : "styled"
+            }
+          ],
+          "focusable" : true,
+          "frame" : [
+            0,
+            1,
+            5,
+            1
+          ],
+          "id" : "11956973032611051942",
+          "kind" : "interactive"
+        }
+      ],
+      "frame" : [
+        0,
+        0,
+        16,
+        4
+      ],
+      "kind" : "stack"
+    }
+  },
+  {
+    "count" : 0,
+    "dirty" : true,
+    "step" : "insert-Z",
+    "text" : "aZé",
+    "tree" : {
+      "children" : [
+        {
+          "children" : [
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "frame" : [
+                    0,
+                    0,
+                    5,
+                    1
+                  ],
+                  "kind" : "text",
+                  "text" : " aZé "
+                }
+              ],
+              "frame" : [
+                0,
+                0,
+                5,
+                1
+              ],
+              "kind" : "styled"
+            }
+          ],
+          "focusable" : true,
+          "frame" : [
+            0,
+            0,
+            5,
+            1
+          ],
+          "id" : "11956973032611051941",
+          "kind" : "interactive"
+        },
+        {
+          "children" : [
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "frame" : [
+                    0,
+                    1,
+                    5,
+                    1
+                  ],
+                  "kind" : "text",
+                  "text" : " Add "
+                }
+              ],
+              "frame" : [
+                0,
+                1,
+                5,
+                1
+              ],
+              "kind" : "styled"
+            }
+          ],
+          "focusable" : true,
+          "frame" : [
+            0,
+            1,
+            5,
+            1
+          ],
+          "id" : "11956973032611051942",
+          "kind" : "interactive"
+        }
+      ],
+      "frame" : [
+        0,
+        0,
+        16,
+        4
+      ],
+      "kind" : "stack"
+    }
+  },
+  {
+    "count" : 0,
+    "dirty" : true,
+    "step" : "tab",
+    "text" : "aZé",
+    "tree" : {
+      "children" : [
+        {
+          "children" : [
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "frame" : [
+                    0,
+                    0,
+                    5,
+                    1
+                  ],
+                  "kind" : "text",
+                  "text" : " aZé "
+                }
+              ],
+              "frame" : [
+                0,
+                0,
+                5,
+                1
+              ],
+              "kind" : "styled"
+            }
+          ],
+          "focusable" : true,
+          "frame" : [
+            0,
+            0,
+            5,
+            1
+          ],
+          "id" : "11956973032611051941",
+          "kind" : "interactive"
+        },
+        {
+          "children" : [
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "frame" : [
+                    0,
+                    1,
+                    5,
+                    1
+                  ],
+                  "kind" : "text",
+                  "text" : " Add "
+                }
+              ],
+              "frame" : [
+                0,
+                1,
+                5,
+                1
+              ],
+              "kind" : "styled"
+            }
+          ],
+          "focusable" : true,
+          "frame" : [
+            0,
+            1,
+            5,
+            1
+          ],
+          "id" : "11956973032611051942",
+          "kind" : "interactive"
+        }
+      ],
+      "frame" : [
+        0,
+        0,
+        16,
+        4
+      ],
+      "kind" : "stack"
+    }
+  },
+  {
+    "count" : 1,
+    "dirty" : true,
+    "step" : "activate",
+    "text" : "aZé",
+    "tree" : {
+      "children" : [
+        {
+          "children" : [
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "frame" : [
+                    0,
+                    0,
+                    5,
+                    1
+                  ],
+                  "kind" : "text",
+                  "text" : " aZé "
+                }
+              ],
+              "frame" : [
+                0,
+                0,
+                5,
+                1
+              ],
+              "kind" : "styled"
+            }
+          ],
+          "focusable" : true,
+          "frame" : [
+            0,
+            0,
+            5,
+            1
+          ],
+          "id" : "11956973032611051941",
+          "kind" : "interactive"
+        },
+        {
+          "children" : [
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "frame" : [
+                    0,
+                    1,
+                    5,
+                    1
+                  ],
+                  "kind" : "text",
+                  "text" : " Add "
+                }
+              ],
+              "frame" : [
+                0,
+                1,
+                5,
+                1
+              ],
+              "kind" : "styled"
+            }
+          ],
+          "focusable" : true,
+          "frame" : [
+            0,
+            1,
+            5,
+            1
+          ],
+          "id" : "11956973032611051942",
+          "kind" : "interactive"
+        }
+      ],
+      "frame" : [
+        0,
+        0,
+        16,
+        4
+      ],
+      "kind" : "stack"
+    }
+  },
+  {
+    "count" : 2,
+    "dirty" : true,
+    "step" : "shortcut",
+    "text" : "aZé",
+    "tree" : {
+      "children" : [
+        {
+          "children" : [
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "frame" : [
+                    0,
+                    0,
+                    5,
+                    1
+                  ],
+                  "kind" : "text",
+                  "text" : " aZé "
+                }
+              ],
+              "frame" : [
+                0,
+                0,
+                5,
+                1
+              ],
+              "kind" : "styled"
+            }
+          ],
+          "focusable" : true,
+          "frame" : [
+            0,
+            0,
+            5,
+            1
+          ],
+          "id" : "11956973032611051941",
+          "kind" : "interactive"
+        },
+        {
+          "children" : [
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "frame" : [
+                    0,
+                    1,
+                    5,
+                    1
+                  ],
+                  "kind" : "text",
+                  "text" : " Add "
+                }
+              ],
+              "frame" : [
+                0,
+                1,
+                5,
+                1
+              ],
+              "kind" : "styled"
+            }
+          ],
+          "focusable" : true,
+          "frame" : [
+            0,
+            1,
+            5,
+            1
+          ],
+          "id" : "11956973032611051942",
+          "kind" : "interactive"
+        }
+      ],
+      "frame" : [
+        0,
+        0,
+        16,
+        4
+      ],
+      "kind" : "stack"
+    }
+  },
+  {
+    "count" : 3,
+    "dirty" : false,
+    "step" : "named",
+    "text" : "aZé",
+    "tree" : {
+      "children" : [
+        {
+          "children" : [
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "frame" : [
+                    0,
+                    0,
+                    5,
+                    1
+                  ],
+                  "kind" : "text",
+                  "text" : " aZé "
+                }
+              ],
+              "frame" : [
+                0,
+                0,
+                5,
+                1
+              ],
+              "kind" : "styled"
+            }
+          ],
+          "focusable" : true,
+          "frame" : [
+            0,
+            0,
+            5,
+            1
+          ],
+          "id" : "11956973032611051941",
+          "kind" : "interactive"
+        },
+        {
+          "children" : [
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "frame" : [
+                    0,
+                    1,
+                    5,
+                    1
+                  ],
+                  "kind" : "text",
+                  "text" : " Add "
+                }
+              ],
+              "frame" : [
+                0,
+                1,
+                5,
+                1
+              ],
+              "kind" : "styled"
+            }
+          ],
+          "focusable" : true,
+          "frame" : [
+            0,
+            1,
+            5,
+            1
+          ],
+          "id" : "11956973032611051942",
+          "kind" : "interactive"
+        }
+      ],
+      "frame" : [
+        0,
+        0,
+        16,
+        4
+      ],
+      "kind" : "stack"
+    }
+  },
+  {
+    "count" : 3,
+    "dirty" : false,
+    "step" : "disabled",
+    "text" : "aZé",
+    "tree" : {
+      "children" : [
+        {
+          "children" : [
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "frame" : [
+                    0,
+                    0,
+                    5,
+                    1
+                  ],
+                  "kind" : "text",
+                  "text" : " aZé "
+                }
+              ],
+              "frame" : [
+                0,
+                0,
+                5,
+                1
+              ],
+              "kind" : "styled"
+            }
+          ],
+          "focusable" : true,
+          "frame" : [
+            0,
+            0,
+            5,
+            1
+          ],
+          "id" : "11956973032611051941",
+          "kind" : "interactive"
+        },
+        {
+          "children" : [
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "frame" : [
+                    0,
+                    1,
+                    5,
+                    1
+                  ],
+                  "kind" : "text",
+                  "text" : " Add "
+                }
+              ],
+              "frame" : [
+                0,
+                1,
+                5,
+                1
+              ],
+              "kind" : "styled"
+            }
+          ],
+          "focusable" : false,
+          "frame" : [
+            0,
+            1,
+            5,
+            1
+          ],
+          "id" : "11956973032611051942",
+          "kind" : "interactive"
+        }
+      ],
+      "frame" : [
+        0,
+        0,
+        16,
+        4
+      ],
+      "kind" : "stack"
+    }
+  }
+]

@@ -1,0 +1,61 @@
+{
+  "unicode": "17.0.0",
+  "uax29": "revision 47",
+  "swift_revision": "95c5142e84b82c1",
+  "inputs": [
+    {
+      "file": "GraphemeBreakProperty.txt",
+      "url": "https://www.unicode.org/Public/17.0.0/ucd/auxiliary/GraphemeBreakProperty.txt",
+      "sha256": "d6b51d1d2ae5c33b451b7ed994b48f1f4dc62b2272a5831e7fd418514a6bae89",
+      "bytes": 99377
+    },
+    {
+      "file": "GraphemeBreakTest.txt",
+      "url": "https://www.unicode.org/Public/17.0.0/ucd/auxiliary/GraphemeBreakTest.txt",
+      "sha256": "e2d134d2c52919bace503ebb6a551c1855fe1a1faec18478c78fff254a1793ec",
+      "bytes": 126570
+    },
+    {
+      "file": "DerivedCoreProperties.txt",
+      "url": "https://www.unicode.org/Public/17.0.0/ucd/DerivedCoreProperties.txt",
+      "sha256": "24c7fed1195c482faaefd5c1e7eb821c5ee1fb6de07ecdbaa64b56a99da22c08",
+      "bytes": 1134783
+    },
+    {
+      "file": "emoji-data.txt",
+      "url": "https://www.unicode.org/Public/17.0.0/ucd/emoji/emoji-data.txt",
+      "sha256": "2cb2bb9455cda83e8481541ecf5b6dfda66a3bb89efa3fa7c5297eccf607b72b",
+      "bytes": 107324
+    },
+    {
+      "file": "UnicodeData.txt",
+      "url": "https://www.unicode.org/Public/17.0.0/ucd/UnicodeData.txt",
+      "sha256": "2e1efc1dcb59c575eedf5ccae60f95229f706ee6d031835247d843c11d96470c",
+      "bytes": 2198209
+    },
+    {
+      "file": "SpecialCasing.txt",
+      "url": "https://www.unicode.org/Public/17.0.0/ucd/SpecialCasing.txt",
+      "sha256": "efc25faf19de21b92c1194c111c932e03d2a5eaf18194e33f1156e96de4c9588",
+      "bytes": 17049
+    },
+    {
+      "file": "AppleDerivedCoreProperties.txt",
+      "url": "https://raw.githubusercontent.com/swiftlang/swift/95c5142e84b82c1/utils/gen-unicode-data/Data/17/Apple/DerivedCoreProperties.txt",
+      "sha256": "94b5e79246016f9a2942f2684c26a59d4bded3434362dc0d1b5e2a805aa343ec",
+      "bytes": 413395
+    },
+    {
+      "file": "AppleUnicodeData.txt",
+      "url": "https://raw.githubusercontent.com/swiftlang/swift/95c5142e84b82c1/utils/gen-unicode-data/Data/17/Apple/UnicodeData.txt",
+      "sha256": "c1d1a8753babbc7d79a271b1b941dcae881f61d89f70136ddbd1856e49144214",
+      "bytes": 2202201
+    },
+    {
+      "file": "LICENSE.txt",
+      "url": "https://www.unicode.org/license.txt",
+      "sha256": "e7a93b009565cfce55919a381437ac4db883e9da2126fa28b91d12732bc53d96",
+      "bytes": 1995
+    }
+  ]
+}

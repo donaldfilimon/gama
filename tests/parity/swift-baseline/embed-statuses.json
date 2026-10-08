@@ -1,0 +1,12 @@
+{
+  "abi" : 1,
+  "enter" : 0,
+  "incrementCleanLength" : 0,
+  "incrementDirty" : 0,
+  "incrementLength" : 110,
+  "initialCleanLength" : 0,
+  "initialDirty" : 0,
+  "initialLength" : 110,
+  "invalidKey" : -2,
+  "nullKey" : -1
+}

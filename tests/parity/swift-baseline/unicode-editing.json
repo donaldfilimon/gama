@@ -1,0 +1,1934 @@
+[
+  {
+    "clusters" : [
+
+    ],
+    "clusterWidths" : [
+
+    ],
+    "edits" : [
+      {
+        "backward" : null,
+        "forward" : null,
+        "insert" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "Z"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          0,
+          0
+        ],
+        "selection" : [
+          0,
+          0
+        ]
+      },
+      {
+        "backward" : null,
+        "forward" : null,
+        "insert" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "Z"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          0,
+          0
+        ],
+        "selection" : [
+          1,
+          1
+        ]
+      },
+      {
+        "backward" : null,
+        "forward" : null,
+        "insert" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "Z"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          0,
+          0
+        ],
+        "selection" : [
+          3,
+          1
+        ]
+      },
+      {
+        "backward" : null,
+        "forward" : null,
+        "insert" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "Z"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          0,
+          0
+        ],
+        "selection" : [
+          -2,
+          99
+        ]
+      }
+    ],
+    "text" : "",
+    "width" : 0,
+    "wrap" : [
+      {
+        "lines" : [
+          ""
+        ],
+        "width" : -1
+      },
+      {
+        "lines" : [
+          ""
+        ],
+        "width" : 0
+      },
+      {
+        "lines" : [
+          ""
+        ],
+        "width" : 1
+      },
+      {
+        "lines" : [
+          ""
+        ],
+        "width" : 2
+      },
+      {
+        "lines" : [
+          ""
+        ],
+        "width" : 4
+      }
+    ]
+  },
+  {
+    "clusters" : [
+      "a",
+      "b",
+      "c"
+    ],
+    "clusterWidths" : [
+      1,
+      1,
+      1
+    ],
+    "edits" : [
+      {
+        "backward" : null,
+        "forward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : "bc"
+        },
+        "insert" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "Zabc"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          1,
+          1
+        ],
+        "selection" : [
+          0,
+          0
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : "bc"
+        },
+        "forward" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "ac"
+        },
+        "insert" : {
+          "selection" : [
+            2,
+            2
+          ],
+          "text" : "aZbc"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          2,
+          2
+        ],
+        "selection" : [
+          1,
+          1
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "a"
+        },
+        "forward" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "a"
+        },
+        "insert" : {
+          "selection" : [
+            2,
+            2
+          ],
+          "text" : "aZ"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          2,
+          2
+        ],
+        "selection" : [
+          3,
+          1
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "forward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "insert" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "Z"
+        },
+        "left" : [
+          2,
+          2
+        ],
+        "right" : [
+          0,
+          3
+        ],
+        "selection" : [
+          -2,
+          99
+        ]
+      }
+    ],
+    "text" : "abc",
+    "width" : 3,
+    "wrap" : [
+      {
+        "lines" : [
+          "abc"
+        ],
+        "width" : -1
+      },
+      {
+        "lines" : [
+          "abc"
+        ],
+        "width" : 0
+      },
+      {
+        "lines" : [
+          "a",
+          "b",
+          "c"
+        ],
+        "width" : 1
+      },
+      {
+        "lines" : [
+          "ab",
+          "c"
+        ],
+        "width" : 2
+      },
+      {
+        "lines" : [
+          "abc"
+        ],
+        "width" : 4
+      }
+    ]
+  },
+  {
+    "clusters" : [
+      "é",
+      "b",
+      "c"
+    ],
+    "clusterWidths" : [
+      1,
+      1,
+      1
+    ],
+    "edits" : [
+      {
+        "backward" : null,
+        "forward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : "bc"
+        },
+        "insert" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "Zébc"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          1,
+          1
+        ],
+        "selection" : [
+          0,
+          0
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : "bc"
+        },
+        "forward" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "éc"
+        },
+        "insert" : {
+          "selection" : [
+            2,
+            2
+          ],
+          "text" : "éZbc"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          2,
+          2
+        ],
+        "selection" : [
+          1,
+          1
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "é"
+        },
+        "forward" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "é"
+        },
+        "insert" : {
+          "selection" : [
+            2,
+            2
+          ],
+          "text" : "éZ"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          2,
+          2
+        ],
+        "selection" : [
+          3,
+          1
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "forward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "insert" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "Z"
+        },
+        "left" : [
+          2,
+          2
+        ],
+        "right" : [
+          0,
+          3
+        ],
+        "selection" : [
+          -2,
+          99
+        ]
+      }
+    ],
+    "text" : "ébc",
+    "width" : 3,
+    "wrap" : [
+      {
+        "lines" : [
+          "ébc"
+        ],
+        "width" : -1
+      },
+      {
+        "lines" : [
+          "ébc"
+        ],
+        "width" : 0
+      },
+      {
+        "lines" : [
+          "é",
+          "b",
+          "c"
+        ],
+        "width" : 1
+      },
+      {
+        "lines" : [
+          "éb",
+          "c"
+        ],
+        "width" : 2
+      },
+      {
+        "lines" : [
+          "ébc"
+        ],
+        "width" : 4
+      }
+    ]
+  },
+  {
+    "clusters" : [
+      "👩🏽‍💻",
+      "X"
+    ],
+    "clusterWidths" : [
+      2,
+      1
+    ],
+    "edits" : [
+      {
+        "backward" : null,
+        "forward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : "X"
+        },
+        "insert" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "Z👩🏽‍💻X"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          1,
+          1
+        ],
+        "selection" : [
+          0,
+          0
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : "X"
+        },
+        "forward" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "👩🏽‍💻"
+        },
+        "insert" : {
+          "selection" : [
+            2,
+            2
+          ],
+          "text" : "👩🏽‍💻ZX"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          2,
+          2
+        ],
+        "selection" : [
+          1,
+          1
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "👩🏽‍💻"
+        },
+        "forward" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "👩🏽‍💻"
+        },
+        "insert" : {
+          "selection" : [
+            2,
+            2
+          ],
+          "text" : "👩🏽‍💻Z"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          2,
+          2
+        ],
+        "selection" : [
+          3,
+          1
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "forward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "insert" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "Z"
+        },
+        "left" : [
+          1,
+          1
+        ],
+        "right" : [
+          0,
+          2
+        ],
+        "selection" : [
+          -2,
+          99
+        ]
+      }
+    ],
+    "text" : "👩🏽‍💻X",
+    "width" : 3,
+    "wrap" : [
+      {
+        "lines" : [
+          "👩🏽‍💻X"
+        ],
+        "width" : -1
+      },
+      {
+        "lines" : [
+          "👩🏽‍💻X"
+        ],
+        "width" : 0
+      },
+      {
+        "lines" : [
+          "👩🏽‍💻",
+          "X"
+        ],
+        "width" : 1
+      },
+      {
+        "lines" : [
+          "👩🏽‍💻",
+          "X"
+        ],
+        "width" : 2
+      },
+      {
+        "lines" : [
+          "👩🏽‍💻X"
+        ],
+        "width" : 4
+      }
+    ]
+  },
+  {
+    "clusters" : [
+      "🇺🇸",
+      "🇨🇦"
+    ],
+    "clusterWidths" : [
+      2,
+      2
+    ],
+    "edits" : [
+      {
+        "backward" : null,
+        "forward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : "🇨🇦"
+        },
+        "insert" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "Z🇺🇸🇨🇦"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          1,
+          1
+        ],
+        "selection" : [
+          0,
+          0
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : "🇨🇦"
+        },
+        "forward" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "🇺🇸"
+        },
+        "insert" : {
+          "selection" : [
+            2,
+            2
+          ],
+          "text" : "🇺🇸Z🇨🇦"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          2,
+          2
+        ],
+        "selection" : [
+          1,
+          1
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "🇺🇸"
+        },
+        "forward" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "🇺🇸"
+        },
+        "insert" : {
+          "selection" : [
+            2,
+            2
+          ],
+          "text" : "🇺🇸Z"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          2,
+          2
+        ],
+        "selection" : [
+          3,
+          1
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "forward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "insert" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "Z"
+        },
+        "left" : [
+          1,
+          1
+        ],
+        "right" : [
+          0,
+          2
+        ],
+        "selection" : [
+          -2,
+          99
+        ]
+      }
+    ],
+    "text" : "🇺🇸🇨🇦",
+    "width" : 4,
+    "wrap" : [
+      {
+        "lines" : [
+          "🇺🇸🇨🇦"
+        ],
+        "width" : -1
+      },
+      {
+        "lines" : [
+          "🇺🇸🇨🇦"
+        ],
+        "width" : 0
+      },
+      {
+        "lines" : [
+          "🇺🇸",
+          "🇨🇦"
+        ],
+        "width" : 1
+      },
+      {
+        "lines" : [
+          "🇺🇸",
+          "🇨🇦"
+        ],
+        "width" : 2
+      },
+      {
+        "lines" : [
+          "🇺🇸🇨🇦"
+        ],
+        "width" : 4
+      }
+    ]
+  },
+  {
+    "clusters" : [
+      "✈︎",
+      "✈️"
+    ],
+    "clusterWidths" : [
+      1,
+      2
+    ],
+    "edits" : [
+      {
+        "backward" : null,
+        "forward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : "✈️"
+        },
+        "insert" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "Z✈︎✈️"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          1,
+          1
+        ],
+        "selection" : [
+          0,
+          0
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : "✈️"
+        },
+        "forward" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "✈︎"
+        },
+        "insert" : {
+          "selection" : [
+            2,
+            2
+          ],
+          "text" : "✈︎Z✈️"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          2,
+          2
+        ],
+        "selection" : [
+          1,
+          1
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "✈︎"
+        },
+        "forward" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "✈︎"
+        },
+        "insert" : {
+          "selection" : [
+            2,
+            2
+          ],
+          "text" : "✈︎Z"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          2,
+          2
+        ],
+        "selection" : [
+          3,
+          1
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "forward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "insert" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "Z"
+        },
+        "left" : [
+          1,
+          1
+        ],
+        "right" : [
+          0,
+          2
+        ],
+        "selection" : [
+          -2,
+          99
+        ]
+      }
+    ],
+    "text" : "✈︎✈️",
+    "width" : 3,
+    "wrap" : [
+      {
+        "lines" : [
+          "✈︎✈️"
+        ],
+        "width" : -1
+      },
+      {
+        "lines" : [
+          "✈︎✈️"
+        ],
+        "width" : 0
+      },
+      {
+        "lines" : [
+          "✈︎",
+          "✈️"
+        ],
+        "width" : 1
+      },
+      {
+        "lines" : [
+          "✈︎",
+          "✈️"
+        ],
+        "width" : 2
+      },
+      {
+        "lines" : [
+          "✈︎✈️"
+        ],
+        "width" : 4
+      }
+    ]
+  },
+  {
+    "clusters" : [
+      "\r\n"
+    ],
+    "clusterWidths" : [
+      0
+    ],
+    "edits" : [
+      {
+        "backward" : null,
+        "forward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "insert" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "Z\r\n"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          1,
+          1
+        ],
+        "selection" : [
+          0,
+          0
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "forward" : null,
+        "insert" : {
+          "selection" : [
+            2,
+            2
+          ],
+          "text" : "\r\nZ"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          1,
+          1
+        ],
+        "selection" : [
+          1,
+          1
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "forward" : null,
+        "insert" : {
+          "selection" : [
+            2,
+            2
+          ],
+          "text" : "\r\nZ"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          1,
+          1
+        ],
+        "selection" : [
+          3,
+          1
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "forward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "insert" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "Z"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          0,
+          1
+        ],
+        "selection" : [
+          -2,
+          99
+        ]
+      }
+    ],
+    "text" : "\r\n",
+    "width" : 0,
+    "wrap" : [
+      {
+        "lines" : [
+          "\r\n"
+        ],
+        "width" : -1
+      },
+      {
+        "lines" : [
+          "\r\n"
+        ],
+        "width" : 0
+      },
+      {
+        "lines" : [
+          "\r\n"
+        ],
+        "width" : 1
+      },
+      {
+        "lines" : [
+          "\r\n"
+        ],
+        "width" : 2
+      },
+      {
+        "lines" : [
+          "\r\n"
+        ],
+        "width" : 4
+      }
+    ]
+  },
+  {
+    "clusters" : [
+      "a",
+      " ",
+      " ",
+      "b",
+      "\n",
+      "c"
+    ],
+    "clusterWidths" : [
+      1,
+      1,
+      1,
+      1,
+      0,
+      1
+    ],
+    "edits" : [
+      {
+        "backward" : null,
+        "forward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : "  b\nc"
+        },
+        "insert" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "Za  b\nc"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          1,
+          1
+        ],
+        "selection" : [
+          0,
+          0
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : "  b\nc"
+        },
+        "forward" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "a b\nc"
+        },
+        "insert" : {
+          "selection" : [
+            2,
+            2
+          ],
+          "text" : "aZ  b\nc"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          2,
+          2
+        ],
+        "selection" : [
+          1,
+          1
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "ab\nc"
+        },
+        "forward" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "ab\nc"
+        },
+        "insert" : {
+          "selection" : [
+            2,
+            2
+          ],
+          "text" : "aZb\nc"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          2,
+          2
+        ],
+        "selection" : [
+          3,
+          1
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "forward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "insert" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "Z"
+        },
+        "left" : [
+          5,
+          5
+        ],
+        "right" : [
+          0,
+          6
+        ],
+        "selection" : [
+          -2,
+          99
+        ]
+      }
+    ],
+    "text" : "a  b\nc",
+    "width" : 5,
+    "wrap" : [
+      {
+        "lines" : [
+          "a  b",
+          "c"
+        ],
+        "width" : -1
+      },
+      {
+        "lines" : [
+          "a  b",
+          "c"
+        ],
+        "width" : 0
+      },
+      {
+        "lines" : [
+          "a",
+          "b",
+          "c"
+        ],
+        "width" : 1
+      },
+      {
+        "lines" : [
+          "a ",
+          "b",
+          "c"
+        ],
+        "width" : 2
+      },
+      {
+        "lines" : [
+          "a  b",
+          "c"
+        ],
+        "width" : 4
+      }
+    ]
+  },
+  {
+    "clusters" : [
+      "中",
+      "a",
+      "中"
+    ],
+    "clusterWidths" : [
+      2,
+      1,
+      2
+    ],
+    "edits" : [
+      {
+        "backward" : null,
+        "forward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : "a中"
+        },
+        "insert" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "Z中a中"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          1,
+          1
+        ],
+        "selection" : [
+          0,
+          0
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : "a中"
+        },
+        "forward" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "中中"
+        },
+        "insert" : {
+          "selection" : [
+            2,
+            2
+          ],
+          "text" : "中Za中"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          2,
+          2
+        ],
+        "selection" : [
+          1,
+          1
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "中"
+        },
+        "forward" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "中"
+        },
+        "insert" : {
+          "selection" : [
+            2,
+            2
+          ],
+          "text" : "中Z"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          2,
+          2
+        ],
+        "selection" : [
+          3,
+          1
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "forward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "insert" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "Z"
+        },
+        "left" : [
+          2,
+          2
+        ],
+        "right" : [
+          0,
+          3
+        ],
+        "selection" : [
+          -2,
+          99
+        ]
+      }
+    ],
+    "text" : "中a中",
+    "width" : 5,
+    "wrap" : [
+      {
+        "lines" : [
+          "中a中"
+        ],
+        "width" : -1
+      },
+      {
+        "lines" : [
+          "中a中"
+        ],
+        "width" : 0
+      },
+      {
+        "lines" : [
+          "中",
+          "a",
+          "中"
+        ],
+        "width" : 1
+      },
+      {
+        "lines" : [
+          "中",
+          "a",
+          "中"
+        ],
+        "width" : 2
+      },
+      {
+        "lines" : [
+          "中a",
+          "中"
+        ],
+        "width" : 4
+      }
+    ]
+  },
+  {
+    "clusters" : [
+      "́"
+    ],
+    "clusterWidths" : [
+      0
+    ],
+    "edits" : [
+      {
+        "backward" : null,
+        "forward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "insert" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "Ź"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          1,
+          1
+        ],
+        "selection" : [
+          0,
+          0
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "forward" : null,
+        "insert" : {
+          "selection" : [
+            2,
+            2
+          ],
+          "text" : "́Z"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          1,
+          1
+        ],
+        "selection" : [
+          1,
+          1
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "forward" : null,
+        "insert" : {
+          "selection" : [
+            2,
+            2
+          ],
+          "text" : "́Z"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          1,
+          1
+        ],
+        "selection" : [
+          3,
+          1
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "forward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "insert" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "Z"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          0,
+          1
+        ],
+        "selection" : [
+          -2,
+          99
+        ]
+      }
+    ],
+    "text" : "́",
+    "width" : 0,
+    "wrap" : [
+      {
+        "lines" : [
+          "́"
+        ],
+        "width" : -1
+      },
+      {
+        "lines" : [
+          "́"
+        ],
+        "width" : 0
+      },
+      {
+        "lines" : [
+          "́"
+        ],
+        "width" : 1
+      },
+      {
+        "lines" : [
+          "́"
+        ],
+        "width" : 2
+      },
+      {
+        "lines" : [
+          "́"
+        ],
+        "width" : 4
+      }
+    ]
+  },
+  {
+    "clusters" : [
+      "क्‍ष"
+    ],
+    "clusterWidths" : [
+      1
+    ],
+    "edits" : [
+      {
+        "backward" : null,
+        "forward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "insert" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "Zक्‍ष"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          1,
+          1
+        ],
+        "selection" : [
+          0,
+          0
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "forward" : null,
+        "insert" : {
+          "selection" : [
+            2,
+            2
+          ],
+          "text" : "क्‍षZ"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          1,
+          1
+        ],
+        "selection" : [
+          1,
+          1
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "forward" : null,
+        "insert" : {
+          "selection" : [
+            2,
+            2
+          ],
+          "text" : "क्‍षZ"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          1,
+          1
+        ],
+        "selection" : [
+          3,
+          1
+        ]
+      },
+      {
+        "backward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "forward" : {
+          "selection" : [
+            0,
+            0
+          ],
+          "text" : ""
+        },
+        "insert" : {
+          "selection" : [
+            1,
+            1
+          ],
+          "text" : "Z"
+        },
+        "left" : [
+          0,
+          0
+        ],
+        "right" : [
+          0,
+          1
+        ],
+        "selection" : [
+          -2,
+          99
+        ]
+      }
+    ],
+    "text" : "क्‍ष",
+    "width" : 1,
+    "wrap" : [
+      {
+        "lines" : [
+          "क्‍ष"
+        ],
+        "width" : -1
+      },
+      {
+        "lines" : [
+          "क्‍ष"
+        ],
+        "width" : 0
+      },
+      {
+        "lines" : [
+          "क्‍ष"
+        ],
+        "width" : 1
+      },
+      {
+        "lines" : [
+          "क्‍ष"
+        ],
+        "width" : 2
+      },
+      {
+        "lines" : [
+          "क्‍ष"
+        ],
+        "width" : 4
+      }
+    ]
+  }
+]

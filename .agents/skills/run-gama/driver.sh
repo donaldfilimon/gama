@@ -1,273 +1,64 @@
 #!/usr/bin/env bash
-# driver.sh - agent harness for driving the Gama demos.
-#
-# The TUI needs a real tty, so the interactive commands run gama-demo inside
-# a tmux session and read frames back with capture-pane. Every artifact lands
-# under $GAMA_RUN_ARTIFACTS so a caller can inspect what the app actually drew.
-# Each smoke gets a private subdirectory; step-by-step snaps use the root.
-#
-# Usage: .agents/skills/run-gama/driver.sh <command> [args]
-#   build            build the demo products with the pinned 6.5-dev snapshot
-#   launch           start gama-demo in a detached tmux session (100x30)
-#   keys <k>...      forward tmux send-keys arguments to the running app
-#   snap [name]      write the current frame to $GAMA_RUN_ARTIFACTS/<name>.txt
-#   text             print the current frame to stdout
-#   count            print the demo's current counter value
-#   focus            print the focused control's label (reads ANSI attributes)
-#   quit             Ctrl-C the app and kill the session
-#   mlir             direct invocation: emit the gama MLIR dialect (no tty)
-#   smoke            launch, assert rendering, move focus, activate, quit
-#   apple            build and launch the AppKit multi-window demo
-#
-# Paths are relative to the repository root. Run from there.
-
 set -euo pipefail
-
-SCRATCH="${GAMA_RUN_SCRATCH:-/private/tmp/gama-run-skill}"
-ARTIFACTS_ROOT="${GAMA_RUN_ARTIFACTS:-/private/tmp/gama-run-artifacts}"
-ARTIFACTS="$ARTIFACTS_ROOT"
-SESSION_PREFIX="${GAMA_RUN_SESSION:-gama-demo}"
-SESSION="$SESSION_PREFIX"
-PANE_WIDTH="${GAMA_RUN_WIDTH:-100}"
-PANE_HEIGHT="${GAMA_RUN_HEIGHT:-30}"
-SMOKE_SESSION_OWNED=0
-SMOKE_PRIVATE_SESSION=0
-SMOKE_RUN_PREPARED=0
-SMOKE_RUN_SEQUENCE=0
-SMOKE_RUN_ID=""
-
-# A stray TOOLCHAINS value overrides both the swiftly shim and the scripts'
-# explicit xcrun pins, so it is cleared for every invocation.
-unset TOOLCHAINS
-
-swift_run() {
-    swiftly run swift "$@"
+ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
+cd "$ROOT"
+ZIG=${GAMA_RUN_ZIG:-zig}
+SESSION=${GAMA_RUN_SESSION:-gama}
+[[ "$SESSION" =~ ^[a-zA-Z0-9_-]+$ ]] || { echo 'invalid session name' >&2; exit 64; }
+STATE=${GAMA_RUN_STATE:-${TMPDIR:-/tmp}/gama-run-$UID}
+ARTIFACTS=${GAMA_RUN_ARTIFACTS:-${TMPDIR:-/tmp}/gama-run-artifacts}
+BINARY=${GAMA_RUN_BINARY:-$ROOT/zig-out/bin/demo}
+OWNED_ID=''
+TOKEN=''
+owned() { [[ -n "$OWNED_ID" ]] && [[ "$(tmux show-option -v -t "$OWNED_ID" @gama-owner 2>/dev/null || true)" == "$TOKEN" ]]; }
+cleanup() { local status=$?; if owned; then tmux send-keys -t "$OWNED_ID" C-c 2>/dev/null || true; sleep .2; if owned; then tmux kill-session -t "$OWNED_ID" 2>/dev/null || true; fi; fi; return "$status"; }
+build() { [[ "$("$ZIG" version)" == "$(cat .zig-version)" ]] || { echo 'wrong Zig pin' >&2; return 1; }; "$ZIG" build -j2; }
+launch() {
+    command -v tmux >/dev/null
+    [[ -x "$BINARY" ]] || { echo 'missing demo executable; run build' >&2; return 1; }
+    if tmux has-session -t "=$SESSION" 2>/dev/null; then echo 'session name already exists; refusing takeover' >&2; return 1; fi
+    [[ ! -L "$STATE" ]] || return 1
+    mkdir -p "$STATE"; chmod 700 "$STATE"
+    [[ ! -e "$STATE/$SESSION" ]] || { echo 'ownership receipt already exists' >&2; return 1; }
+    TOKEN="$$-$RANDOM-$RANDOM"
+    OWNED_ID=$(tmux new-session -d -P -F '#{session_id}' -s "$SESSION" -x 100 -y 30 "$BINARY" --gama-tui)
+    tmux set-option -t "$OWNED_ID" @gama-owner "$TOKEN"
+    (umask 077; printf '%s\n%s\n' "$OWNED_ID" "$TOKEN" > "$STATE/$SESSION")
 }
-
-require_tmux() {
-    command -v tmux >/dev/null 2>&1 || {
-        echo "driver: tmux is required (brew install tmux)" >&2
-        exit 1
-    }
+load() { [[ -f "$STATE/$SESSION" && ! -L "$STATE/$SESSION" ]] || return 1; OWNED_ID=$(sed -n '1p' "$STATE/$SESSION"); TOKEN=$(sed -n '2p' "$STATE/$SESSION"); owned || { echo 'session ownership no longer matches' >&2; return 1; }; }
+text() { owned || return 1; tmux capture-pane -p -t "$OWNED_ID"; }
+assert_frame() {
+    local expected=$1 label=$2 frame i
+    for i in {1..50}; do frame=$(text) || return 1; if [[ "$frame" == *"$expected"* ]]; then printf '%s\n' "$frame" > "$ARTIFACTS/$label.txt"; return 0; fi; sleep .1; done
+    printf 'missing frame assertion: %s\n%s\n' "$expected" "$frame" >&2; return 1
 }
-
-cmd_build() {
-    mkdir -p "$SCRATCH"
-    swift_run build --scratch-path "$SCRATCH" \
-        --product gama-demo
-    echo "driver: built gama-demo at $SCRATCH/debug/gama-demo"
-}
-
-binary() {
-    local bin="$SCRATCH/debug/gama-demo"
-    [ -x "$bin" ] || {
-        echo "driver: $bin missing; run '$0 build' first" >&2
-        exit 1
-    }
-    printf '%s' "$bin"
-}
-
-cmd_launch() {
-    require_tmux
-    local bin
-    bin="$(binary)"
-    mkdir -p "$ARTIFACTS"
-    if [ "$SMOKE_PRIVATE_SESSION" -eq 1 ]; then
-        if tmux has-session -t "$SESSION" 2>/dev/null; then
-            echo "driver: private smoke session name collision: '$SESSION'" >&2
-            exit 1
-        fi
-    else
-        tmux kill-session -t "$SESSION" 2>/dev/null || true
-    fi
-    # -x/-y pin the pane: the demo frame is 72x18 and clips in a smaller pane.
-    # Claim the now-vacant name before creation so a signal between tmux and
-    # the following shell command cannot strand a newly created session.
-    SMOKE_SESSION_OWNED=1
-    tmux new-session -d -s "$SESSION" -x "$PANE_WIDTH" -y "$PANE_HEIGHT" "$bin"
-    sleep 2
-    tmux has-session -t "$SESSION" 2>/dev/null || {
-        echo "driver: session died on launch" >&2
-        exit 1
-    }
-    echo "driver: gama-demo running in tmux session '$SESSION'"
-}
-
-cmd_keys() {
-    require_tmux
-    tmux send-keys -t "$SESSION" "$@"
-    # One frame of settle time: the loop repaints only while the host is dirty.
-    sleep 1
-}
-
-cmd_text() {
-    require_tmux
-    tmux capture-pane -p -t "$SESSION"
-}
-
-cmd_snap() {
-    local name="${1:-frame}"
-    mkdir -p "$ARTIFACTS"
-    cmd_text > "$ARTIFACTS/$name.txt"
-    echo "$ARTIFACTS/$name.txt"
-}
-
-cmd_count() {
-    # The StatBadge row renders as "count <n>"; the value may be negative.
-    cmd_text | grep -o 'count *-\{0,1\}[0-9]\{1,\}' | head -1 | grep -o '\-\{0,1\}[0-9]\{1,\}'
-}
-
-cmd_focus() {
-    require_tmux
-    # The focus ring is an ANSI attribute run, so -p (which strips escapes)
-    # cannot see it; -e keeps them. Teal 72;208;208 is the focused background.
-    # Labels contain multibyte glyphs (the minus is U+2212), so the run is cut
-    # at the next escape byte rather than passed through cat -v.
-    tmux capture-pane -e -p -t "$SESSION" \
-        | awk -v esc="$(printf '\033')" '
-            {
-                n = split($0, parts, esc "\\[48;2;72;208;208m")
-                if (n > 1) {
-                    label = parts[2]
-                    sub(esc ".*", "", label)
-                    gsub(/^ +| +$/, "", label)
-                    if (label != "") { print label; exit }
-                }
-            }'
-}
-
-cmd_quit() {
-    require_tmux
-    tmux send-keys -t "$SESSION" C-c 2>/dev/null || true
-    sleep 1
-    tmux kill-session -t "$SESSION" 2>/dev/null || true
-    SMOKE_SESSION_OWNED=0
-    echo "driver: session '$SESSION' stopped"
-}
-
-smoke_cleanup() {
-    local status="$1"
-    trap - EXIT INT TERM HUP
-    if [ "$SMOKE_SESSION_OWNED" -eq 1 ]; then
-        cmd_quit >/dev/null 2>&1 || true
-    fi
-    exit "$status"
-}
-
-smoke_interrupt() {
-    exit "$1"
-}
-
-prepare_smoke_run() {
-    if [ "$SMOKE_RUN_PREPARED" -eq 1 ]; then
-        return
-    fi
-    SMOKE_RUN_SEQUENCE=$((SMOKE_RUN_SEQUENCE + 1))
-    SMOKE_RUN_ID="smoke-$$-${SMOKE_RUN_SEQUENCE}-${RANDOM}-${RANDOM}"
-    SESSION="${SESSION_PREFIX}-${SMOKE_RUN_ID}"
-    ARTIFACTS="${ARTIFACTS_ROOT}/${SMOKE_RUN_ID}"
-    SMOKE_PRIVATE_SESSION=1
-    SMOKE_RUN_PREPARED=1
-}
-
-cmd_mlir() {
-    # No tty needed: this path prints the dialect and exits.
-    swift_run run --scratch-path "$SCRATCH" gama-demo --emit-mlir
-}
-
-cmd_smoke() {
-    # A private run ID prevents concurrent smokes from claiming one another's
-    # sessions or mixing evidence. Step-by-step commands retain exact paths.
-    prepare_smoke_run
-    mkdir -p "$ARTIFACTS"
-    rm -f -- \
-        "$ARTIFACTS/before.txt" \
-        "$ARTIFACTS/after.txt" \
-        "$ARTIFACTS/activated.txt"
-    cmd_build
-    trap 'smoke_cleanup $?' EXIT
-    trap 'smoke_interrupt 130' INT
-    trap 'smoke_interrupt 143' TERM
-    trap 'smoke_interrupt 129' HUP
-    cmd_launch
-    local count before after
-    count="$(cmd_count || true)"
-    before="$(cmd_focus || true)"
-    cmd_snap before >/dev/null
-    if [ -z "$count" ]; then
-        echo "driver: FAIL - the demo drew no counter on its first frame"
-        exit 1
-    fi
-    if [ "$count" != "0" ]; then
-        echo "driver: FAIL - expected the first frame to show count 0, found '$count'"
-        exit 1
-    fi
-    if [ -z "$before" ]; then
-        echo "driver: FAIL - no focus ring in the first frame"
-        exit 1
-    fi
-    if [ "$before" != "−1" ]; then
-        echo "driver: FAIL - expected initial focus on '−1', found '$before'"
-        exit 1
-    fi
-    echo "driver: rendered (count=$count), focus on '$before'"
-    # Tab moves the focus ring from '−1' to '+1' and the pane repaints live.
-    cmd_keys Tab
-    after="$(cmd_focus || true)"
-    cmd_snap after >/dev/null
-    echo "driver: focus after Tab: '$after'"
-    if [ "$after" != "+1" ]; then
-        echo "driver: FAIL - expected Tab to focus '+1', found '$after'"
-        exit 1
-    fi
-    # Enter activates the focused '+1' and the next frame must paint the
-    # incremented count. CounterPanel is built inline in the scene closure,
-    # so this is the per-surface @Reactive store (ADR 0011) working end to
-    # end in a real tty, not just in the Swift Testing suite.
-    local activated
-    cmd_keys Enter
-    sleep 0.7
-    activated="$(cmd_count || true)"
-    cmd_snap activated >/dev/null
-    echo "driver: count after Enter on '$after': $activated"
-    cmd_quit
-    trap - EXIT INT TERM HUP
-    if [ "$activated" != "1" ]; then
-        echo "driver: FAIL - Enter on '$after' did not repaint count 0 as 1 (found '$activated')"
-        exit 1
-    fi
-    echo "driver: PASS - launched, rendered, drove focus, and activated a control."
-    echo "driver: frames in $ARTIFACTS (before.txt, after.txt, activated.txt)"
-}
-
-cmd_apple() {
-    mkdir -p "$SCRATCH"
-    swift_run build --scratch-path "$SCRATCH" --product gama-apple-demo
-    echo "driver: launching the AppKit demo; it opens real windows and blocks."
-    echo "driver: quit it with Command-Q, or Ctrl-C this shell."
-    swift_run run --scratch-path "$SCRATCH" gama-apple-demo
-}
-
-main() {
-    case "${1:-}" in
-        build) shift; cmd_build "$@" ;;
-        launch) shift; cmd_launch "$@" ;;
-        keys) shift; cmd_keys "$@" ;;
-        snap) shift; cmd_snap "$@" ;;
-        text) shift; cmd_text "$@" ;;
-        count) shift; cmd_count "$@" ;;
-        quit) shift; cmd_quit "$@" ;;
-        focus) shift; cmd_focus "$@" ;;
-        mlir) shift; cmd_mlir "$@" ;;
-        smoke) shift; cmd_smoke "$@" ;;
-        apple) shift; cmd_apple "$@" ;;
-        *)
-            sed -n '2,25p' "$0"
-            exit 1
-            ;;
-    esac
-}
-
-if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
-    main "$@"
-fi
+keys() { owned || return 1; tmux send-keys -t "$OWNED_ID" "$@"; }
+case ${1:-smoke} in
+ build) build ;;
+ launch) launch ;;
+ text) load; text ;;
+ keys) shift; load; keys "$@" ;;
+ quit) load; cleanup; rm -f "$STATE/$SESSION" ;;
+ smoke)
+    if [[ $# == 2 ]]; then BINARY=$2; else build; fi
+    ARTIFACTS=$(mktemp -d "${ARTIFACTS}.XXXXXX"); chmod 700 "$ARTIFACTS"
+    SESSION="${SESSION}-smoke-$$-$RANDOM"
+    trap cleanup EXIT; trap 'exit 130' INT; trap 'exit 143' TERM; trap 'exit 129' HUP
+    launch
+    printf 'binary=%s\nzig=%s\nversion=%s\n' "$BINARY" "$ZIG" "$("$ZIG" version)" > "$ARTIFACTS/receipt.txt"
+    assert_frame 'count 0 | focus -1' initial
+    keys Tab; assert_frame 'focus +1' focus
+    keys Enter; assert_frame 'count 1' activated
+    keys Space; assert_frame 'count 2' space
+    keys Tab; assert_frame 'focus name' form
+    keys -l ab; assert_frame 'name [ab]' typed
+    keys Left; keys -l X; assert_frame 'name [aXb]' inserted
+    keys BSpace; assert_frame 'name [ab]' deleted
+    keys Tab; assert_frame 'focus -1' away
+    keys BTab; assert_frame 'focus name' returned
+    assert_frame 'name [ab]' retained
+    cleanup; OWNED_ID=''; rm -f "$STATE/$SESSION"
+    printf 'PASS: counter, focus, editing, retained form; artifacts=%s\n' "$ARTIFACTS"
+    ;;
+ *) echo 'usage: driver.sh build|launch|text|keys ...|quit|smoke [built-binary]' >&2; exit 64 ;;
+esac

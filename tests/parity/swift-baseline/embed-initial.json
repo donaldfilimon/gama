@@ -1,0 +1,11 @@
+{
+  "commands" : [
+    "text(\"Gama C Embed 0\", at: GamaCore.Point(x: 0, y: 0), style: GamaCore.TextStyle(foreground: GamaCore.Color(r: 0, g: 0, b: 0, isDefault: true), background: GamaCore.Color(r: 0, g: 0, b: 0, isDefault: true), attributes: GamaCore.TextAttributes(rawValue: 0)))",
+    "fillRect(GamaCore.Rect(origin: GamaCore.Point(x: 0, y: 1), size: GamaCore.Size(width: 11, height: 1)), GamaCore.Color(r: 72, g: 208, b: 208, isDefault: false))",
+    "text(\"Increment\", at: GamaCore.Point(x: 1, y: 1), style: GamaCore.TextStyle(foreground: GamaCore.Color(r: 0, g: 0, b: 0, isDefault: false), background: GamaCore.Color(r: 72, g: 208, b: 208, isDefault: false), attributes: GamaCore.TextAttributes(rawValue: 1)))"
+  ],
+  "size" : [
+    24,
+    6
+  ]
+}

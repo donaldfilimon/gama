@@ -1,0 +1,11 @@
+Portable benchmark runs=5 frames=2000 warmup=200; 80x24 / 160x48; color depth unknown
+DIGEST	0	f69f0fa2b40349e5
+DIGEST	1	f69f0fa2b40349e5
+DIGEST	2	f69f0fa2b40349e5
+DIGEST	3	f69f0fa2b40349e5
+DIGEST	4	f69f0fa2b40349e5
+BENCH	paint (pump + clearBack + CellPainter)	10000	57000	58958
+BENCH	forEachRun via DrawList.from (80x24)	10000	50125	53625
+BENCH	presentDiff (ANSI diff, 80x24)	10000	3792	4125
+BENCH	resize loop (80x24 <-> 160x48, painted)	500	195000	225042
+Memory: framework allocations inside phases; harness samples/digest outside; no process RSS comparison.

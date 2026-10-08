@@ -1,0 +1,99 @@
+=== activated.txt ===
+Gama counter | count 1 | focus +1
+ -1
+ +1
+Name:
+ type here
+name []
+Tab: focus | Enter: activate | Ctrl-C: quit
+
+=== away.txt ===
+Gama counter | count 2 | focus -1
+ -1
+ +1
+Name:
+ ab
+name [ab]
+Tab: focus | Enter: activate | Ctrl-C: quit
+
+=== deleted.txt ===
+Gama counter | count 2 | focus name
+ -1
+ +1
+Name:
+ ab
+name [ab]
+Tab: focus | Enter: activate | Ctrl-C: quit
+
+=== focus.txt ===
+Gama counter | count 0 | focus +1
+ -1
+ +1
+Name:
+ type here
+name []
+Tab: focus | Enter: activate | Ctrl-C: quit
+
+=== form.txt ===
+Gama counter | count 2 | focus name
+ -1
+ +1
+Name:
+ type here
+name []
+Tab: focus | Enter: activate | Ctrl-C: quit
+
+=== initial.txt ===
+Gama counter | count 0 | focus -1
+ -1
+ +1
+Name:
+ type here
+name []
+Tab: focus | Enter: activate | Ctrl-C: quit
+
+=== inserted.txt ===
+Gama counter | count 2 | focus name
+ -1
+ +1
+Name:
+ aXb
+name [aXb]
+Tab: focus | Enter: activate | Ctrl-C: quit
+
+=== retained.txt ===
+Gama counter | count 2 | focus name
+ -1
+ +1
+Name:
+ ab
+name [ab]
+Tab: focus | Enter: activate | Ctrl-C: quit
+
+=== returned.txt ===
+Gama counter | count 2 | focus name
+ -1
+ +1
+Name:
+ ab
+name [ab]
+Tab: focus | Enter: activate | Ctrl-C: quit
+
+=== space.txt ===
+Gama counter | count 2 | focus +1
+ -1
+ +1
+Name:
+ type here
+name []
+Tab: focus | Enter: activate | Ctrl-C: quit
+
+=== typed.txt ===
+Gama counter | count 2 | focus name
+ -1
+ +1
+Name:
+ ab
+name [ab]
+Tab: focus | Enter: activate | Ctrl-C: quit
+

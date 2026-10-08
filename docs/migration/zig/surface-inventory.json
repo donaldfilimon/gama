@@ -1,0 +1,2652 @@
+{
+  "baseline": "b8ce774285c79d83a4bf3ffff7b11975d4716af2",
+  "graph": [
+    {
+      "graphKind": "library",
+      "name": "Gama",
+      "disposition": "rewrite_retained_contract",
+      "reason": "umbrella entrypoint"
+    },
+    {
+      "graphKind": "library",
+      "name": "GamaCore",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "graphKind": "library",
+      "name": "GamaPlugin",
+      "disposition": "rewrite_retained_contract",
+      "reason": "cooperative Tier-1 runtime/capabilities/contributions"
+    },
+    {
+      "graphKind": "library",
+      "name": "GamaPlatformServices",
+      "disposition": "rewrite_retained_contract",
+      "reason": "hosted std-backed services"
+    },
+    {
+      "graphKind": "library",
+      "name": "GamaMacros",
+      "disposition": "retire",
+      "reason": "ordinary Zig authoring replaces Swift macros"
+    },
+    {
+      "graphKind": "library",
+      "name": "GamaDraw",
+      "disposition": "rewrite_retained_contract",
+      "reason": "cells/paint/DrawList/ANSI/plain; HTML oracle preserved"
+    },
+    {
+      "graphKind": "library",
+      "name": "GamaTUI",
+      "disposition": "rewrite_retained_contract",
+      "reason": "macOS/Linux interactive; all-platform plain/headless"
+    },
+    {
+      "graphKind": "library",
+      "name": "GamaWASM",
+      "disposition": "retire",
+      "reason": "gama_web v1/v2 browser exports retired; new pull gama_wasm v1 is replacement"
+    },
+    {
+      "graphKind": "library",
+      "name": "GamaAppleUI",
+      "disposition": "retire",
+      "reason": "all Apple UI hosts retired"
+    },
+    {
+      "graphKind": "library",
+      "name": "GamaAppleShell",
+      "disposition": "retire",
+      "reason": "Apple application/window shell retired"
+    },
+    {
+      "graphKind": "library",
+      "name": "GamaEmbed",
+      "disposition": "rewrite_retained_contract",
+      "reason": "gama_embed_v1 C contract; new -4 OOM"
+    },
+    {
+      "graphKind": "library",
+      "name": "GamaMLIR",
+      "disposition": "rewrite_retained_contract",
+      "reason": "text lowering"
+    },
+    {
+      "graphKind": "library",
+      "name": "GamaAndroidDemo",
+      "disposition": "retire",
+      "reason": "Android/JNI application retired"
+    },
+    {
+      "graphKind": "executable",
+      "name": "gama-demo",
+      "disposition": "rewrite_retained_contract",
+      "reason": "counter/form/plugin examples rewritten"
+    },
+    {
+      "graphKind": "executable",
+      "name": "gama-web-demo",
+      "disposition": "retire",
+      "reason": "browser application/DOM retired"
+    },
+    {
+      "graphKind": "executable",
+      "name": "gama-apple-demo",
+      "disposition": "retire",
+      "reason": "Apple demonstration retired"
+    },
+    {
+      "graphKind": "executable",
+      "name": "gama-windows-console-smoke",
+      "disposition": "retire",
+      "reason": "interactive Windows console retired"
+    },
+    {
+      "graphKind": "executable",
+      "name": "gama-leak-check",
+      "disposition": "rewrite_retained_contract",
+      "reason": "lifetime testing rewritten"
+    },
+    {
+      "graphKind": "executable",
+      "name": "gama-bench",
+      "disposition": "rewrite_retained_contract",
+      "reason": "deterministic benchmark rewritten"
+    },
+    {
+      "graphKind": "target",
+      "name": "Gama",
+      "disposition": "rewrite_retained_contract",
+      "reason": "umbrella entrypoint"
+    },
+    {
+      "graphKind": "target",
+      "name": "GamaCore",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "graphKind": "target",
+      "name": "GamaPlugin",
+      "disposition": "rewrite_retained_contract",
+      "reason": "cooperative Tier-1 runtime/capabilities/contributions"
+    },
+    {
+      "graphKind": "target",
+      "name": "GamaPlatformServices",
+      "disposition": "rewrite_retained_contract",
+      "reason": "hosted std-backed services"
+    },
+    {
+      "graphKind": "target",
+      "name": "GamaMacros",
+      "disposition": "retire",
+      "reason": "ordinary Zig authoring replaces Swift macros"
+    },
+    {
+      "graphKind": "macro",
+      "name": "GamaMacrosImpl",
+      "disposition": "retire",
+      "reason": "Swift compiler plugin retired"
+    },
+    {
+      "graphKind": "target",
+      "name": "GamaDraw",
+      "disposition": "rewrite_retained_contract",
+      "reason": "cells/paint/DrawList/ANSI/plain; HTML oracle preserved"
+    },
+    {
+      "graphKind": "target",
+      "name": "GamaTUISignal",
+      "disposition": "retire",
+      "reason": "production C rescue replaced by Zig std APIs"
+    },
+    {
+      "graphKind": "target",
+      "name": "GamaTUI",
+      "disposition": "rewrite_retained_contract",
+      "reason": "macOS/Linux interactive; all-platform plain/headless"
+    },
+    {
+      "graphKind": "target",
+      "name": "GamaWASM",
+      "disposition": "retire",
+      "reason": "gama_web v1/v2 browser exports retired; new pull gama_wasm v1 is replacement"
+    },
+    {
+      "graphKind": "target",
+      "name": "GamaAppleUI",
+      "disposition": "retire",
+      "reason": "all Apple UI hosts retired"
+    },
+    {
+      "graphKind": "target",
+      "name": "GamaAppleShell",
+      "disposition": "retire",
+      "reason": "Apple application/window shell retired"
+    },
+    {
+      "graphKind": "target",
+      "name": "GamaEmbed",
+      "disposition": "rewrite_retained_contract",
+      "reason": "gama_embed_v1 C contract; new -4 OOM"
+    },
+    {
+      "graphKind": "target",
+      "name": "GamaEmbedABI",
+      "disposition": "rewrite_retained_contract",
+      "reason": "C header signatures only; production C implementation retired"
+    },
+    {
+      "graphKind": "target",
+      "name": "GamaMLIR",
+      "disposition": "rewrite_retained_contract",
+      "reason": "text lowering"
+    },
+    {
+      "graphKind": "target",
+      "name": "GamaAndroidDemo",
+      "disposition": "retire",
+      "reason": "Android/JNI application retired"
+    },
+    {
+      "graphKind": "executableTarget",
+      "name": "GamaDemo",
+      "disposition": "rewrite_retained_contract",
+      "reason": "counter/form/plugin examples rewritten"
+    },
+    {
+      "graphKind": "executableTarget",
+      "name": "GamaWebDemo",
+      "disposition": "retire",
+      "reason": "browser application/DOM retired"
+    },
+    {
+      "graphKind": "executableTarget",
+      "name": "GamaWASMFailedInstall",
+      "disposition": "retire",
+      "reason": "old browser install fixture retired; new pull ABI transactional init tested separately"
+    },
+    {
+      "graphKind": "executableTarget",
+      "name": "GamaAppleDemo",
+      "disposition": "retire",
+      "reason": "Apple demonstration retired"
+    },
+    {
+      "graphKind": "executableTarget",
+      "name": "GamaWindowsConsoleSmoke",
+      "disposition": "retire",
+      "reason": "interactive Windows console retired"
+    },
+    {
+      "graphKind": "executableTarget",
+      "name": "GamaLeakCheck",
+      "disposition": "rewrite_retained_contract",
+      "reason": "lifetime testing rewritten"
+    },
+    {
+      "graphKind": "executableTarget",
+      "name": "GamaBench",
+      "disposition": "rewrite_retained_contract",
+      "reason": "deterministic benchmark rewritten"
+    },
+    {
+      "graphKind": "testTarget",
+      "name": "GamaTests",
+      "disposition": "retire",
+      "reason": "Swift test harness retired after parity; Zig testing replaces it"
+    }
+  ],
+  "otherSurfaces": [
+    {
+      "path": "GamaStudio",
+      "disposition": "retire",
+      "reason": "independent SwiftPM Studio product"
+    },
+    {
+      "path": "qt",
+      "disposition": "retire",
+      "reason": "independent Qt Swift/C++ product; no framework dependency"
+    },
+    {
+      "path": "Examples/Embedded",
+      "disposition": "rewrite_retained_contract",
+      "reason": "Cortex-M4 portable core+pump compile/link only"
+    },
+    {
+      "path": "Examples/CEmbed",
+      "disposition": "rewrite_retained_contract",
+      "reason": "linked native C test consumer"
+    },
+    {
+      "path": "Examples/Android",
+      "disposition": "retire",
+      "reason": "JNI/Gradle/SDK applications"
+    },
+    {
+      "path": ".github/workflows/pages.yml",
+      "disposition": "retire",
+      "reason": "Pages browser deployment"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "disposition": "replace_later",
+      "reason": "Task12 replaces root Swift gates with Zig gates"
+    },
+    {
+      "path": "Distribution",
+      "disposition": "retire",
+      "reason": "obsolete Apple/Swift packaging"
+    },
+    {
+      "path": "Package.resolved",
+      "disposition": "preserve",
+      "reason": "user-required lockfile retained durably"
+    },
+    {
+      "path": ".claude/worktrees",
+      "disposition": "preserve_excluded",
+      "reason": "native UI branches/separate ownership; never incorporate or delete"
+    },
+    {
+      "path": "runner registration and credentials",
+      "disposition": "preserve_excluded",
+      "reason": "not migration data; untouched"
+    },
+    {
+      "path": "AGENTS.md / root docs / scripts",
+      "disposition": "replace_later",
+      "reason": "Task12 atomic guidance/CI/gate cutover"
+    }
+  ],
+  "trackedFiles": [
+    {
+      "path": ".agents/skills/run-gama/SKILL.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": ".agents/skills/run-gama/driver.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": ".claude/skills/run-gama/SKILL.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": ".claude/skills/run-gama/driver.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": ".codex/agents/ledger-evidence-auditor.toml",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": ".github/actionlint.yaml",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": ".github/workflows/pages.yml",
+      "disposition": "retire",
+      "reason": "approved Pages retirement"
+    },
+    {
+      "path": ".gitignore",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": ".swift-version",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "AGENTS.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "CLAUDE.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "Distribution/gama-apple-demo.toml",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "Distribution/gama-web-demo.toml",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "Distribution/macos/Info.plist.in",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "Examples/Android/AndroidDemoBootstrap.swift",
+      "disposition": "retire",
+      "reason": "approved JNI/Android retirement"
+    },
+    {
+      "path": "Examples/Android/app/build.gradle.kts",
+      "disposition": "retire",
+      "reason": "approved JNI/Android retirement"
+    },
+    {
+      "path": "Examples/Android/app/src/main/AndroidManifest.xml",
+      "disposition": "retire",
+      "reason": "approved JNI/Android retirement"
+    },
+    {
+      "path": "Examples/Android/app/src/main/cpp/CMakeLists.txt",
+      "disposition": "retire",
+      "reason": "approved JNI/Android retirement"
+    },
+    {
+      "path": "Examples/Android/app/src/main/cpp/gama_jni.cpp",
+      "disposition": "retire",
+      "reason": "approved JNI/Android retirement"
+    },
+    {
+      "path": "Examples/Android/app/src/main/java/com/gama/example/DrawListDecoder.kt",
+      "disposition": "retire",
+      "reason": "approved JNI/Android retirement"
+    },
+    {
+      "path": "Examples/Android/app/src/main/java/com/gama/example/GamaNative.kt",
+      "disposition": "retire",
+      "reason": "approved JNI/Android retirement"
+    },
+    {
+      "path": "Examples/Android/app/src/main/java/com/gama/example/MainActivity.kt",
+      "disposition": "retire",
+      "reason": "approved JNI/Android retirement"
+    },
+    {
+      "path": "Examples/Android/build.gradle.kts",
+      "disposition": "retire",
+      "reason": "approved JNI/Android retirement"
+    },
+    {
+      "path": "Examples/Android/gradle.properties",
+      "disposition": "retire",
+      "reason": "approved JNI/Android retirement"
+    },
+    {
+      "path": "Examples/Android/settings.gradle.kts",
+      "disposition": "retire",
+      "reason": "approved JNI/Android retirement"
+    },
+    {
+      "path": "Examples/AppleHost/main.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Examples/CEmbed/main.c",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Examples/Embedded/main.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Examples/README.md",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "GEMINI.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "GamaStudio/.gitignore",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/.swift-version",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/AGENTS.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Apps/GamaStudioApp/GamaStudioApp.xcodeproj/project.pbxproj",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Apps/GamaStudioApp/GamaStudioApp.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Apps/GamaStudioApp/GamaStudioApp.xcodeproj/xcshareddata/xcschemes/GamaStudio.xcscheme",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Apps/GamaStudioApp/GamaStudioApp/GamaStudioApp.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Apps/GamaStudioApp/GamaStudioApp/Info.plist",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/CLAUDE.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Package.resolved",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Package.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/README.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaAuthoring/AuthoringError.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaAuthoring/Commands.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaAuthoring/Components.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaAuthoring/EditorSession.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaAuthoring/EntityID.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaAuthoring/Graph.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaAuthoring/GraphCommands.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaAuthoring/Lighting.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaAuthoring/Math.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaAuthoring/SceneChange.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaAuthoring/SceneDocument.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaAuthoring/Selection.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaConsole/ConsoleAction.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaConsole/ConsoleParser.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaConsole/GraphVerbs.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaGraph/GraphEvaluator.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaGraph/NodeDefinition.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaGraph/StandardNodes.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaReality/LightProjection.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaReality/MaterialProjection.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaReality/PrimitiveMeshes.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaReality/RealityBridge.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaStudioEditor/ExportedFile.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaStudioEditor/GraphPanel.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaStudioEditor/LookAt.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaStudioEditor/OrbitCamera.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaStudioEditor/SelectionHighlight.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaStudioEditor/StudioApp.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaStudioEditor/StudioAppDelegate.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaStudioEditor/StudioApplicationDelegate.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaStudioEditor/StudioDocumentIO.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaStudioEditor/StudioDocumentSession.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaStudioEditor/StudioModel.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaStudioEditor/StudioTouchHost.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaStudioEditor/StudioUIDocument.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaStudioEditor/TouchDocuments.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaStudioEditor/TouchViewport.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaStudioEditor/UntitledRecovery.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaStudioEditor/ViewportController.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaStudioEditor/ViewportSupport.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaUSD/USDALexer.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaUSD/USDAParser.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaUSD/USDAReader.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaUSD/USDAWriter.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaUSD/USDError.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/GamaUSD/USDSchema.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Sources/gama-studio/main.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaAuthoringTests/CommandRoundTripTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaAuthoringTests/DocumentInvariantTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaAuthoringTests/Fixtures.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaAuthoringTests/GraphTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaAuthoringTests/HierarchyTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaAuthoringTests/RestoreTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaAuthoringTests/SelectionAndChangeFeedTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaAuthoringTests/TransactionTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaConsoleTests/ConsoleParserTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaConsoleTests/GraphVerbTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaGraphTests/GraphEvaluatorTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaRealityTests/LightProjectionTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaRealityTests/RealityBridgeTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaRealityTests/Support.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaStudioEditorTests/ConsoleNotesTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaStudioEditorTests/ConsoleTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaStudioEditorTests/DocumentReplacementTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaStudioEditorTests/ExportedFileTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaStudioEditorTests/GraphPanelTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaStudioEditorTests/HostRedrawTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaStudioEditorTests/IPadToolbarWrapTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaStudioEditorTests/LightsAndCamerasTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaStudioEditorTests/OrbitCameraTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaStudioEditorTests/SelectionHighlightTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaStudioEditorTests/StudioAppDelegateTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaStudioEditorTests/StudioAppTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaStudioEditorTests/StudioDocumentSessionTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaStudioEditorTests/StudioDocumentTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaStudioEditorTests/StudioModelTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaStudioEditorTests/Support.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaStudioEditorTests/UntitledRecoveryTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaStudioEditorTests/ViewportCameraTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaStudioEditorTests/ViewportNotesTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaStudioEditorTests/ViewportTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaUSDTests/FixtureTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaUSDTests/Fixtures/awkward-names.usda",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaUSDTests/Fixtures/everything.usda",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaUSDTests/Fixtures/everything.usdcat.usda",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaUSDTests/Fixtures/graphs.usda",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaUSDTests/Fixtures/graphs.usdcat.usda",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaUSDTests/Fixtures/nesting.usda",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaUSDTests/RefusalTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaUSDTests/RoundTripTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/Tests/GamaUSDTests/Scenes.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/docs/adr/0001-authoring-core-is-a-value-document.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/docs/adr/0002-realitykit-bridge-is-a-read-only-projection.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/docs/adr/0003-studio-hosts-gama-views-and-a-realitykit-viewport.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/docs/adr/0004-cameras-and-lights-are-authored-components.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/docs/adr/0005-usd-persistence.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/docs/adr/0006-command-console.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/docs/adr/0007-typed-graph-framework.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/docs/adr/0008-ios-and-visionos-hosting.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/docs/adr/0009-file-open-and-save-on-ios-and-visionos.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/docs/adr/0010-opening-usda-files-from-other-apps.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/docs/adr/0011-autosave-and-uidocument-coordination.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/docs/adr/0012-untitled-autosave-to-a-recovery-file.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/docs/adr/0013-orphaned-recovery-file-cleanup.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/docs/adr/0014-sweeping-and-adopting-on-discarded-sessions.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/docs/adr/0015-recovered-changes-notice.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/docs/adr/0016-recovered-notice-in-the-console.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/docs/adr/0017-editor-events-as-console-notes.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/docs/adr/0018-viewport-events-as-console-notes.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/docs/adr/0019-save-as-resolves-a-picked-folder.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/docs/adr/0020-ipad-portrait-toolbar.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/docs/plans/2026-09-23-camera-lights.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/docs/plans/2026-09-23-usd.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/docs/plans/2026-09-23-viewport.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/docs/spec/2026-09-23-phases-2b-to-10-design.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/docs/spec/2026-09-23-unified-usd-realitykit-spec.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "GamaStudio/tools/check.sh",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "Package.resolved",
+      "disposition": "preserve",
+      "reason": "explicit preserved lockfile"
+    },
+    {
+      "path": "Package.swift",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "README.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "Sources/GamaAppleDemo/Scenario.swift",
+      "disposition": "retire",
+      "reason": "Apple demonstration retired"
+    },
+    {
+      "path": "Sources/GamaAppleDemo/main.swift",
+      "disposition": "retire",
+      "reason": "Apple demonstration retired"
+    },
+    {
+      "path": "Sources/GamaAppleShell/GamaAppleShell.docc/GamaAppleShell.md",
+      "disposition": "retire",
+      "reason": "Apple application/window shell retired"
+    },
+    {
+      "path": "Sources/GamaAppleShell/GamaShell.swift",
+      "disposition": "retire",
+      "reason": "Apple application/window shell retired"
+    },
+    {
+      "path": "Sources/GamaAppleUI/GamaAppleUI.docc/GamaAppleUI.md",
+      "disposition": "retire",
+      "reason": "all Apple UI hosts retired"
+    },
+    {
+      "path": "Sources/GamaAppleUI/GamaHostAccessibility.swift",
+      "disposition": "retire",
+      "reason": "all Apple UI hosts retired"
+    },
+    {
+      "path": "Sources/GamaAppleUI/GamaHostView.swift",
+      "disposition": "retire",
+      "reason": "all Apple UI hosts retired"
+    },
+    {
+      "path": "Sources/GamaBench/main.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "deterministic benchmark rewritten"
+    },
+    {
+      "path": "Sources/GamaCore/Completion.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "path": "Sources/GamaCore/FailureExitCode.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "path": "Sources/GamaCore/FrameHost.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "path": "Sources/GamaCore/GamaCore.docc/Architecture.md",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "path": "Sources/GamaCore/GamaCore.docc/BackendAuthoring.md",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "path": "Sources/GamaCore/GamaCore.docc/CompositionAndState.md",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "path": "Sources/GamaCore/GamaCore.docc/EmbeddingAndDrawList.md",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "path": "Sources/GamaCore/GamaCore.docc/GamaCore.md",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "path": "Sources/GamaCore/GamaCore.docc/Migration.md",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "path": "Sources/GamaCore/GamaCore.docc/PlatformsAndLimitations.md",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "path": "Sources/GamaCore/GamaCore.docc/Testing.md",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "path": "Sources/GamaCore/Geometry.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "path": "Sources/GamaCore/HostPump.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "path": "Sources/GamaCore/Layout.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "path": "Sources/GamaCore/LayoutMetrics.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "path": "Sources/GamaCore/NativeRegion.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "path": "Sources/GamaCore/Primitives.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "path": "Sources/GamaCore/ReactiveState.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "path": "Sources/GamaCore/RenderNode.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "path": "Sources/GamaCore/Runtime.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "path": "Sources/GamaCore/Scene.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "path": "Sources/GamaCore/State.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "path": "Sources/GamaCore/Style.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "path": "Sources/GamaCore/TextEditing.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "path": "Sources/GamaCore/TextLayout.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "path": "Sources/GamaCore/View.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "path": "Sources/GamaCore/VirtualizedList.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "geometry, authoring, scenes, state, actions, pump, layout"
+    },
+    {
+      "path": "Sources/GamaDemo/main.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "counter/form/plugin examples rewritten"
+    },
+    {
+      "path": "Sources/GamaDraw/AccessibilitySnapshot.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "cells/paint/DrawList/ANSI/plain; HTML oracle preserved"
+    },
+    {
+      "path": "Sources/GamaDraw/CellBuffer.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "cells/paint/DrawList/ANSI/plain; HTML oracle preserved"
+    },
+    {
+      "path": "Sources/GamaDraw/CellPainter.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "cells/paint/DrawList/ANSI/plain; HTML oracle preserved"
+    },
+    {
+      "path": "Sources/GamaDraw/CellSerializer.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "cells/paint/DrawList/ANSI/plain; HTML oracle preserved"
+    },
+    {
+      "path": "Sources/GamaDraw/DrawList.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "cells/paint/DrawList/ANSI/plain; HTML oracle preserved"
+    },
+    {
+      "path": "Sources/GamaDraw/GamaDraw.docc/GamaDraw.md",
+      "disposition": "rewrite_retained_contract",
+      "reason": "cells/paint/DrawList/ANSI/plain; HTML oracle preserved"
+    },
+    {
+      "path": "Sources/GamaDraw/HostPump+CellBuffer.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "cells/paint/DrawList/ANSI/plain; HTML oracle preserved"
+    },
+    {
+      "path": "Sources/GamaDraw/StreamPresenter.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "cells/paint/DrawList/ANSI/plain; HTML oracle preserved"
+    },
+    {
+      "path": "Sources/GamaDraw/TerminalCapabilities.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "cells/paint/DrawList/ANSI/plain; HTML oracle preserved"
+    },
+    {
+      "path": "Sources/GamaEmbed/CInterface.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "gama_embed_v1 C contract; new -4 OOM"
+    },
+    {
+      "path": "Sources/GamaEmbed/GamaEmbed.docc/GamaEmbed.md",
+      "disposition": "rewrite_retained_contract",
+      "reason": "gama_embed_v1 C contract; new -4 OOM"
+    },
+    {
+      "path": "Sources/GamaEmbedABI/GamaEmbedABI.c",
+      "disposition": "rewrite_retained_contract",
+      "reason": "C header signatures only; production C implementation retired"
+    },
+    {
+      "path": "Sources/GamaEmbedABI/include/GamaEmbed.h",
+      "disposition": "rewrite_retained_contract",
+      "reason": "C header signatures only; production C implementation retired"
+    },
+    {
+      "path": "Sources/GamaLeakCheck/main.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "lifetime testing rewritten"
+    },
+    {
+      "path": "Sources/GamaMLIR/GamaMLIR.docc/GamaMLIR.md",
+      "disposition": "rewrite_retained_contract",
+      "reason": "text lowering"
+    },
+    {
+      "path": "Sources/GamaMLIR/Lowering.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "text lowering"
+    },
+    {
+      "path": "Sources/GamaMLIR/MLIR.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "text lowering"
+    },
+    {
+      "path": "Sources/GamaMacros/Macros.swift",
+      "disposition": "retire",
+      "reason": "ordinary Zig authoring replaces Swift macros"
+    },
+    {
+      "path": "Sources/GamaMacrosImpl/Plugin.swift",
+      "disposition": "retire",
+      "reason": "Swift compiler plugin retired"
+    },
+    {
+      "path": "Sources/GamaPlatformServices/PlatformServices.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "hosted std-backed services"
+    },
+    {
+      "path": "Sources/GamaPlugin/Capability.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "cooperative Tier-1 runtime/capabilities/contributions"
+    },
+    {
+      "path": "Sources/GamaPlugin/HostServices.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "cooperative Tier-1 runtime/capabilities/contributions"
+    },
+    {
+      "path": "Sources/GamaPlugin/Manifest.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "cooperative Tier-1 runtime/capabilities/contributions"
+    },
+    {
+      "path": "Sources/GamaPlugin/PluginCommand.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "cooperative Tier-1 runtime/capabilities/contributions"
+    },
+    {
+      "path": "Sources/GamaPlugin/PluginContext.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "cooperative Tier-1 runtime/capabilities/contributions"
+    },
+    {
+      "path": "Sources/GamaPlugin/PluginError.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "cooperative Tier-1 runtime/capabilities/contributions"
+    },
+    {
+      "path": "Sources/GamaPlugin/PluginProtocol.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "cooperative Tier-1 runtime/capabilities/contributions"
+    },
+    {
+      "path": "Sources/GamaPlugin/PluginRuntime.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "cooperative Tier-1 runtime/capabilities/contributions"
+    },
+    {
+      "path": "Sources/GamaPlugin/PluginScene.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "cooperative Tier-1 runtime/capabilities/contributions"
+    },
+    {
+      "path": "Sources/GamaPlugin/PluginSlot.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "cooperative Tier-1 runtime/capabilities/contributions"
+    },
+    {
+      "path": "Sources/GamaTUI/AdaptiveSurface.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "macOS/Linux interactive; all-platform plain/headless"
+    },
+    {
+      "path": "Sources/GamaTUI/GamaTUI.docc/GamaTUI.md",
+      "disposition": "rewrite_retained_contract",
+      "reason": "macOS/Linux interactive; all-platform plain/headless"
+    },
+    {
+      "path": "Sources/GamaTUI/TUIRenderer.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "macOS/Linux interactive; all-platform plain/headless"
+    },
+    {
+      "path": "Sources/GamaTUI/Terminal.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "macOS/Linux interactive; all-platform plain/headless"
+    },
+    {
+      "path": "Sources/GamaTUI/TerminalEnvironment.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "macOS/Linux interactive; all-platform plain/headless"
+    },
+    {
+      "path": "Sources/GamaTUI/TerminalRescue.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "macOS/Linux interactive; all-platform plain/headless"
+    },
+    {
+      "path": "Sources/GamaTUISignal/GamaTUISignal.c",
+      "disposition": "retire",
+      "reason": "production C rescue replaced by Zig std APIs"
+    },
+    {
+      "path": "Sources/GamaTUISignal/include/GamaTUISignal.h",
+      "disposition": "retire",
+      "reason": "production C rescue replaced by Zig std APIs"
+    },
+    {
+      "path": "Sources/GamaWASM/GamaWASM.docc/GamaWASM.md",
+      "disposition": "retire",
+      "reason": "gama_web v1/v2 browser exports retired; new pull gama_wasm v1 is replacement"
+    },
+    {
+      "path": "Sources/GamaWASM/WASMHost.swift",
+      "disposition": "retire",
+      "reason": "gama_web v1/v2 browser exports retired; new pull gama_wasm v1 is replacement"
+    },
+    {
+      "path": "Sources/GamaWebDemo/BrowserDemo.swift",
+      "disposition": "retire",
+      "reason": "browser application/DOM retired"
+    },
+    {
+      "path": "Sources/GamaWebDemo/main.swift",
+      "disposition": "retire",
+      "reason": "browser application/DOM retired"
+    },
+    {
+      "path": "Sources/GamaWindowsConsoleSmoke/main.swift",
+      "disposition": "retire",
+      "reason": "interactive Windows console retired"
+    },
+    {
+      "path": "Sources/gama/gama.swift",
+      "disposition": "rewrite_retained_contract",
+      "reason": "umbrella entrypoint"
+    },
+    {
+      "path": "Tests/CompileFail/PluginRuntimeSendable.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/CompileFail/ReactiveSlotSendable.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/CompileFail/SignalSendable.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/Fixtures/Confinement/error.SignalMustNotCrossSendable.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/Fixtures/Confinement/warn.SendableConformanceIsFlagged.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/Fixtures/Ownership/error.CopyableStructCannotStoreTerminal.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/Fixtures/Ownership/error.FrameHostMustNotBeCopied.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/Fixtures/Ownership/error.GlobalTerminalCannotBeConsumed.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/Fixtures/Ownership/error.TerminalMustNotBeCopied.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/Fixtures/Ownership/ok.SupportedTerminalOwnership.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/Fixtures/PortableSymbols/Package.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/Fixtures/PortableSymbols/Sources/RoundedRequiresLibm/RoundedRequiresLibm.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/Fixtures/TerminalSignal/TerminalSignalProbe.c",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/Fixtures/WASMFailedInstall/main.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/AccessibilitySnapshotTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/ActionIdentityTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/ActionTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/AdaptiveSurfaceTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/AppleHostAccessibilityTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/AppleHostFontCacheTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/AppleHostNativeRegionTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/AppleHostTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/AppleShellTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/CellSerializerTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/CompletionStatusTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/DrawListTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/EmbedABITests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/EmbedTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/FailureExitCodeTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/FormControlTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/FrameHostTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/GamepadInputTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/GeometryTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/HostPumpTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/LayoutMetricsTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/LayoutTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/MLIRFixtureTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/MLIRTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/MacroExpansionTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/MacroUsageTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/ModernTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/NativeRegionTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/P1LayoutTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/POSIXTerminalIntegrationTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/PlatformServicesTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/PluginCommandTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/PluginRuntimeTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/PluginSceneTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/PluginSlotTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/ProgressViewTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/RunIterationTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/RuntimeLoopTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/SceneTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/SignalTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/StreamOutputTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/StreamPresenterTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/StyleTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/TerminalCapabilityTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/TerminalRescueTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/TestSupport.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/TextFieldCursorTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/ViewBuilderTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/ViewStateIdentityTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/VirtualizedListTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/WASMSerializerTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/WebDemoStateTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Tests/gamaTests/WindowsTerminalTests.swift",
+      "disposition": "preserve_or_port_test_reference",
+      "reason": "test/demo contracts retained where portable; Swift/native/browser implementation retired"
+    },
+    {
+      "path": "Toolchains.toml",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "WebHost/gama.js",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "WebHost/index.html",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/AppleIntegration.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/Architecture.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/Capabilities.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/Examples.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/GamaMasterPrompt.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/GettingStarted.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/MLIRDialect.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/Packaging.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/Performance.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/Plugins.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/README.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/SceneMigration.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/SelfHostedRunner.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/StateAndIdentity.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/Swift65SDK27.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/TerminalOwnershipMigration.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/Testing.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/Toolchain.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/Troubleshooting.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/Verification.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/adr/0000-index.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/adr/0001-own-the-rendering.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/adr/0002-toolchain-pinning.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/adr/0003-swift-testing-only.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/adr/0004-signal-confinement.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/adr/0005-drawlist-wire-format.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/adr/0006-noncopyable-hosts.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/adr/0007-frame-pumps.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/adr/0008-one-pump-eager-resize.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/adr/0009-signal-is-not-sendable.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/adr/0010-noncopyable-terminal-ownership.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/adr/0011-reactive-state-is-per-surface.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/adr/0012-strict-memory-safety-and-explicit-imports.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/adr/0013-flex-priority-is-per-axis.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/adr/0014-cursor-relative-text-editing.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/adr/0015-windowed-collections-use-the-surface-as-their-bound.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/adr/0016-native-regions-narrow-own-the-rendering.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/adr/0017-native-presentation.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/backends/Android.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/backends/AppleShell.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/backends/AppleUI.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/backends/CEmbed.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/backends/TUI.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/backends/WASM.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-08-27-gama-modernization-refactoring-master-plan.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-08-27-gama-next-roadmap.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-08-28-mlir-emitter-unification.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-09-01-swift65-sdk27-modernization.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-09-22-shared-shortcut-distinct-identity.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-09-22-testing-catalog-rows.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-09-23-import-gama-studio.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-09-23-native-presentation.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-09-23-native-regions.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-08-20-gama-tui-core-design.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-08-26-gama-umbrella-foundation-design.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-08-27-frame-pump-unification-design.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-08-27-packaging-design.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-08-27-plugin-runtime-design.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-08-27-scene-first-app-shell-design.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-08-27-signal-redesign-design.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-08-28-mlir-emitter-unification-design.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-08-29-view-state-identity-design.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-09-01-swift65-sdk27-modernization-design.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-09-06-adaptive-terminal-core-design.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-09-06-adaptive-terminal-surface-design.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-09-06-cell-serializer-design.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-09-23-dock-system-design.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-09-23-native-presentation-design.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-09-23-native-region-design.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-09-29-native-ui-roadmap-design.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-09-29-ui-scaling-design.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/specs/drafts/2026-08-26-packaging-draft.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/specs/drafts/2026-08-26-plugin-runtime-draft.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/specs/drafts/2026-08-27-view-state-identity-draft.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/specs/drafts/2026-09-22-gpu-compositor-draft.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/specs/drafts/2026-09-22-inspector-draft.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/specs/drafts/2026-09-22-native-desktop-backends-draft.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/specs/drafts/2026-09-22-plugin-tier-decision-request.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/specs/drafts/2026-09-22-remote-ui-protocol-draft.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "docs/superpowers/specs/drafts/2026-09-23-native-view-embedding-draft.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "qt/.gitignore",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "qt/AGENTS.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "qt/CLAUDE.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "qt/Package.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "qt/README.md",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "qt/Scripts/check.sh",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "qt/Scripts/run.sh",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "qt/Sources/CGamaQt/CGamaQt.cpp",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "qt/Sources/CGamaQt/detail/GamaQtBrowser.hpp",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "qt/Sources/CGamaQt/detail/GamaQtCore.hpp",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "qt/Sources/CGamaQt/detail/GamaQtEmbed.hpp",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "qt/Sources/CGamaQt/include/GamaQt.hpp",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "qt/Sources/Gama/BrowserModel.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "qt/Sources/Gama/ContentView.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "qt/Sources/Gama/CoreAI/CoreAIModels.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "qt/Sources/Gama/GamaApp.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "qt/Sources/Gama/GamaQtBridge.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "qt/Sources/Gama/Models/GamaModels.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "qt/Sources/Gama/Models/GamaStore.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "qt/Sources/Gama/QtPanelView.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "qt/Sources/Gama/SmartSearch.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "qt/Sources/Gama/WebPageView.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "qt/Sources/GamaCore/AddressResolver.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "qt/Tests/GamaTests/AddressResolverTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "qt/Tests/GamaTests/GamaTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "qt/Tests/GamaTests/LayeringTests.swift",
+      "disposition": "retire",
+      "reason": "approved retired independent application or packaging"
+    },
+    {
+      "path": "scripts/browser-runtime-smoke.mjs",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/bundle-macos.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/bundle-web.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/check-android-emulator.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/check-android.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/check-apple-platforms.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/check-apple.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/check-boundaries.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/check-c-abi.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/check-concurrency-negative.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/check-doc-coverage.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/check-doc-links.py",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/check-docs.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/check-embedded.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/check-evidence-freshness.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/check-linux-leaks.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/check-linux.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/check-mlir.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/check-package-graph.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/check-portable-symbols.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/check-run-gama-skill.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/check-toolchain-pins.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/check-wasm-unsafe-declarations.py",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/check-wasm.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/check.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/ci-install-swift-sdk.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/ci-install-swift-snapshot.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/doc-coverage-allowlist.txt",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/doc-coverage.py",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/embedded-size-baseline.txt",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/evidence-freshness.py",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/evidence-locality.py",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/lib/manifest.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/lib/toolchain.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/package-graph.py",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/portable-global-state.py",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/profile-apple-host.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/referenced-paths.py",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/release-macos.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/set-web-title.mjs",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/test-android-emulator-readiness.sh",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/test-boundary-paths.py",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "scripts/wasm-runtime-smoke.mjs",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "tasks/goals.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    },
+    {
+      "path": "tasks/todo.md",
+      "disposition": "review_at_cutover",
+      "reason": "root guidance, documentation, gates, build graph and assets updated together in Task12"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+.{
+    .name = .gama,
+    .version = "0.1.0",
+    .fingerprint = 0x2446f595fba04d03,
+    .minimum_zig_version = "0.17.0-dev.2338+b46a7f3a2",
+    .dependencies = .{},
+    .paths = .{ "build.zig", "build.zig.zon", "ZigToolchain.zon", ".zig-version", "src", "include", "tools", "examples", "tests", "scripts", "docs", "README.md", "AGENTS.md", "CLAUDE.md", "CONTRIBUTING.md", ".agents/skills/run-gama", ".claude/skills/run-gama" },
+}

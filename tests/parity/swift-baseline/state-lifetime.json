@@ -1,0 +1,108 @@
+[
+  {
+    "events" : [
+      {
+        "rows" : [
+          " i7 0",
+          " i3 0"
+        ],
+        "stateCount" : 2,
+        "step" : "initial"
+      },
+      {
+        "rows" : [
+          " i7 1",
+          " i3 0"
+        ],
+        "stateCount" : 2,
+        "step" : "increment"
+      },
+      {
+        "rows" : [
+          " i7 0",
+          " i3 0"
+        ],
+        "stateCount" : 2,
+        "step" : "otherHost"
+      },
+      {
+        "rows" : [
+          " i3 1",
+          " i7 0"
+        ],
+        "stateCount" : 2,
+        "step" : "reverse"
+      },
+      {
+        "rows" : [
+          "off",
+          ""
+        ],
+        "stateCount" : 0,
+        "step" : "remove"
+      },
+      {
+        "rows" : [
+          " i3 0",
+          " i7 0"
+        ],
+        "stateCount" : 2,
+        "step" : "return"
+      }
+    ],
+    "identified" : false
+  },
+  {
+    "events" : [
+      {
+        "rows" : [
+          " i7 0",
+          " i3 0"
+        ],
+        "stateCount" : 2,
+        "step" : "initial"
+      },
+      {
+        "rows" : [
+          " i7 1",
+          " i3 0"
+        ],
+        "stateCount" : 2,
+        "step" : "increment"
+      },
+      {
+        "rows" : [
+          " i7 0",
+          " i3 0"
+        ],
+        "stateCount" : 2,
+        "step" : "otherHost"
+      },
+      {
+        "rows" : [
+          " i3 0",
+          " i7 1"
+        ],
+        "stateCount" : 2,
+        "step" : "reverse"
+      },
+      {
+        "rows" : [
+          "off",
+          ""
+        ],
+        "stateCount" : 0,
+        "step" : "remove"
+      },
+      {
+        "rows" : [
+          " i3 0",
+          " i7 0"
+        ],
+        "stateCount" : 2,
+        "step" : "return"
+      }
+    ],
+    "identified" : true
+  }
+]

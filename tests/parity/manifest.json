@@ -1,0 +1,168 @@
+{
+  "schema": 1,
+  "baselineHEAD": "b8ce774285c79d83a4bf3ffff7b11975d4716af2",
+  "baselineDirtyPatch": "Sources/GamaMLIR/MLIR.swift inherited +1/-7 cleanup",
+  "intBits": 64,
+  "fixtureEncoding": "UTF-8 JSON/text; little-endian DrawList GAMA v1 binary",
+  "generator": "Tests/gamaTests/ZigParityCaptureTests.swift plus Tests/parity/capture-embed.c",
+  "generatorSHA256": "f240e6807dc229f09c68ce0d5d321a943c34a0c9e1013cf3f60de198f78d83ab",
+  "captureCommands": "../../docs/migration/zig/provenance.md",
+  "fixtures": [
+    {
+      "path": "swift-baseline/c-embed-increment.gama",
+      "bytes": 110,
+      "sha256": "28dec4fbc31ccfbf81e5be83d88b33e137aa647b419c2a86b30167479c1a17fa"
+    },
+    {
+      "path": "swift-baseline/c-embed-initial.gama",
+      "bytes": 110,
+      "sha256": "632cd8a296f1e1f6bc13c39cfe186dadcd56b3b6ca84d85e6f859ea4cf96472a"
+    },
+    {
+      "path": "swift-baseline/control-key-classification.json",
+      "bytes": 602,
+      "sha256": "1db44e9d6bf1c4a14b7934bf92423891fd552426d15a2c62840b04fd098148a0"
+    },
+    {
+      "path": "swift-baseline/embed-increment.gama",
+      "bytes": 110,
+      "sha256": "28dec4fbc31ccfbf81e5be83d88b33e137aa647b419c2a86b30167479c1a17fa"
+    },
+    {
+      "path": "swift-baseline/embed-increment.json",
+      "bytes": 759,
+      "sha256": "82ba8b05d8aa946c4b3e32fddabaaeea73c4a07c2055ee01386f218fc0e97d3b"
+    },
+    {
+      "path": "swift-baseline/embed-initial.gama",
+      "bytes": 110,
+      "sha256": "632cd8a296f1e1f6bc13c39cfe186dadcd56b3b6ca84d85e6f859ea4cf96472a"
+    },
+    {
+      "path": "swift-baseline/embed-initial.json",
+      "bytes": 759,
+      "sha256": "d2618c5647a24023c819382370c144db8fd5aee9e9d14cfdf36d5c500b2e20ea"
+    },
+    {
+      "path": "swift-baseline/embed-statuses.json",
+      "bytes": 226,
+      "sha256": "f2ea2216cccc2cca5cb5e0eb45c1fcaf4b665d7c0d3109b01ae43ec53536c7c9"
+    },
+    {
+      "path": "swift-baseline/escaping.mlir",
+      "bytes": 164,
+      "sha256": "108330e1a383346cc53ff9f6ec98715ace1a606d921d54dba6464dc187d2700c"
+    },
+    {
+      "path": "swift-baseline/focus-actions.json",
+      "bytes": 18053,
+      "sha256": "607d0746084d726e47109e2282128ffe6f6e5a563b67a91093b9cedccd1b442c"
+    },
+    {
+      "path": "swift-baseline/geometry-identity.json",
+      "bytes": 2516,
+      "sha256": "0813d249cd4a73829ccbc7f549f013607d59cd153a71a7b0e214605ef238f1b5"
+    },
+    {
+      "path": "swift-baseline/layout-16x8-ansi.json",
+      "bytes": 536,
+      "sha256": "386c4fa8f4cbb3417d506ab77dd15347915325cf7f481f7fb8538ef750c24a19"
+    },
+    {
+      "path": "swift-baseline/layout-16x8-plain.json",
+      "bytes": 322,
+      "sha256": "110cb80e95787952c297b0b3c57e0c83e0932236677108a8ed3fdecc11357053"
+    },
+    {
+      "path": "swift-baseline/layout-16x8.gama",
+      "bytes": 576,
+      "sha256": "d2bab4f17bdba4fc31273d91512b829c49ac31cdf5e2aede6c69f72193a544dd"
+    },
+    {
+      "path": "swift-baseline/layout-16x8.html",
+      "bytes": 1340,
+      "sha256": "76da0e26310cfc0c81d3708e5b9c90d76efdf8dbe60da3976045d94839068292"
+    },
+    {
+      "path": "swift-baseline/layout-16x8.json",
+      "bytes": 16352,
+      "sha256": "58ebbd2b7ef87f6626e3bbbf460518c8425eee0f04b6daebeec42361e071a0c7"
+    },
+    {
+      "path": "swift-baseline/layout-16x8.mlir",
+      "bytes": 1274,
+      "sha256": "54b09ef5bdb74f76ecb5bd014c4f90aa9f76b26dbe3a8dc32dc8440ee4e0fd5b"
+    },
+    {
+      "path": "swift-baseline/layout-9x5-ansi.json",
+      "bytes": 345,
+      "sha256": "f14d54cba3b6c58eefaf6190420cfc761dadb4ca4b10e6f9ee6daf6941a5ad19"
+    },
+    {
+      "path": "swift-baseline/layout-9x5-plain.json",
+      "bytes": 167,
+      "sha256": "e5ba5037fecdf882b4c81fd38a4265d48e6be0ec4d5fa9c45cf11eae8c210a5f"
+    },
+    {
+      "path": "swift-baseline/layout-9x5.gama",
+      "bytes": 404,
+      "sha256": "913761384a1bbc9a219a2bbb67a2e03d524d31061c1b2e276284b73725646325"
+    },
+    {
+      "path": "swift-baseline/layout-9x5.html",
+      "bytes": 888,
+      "sha256": "5ddde912e117b52a5ec81f8e781493cedcfeaf095fb1d82809cea6eb7a759beb"
+    },
+    {
+      "path": "swift-baseline/layout-9x5.json",
+      "bytes": 7049,
+      "sha256": "08cd688813c4a2b47ffae4ef115233c33ccaced63cc1620c612d00147707f766"
+    },
+    {
+      "path": "swift-baseline/layout-9x5.mlir",
+      "bytes": 1269,
+      "sha256": "3b8259085f2eb05c2a1bf4e2042071c27adbe5f86d2f0b3636aeb301ba404c74"
+    },
+    {
+      "path": "swift-baseline/plugins-after.mlir",
+      "bytes": 280,
+      "sha256": "3a1851d804f0b8ad24e9a93853ecc0abcbbe55ae39d0abfe803b613d2675d498"
+    },
+    {
+      "path": "swift-baseline/plugins-before.mlir",
+      "bytes": 468,
+      "sha256": "37fb97dc3055114edaff0ad29ddf29eaffd3532d3e08b7b7479caf3743447400"
+    },
+    {
+      "path": "swift-baseline/plugins-reinstall.mlir",
+      "bytes": 468,
+      "sha256": "4900dc4cb6ab7de93f36588da3fe51f83c087f584eb9b7c75799b5e856f0083f"
+    },
+    {
+      "path": "swift-baseline/plugins.json",
+      "bytes": 940,
+      "sha256": "4402b186e3d8fc5e294d965b3b8680ea79515802565b1bb0920f97fa7d081cd7"
+    },
+    {
+      "path": "swift-baseline/state-lifetime.json",
+      "bytes": 1750,
+      "sha256": "3c76f6229bca67825bc4a114636bf95e979f8d98c991a6de5537c8e5872d5599"
+    },
+    {
+      "path": "swift-baseline/structural.mlir",
+      "bytes": 853,
+      "sha256": "e16273d34dcf691e6f7db99aa621ec1d75ae69e771672a0c15e50dcf93637ccd"
+    },
+    {
+      "path": "swift-baseline/unicode-editing.json",
+      "bytes": 29996,
+      "sha256": "8dc601a3486a21d6663635dbc294610282ebb790ec240fcd1f63ebea26ddb887"
+    },
+    {
+      "path": "swift-baseline/wide-cell-overwrite.json",
+      "bytes": 1205,
+      "sha256": "4cdd80eeda61fefbbabe2eaf256c54e5ac32385a084de6caf9e272e1a849b996"
+    }
+  ],
+  "directoryCase": "Tests/parity during Swift baseline; normalize root Tests directory only at approved cutover"
+}

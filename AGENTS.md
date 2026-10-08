@@ -1,76 +1,27 @@
 # Gama Agent Guide
 
-## Repository Identity
+Gama is a Zig/std-only portable component and rendering framework. The authoritative graph is `build.zig`; `src/root.zig` is the facade. Work in the canonical checkout on main, preserve concurrent changes, and do not commit, push, create branches/worktrees, or publish unless requested.
 
-- This is the SwiftPM Gama Framework checkout. The Qt browser app formerly at `~/dev/active/gama-qt` now lives in `qt/` (below); it is unrelated framework-wise and only shares the name.
-- The module graph is `Package.swift`'s products and targets. Treat any other module list, or a `gama` CLI, as a design vision, not this checkout. Do not add targets to match it.
-- The umbrella path is `Sources/gama` and the test path is `Tests/gamaTests`. A wrong-case `Sources/Gama` or `Tests/GamaTests` directory is not in the package. Linux builds are case-sensitive.
-- The Android demo target path is `Examples/Android`, not a `Sources/GamaAndroidDemo` directory. JNI and Gradle stay there.
-- `GamaStudio/` is a separate SwiftPM package (the Gama Studio 3D authoring app) with its own `AGENTS.md` and gate (`cd GamaStudio && ./tools/check.sh`). It depends on this framework by path (`.package(path: "..")`), is not a framework product, and is not in `scripts/check.sh` or CI. Framework changes to the Apple host or layout can break its gate.
-- `qt/` is a separate SwiftPM package (Gama Qt, a SwiftUI browser shell over a Swift/C++23 bridge to Qt 6), folded in from `~/dev/active/gama-qt` on 2026-09-28 with its history. It has its own `AGENTS.md` and gate (`cd qt && env -u TOOLCHAINS ./Scripts/check.sh`, verdict `check.sh: PASSED`), builds with Xcode's default Swift 6.4 toolchain rather than the snapshot pin, needs Homebrew Qt 6 (`/opt/homebrew`, or `QT_PREFIX`), does not depend on the framework, and is not in `scripts/check.sh` or CI. Its `GamaCore`, `Gama` and `GamaTests` modules are unrelated code that share the framework's names; rename them before qt/ ever depends on the framework.
+## Commands and boundaries
 
-## Toolchain And Commands
+Use the exact `.zig-version` compiler, pinned by `ZigToolchain.zon`. Run `zig build check` and `scripts/check.sh` before calling a change complete. `GAMA_ZIG` selects the wrapper compiler; `GAMA_RUN_ZIG` selects the terminal driver compiler. Missing tools fail closed. Prerequisites are the pinned Zig compiler, Python 3, Node, tmux, and an existing mlir-opt; no gate installs tools. Override the parser with `zig build check -Dmlir-opt=/path/to/mlir-opt` or `GAMA_MLIR_OPT` for the script.
 
-- Run `unset TOOLCHAINS` before Swift commands. Everyday invocation is `swiftly run swift ...`; `.swift-version` pins `main-snapshot-2026-08-21` (Swift 6.5-dev). macOS check scripts select the compiler with `xcrun --toolchain "$GAMA_TOOLCHAIN_ID"`, not `swiftly`.
-- `Package.swift` deliberately stays `swift-tools-version: 6.4` so Xcode's SwiftPM can resolve platform gates. `check-boundaries.sh` enforces this. `check-apple-platforms.sh` requires `xcrun --toolchain default` to report Swift 6.4. Do not raise the tools version to match the compiler pin.
-- `Toolchains.toml` is the pin authority. `scripts/check-toolchain-pins.sh`, chained from the boundary gate, rejects drift in compiler/SDK revisions, URLs, and checksums; it discovers every `GAMA_TOOLCHAIN_ID` default rather than listing scripts, and fails on any checked-in home-directory path under `scripts/`.
-- Scripts derive the pinned snapshot's location from `Toolchains.toml` through `scripts/lib/toolchain.sh`. Do not write an absolute toolchain path into a script; override with `GAMA_SWIFT_64` / `GAMA_SWIFTC_64` / `GAMA_EMBEDDED_TOOLCHAIN` instead.
-- The canonical checkout is `~/dev/active/Gama`, outside iCloud since 2026-09-24 (the parked iCloud original is a recovery copy; never develop there). Keep test scratch outside the tree anyway: an iCloud copy fails in-place `swift test` at codesign, and the gates use fixed scratch paths. Direct tests, `check-apple.sh`, and `check-mlir.sh` share `/private/tmp/gama-framework-swiftpm`. `GAMA_SCRATCH_ROOT` does not move those two (`GAMA_APPLE_SCRATCH_PATH`, and a hardcoded MLIR path). A bare `SCRATCH_ROOT` is ignored. DocC uses `GAMA_DOCC_SCRATCH_PATH`; the concurrency-negative gate uses `GAMA_CONCURRENCY_NEGATIVE_SCRATCH_PATH`.
+Run `zig build`, `zig build demo -- --gama-plain`, `zig build plugins`, or `.agents/skills/run-gama/driver.sh smoke`. Interactive use requires a real terminal. The mirrored skill/driver under `.claude/skills/run-gama` must remain equivalent. Never take over existing tmux sessions.
 
-```bash
-unset TOOLCHAINS
-swiftly run swift --version # must report 6.5-dev
-swiftly run swift build
-swiftly run swift test --scratch-path /private/tmp/gama-framework-swiftpm
-swiftly run swift test --scratch-path /private/tmp/gama-framework-swiftpm --filter SceneGraphTests
-swiftly run swift build --target GamaCore
-swiftly run swift run gama-demo
-.agents/skills/run-gama/driver.sh smoke   # tmux-driven TUI proof; do not pipe interactive gama-demo
-```
+Portable code is in `src/core`, `src/draw`, `src/plugins`, and `src/mlir`; hosted adapters are in `src/tui`, `src/services`, and `src/abi`. Keep all allocation explicit. No package dependencies, vendored libraries, production C helpers, handwritten OS bindings, or Apple frameworks. Standard-library required libc on macOS is allowed. C under `tests` is a linked-consumer fixture, not production. The exact generated Unicode table is private and reproducible.
 
-- Test filters match Swift source identifiers, not `@Suite` display names. A non-matching filter prints a warning and exits 0; confirm the test count.
-- Tests use Swift Testing (`import Testing`) only. Do not add XCTest; macro expansion tests use `SwiftSyntaxMacrosGenericTestSupport`. `Tests/CompileFail/` and `Tests/Fixtures/` are outside `GamaTests`. `swift test` does not run them. `check-concurrency-negative.sh` typechecks `Tests/CompileFail/` and fails if a fixture compiles. Do not "fix" a negative so it compiles.
-- Interactive `gama-demo` has no pipe fallback; drive it with the `run-gama` skill (tmux). `--emit-mlir` prints and exits before the renderer and may be redirected. The skill is mirrored at `.agents/skills/run-gama/` and `.claude/skills/run-gama/`. A plain diff of the two `SKILL.md` files always differs; `check-docs.sh` is the parity authority. Change both. `gama-demo` still owns `TUIRenderer` itself because of its plugin loop; `App.runAdaptive()` is the TTY-versus-pipe entry for ordinary apps.
+## Ownership and proof
 
-## Verification
+Hosts own state, registrations, dirty state and transactional frames. Keep owner addresses stable; do not copy owning values after initialization. Application storage outlives its hosts. Handles validate generations during owner lifetime; no borrowed pointer, handle or output may outlive its owner. Native use is executor-confined; freestanding callers supply one executor and storage.
 
-- Fast Apple gate: `./scripts/check-apple.sh` (debug build, all tests, release build).
-- Portable ownership/import/symbol rules: `./scripts/check-boundaries.sh`.
-- Source policies alone: `./scripts/check-boundaries.sh --source-policies-only` stops before `scripts/test-boundary-paths.py` and any `xcrun`, so it needs no toolchain. Unflagged, the gate runs that unittest, whose target tuple is a deliberate fourth copy of the scan scope: rename or remove anything under `Sources/` and it fails until the shell arrays, `portable-global-state.py`, and the tuple all agree.
-- Documentation gates: `./scripts/check-docs.sh && ./scripts/check-doc-coverage.sh`. New public declarations need `///`; do not expand the coverage allowlist without a genuine baseline exception. `scripts/referenced-paths.py` and `scripts/evidence-locality.py` scan this file. Do not backtick a missing root-anchored path. Evidence claims belong only in `docs/Capabilities.md`.
-- Android cross-build/JNI packaging requires `ANDROID_NDK_HOME=... ./scripts/check-android.sh`.
-- Full acceptance is `./scripts/check.sh`. Its `gates` array is authoritative and currently runs 15 fail-closed gates: Apple, Apple platforms, boundaries, concurrency negatives, C ABI, Embedded, Linux, WASM, Android, Android emulator, MLIR, DocC, doc coverage, evidence freshness, and package graph. `scripts/check-linux-leaks.sh` is not in that array; off Linux it exits 2. Do not add it to make leak proof local.
-- python3 is a prerequisite of the documentation and boundary helpers; node is a prerequisite of the WASM gate.
-- Some full-matrix gates require pinned SDKs, the NDK, Node/browser tooling, MLIR, or a Linux host (no CI runner provides one). Missing proof is a failure; do not weaken or skip gates to make the matrix green. `check-evidence-freshness.sh` resolves anchors against git history; a depth-1 clone fails closed.
-- CI truth is `.github/workflows/ci.yml`: two jobs, macOS and Embedded, both on the self-hosted macOS arm64 runner labelled `gama` (`docs/SelfHostedRunner.md`), and only for trusted same-repo events. The GitHub-hosted Linux, WebAssembly, Android, Windows, and fork-PR macOS jobs were removed on 2026-09-28; those platforms have local gates only. `.github/workflows/pages.yml` still deploys the WASM site on push to `main`, but it needs a GitHub-hosted Ubuntu runner and cannot start while the account's Actions billing is locked.
+Every prepared frame must commit, abort, or finish once. Failed rendering/output preserves the last internal publication and dirty retry. Partial external writes cannot be rolled back. Grapheme editing, layout, painting and wire semantics are shared across retained adapters. Plugins are cooperative code, not a sandbox.
 
-## Architecture Boundaries
+Use `///` for public declarations and container members, including owner machinery. The API gate uses a documented syntactic superset, not a semantic reachability claim. `tools/api_docs.zig` uses the pinned AST. `tools/check_docs.py` validates current docs, references, mirrored tools and API negative controls. Historical Swift documentation is explicitly under `docs/history/swift`; current accepted Zig design remains checked.
 
-- Flow: `App -> SceneBuilder -> RenderNode -> LayoutEngine -> CellPainter -> CellBuffer -> DrawList -> backend`; platform events return through `FrameHost`.
-- Every app declares exactly one primary scene. All backends except `GamaAppleShell` render only that primary scene; the shell owns macOS auxiliary/multi-window surfaces.
-- The platform-import ban covers five portable targets: `GamaCore`, `GamaPlugin`, `GamaDraw`, `GamaEmbed`, `GamaMLIR`. They may not import Foundation, platform UI/POSIX modules, WinSDK, or Synchronization. That ban and the `nonisolated(unsafe)` / global-actor hatch share one `TARGETS` list in `scripts/portable-global-state.py`, which fails closed on a missing or empty target. Do not add backends to that list. Named registry literals, the `GamaPlatformServices` inverse ban, and the libm scan are separate pins. Do not collapse them.
-- Signal installation stays in `Sources/GamaTUISignal/GamaTUISignal.c`. `Sources/GamaTUI/TerminalRescue.swift` must not contain `sigaction`, `atexit`, `@convention(c)`, or `nonisolated(unsafe)`.
-- `scripts/check-embedded.sh` compiles `Sources/GamaCore` alone. `Sources/GamaCore/HostPump.swift` must stay there; moving the pump policy to `GamaDraw` fails the gate.
-- Tier-1 plugins are cooperative in-process code, not a sandbox. Tiers 2 and 3 are Proposed. Read `docs/Plugins.md` before changing tier, capability, or lifecycle contracts.
-- `FrameHost` and `AppRuntime` are `~Copyable`; each host uniquely owns focus, actions, `@Reactive` state, subscriptions, dirty state, and frames. Out-of-band changes use host subscriptions or explicit `invalidate()`.
-- `GamaPlatformServices` contains Foundation-backed host-service implementations. Only apps, demos, examples, and tests may import it; portable/framework targets must depend on service interfaces instead.
-- `GamaMacrosImpl` is a host compiler plugin. `swift-syntax` is revision-pinned and build-time-only; shipped products must retain zero runtime package dependencies.
-- Layout flexibility is per-axis: use `flexPriority(along:)`. The axis-agnostic `RenderNode.flexPriority` property is deprecated and layout does not consult it (ADR 0013).
-- Shipped libraries and macros use `strictLibrary` (strict memory safety as an error). Executables and `GamaTests` stay on `strictCore` (Swift 6, `ExistentialAny`, `MemberImportVisibility`, `InternalImportsByDefault`). A member visible in one file is rejected in another until that file imports the defining module. Public API needs `public import`; an unused `public import` is an error. `Extern` is legal only on `GamaWASM`. `NonisolatedNonsendingByDefault` is banned. Do not add Swift sources to C-only `GamaEmbedABI` or `GamaTUISignal` without the settings `scripts/package-graph.py` requires.
-- Backends translate events and present shared `DrawList` output; do not fork layout, paint, or application semantics. Keep C `gama_embed_v1_*` and WASM `gama_web_v1_*`/`gama_web_v2_*` symbols versioned and separately namespaced; the WASM backend ships both tiers, `v2` being the argument-compatible status-reporting form (`docs/backends/WASM.md`).
-- `CellPresenter` (mutating, swaps planes: TUI `AnsiPresenter` / `StreamPresenter`) and `CellSerializer` (non-mutating, no swap: WASM, Embed, and Apple `DrawListSerializer`) are distinct families. Do not unify them (`docs/superpowers/specs/2026-09-06-cell-serializer-design.md`).
-- `App.runAdaptive()` selects interactive versus stream from stdout (`--gama-plain` / `--gama-tui`). An input-less stream run ends at the first quiescent frame; async work must declare `CompletionStatus` via `complete(_:)`. `FailureExitCode` is an opt-in `1...255` constructor used with `failure(exitCode:_:)`; it rejects `0`, negatives, and `256+` by failing construction. The unvalidated `failure(code:_:)` factory still accepts zero.
+`docs/Capabilities.md` is the sole current qualification ledger. Bounded logs and source-hash receipts under `docs/migration/zig/evidence` qualify deliberately uncommitted sources. Never confuse native tests, foreign cross-links, structural inspection, engine execution, hardware, or hosted CI. Refresh receipts only after executing the claimed commands; a hash is consistency evidence, not proof a command ran.
 
-## State And Documentation Traps
+## Preservation
 
-- `@Reactive` is per-surface; a `Signal` on the `App` is shared (ADR 0011). Scene content closures run every frame, and a component constructed inline keeps its `@Reactive` state because `@Component`'s synthesized `render(in:)` binds each slot to the host's identity-keyed store; two windows of one `WindowGroup` get independent state, and a hoisted instance still writes per surface. Raw `Signal` properties inside components are unsupported; use `@Reactive` and `_name.binding()`.
-- The binding cannot be skipped silently: `@Reactive` outside a struct marked `@Component` is error `reactive.requires-component`, and a hand-written `render(in:)` beside `@Reactive` properties is error `component.render-collision`. `FrameHost.transientStateIDs` reports storage replaced at an existing `(NodeID, slot)` key; it does not report new/removed keys or positional storage reuse. Positional `ForEach` state follows indices through reordering; use `IdentifiedForEach` or `.stateScope(_:)` when state must follow an element.
-- Read `docs/README.md`, the relevant `docs/adr/` record, and `docs/backends/<Backend>.md` before changing a settled backend contract. Plugin tier/capability work starts with `docs/Plugins.md`.
-- `docs/Capabilities.md` is the evidence ledger. Distinguish implemented, locally proven, hosted proven, provisional, and blocked behavior; implementation presence alone is not platform proof.
-- `#expect` cannot read a bare property off a `~Copyable` host (`#expect(host.needsFrame)` does not compile). Bind first: `let dirty = host.needsFrame; #expect(dirty)`.
-- `GEMINI.md` is a tracked empty placeholder; do not fill it. No gate reads it.
+Keep `Package.resolved` byte-exact as an archival lockfile and `GEMINI.md` empty. Preserve `.remember`, `.swiftpm`, `.claude` operator state and sibling worktrees, `.superpowers` review/preservation records, external runner registrations and credentials. Retired Studio/Qt ignored caches remain private data; the source policy excludes only their exact cache scopes. Never recurse-delete those parents or caches by inference. The inherited MLIR cleanup and authored JNI artifacts have private preservation receipts; never publish private archives.
 
-## Repository Safety
-
-- Preserve `Package.resolved`. Never commit credentials or runner configuration, or force-push `main`. Branch protection is off, so no check is required by GitHub; still do not merge while a CI job is red.
-- Never run `git gc`, `git prune`, `git fsck`, or `git repack` in the parked iCloud recovery copy of this repository.
+Read [architecture](docs/Architecture.md), [ownership](docs/StateAndIdentity.md), [plugins](docs/Plugins.md), and the applicable backend contract before changing them. The final independent whole-change review is separate from implementation self-review.

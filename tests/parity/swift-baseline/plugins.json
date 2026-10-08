@@ -1,0 +1,56 @@
+{
+  "events" : [
+    "activate:a",
+    "invalidate",
+    "activate:b",
+    "invalidate",
+    "run:a",
+    "deactivate:a",
+    "invalidate",
+    "run:b",
+    "activate:a",
+    "invalidate",
+    "deactivate:a",
+    "invalidate",
+    "deactivate:b",
+    "invalidate"
+  ],
+  "exactSubscopeGranted" : false,
+  "outcomes" : [
+    "missingRequiredCapability(GamaPlugin.PluginID(raw: \"denied\"), GamaPlugin.Capability.log)",
+    "b",
+    "a"
+  ],
+  "paths" : [
+    {
+      "path" : "/a",
+      "read" : true,
+      "write" : true
+    },
+    {
+      "path" : "/a/b",
+      "read" : true,
+      "write" : true
+    },
+    {
+      "path" : "/ab",
+      "read" : false,
+      "write" : false
+    },
+    {
+      "path" : "/a/../b",
+      "read" : false,
+      "write" : false
+    },
+    {
+      "path" : "/a//b",
+      "read" : false,
+      "write" : false
+    },
+    {
+      "path" : "relative",
+      "read" : false,
+      "write" : false
+    }
+  ]
+}
